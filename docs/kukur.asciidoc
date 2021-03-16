@@ -1,0 +1,10 @@
+= Kukur
+:icons: font
+:toc:
+:kukur-documentation:
+
+// SPDX-FileCopyrightText: 2021 Timeseer.AI
+//
+// SPDX-License-Identifier: Apache-2.0
+
+include::../README.asciidoc[leveloffset=+1]
