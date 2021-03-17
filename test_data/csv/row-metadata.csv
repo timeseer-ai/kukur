@@ -1,0 +1,6 @@
+series name,description,unit,lower limit,upper limit,accuracy,interpolation type,data type,dictionary name
+test-tag-1,,m,0,1,0.1,LINEAR,,
+test-tag-2,test-tag-2,kg,0,1,0.1,LINEAR,,
+test-tag-3,,kPa,0,10,1,LINEAR,,
+test-tag-4,SP,kPa,1,2,0.5,STEPPED,,
+test-tag-6,Valve X,,,,,STEPPED,DICTIONARY,Active
