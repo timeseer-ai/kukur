@@ -2,7 +2,7 @@
 
 from dateutil.parser import parse as parse_date
 
-from kukur import SeriesSelector, Dictionary
+from kukur import SeriesSelector, DataType, Dictionary
 from kukur.source.csv import from_config
 
 
@@ -54,6 +54,6 @@ class TestCsv():
         })
         metadata = source.get_metadata(SeriesSelector('fake', 'test-tag-6'))
         assert metadata.series == SeriesSelector('fake', 'test-tag-6')
-        assert metadata.data_type == 'DICTIONARY'
+        assert metadata.data_type == DataType.DICTIONARY
         assert metadata.dictionary_name == 'Active'
         assert isinstance(metadata.dictionary, Dictionary)
