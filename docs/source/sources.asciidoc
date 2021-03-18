@@ -1,0 +1,130 @@
+== Time Series Sources
+
+Parameters common to all data sources are documented here.
+
+```toml
+[source.<name>]
+type = "<the type of the source>"
+metadata_type = "<the type of the metadata source>"
+metadata_sources = [] # names of additional metadata sources
+data_query_interval_seconds = 123456 # <number of seconds>
+# ...
+```
+
+Each source has a name.
+When multiple sources with the same name are configured, the last configured one wins.
+
+`type` specifies the type of the data source for this source.
+Valid values are:
+
+- `adodb`
+- `csv`
+- `feather`
+- `oledb`
+- `parquet`
+- `timeseer`
+- `influxdb`
+
+`type` is required.
+
+`metadata_type` specifies the type of the metadata source for this source.
+
+Valid values are:
+
+- `adodb`
+- `csv`
+- `oledb`
+- `timeseer`
+
+`metadata_type` is optional.
+The `type` is used when not specified.
+
+Additional metadata can be loaded from other sources as described in the section "Metadata Sources".
+When multiple sources return an entry for the same metadata field, the source that occurs first in this list
+gets priority.
+Metadata returned by the source itself or by the `metadata` type configuration takes precendence over any additional sources configured here.
+
+`data_query_interval_seconds` defines the maximum duration of the interval in which data is queried in one request.
+A longer query is split in intervals of this length and later on reassembled.
+This prevents query timeouts or works around a maximum number of points that can be returned by a source.
+
+Example:
+
+```toml
+[source.sql]
+type = "odbc"
+connection_string = "..."
+metadata_query = "..."
+metadata_columns = [] # ...
+data_query = "..."
+data_query_interval_seconds = 86400
+```
+
+This ensures that queries will at most query for one day of data.
+
+`data_query_interval_seconds` is optional.
+
+== Metadata Sources
+
+Metadata sources provide extra metadata for series in time series sources.
+All time series sources that provide metadata can be used as a metadata source.
+They accept the same configuration parameters as the time series source.
+
+One optional parameter specifies which metadata fields will be used from the given source.
+
+Possible metadata fields are:
+
+- `description`
+- `unit`
+- `lower limit`
+- `upper limit`
+- `accuracy`
+- `interpolation type`
+- `data type`
+- `dictionary name`
+- `process type`
+
+Example:
+
+```toml
+[source.noaa]
+type = "influxdb"
+database = "NOAA_water_database"
+metadata_sources = ["noaa"]
+
+[metadata.noaa]
+type = "csv"
+metadata = "examples/influxdb/noaa-metadata.csv"
+fields = ["lower limit", "upper limit"]
+```
+
+Note that sources that are fast when listing all time series in the source by returning metadata in the same query,
+will need to do an additional query to each of the configured metadata sources for each time series in the source.
+
+== Supported Sources
+
+Timeseer supports multiple types of time series sources:
+
+ifndef::sources[]
+- link:adodb.asciidoc[ADODB] connections (including OLEDB)
+- link:csv.asciidoc[CSV] files
+- link:feather.asciidoc[Apache Feather] files
+- link:odbc.asciidoc[ODBC] data sources
+- link:parquet.asciidoc[Apache Parquet] files
+- Other link:bus.asciidoc[Timeseer instances] running Timeseer Bus
+- link:influxdb.asciidoc[InfluxDB] data sources
+
+Source-specific parameters are documented in the linked documents.
+endif::sources[]
+
+ifdef::sources[]
+- <<ADODB>> connections (including OLEDB)
+- <<CSV>> files
+- <<Apache Feather>> files
+- <<ODBC>> data sources
+- <<Apache Parquet>> files
+- Other <<Timeseer,Timeseer instances>> running Timeseer Bus
+- <<InfluxDB>> databases
+
+Source-specific parameters are documented in the linked sources reference.
+endif::sources[]

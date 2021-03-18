@@ -1,0 +1,50 @@
+== Timeseer
+
+Sources with `type = "timeseer"` configure Timeseer Bus sources.
+
+```toml
+[source.<name>]
+type = "timeseer"
+host = "<hostname or address of the Bus service>"
+port = "<port of the Bus service>"
+source = "<the remote source>"
+api_key_name= "<the name of the api key>"
+api_key= "<the api key>"
+```
+
+`source`, `api_key_name`, `api_key` are required fields.
+
+`host` and `port` define the host and port where Timeseer Bus is running.
+
+Defaults are:
+
+```toml
+host = "localhost"
+port = 8081
+```
+
+The `source` points to the remote source that will be queried for data and metadata.
+The name of the local and the remote sources do not need to match.
+
+```toml
+source = "test"
+```
+
+The `api_key_name` and `api_key` can be created in the timeseer application under `Configure > Global preferences > Api keys`.
+
+```toml
+api_key_name= "test"
+api_key= "PcRU3xy0dsVpX8CeKCO1WPqPevECB9mZAETdWngK7druSl23JFA0Rw"
+```
+
+For example, this connects to the 'test' source on a local Timeseer Bus service:
+
+```toml
+[source.arrow]
+type = "timeseer"
+host = "localhost"
+port = 8081
+source = "test"
+api_key_name= "test"
+api_key= "PcRU3xy0dsVpX8CeKCO1WPqPevECB9mZAETdWngK7druSl23JFA0Rw"
+```

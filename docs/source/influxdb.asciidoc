@@ -1,0 +1,50 @@
+== InfluxDB
+
+Sources with ```type = "influxdb"``` configure InfluxDB sources.
+
+Currently Timeseer support InfluxDB v1.8.
+
+=== Configuration Template
+
+```toml
+[source.<name>]
+type = "influxdb"
+host = "<host IP / Address of the Influxdb server>"
+port = <port of the InfluxDB server>
+ssl = <boolean to indicate if SSL needs to be used>
+database = "<name of the database to use>"
+username = "<username used to login into the database>"
+password = "<password used to login into the database>"
+```
+
+=== Required fields
+
+- `type`
+- `database`
+
+=== Connection
+
+If `host`, `port` or `ssl` are not provided, the default will be used.
+
+- `host` (default: localhost)
+- `port` (default: 8086)
+- `ssl` (default: false)
+
+=== Authentication
+
+If the following fields are filled in, the client will connect with the filled in credentials:
+
+- `username`
+- `password`
+
+=== Example configuration
+
+```toml
+[source.influxSource]
+type = "influxdb"
+host = "localhost"
+port = 8086
+database = "data"
+username = "influxAdmin"
+password = "password123"
+```
