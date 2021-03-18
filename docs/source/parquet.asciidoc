@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2021 Timeseer.AI
+//
+// SPDX-License-Identifier: Apache-2.0
 == Apache Parquet
 
 Sources with `type = "parquet"` configure http://parquet.apache.org/[Apache Parquet] sources.

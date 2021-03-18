@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2021 Timeseer.AI
+//
+// SPDX-License-Identifier: Apache-2.0
 == ODBC
 
 Sources with `type = "odbc"` configure ODBC sources.
@@ -51,13 +54,13 @@ create table Data (
 The `connection_string` can point to a DSN or be a direct driver connection.
 
 ```toml
-connection_string = "DSN=timeseer;UID=sa;PWD=Timeseer!AI"
+connection_string = "DSN=kukur;UID=sa;PWD=Kukur!AI"
 ```
 
 or
 
 ```toml
-connection_string = "Driver={/usr/lib/libtdsodbc.so};Server=localhost;Port=1433;Database=TestData;UID=sa;PWD=Timeseer!AI"
+connection_string = "Driver={/usr/lib/libtdsodbc.so};Server=localhost;Port=1433;Database=TestData;UID=sa;PWD=Kukur!AI"
 ```
 
 Alternatively, `connection_string_path` can point to a file that contains the connection string.
@@ -67,7 +70,7 @@ Whitespace at the start and end of the connection string file is removed.
 
 The `list_query` is optional.
 It returns a list of time series names found in the source.
-When provided, Timeseer does not need a series to have been used in another context before it can be analyzed.
+When provided, it does not need a series to have been used in another context before it can be analyzed.
 
 ```toml
 list_query = "select name from Metadata"
@@ -104,7 +107,7 @@ The `metadata_query` is a query that accepts one parameter: the name of the seri
 metadata_query = "select description, units from Metadata where name = ?"
 ```
 
-The columns in the result set need to be mapped to the types of metadata known in Timeseer.
+The columns in the result set need to be mapped to the supported types of metadata.
 The `metadata_columns` entry contains a list with the positional mapping.
 
 ```toml
@@ -159,7 +162,7 @@ This query should return rows of two columns:
 - the value of the data point (preferably as `SQL_REAL`, `SQL_FLOAT` or `SQL_DOUBLE`)
 
 When the return type of a column is of types `SQL_CHAR` or `SQL_WCHAR`,
-Timeseer will try to convert to the expected type.
+It will try to convert to the expected type.
 
 If the provider or data source does not accept `SQL_TYPE_TIMESTAMP`, it can be formatted as a string.
 The `data_query_datetime_format` option accepts the https://docs.python.org/3/library/datetime.html#strftime-strptime-behavior[formatting options] supported by Python.

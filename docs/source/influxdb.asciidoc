@@ -1,8 +1,11 @@
+// SPDX-FileCopyrightText: 2021 Timeseer.AI
+//
+// SPDX-License-Identifier: Apache-2.0
 == InfluxDB
 
 Sources with ```type = "influxdb"``` configure InfluxDB sources.
 
-Currently Timeseer support InfluxDB v1.8.
+Currently InfluxDB v1.8 is supported.
 
 === Configuration Template
 
