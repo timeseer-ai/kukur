@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2021 Timeseer.AI
+//
+// SPDX-License-Identifier: Apache-2.0
 == Time Series Sources
 
 Parameters common to all data sources are documented here.
@@ -103,7 +106,7 @@ will need to do an additional query to each of the configured metadata sources f
 
 == Supported Sources
 
-Timeseer supports multiple types of time series sources:
+Multiple types of time series sources are supported:
 
 ifndef::sources[]
 - link:adodb.asciidoc[ADODB] connections (including OLEDB)

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2021 Timeseer.AI
+//
+// SPDX-License-Identifier: Apache-2.0
 == CSV
 
 Sources with `type = "csv"` configure CSV sources.
@@ -111,7 +114,7 @@ Example:
 ```
 
 A metadata mapping is optional.
-It maps columns in the CSV to the types of metadata supported by Timeseer.
+It maps columns in the CSV to the supported types of metadata.
 
 Example:
 

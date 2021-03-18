@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2021 Timeseer.AI
+//
+// SPDX-License-Identifier: Apache-2.0
 == Apache Feather
 
 Sources with `type = "feather"` configure https://arrow.apache.org/docs/python/feather.html[Apache Feather] sources.
