@@ -21,6 +21,11 @@ While `< 1.0.0`, changes to the minor version indicate breaking changes.
 
 Kukur can be used as a Python library or as a standalone application that exposes an Arrow Flight interface.
 
+ifndef::sources[]
+== Sources
+link:docs/source/sources.asciidoc[Documentation] to configure sources
+endif::sources[]
+
 == License
 
 Copyright 2021 https://www.timeseer.ai[Timeseer.AI]
