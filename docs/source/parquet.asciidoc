@@ -1,0 +1,63 @@
+== Apache Parquet
+
+Sources with `type = "parquet"` configure http://parquet.apache.org/[Apache Parquet] sources.
+
+Parquet supports the same source layouts as CSV:
+
+```
+[source.<name>]
+type = "parquet"
+format = "row|dir|pivot"
+path = "<path to data>"
+```
+
+`path` is required.
+
+`format` defaults to `"row"`.
+
+Metadata in Parquet is not supported.
+Use a different `metadata_type` to connect to metadata.
+
+For example:
+
+```toml
+metadata_type = "csv"
+```
+
+=== Row format
+
+```toml
+format = "row"
+```
+
+The row based format expects `path` to be a Parquet file with 3 columns:
+
+- The first column contains the `series name` as a string
+- The second column contains the timestamp
+- The third column contains the value as a numerical type
+
+=== Directory Based Format
+
+```toml
+format = "dir"
+```
+
+The directory based format expects `path` to be a directory containing Parquet files.
+Each file inside `path` is named `<series name>.parquet`.
+
+The Parquet file contains 2 columns:
+
+- The first column contains the timestamp
+- The second column contains the value as a numerical type
+
+=== Pivot Format
+
+```toml
+format = "pivot"
+```
+
+The pivot format expect `path` to be a Parquest file.
+
+The first column in the file is a timestamp.
+Further columns contain the values.
+The name of each column is the series name.

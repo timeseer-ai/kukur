@@ -1,0 +1,161 @@
+== ADODB
+
+Sources with `type = "adodb"` configure ADODB sources.
+
+ADODB is supported on Windows only.
+Install https://github.com/mhammond/pywin32/releases[pywin32] separately to enable.
+The Timeseer installer includes pywin32 by default.
+Data sources supporting OLEDB can be accessed through ADODB.
+
+The connection string and queries can either be configured in the configuration file,
+or loaded from files.
+Inline configuration takes precedence over file-based configuration when both are provided.
+
+```toml
+[source.<name>]
+type = "adodb"
+connection_string = "<ADODB connection_string>"
+connection_string_path = "<path to connection string>"
+list_query = "<query to list all time series in a source>"
+list_query_path = "<path to list_query>"
+list_columns = ["<metadata type of column 1>", "<metadata type of column 2"]
+metadata_query = "<query for metadata of one series>"
+metadata_query_path = "<path to metadata query>"
+metadata_columns = ["<metadata type of column 1>", "<metadata type of column 2"]
+dictionary_query = "<query for dictionary mappings>"
+dictionary_query_path = "<path to the dictionary query>"
+data_query = "<query for data of one series in time range>"
+data_query_path = "<path to data query>"
+data_query_datetime_format = "<strftime format>"
+```
+
+The examples given here operate on an Excel file with three sheets:
+
+```
+Metadata$: name, description, units, [interpolation type], [data type], [dictionary name]
+Dictionary$: name, value, label
+Data$: name, timestamp, value
+```
+
+=== Connection
+
+The `connection_string` contains the provider and various options.
+
+```toml
+connection_string = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=examples/adodb/adodb.xlsx;Extended Properties=\"Excel 12.0 XML; HDR=YES\""
+```
+
+Alternatively, `connection_string_path` can point to a file that contains the connection string.
+Whitespace at the start and end of the connection string file is removed.
+
+=== Search
+
+The `list_query` is optional.
+It returns a list of time series names found in the source.
+When provided, Timeseer does not need a series to have been used in another context before it can be analyzed.
+
+```toml
+list_query = "select name from [Metadata$]"
+```
+
+The query can be read from a file by using `list_query_path` instead of `list_query`.
+
+The query can either return only series names or all metadata.
+When it returns all metadata, include a `list_columns` entry that describes all columns:
+
+```toml
+list_query = "select name, description, units, [interpolation type], [data type], [dictionary name] from [Metadata$]"
+list_columns = ["series name", "description", "unit", "interpolation type", "data type", "dictionary name"]
+```
+
+Supported columns are:
+
+- `series name` (required)
+- `description`
+- `unit`
+- `lower limit`
+- `upper limit`
+- `accuracy`
+- `interpolation type` (`LINEAR`, `STEPPED`)
+- `data type` (`FLOAT32`, `FLOAT64`, `STRING`, `DICTIONARY`. `CATEGORICAL`)
+- `dictionary name`
+- `process type` (`CONTINUOUS`, `REGIME`, `BATCH`)
+
+=== Metadata
+
+The `metadata_query` is a query that accepts one parameter: the name of the series.
+
+```toml
+metadata_query = "select description, units, [interpolation type], [data type], [dictionary name] from [Metadata$] where name = ?"
+```
+
+The columns in the result set need to be mapped to the types of metadata known in Timeseer.
+The `metadata_columns` entry contains a list with the positional mapping.
+
+```toml
+metadata_columns = ["description", "unit", "interpolation type", "data type", "dictionary name"]
+```
+
+Supported types of metadata are:
+
+- `description`
+- `unit`
+- `lower limit`
+- `upper limit`
+- `accuracy`
+- `interpolation type` (`LINEAR`, `STEPPED`)
+- `data type` (`FLOAT32`, `FLOAT64`, `STRING`, `DICTIONARY`, `CATEGORICAL`)
+- `dictionary name`
+- `process type` (`CONTINUOUS`, `REGIME`, `BATCH`)
+
+The metadata query can be read from a file by using `metadata_query_path` instead of `metadata_query`.
+
+=== Dictionary
+
+A dictionary maps numerical (integer) values to textual lables.
+The `dictionary query` is a query that accepts one parameter: the name of the dictionary.
+
+The dictionary name for a series is returned by the `dictionary name` list or metadata column.
+
+```toml
+dictionary_query = "select value, label from [Dictionary$] where name = ?"
+```
+
+The query should return rows of two columns:
+
+- the numerical value that occurs in the data, in a type that can be converted to an integer
+- the label for the numerical value (as `adBSTR`)
+
+The dictionary query can be read from a file by using `dictionary_query_path` instead of `dictionary_query`.
+
+=== Data
+
+The `data_query` is a query that accepts three parameters:
+
+- the name of the series (as `adBSTR`)
+- the start date of the time range to query data (as `adDBTimeStamp`)
+- the end date of the time range to query data (as `adDBTimeStamp`)
+
+```toml
+data_query = "select timestamp, value from [Data$] where name = ? and timestamp between ? and ?"
+```
+
+This query should return rows of two columns:
+
+- the timestamp of the data point
+- the value of the data point
+
+Timeseer will try to convert columns to the expected type.
+
+The data query can be read from a file by using `data_query_path` instead of `data_query`.
+
+If the provider or data source does not accept `adDBTimeStamp`, it can be formatted as a string.
+The `data_query_datetime_format` option accepts the https://docs.python.org/3/library/datetime.html#strftime-strptime-behavior[formatting options] supported by Python.
+
+Example:
+
+```toml
+data_query_datetime_format = "%Y-%m-%dT%H:%M:%S%z"
+```
+
+This converts timestamps to the ISO8601 format.

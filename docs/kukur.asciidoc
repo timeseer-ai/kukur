@@ -2,9 +2,30 @@
 :icons: font
 :toc:
 :kukur-documentation:
+:sources:
 
 // SPDX-FileCopyrightText: 2021 Timeseer.AI
 //
 // SPDX-License-Identifier: Apache-2.0
 
 include::../README.asciidoc[leveloffset=+1]
+
+== Sources
+
+include::source/sources.asciidoc[leveloffset=+1]
+
+== Sources reference
+
+include::source/adodb.asciidoc[leveloffset=+1]
+
+include::source/csv.asciidoc[leveloffset=+1]
+
+include::source/feather.asciidoc[leveloffset=+1]
+
+include::source/odbc.asciidoc[leveloffset=+1]
+
+include::source/parquet.asciidoc[leveloffset=+1]
+
+include::source/bus.asciidoc[leveloffset=+1]
+
+include::source/influxdb.asciidoc[leveloffset=+1]
