@@ -1,0 +1,66 @@
+// SPDX-FileCopyrightText: 2021 Timeseer.AI
+//
+// SPDX-License-Identifier: Apache-2.0
+== Apache Feather
+
+Sources with `type = "feather"` configure https://arrow.apache.org/docs/python/feather.html[Apache Feather] sources.
+
+Feather supports the same source layouts as CSV:
+
+```
+[source.<name>]
+type = "feather"
+format = "row|dir|pivot"
+path = "<path to data>"
+```
+
+`path` is required.
+
+`format` defaults to `"row"`.
+
+Metadata in Feather is not supported.
+Use a different `metadata_type` to connect to metadata.
+
+For example:
+
+```toml
+metadata_type = "csv"
+```
+
+=== Row format
+
+```toml
+format = "row"
+```
+
+The row based format expects `path` to be a Feather file with 3 columns:
+
+- The first column contains the `series name` as a string
+- The second column contains the timestamp as https://arrow.apache.org/docs/python/generated/pyarrow.TimestampType.html#pyarrow.TimestampType[`pyarrow.TimestampType`].
+- The third column contains the value as a numerical type
+
+=== Directory Based Format
+
+```toml
+format = "dir"
+```
+
+The directory based format expects `path` to be a directory containing Feather files.
+Each file inside `path` is named `<series name>.feather`.
+
+The Feather file contains 2 columns:
+
+- The first column contains the timestamp as https://arrow.apache.org/docs/python/generated/pyarrow.TimestampType.html#pyarrow.TimestampType[`pyarrow.TimestampType`].
+- The second column contains the value as a numerical type
+
+=== Pivot Format
+
+```toml
+format = "pivot"
+```
+
+The pivot format expect `path` to be a Feather file.
+
+The first column in the file is a timestamp.
+Further columns contain the values.
+The name of each column is the series name.

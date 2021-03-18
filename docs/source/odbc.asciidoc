@@ -1,0 +1,178 @@
+// SPDX-FileCopyrightText: 2021 Timeseer.AI
+//
+// SPDX-License-Identifier: Apache-2.0
+== ODBC
+
+Sources with `type = "odbc"` configure ODBC sources.
+
+The connection string and queries can either be configured in the configuration file,
+or loaded from files.
+Inline configuration takes precedence over file-based configuration when both are provided.
+
+```toml
+[source.<name>]
+type = "odbc"
+connection_string = "<ODBC connection_string>"
+connection_string_path = "<path to connection string>"
+list_query = "<query to list all time series in a source>"
+list_query_path = "<path to list_query>"
+list_columns = ["<metadata type of column 1>", "<metadata type of column 2"]
+metadata_query = "<query for metadata of one series>"
+metadata_query_path = "<path to metadata query>"
+metadata_columns = ["<metadata type of column 1>", "<metadata type of column 2"]
+dictionary_query = "<query for a possible dictionary mapping>"
+dictionary_query_path = "<path to a dictionary query>"
+data_query = "<query for data of one series in time range>"
+data_query_path = "<path to data query>"
+```
+
+The examples given here operate on this schema:
+
+```sql
+create table Metadata (
+    name nvarchar(max),
+    description nvarchar(max),
+    units nvarchar(max),
+    dictionary_name nvarchar(max)
+);
+
+create table Dictionary (
+    name nvarchar(max),
+    value int,
+    label nvarchar(max)
+);
+
+create table Data (
+    name nvarchar(max),
+    ts datetime2,
+    value float(53),
+);
+```
+
+=== Connection
+
+The `connection_string` can point to a DSN or be a direct driver connection.
+
+```toml
+connection_string = "DSN=kukur;UID=sa;PWD=Kukur!AI"
+```
+
+or
+
+```toml
+connection_string = "Driver={/usr/lib/libtdsodbc.so};Server=localhost;Port=1433;Database=TestData;UID=sa;PWD=Kukur!AI"
+```
+
+Alternatively, `connection_string_path` can point to a file that contains the connection string.
+Whitespace at the start and end of the connection string file is removed.
+
+=== Search
+
+The `list_query` is optional.
+It returns a list of time series names found in the source.
+When provided, it does not need a series to have been used in another context before it can be analyzed.
+
+```toml
+list_query = "select name from Metadata"
+```
+
+The query can be read from a file by using `list_query_path` instead of `list_query`.
+
+The query can either return only series names or all metadata.
+When it returns all metadata, include a `list_columns` entry that describes all columns:
+
+```toml
+list_query = "select name, description, units from Metadata"
+list_columns = ["series name", "description", "unit"]
+```
+
+Supported columns are:
+
+- `series name` (required)
+- `description`
+- `unit`
+- `lower limit`
+- `upper limit`
+- `accuracy`
+- `interpolation type` (`LINEAR`, `STEPPED`)
+- `data type` (`FLOAT32`, `FLOAT64`, `STRING`, `DICTIONARY`, `CATEGORICAL`)
+- `dictionary name`
+- `process type` (`CONTINUOUS`, `REGIME`, `BATCH`)
+
+=== Metadata
+
+The `metadata_query` is a query that accepts one parameter: the name of the series.
+
+```toml
+metadata_query = "select description, units from Metadata where name = ?"
+```
+
+The columns in the result set need to be mapped to the supported types of metadata.
+The `metadata_columns` entry contains a list with the positional mapping.
+
+```toml
+metadata_columns = ["description", "unit"]
+```
+
+Supported types of metadata are:
+
+- `description`
+- `unit`
+- `lower limit`
+- `upper limit`
+- `accuracy`
+- `interpolation type` (`LINEAR`, `STEPPED`)
+- `data type` (`FLOAT32`, `FLOAT64`, `STRING`, `DICTIONARY`, `CATEGORICAL`)
+- `dictionary name`
+- `process type` (`CONTINUOUS`, `REGIME`, `BATCH`)
+
+The metadata query can be read from a file by using `metadata_query_path` instead of `metadata_query`.
+
+=== Dictionary
+
+A dictionary maps numerical (integer) values to textual labels.
+The `dictionary_query` is a query that accepts one parameter: the name of the dictionary.
+
+The dictionary name for a series is returned by the `dictionary name` list or metadata column.
+
+```toml
+dictionary_query = "select value, label from Dictionary where name = ?"
+```
+
+The first column with the dictionary key can be any type that can be converted to an integer, even `SQL_CHAR`.
+The second column with the dictionary value should be a `SQL_CHAR` or `SQL_WCHAR`.
+
+The dictionary query can be read from a file by using `dictionary_query_path` instead of `dictionary_query`.
+
+=== Data
+
+The `data_query` is a query that accepts three parameters:
+
+- the name of the series (as `SQL_VARCHAR`)
+- the start date of the time range to query data in (as `SQL_TYPE_TIMESTAMP`)
+- the end date of the time range to query data in (as `SQL_TYPE_TIMESTAMP`)
+
+```toml
+data_query = "select ts, value from Data where name = ? and ts between ? and ?"
+```
+
+This query should return rows of two columns:
+
+- the timestamp of the data point (preferably as `SQL_TYPE_TIMESTAMP`)
+- the value of the data point (preferably as `SQL_REAL`, `SQL_FLOAT` or `SQL_DOUBLE`)
+
+When the return type of a column is of types `SQL_CHAR` or `SQL_WCHAR`,
+It will try to convert to the expected type.
+
+If the provider or data source does not accept `SQL_TYPE_TIMESTAMP`, it can be formatted as a string.
+The `data_query_datetime_format` option accepts the https://docs.python.org/3/library/datetime.html#strftime-strptime-behavior[formatting options] supported by Python.
+
+Example:
+
+```toml
+data_query_datetime_format = "%Y-%m-%dT%H:%M:%S%z"
+```
+
+This converts timestamps to the ISO8601 format.
+
+The data query can be read from a file by using `data_query_path` instead of `data_query`.

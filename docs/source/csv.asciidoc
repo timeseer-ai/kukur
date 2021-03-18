@@ -1,0 +1,125 @@
+// SPDX-FileCopyrightText: 2021 Timeseer.AI
+//
+// SPDX-License-Identifier: Apache-2.0
+== CSV
+
+Sources with `type = "csv"` configure CSV sources.
+
+```toml
+[source.<name>]
+type = "csv"
+data = "<path>"
+metadata = "<path>"
+metadata_mapping = "<path>"
+format = "row|pivot|dir"
+dictionary_dir = "<path>"
+```
+
+`data` is required for time series sources.
+It is optional when used as a metadata source.
+
+Three CSV data models are supported:
+- row based (series name, timestamp, value)
+- pivot (multiple series with values at the same timestamp)
+- directory based, one CSV file per tag
+
+=== Row Based Format
+
+A row based CSV data file does not contain a header row.
+At least 3 columns are present:
+
+- series name
+- timestamp in RFC3339 format (up to nanosecond precision)
+- numerical value (up to double precision floating point)
+
+Example:
+
+```csv
+test-tag-1,2020-01-01T00:00:00Z,1
+test-tag-1,2020-02-01T00:00:00Z,2
+test-tag-2,2020-01-01T00:00:00Z,Product A
+test-tag-2,2020-02-01T00:00:00Z,Product B
+```
+
+Alternatively, the third column can contain string values.
+It is not possible to mix numerical and string values in one column.
+This will cause all numerical values to be interpreted as strings.
+
+Dictionary data is integer numerical data.
+Labels are only for presenting to users.
+
+=== Pivot Format
+
+The header row of CSV data files in pivot format defines which time series are available.
+
+Other rows start with a timestamp in RFC3339 format and contain one value for each series.
+
+```csv
+timestamp,test-tag-1,test-tag-2
+2020-01-01T00:00:00Z,1,10
+2020-02-01T00:00:00Z,2,11
+```
+
+=== Directory Based Format
+
+The directory based format expects one CSV file per tag.
+CSV files are formatted in the row based format, but without the series name.
+They are named `<series name>.csv`.
+
+`path` refers to the directory that contains the CSV files.
+
+Example `test-tag-1.csv`:
+
+```csv
+2020-01-01T00:00:00Z,1
+2020-02-01T00:00:00Z,2
+```
+
+=== Metadata
+
+Metadata is configured in a matrix format.
+A header row describes the metadata entry.
+
+Supported types of metadata are:
+
+- `series name` (required)
+- `description`
+- `unit`
+- `lower limit`
+- `upper limit`
+- `accuracy`
+- `interpolation type` (`LINEAR`, `STEPPED`)
+- `data type` (`FLOAT32`, `FLOAT64`, `STRING`, `DICTIONARY`, `CATEGORICAL`)
+- `dictionary name`
+- `process type` (`CONTINUOUS`, `REGIME`, `BATCH`)
+
+Not all columns need to be present.
+
+Example:
+
+```csv
+series name,unit,lower limit,upper limit,accuracy
+test-tag-1,m,0,1,0.1
+```
+
+When the dictionary name field is present, the directory given in `dictionary_dir`
+is searched for a file `<dictionary name>.csv`.
+This file contains a comma separated mapping of numerical values to labels.
+
+Example:
+
+```csv
+0,OFF
+1,ON
+```
+
+A metadata mapping is optional.
+It maps columns in the CSV to the supported types of metadata.
+
+Example:
+
+```csv
+series name,NAME
+description,IP_DESCRIPTION
+unit,IP_ENG_UNITS
+```
