@@ -1,7 +1,9 @@
 """Test connections to Timeseer data sources.
 
 This takes care to not persistently store metadata."""
-
+# SPDX-FileCopyrightText: 2021 Timeseer.AI
+#
+# SPDX-License-Identifier: Apache-2.0
 import logging
 
 from datetime import datetime

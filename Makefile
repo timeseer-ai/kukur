@@ -23,7 +23,6 @@ run-docs: docs ## Run the documentation in a docker container on port 8080
 
 .PHONY: lint
 lint:
-	format
 	flake8 kukur/
 	pylint -j 0 kukur/
 	mypy --ignore-missing-imports kukur/

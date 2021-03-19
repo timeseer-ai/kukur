@@ -1,4 +1,7 @@
 """Service layer for api keys"""
+# SPDX-FileCopyrightText: 2021 Timeseer.AI
+#
+# SPDX-License-Identifier: Apache-2.0
 import secrets
 import os
 

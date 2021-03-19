@@ -1,5 +1,7 @@
 """The Kukur application dispatches data requests to the correct data source."""
-
+# SPDX-FileCopyrightText: 2021 Timeseer.AI
+#
+# SPDX-License-Identifier: Apache-2.0
 from datetime import datetime
 from typing import Any, Dict, Generator, Union
 from pathlib import Path

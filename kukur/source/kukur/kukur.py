@@ -1,5 +1,7 @@
 """Connect to another Kukur instance using Arrow Flight."""
-
+# SPDX-FileCopyrightText: 2021 Timeseer.AI
+#
+# SPDX-License-Identifier: Apache-2.0
 from datetime import datetime
 from typing import Any, Dict, Generator, Tuple, Union
 

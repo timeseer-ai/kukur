@@ -1,5 +1,7 @@
 """Test the Parquet time series source."""
-
+# SPDX-FileCopyrightText: 2021 Timeseer.AI
+#
+# SPDX-License-Identifier: Apache-2.0
 from dateutil.parser import parse as parse_date
 
 from kukur import SeriesSelector

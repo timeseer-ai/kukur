@@ -1,4 +1,7 @@
 """Generic exceptions for Kukur data sources."""
+# SPDX-FileCopyrightText: 2021 Timeseer.AI
+#
+# SPDX-License-Identifier: Apache-2.0
 
 
 class InvalidDataError(Exception):

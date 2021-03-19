@@ -17,6 +17,9 @@ import kukur.source.influxdb as influxdb
 from kukur import Metadata, SeriesSelector, Source as SourceProtocol
 from kukur.exceptions import InvalidSourceException
 
+# SPDX-FileCopyrightText: 2021 Timeseer.AI
+#
+# SPDX-License-Identifier: Apache-2.0
 _FACTORY = {
     "adodb": adodb.from_config,
     "csv": csv.from_config,
