@@ -3,12 +3,17 @@
 import os
 import setuptools
 
+with open("README.md", "r", encoding="utf-8") as fh:
+    long_description = fh.read()
+
 setuptools.setup(
     name="kukur",
     version=os.environ.get('KUKUR_VERSION', '0.0.0'),
     author="Timeseer.AI",
     author_email="pypi@timeseer.ai",
     description="Kukur makes time series data and metadata available to the Apache Arrow ecosystem.",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     license="Apache-2.0",
     url="https://kukur.timeseer.ai/",
     classifiers=[
