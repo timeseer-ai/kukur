@@ -19,8 +19,19 @@ While `< 1.0.0`, changes to the minor version indicate breaking changes.
 
 Kukur can be used as a Python library or as a standalone application that exposes an Arrow Flight interface.
 
-## Sources
-[Documentation](docs/source/sources.asciidoc) to configure sources
+## Supported Sources
+
+Multiple types of time series sources are supported:
+
+- ADODB connections (including OLEDB)
+- Apache Feather files
+- Apache Parquet files
+- CSV files
+- InfluxDB databases
+- Other Kukur or Timeseer instances
+- ODBC data sources
+
+Check the [documentation](https://kukur.timeseer.ai) for more info
 
 ## License
 
