@@ -4,8 +4,10 @@ import io
 
 from pathlib import Path
 from typing import Dict, Protocol, Union
+
 try:
     import azure.storage.blob as blob
+
     HAS_AZURE = True
 except ImportError:
     HAS_AZURE = False
@@ -17,18 +19,19 @@ class UnknownLoaderError(Exception):
     """Raised when the specified loader is unknown."""
 
     def __init__(self, message: str):
-        Exception.__init__(self, f'unknown loader: {message}')
+        Exception.__init__(self, f"unknown loader: {message}")
 
 
 class AzureNotInstalledError(Exception):
     """Raised when the blob module of azure is not available."""
 
     def __init__(self):
-        Exception.__init__(self, 'the blob modules is not available. Install azure.')
+        Exception.__init__(self, "the blob modules is not available. Install azure.")
 
 
 class Loader(Protocol):
     """Loader opens file-like objects containing data."""
+
     def open(self):
         """Open a file-like object from the loading source."""
         ...
@@ -41,8 +44,9 @@ class Loader(Protocol):
         ...
 
 
-class FileLoader():
+class FileLoader:
     """Load data from files"""
+
     __path: Path
     __mode: str
     __files_as_path: bool
@@ -83,8 +87,9 @@ class FileLoader():
         return path.open(mode=self.__mode)
 
 
-class AzureBlobLoader():
+class AzureBlobLoader:
     """Load data from Azure blobs"""
+
     __mode: str
     __connection_string: str
     __container: str
@@ -103,7 +108,7 @@ class AzureBlobLoader():
         client = blob.BlobServiceClient.from_connection_string(self.__connection_string)
         container_client = client.get_container_client(self.__container)
         downloader = container_client.download_blob(self.__path)
-        if 'b' in self.__mode:
+        if "b" in self.__mode:
             buffer = io.BytesIO()
             buffer.write(downloader.content_as_bytes())
         else:
@@ -116,16 +121,16 @@ class AzureBlobLoader():
         """Test if the given child blob exists."""
         client = blob.BlobServiceClient.from_connection_string(self.__connection_string)
         container_client = client.get_container_client(self.__container)
-        blob_client = container_client.get_blob_client(self.__path + '/' + name)
+        blob_client = container_client.get_blob_client(self.__path + "/" + name)
         return blob_client.exists()
 
     def open_child(self, name: str):
         """Read the contents of the Blob given by path/name in a BytesIO buffer."""
         client = blob.BlobServiceClient.from_connection_string(self.__connection_string)
         container_client = client.get_container_client(self.__container)
-        downloader = container_client.download_blob(self.__path + '/' + name)
+        downloader = container_client.download_blob(self.__path + "/" + name)
         buffer: Union[io.BytesIO, io.StringIO]
-        if 'b' in self.__mode:
+        if "b" in self.__mode:
             buffer = io.BytesIO()
             buffer.write(downloader.content_as_bytes())
         else:
@@ -135,7 +140,9 @@ class AzureBlobLoader():
         return buffer
 
 
-def from_config(config: Dict[str, str], key='path', mode='rb', files_as_path=False) -> Loader:
+def from_config(
+    config: Dict[str, str], key="path", mode="rb", files_as_path=False
+) -> Loader:
     """Create a loader from a configuration object.
 
     The main path to the data file that will be loaded is found by key in the config.
@@ -145,14 +152,14 @@ def from_config(config: Dict[str, str], key='path', mode='rb', files_as_path=Fal
     support this, set files_as_path to True, and a loader for local files will
     return the Paths instead of the opened files.
     """
-    loader_type = config.get('loader', 'file')
-    if loader_type == 'file':
+    loader_type = config.get("loader", "file")
+    if loader_type == "file":
         return FileLoader(Path(config[key]), mode, files_as_path)
-    if loader_type == 'azure-blob':
+    if loader_type == "azure-blob":
         if not HAS_AZURE:
             raise AzureNotInstalledError()
-        connection_string = config['azure_connection_string']
-        container = config['azure_container']
+        connection_string = config["azure_connection_string"]
+        container = config["azure_container"]
         path = config[key]
         return AzureBlobLoader(mode, connection_string, container, path)
 

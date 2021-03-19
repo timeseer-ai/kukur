@@ -1,1 +1,5 @@
 docs/out/
+venv/
+__pycache__/
+.mypy_cache/
+*.sqlite*

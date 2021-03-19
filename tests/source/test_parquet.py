@@ -13,7 +13,7 @@ class TestFeather():
     series_id = SeriesSelector('fake', 'test-tag-1')
 
     def test_dir(self):
-        source = from_config({'path': 'tests_kukur/test_data/parquet/dir', 'format': 'dir'})
+        source = from_config({'path': 'tests/test_data/parquet/dir', 'format': 'dir'})
         table = source.get_data(self.series_id, self.start_date, self.end_date)
         assert len(table) == 5
         assert table.column_names == ['ts', 'value']
@@ -21,7 +21,7 @@ class TestFeather():
         assert table['value'][0].as_py() == 1.0
 
     def test_row(self):
-        source = from_config({'path': 'tests_kukur/test_data/parquet/row.parquet', 'format': 'row'})
+        source = from_config({'path': 'tests/test_data/parquet/row.parquet', 'format': 'row'})
         table = source.get_data(self.series_id, self.start_date, self.end_date)
         assert len(table) == 5
         assert table.column_names == ['ts', 'value']
@@ -29,7 +29,7 @@ class TestFeather():
         assert table['value'][0].as_py() == 1.0
 
     def test_pivot(self):
-        source = from_config({'path': 'tests_kukur/test_data/parquet/pivot.parquet', 'format': 'pivot'})
+        source = from_config({'path': 'tests/test_data/parquet/pivot.parquet', 'format': 'pivot'})
         table = source.get_data(self.series_id, self.start_date, self.end_date)
         assert len(table) == 7
         assert table.column_names == ['ts', 'value']

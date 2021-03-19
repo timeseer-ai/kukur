@@ -1,0 +1,15 @@
+{
+  "tests/source/test_csv.py::TestCsv::test_dir": true,
+  "tests/source/test_csv.py::TestCsv::test_pivot": true,
+  "tests/source/test_csv.py::TestCsv::test_row": true,
+  "tests/source/test_feather.py::TestFeather::test_dir": true,
+  "tests/source/test_feather.py::TestFeather::test_pivot": true,
+  "tests/source/test_feather.py::TestFeather::test_row": true,
+  "tests/source/test_parquet.py::TestFeather::test_dir": true,
+  "tests/source/test_parquet.py::TestFeather::test_pivot": true,
+  "tests/source/test_parquet.py::TestFeather::test_row": true,
+  "tests/source/test_source_wrapper.py::TestSourceWrapper::test_split_none": true,
+  "tests/source/test_source_wrapper.py::TestSourceWrapper::test_split_one_day": true,
+  "tests/source/test_source_wrapper.py::TestSourceWrapper::test_split_partial_end_interval": true,
+  "tests/source/test_source_wrapper.py::TestSourceWrapper::test_split_partial_interval": true
+}

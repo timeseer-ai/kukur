@@ -9,16 +9,16 @@ class InvalidIncludeException(Exception):
     """Raised when the include configuration is invalid."""
 
     def __init__(self, message: str):
-        Exception.__init__(self, f'invalid include: {message}')
+        Exception.__init__(self, f"invalid include: {message}")
 
 
 def from_toml(path):
     """Read the configuration from a TOML file, processing includes."""
     config = toml.load(path)
-    for include_options in config.get('include', []):
-        if 'glob' not in include_options:
+    for include_options in config.get("include", []):
+        if "glob" not in include_options:
             raise InvalidIncludeException('"glob" is required')
-        for include_path in glob.glob(include_options['glob']):
+        for include_path in glob.glob(include_options["glob"]):
             include_config = toml.load(include_path)
             for k, v in include_config.items():
                 if k not in config:

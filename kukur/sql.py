@@ -15,12 +15,13 @@ class InvalidMetadataError(Exception):
     """Raised when the metadata is invalid."""
 
     def __init__(self, message: str):
-        Exception.__init__(self, f'invalid metadata: {message}')
+        Exception.__init__(self, f"invalid metadata: {message}")
 
 
 @dataclass
-class SQLConfig():  # pylint: disable=too-many-instance-attributes
+class SQLConfig:  # pylint: disable=too-many-instance-attributes
     """Configuration settings for a SQL connection."""
+
     connection_string: str
     list_query: Optional[str] = None
     list_columns: List[str] = field(default_factory=list)
@@ -33,34 +34,34 @@ class SQLConfig():  # pylint: disable=too-many-instance-attributes
     @classmethod
     def from_dict(cls, data):
         """Create a new SQL data source from a configuration dict."""
-        if 'connection_string' in data:
-            connection_string = data['connection_string']
+        if "connection_string" in data:
+            connection_string = data["connection_string"]
         else:
-            with open(data['connection_string_path']) as f:
+            with open(data["connection_string_path"]) as f:
                 connection_string = f.read().strip()
 
         config = SQLConfig(connection_string)
 
-        config.list_query = data.get('list_query')
-        if config.list_query is None and 'list_query_path' in data:
-            with open(data['list_query_path']) as f:
+        config.list_query = data.get("list_query")
+        if config.list_query is None and "list_query_path" in data:
+            with open(data["list_query_path"]) as f:
                 config.list_query = f.read()
-        config.list_columns = data.get('list_columns', [])
-        config.metadata_query = data.get('metadata_query')
-        if config.metadata_query is None and 'metadata_query_path' in data:
-            with open(data['metadata_query_path']) as f:
+        config.list_columns = data.get("list_columns", [])
+        config.metadata_query = data.get("metadata_query")
+        if config.metadata_query is None and "metadata_query_path" in data:
+            with open(data["metadata_query_path"]) as f:
                 config.metadata_query = f.read()
-        config.metadata_columns = data.get('metadata_columns', [])
-        config.dictionary_query = data.get('dictionary_query')
-        if config.dictionary_query is None and 'dictionary_query_path' in data:
-            with open(data['dictionary_query_path']) as f:
+        config.metadata_columns = data.get("metadata_columns", [])
+        config.dictionary_query = data.get("dictionary_query")
+        if config.dictionary_query is None and "dictionary_query_path" in data:
+            with open(data["dictionary_query_path"]) as f:
                 config.dictionary_query = f.read()
-        config.data_query = data.get('data_query')
-        if config.data_query is None and 'data_query_path' in data:
-            with open(data['data_query_path']) as f:
+        config.data_query = data.get("data_query")
+        if config.data_query is None and "data_query_path" in data:
+            with open(data["data_query_path"]) as f:
                 config.data_query = f.read()
 
-        config.data_query_datetime_format = data.get('data_query_datetime_format')
+        config.data_query_datetime_format = data.get("data_query_datetime_format")
 
         return config
 
@@ -73,14 +74,12 @@ class SQLSource(ABC):
 
     _config: SQLConfig
 
-    def __init__(
-        self,
-        config: SQLConfig
-    ):
+    def __init__(self, config: SQLConfig):
         self._config = config
 
-    def search(self, selector: SeriesSelector) \
-            -> Generator[Union[SeriesSelector, Metadata], None, None]:
+    def search(
+        self, selector: SeriesSelector
+    ) -> Generator[Union[SeriesSelector, Metadata], None, None]:
         """Search for time series matching the given selector."""
         if self._config.list_query is None:
             return
@@ -105,18 +104,26 @@ class SQLSource(ABC):
                 if row[i] is not None:
                     metadata.set_field(name, row[i])
         if metadata.dictionary_name is not None:
-            metadata.dictionary = self.__query_dictionary(cursor, metadata.dictionary_name)
+            metadata.dictionary = self.__query_dictionary(
+                cursor, metadata.dictionary_name
+            )
         return metadata
 
-    def get_data(self, selector: SeriesSelector, start_date: datetime, end_date: datetime) -> pa.Table:
+    def get_data(
+        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
+    ) -> pa.Table:
         """Return data using the specified DB-API query."""
         if self._config.data_query is None:
-            return pa.Table.from_pydict({'ts': [], 'value': []})
+            return pa.Table.from_pydict({"ts": [], "value": []})
         connection = self.connect()
         cursor = connection.cursor()
         cursor.execute(
             self._config.data_query,
-            [selector.name, self.__format_date(start_date), self.__format_date(end_date)]
+            [
+                selector.name,
+                self.__format_date(start_date),
+                self.__format_date(end_date),
+            ],
         )
         timestamps = []
         values = []
@@ -126,17 +133,21 @@ class SQLSource(ABC):
             else:
                 timestamps.append(dateutil.parser.parse(row[0]))
             values.append(row[1])
-        return pa.Table.from_pydict({'ts': timestamps, 'value': values})
+        return pa.Table.from_pydict({"ts": timestamps, "value": values})
 
-    def __search_names(self, selector: SeriesSelector) -> Generator[SeriesSelector, None, None]:
+    def __search_names(
+        self, selector: SeriesSelector
+    ) -> Generator[SeriesSelector, None, None]:
         connection = self.connect()
         cursor = connection.cursor()
         cursor.execute(self._config.list_query)
 
-        for series_name, in cursor:
+        for (series_name,) in cursor:
             yield SeriesSelector(selector.source, series_name)
 
-    def __search_metadata(self, selector: SeriesSelector) -> Generator[Metadata, None, None]:
+    def __search_metadata(
+        self, selector: SeriesSelector
+    ) -> Generator[Metadata, None, None]:
         connection = self.connect()
         cursor = connection.cursor()
         if self._config.dictionary_query is not None:
@@ -145,7 +156,7 @@ class SQLSource(ABC):
         cursor.execute(self._config.list_query)
         series_name_index = None
         for i, name in enumerate(self._config.list_columns):
-            if name == 'series name':
+            if name == "series name":
                 series_name_index = i
         if series_name_index is None:
             raise InvalidMetadataError('column "series name" not found')
@@ -159,7 +170,9 @@ class SQLSource(ABC):
                     continue
                 metadata.set_field(name, row[i])
             if metadata.dictionary_name is not None and dictionary_cursor is not None:
-                metadata.dictionary = self.__query_dictionary(dictionary_cursor, metadata.dictionary_name)
+                metadata.dictionary = self.__query_dictionary(
+                    dictionary_cursor, metadata.dictionary_name
+                )
             yield metadata
 
     def __query_dictionary(self, cursor, dictionary_name: str) -> Optional[Dictionary]:

@@ -10,4 +10,4 @@ Parquet DataSets are not yet supported.
 
 from .parquet import from_config
 
-__all__ = ['from_config']
+__all__ = ["from_config"]

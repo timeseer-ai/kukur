@@ -20,7 +20,7 @@ def search(source: Source, source_name: str) -> Generator[List[Any], None, None]
     for result in source.search(SeriesSelector(source_name)):
         if isinstance(result, SeriesSelector):
             if not header_printed:
-                yield ['series name']
+                yield ["series name"]
                 header_printed = True
             yield [result.name]
         else:
@@ -30,7 +30,9 @@ def search(source: Source, source_name: str) -> Generator[List[Any], None, None]
             yield _get_metadata(result)
 
 
-def metadata(source: Source, source_name: str, series_name: str) -> Generator[List[Any], None, None]:
+def metadata(
+    source: Source, source_name: str, series_name: str
+) -> Generator[List[Any], None, None]:
     """Test fetching metadata from a source.
 
     This does not store the metadata."""
@@ -40,17 +42,30 @@ def metadata(source: Source, source_name: str, series_name: str) -> Generator[Li
     yield _get_metadata(result)
 
 
-def data(source: Source, source_name: str, series_name: str, start_date: datetime, end_date: datetime) \
-        -> Generator[List[Any], None, None]:
+def data(
+    source: Source,
+    source_name: str,
+    series_name: str,
+    start_date: datetime,
+    end_date: datetime,
+) -> Generator[List[Any], None, None]:
     """Test fetching data for a time series."""
-    logger.info('Requesting data for "%s (%s)" from %s to %s', series_name, source_name, start_date, end_date)
-    table = source.get_data(SeriesSelector(source_name, series_name), start_date, end_date)
-    for ts, value in zip(table['ts'], table['value']):
+    logger.info(
+        'Requesting data for "%s (%s)" from %s to %s',
+        series_name,
+        source_name,
+        start_date,
+        end_date,
+    )
+    table = source.get_data(
+        SeriesSelector(source_name, series_name), start_date, end_date
+    )
+    for ts, value in zip(table["ts"], table["value"]):
         yield [ts.as_py().isoformat(), value.as_py()]
 
 
 def _get_metadata_header(result: Metadata) -> List[str]:
-    return ['series name'] + [k for k, _ in result]
+    return ["series name"] + [k for k, _ in result]
 
 
 def _get_metadata(result: Metadata) -> List[Any]:

@@ -2,4 +2,4 @@
 
 from .kukur import from_config
 
-__all__ = ['from_config']
+__all__ = ["from_config"]

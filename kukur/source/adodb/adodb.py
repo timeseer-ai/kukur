@@ -5,6 +5,7 @@ This requires an installation of pywin32 (LGPL).
 
 try:
     import adodbapi
+
     HAS_ADODB = True
 except ImportError:
     HAS_ADODB = False
@@ -16,7 +17,9 @@ class ADODBNotInstalledError(Exception):
     """Raised when the adodbapi module of pywin32 is not available."""
 
     def __init__(self):
-        Exception.__init__(self, 'the adodbapi modules is not available. Install pywin32.')
+        Exception.__init__(
+            self, "the adodbapi modules is not available. Install pywin32."
+        )
 
 
 def from_config(data):

@@ -7,7 +7,7 @@ from .api_key import ApiKeyRepository
 from .base import MigrationRunner  # noqa: F401
 
 
-class RepositoryRegistry():  # pylint: disable=too-few-public-methods
+class RepositoryRegistry:  # pylint: disable=too-few-public-methods
     """RepositoryRegistry provides access to the different repositories in Kukur."""
 
     __data_dir: Optional[Path]
@@ -19,9 +19,9 @@ class RepositoryRegistry():  # pylint: disable=too-few-public-methods
 
     def api_key(self) -> ApiKeyRepository:
         """Return the repository used to store api keys."""
-        return ApiKeyRepository(self._get_connection_string('api_key'))
+        return ApiKeyRepository(self._get_connection_string("api_key"))
 
     def _get_connection_string(self, name: str) -> str:
         if self.__data_dir is None:
-            return f'file:{name}.sqlite'
-        return 'file:' + str(self.__data_dir / f'{name}.sqlite')
+            return f"file:{name}.sqlite"
+        return "file:" + str(self.__data_dir / f"{name}.sqlite")

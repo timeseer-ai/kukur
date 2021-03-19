@@ -1,6 +1,7 @@
 """Connections to ODBC data sources from Timeseer."""
 try:
     import pyodbc
+
     HAS_ODBC = True
 except ImportError:
     HAS_ODBC = False
@@ -12,7 +13,7 @@ class ODBCNotInstalledError(Exception):
     """Raised when the pyodbc module is not available."""
 
     def __init__(self):
-        Exception.__init__(self, 'the pyodbc modules is not available. Install pyodbc')
+        Exception.__init__(self, "the pyodbc modules is not available. Install pyodbc")
 
 
 def from_config(data):
