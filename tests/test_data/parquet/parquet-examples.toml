@@ -1,19 +1,19 @@
 [source.row-parquet]
 type = "parquet"
-path = "examples/parquet/row.parquet"
+path = "tests/test_data/parquet/row.parquet"
 metadata_type = "csv"
-metadata = "examples/csv/row-metadata.csv"
+metadata = "tests/test_data/csv/row-metadata.csv"
 
 [source.dir-parquet]
 type = "parquet"
 format = "dir"
-path = "examples/parquet/dir"
+path = "tests/test_data/parquet/dir"
 metadata_type = "csv"
-metadata = "examples/csv/dir-metadata.csv"
+metadata = "tests/test_data/csv/dir-metadata.csv"
 
 [source.pivot-parquet]
 type = "parquet"
 format = "pivot"
-path = "examples/parquet/pivot.parquet"
+path = "tests/test_data/parquet/pivot.parquet"
 metadata_type = "csv"
-metadata = "examples/csv/pivot-metadata.csv"
+metadata = "tests/test_data/csv/pivot-metadata.csv"

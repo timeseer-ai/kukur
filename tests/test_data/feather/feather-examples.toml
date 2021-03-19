@@ -1,19 +1,19 @@
 [source.row-feather]
 type = "feather"
-path = "examples/feather/row.feather"
+path = "tests/test_data/feather/row.feather"
 metadata_type = "csv"
-metadata = "examples/csv/row-metadata.csv"
+metadata = "tests/test_data/csv/row-metadata.csv"
 
 [source.dir-feather]
 type = "feather"
 format = "dir"
-path = "examples/feather/dir"
+path = "tests/test_data/feather/dir"
 metadata_type = "csv"
-metadata = "examples/csv/dir-metadata.csv"
+metadata = "tests/test_data/csv/dir-metadata.csv"
 
 [source.pivot-feather]
 type = "feather"
 format = "pivot"
-path = "examples/feather/pivot.feather"
+path = "tests/test_data/feather/pivot.feather"
 metadata_type = "csv"
-metadata = "examples/csv/pivot-metadata.csv"
+metadata = "tests/test_data/csv/pivot-metadata.csv"

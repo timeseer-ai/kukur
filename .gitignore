@@ -1,5 +1,10 @@
-docs/out/
 venv/
 __pycache__/
 .mypy_cache/
+.vscode/
+
+data/
+db/
+docs/out/
+
 *.sqlite*
