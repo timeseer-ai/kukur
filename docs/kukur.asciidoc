@@ -8,7 +8,29 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-include::../README.asciidoc[leveloffset=+1]
+== What is Kukur?
+
+Kukur makes time series data and metadata available to the https://arrow.apache.org/[Apache Arrow] ecosystem.
+
+[WARNING]
+====
+Kukur is under active development.
+Breaking changes to the interfaces are possible.
+
+Kukur uses semantic versioning.
+While `< 1.0.0`, changes to the minor version indicate breaking changes.
+====
+
+== Usage
+
+Kukur can be used as a Python library or as a standalone application that exposes an Arrow Flight interface.
+
+== Development
+
+Kukur is developed on GitHub.
+Visit https://github.com/timeseer-ai/kukur to learn more.
+
+Kukur is open source software, licensed under the Apache License, Version 2.0.
 
 == Sources
 

@@ -9,7 +9,6 @@ docs: ## Generate a documentation Docker container
 	docker run --rm \
 		-u $(shell id -u):$(shell id -g) \
 		-v $(shell pwd)/docs:/documents/kukur \
-		-v $(shell pwd)/README.asciidoc:/documents/README.asciidoc \
 		-v $(shell pwd)/docs/out:/documents/kukur/out \
 		asciidoctor/docker-asciidoctor \
 		asciidoctor -r asciidoctor-diagram --destination-dir kukur/out --out-file index.html kukur/kukur.asciidoc
