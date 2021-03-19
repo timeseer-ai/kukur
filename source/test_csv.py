@@ -39,7 +39,6 @@ class TestCsv():
     def test_row_metadata(self):
         source = from_config({'metadata': 'tests_kukur/test_data/csv/row-metadata.csv'})
         metadata = source.get_metadata(self.series_id)
-        print(metadata)
         assert metadata.series == self.series_id
         assert isinstance(metadata.description, str)
         assert isinstance(metadata.unit, str)
