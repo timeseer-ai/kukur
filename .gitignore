@@ -8,3 +8,8 @@ db/
 docs/out/
 
 *.sqlite*
+
+
+kukur.egg-info/
+dist/
+build/
