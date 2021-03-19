@@ -23,10 +23,10 @@ Valid values are:
 - `adodb`
 - `csv`
 - `feather`
+- `influxdb`
+- `kukur`
 - `oledb`
 - `parquet`
-- `timeseer`
-- `influxdb`
 
 `type` is required.
 
@@ -36,8 +36,8 @@ Valid values are:
 
 - `adodb`
 - `csv`
+- `kukur`
 - `oledb`
-- `timeseer`
 
 `metadata_type` is optional.
 The `type` is used when not specified.
@@ -110,24 +110,24 @@ Multiple types of time series sources are supported:
 
 ifndef::sources[]
 - link:adodb.asciidoc[ADODB] connections (including OLEDB)
-- link:csv.asciidoc[CSV] files
 - link:feather.asciidoc[Apache Feather] files
-- link:odbc.asciidoc[ODBC] data sources
 - link:parquet.asciidoc[Apache Parquet] files
-- Other link:bus.asciidoc[Timeseer instances] running Timeseer Bus
+- link:csv.asciidoc[CSV] files
 - link:influxdb.asciidoc[InfluxDB] data sources
+- Other link:kukur.asciidoc[Kukur or Timeseer instances]
+- link:odbc.asciidoc[ODBC] data sources
 
 Source-specific parameters are documented in the linked documents.
 endif::sources[]
 
 ifdef::sources[]
 - <<ADODB>> connections (including OLEDB)
-- <<CSV>> files
 - <<Apache Feather>> files
-- <<ODBC>> data sources
 - <<Apache Parquet>> files
-- Other <<Timeseer,Timeseer instances>> running Timeseer Bus
+- <<CSV>> files
 - <<InfluxDB>> databases
+- Other <<Kukur,Kukur or Timeseer instances>>
+- <<ODBC>> data sources
 
 Source-specific parameters are documented in the linked sources reference.
 endif::sources[]
