@@ -1,15 +1,15 @@
 // SPDX-FileCopyrightText: 2021 Timeseer.AI
 //
 // SPDX-License-Identifier: Apache-2.0
-== Timeseer
+== Kukur
 
-Sources with `type = "timeseer"` configure Timeseer Bus sources.
+Sources with `type = "kukur"` configure connections to other Kukur or Timeseer instances.
 
 ```toml
 [source.<name>]
-type = "timeseer"
-host = "<hostname or address of the Bus service>"
-port = "<port of the Bus service>"
+type = "kukur"
+host = "<hostname or address of the other Kukur instance>"
+port = "<port of the Kukur instance>"
 source = "<the remote source>"
 api_key_name= "<the name of the api key>"
 api_key= "<the api key>"
@@ -17,7 +17,7 @@ api_key= "<the api key>"
 
 `source`, `api_key_name`, `api_key` are required fields.
 
-`host` and `port` define the host and port where Timeseer Bus is running.
+`host` and `port` define the host and port where Kukur is running.
 
 Defaults are:
 
@@ -33,21 +33,21 @@ The name of the local and the remote sources do not need to match.
 source = "test"
 ```
 
-The `api_key_name` and `api_key` can be created in the timeseer application under `Configure > Global preferences > Api keys`.
+The `api_key_name` and `api_key` can be created in Kukur using the CLI or in Timeseer under `Configure > Global preferences > API keys`.
 
 ```toml
-api_key_name= "test"
+api_key_name= "test-key"
 api_key= "PcRU3xy0dsVpX8CeKCO1WPqPevECB9mZAETdWngK7druSl23JFA0Rw"
 ```
 
-For example, this connects to the 'test' source on a local Timeseer Bus service:
+For example, this connects to the 'test' source on a local instance:
 
 ```toml
 [source.arrow]
-type = "timeseer"
+type = "kukur"
 host = "localhost"
 port = 8081
 source = "test"
-api_key_name= "test"
+api_key_name= "test-key"
 api_key= "PcRU3xy0dsVpX8CeKCO1WPqPevECB9mZAETdWngK7druSl23JFA0Rw"
 ```
