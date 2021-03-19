@@ -1,0 +1,38 @@
+name: Build kukur
+on:
+  push:
+    tags:
+    - v*
+
+jobs:
+  build:
+    name: Build container
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.8'
+
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Set env
+      run: echo "KUKUR_VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+
+    - name: Install pypa
+      run: |
+          echo $KUKUR_VERSION
+          python3 -m pip install --upgrade pip
+          python3 -m pip install setuptools wheel twine
+          python3 setup.py install
+
+    - name: Build
+      run: python3 setup.py sdist bdist_wheel
+
+    - name: Publish a Python distribution to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        user: __token__
+        password: ${{ secrets.PYPI_KUKUR_API_TOKEN }}
