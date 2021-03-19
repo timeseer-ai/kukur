@@ -9,4 +9,4 @@ Three formats are supported:
 
 from .feather import from_config
 
-__all__ = ['from_config']
+__all__ = ["from_config"]

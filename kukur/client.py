@@ -11,12 +11,17 @@ import pyarrow.flight as fl
 from kukur import Dictionary, Metadata, SeriesSelector
 
 
-class Client():
+class Client:
     """Client connects to Kukur using Arrow Flight."""
 
     _client: fl.FlightClient = None
 
-    def __init__(self, api_key: Tuple[str, str] = ('', ''), host: str = 'localhost', port: int = 8081):
+    def __init__(
+        self,
+        api_key: Tuple[str, str] = ("", ""),
+        host: str = "localhost",
+        port: int = 8081,
+    ):
         """Create a new Client.
 
         Creating a client does not open a connection. The connection will be opened lazily.
@@ -29,7 +34,9 @@ class Client():
         self._location = (host, port)
         self._api_key = api_key
 
-    def search(self, selector: SeriesSelector) -> Generator[Union[Metadata, SeriesSelector], None, None]:
+    def search(
+        self, selector: SeriesSelector
+    ) -> Generator[Union[Metadata, SeriesSelector], None, None]:
         """Search Kukur for time series matching the given ``SeriesSelector``.
 
         Args:
@@ -41,11 +48,13 @@ class Client():
             The return value depends on the search that is supported by the source.
         """
         body = dict(source=selector.source, name=selector.name)
-        results = list(self._get_client().do_action(('search', json.dumps(body).encode())))
+        results = list(
+            self._get_client().do_action(("search", json.dumps(body).encode()))
+        )
         for result in results:
             data = json.loads(result.body.to_pybytes())
-            if 'series' not in data:
-                yield SeriesSelector(data['source'], data['name'])
+            if "series" not in data:
+                yield SeriesSelector(data["source"], data["name"])
             else:
                 yield _read_metadata(data)
 
@@ -59,7 +68,9 @@ class Client():
             The ``Metadata`` for the time series.
         """
         body = dict(source=selector.source, name=selector.name)
-        results = list(self._get_client().do_action(('get_metadata', json.dumps(body).encode())))
+        results = list(
+            self._get_client().do_action(("get_metadata", json.dumps(body).encode()))
+        )
         result = results[0]
         data = json.loads(result.body.to_pybytes())
         return _read_metadata(data)
@@ -68,7 +79,7 @@ class Client():
         self,
         selector: SeriesSelector,
         start_date: datetime = None,
-        end_date: datetime = None
+        end_date: datetime = None,
     ) -> pa.Table:
         """Get raw data for the time series selected by the SeriesSelector.
 
@@ -83,17 +94,17 @@ class Client():
         if start_date is None or end_date is None:
             now = datetime.utcnow().replace(tzinfo=timezone(timedelta(0)))
             if start_date is None:
-                start_date = now.replace(year=now.year-1)
+                start_date = now.replace(year=now.year - 1)
             if end_date is None:
                 end_date = now
         query = {
-            'query': 'get_data',
-            'selector': {
-                'source': selector.source,
-                'name': selector.name,
+            "query": "get_data",
+            "selector": {
+                "source": selector.source,
+                "name": selector.name,
             },
-            'start_date': start_date.isoformat(),
-            'end_date': end_date.isoformat(),
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
         }
         ticket = fl.Ticket(json.dumps(query))
         return self._get_client().do_get(ticket).read_all()
@@ -101,20 +112,20 @@ class Client():
     def _get_client(self):
         if self._client is None:
             self._client = fl.FlightClient(self._location)
-            if self._api_key != ('', ''):
+            if self._api_key != ("", ""):
                 self._client.authenticate(ClientAuthenticationHandler(self._api_key))
         return self._client
 
 
 def _read_metadata(data: Dict[str, Any]) -> Metadata:
-    series = SeriesSelector(data['series']['source'], data['series']['name'])
+    series = SeriesSelector(data["series"]["source"], data["series"]["name"])
     metadata = Metadata(series)
     for k, v in data.items():
         if v is None:
             continue
-        if k == 'series':
+        if k == "series":
             continue
-        if k == 'dictionary':
+        if k == "dictionary":
             metadata.set_field(k, Dictionary(dict(v)))
             continue
         metadata.set_field(k, v)
@@ -123,6 +134,7 @@ def _read_metadata(data: Dict[str, Any]) -> Metadata:
 
 class ClientAuthenticationHandler(fl.ClientAuthHandler):
     """Client authentication handler for api keys"""
+
     def __init__(self, api_key):
         super().__init__()
         self.basic_auth = fl.BasicAuth(*api_key)

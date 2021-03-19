@@ -20,3 +20,26 @@ run-docs: docs ## Run the documentation in a docker container on port 8080
 	docker run --rm \
 		-p 8080:80 \
 		kukur-documentation:latest
+
+.PHONY: lint
+lint:
+	format
+	flake8 kukur/
+	pylint -j 0 kukur/
+	mypy --ignore-missing-imports kukur/
+
+.PHONY: test
+test:
+	python -m pytest
+
+.PHONY: deps
+deps:
+	pip install -r requirements.txt
+
+.PHONY: dev-deps
+dev-deps:
+	pip install -r requirements-dev.txt
+
+.PHONY: format
+format:
+	black kukur/

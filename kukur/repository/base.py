@@ -7,8 +7,9 @@ from typing import List
 from dateutil.parser import parse as parse_date
 
 
-class BaseRepository():  # pylint: disable=too-few-public-methods
+class BaseRepository:  # pylint: disable=too-few-public-methods
     """Base repository to open a fully-featured connection to sqlite."""
+
     __connection_string: str
 
     def __init__(self, connection_string: str):
@@ -38,7 +39,7 @@ class Migration(abc.ABC):  # pylint: disable=too-few-public-methods
         return _open_db(self.__connection_string)
 
 
-class MigrationRunner():
+class MigrationRunner:
     """MigrationRunner keeps track of registered database migrations and runs them."""
 
     __migrations: List[Migration]
@@ -57,12 +58,12 @@ class MigrationRunner():
 
 
 def _open_db(connection_string: str):
-    sqlite3.register_converter('datetime', parse_date)
+    sqlite3.register_converter("datetime", parse_date)
     connection = sqlite3.connect(
         connection_string,
         uri=True,
         timeout=60.0,
         detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES,
     )
-    connection.execute('pragma foreign_keys = ON')
+    connection.execute("pragma foreign_keys = ON")
     return contextlib.closing(connection)

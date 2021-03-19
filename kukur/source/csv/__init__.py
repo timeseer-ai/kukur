@@ -9,4 +9,4 @@ Three formats are supported:
 
 from .csv import from_config
 
-__all__ = ['from_config']
+__all__ = ["from_config"]

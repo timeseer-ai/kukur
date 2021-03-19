@@ -10,7 +10,7 @@ from kukur.api_key import ApiKey
 from kukur.repository import RepositoryRegistry
 
 
-class ApiKeys():
+class ApiKeys:
     """Api keys for authentication"""
 
     __repository: RepositoryRegistry
@@ -23,7 +23,9 @@ class ApiKeys():
         api_key = _create_random_api_key()
         creation_date = datetime.now()
         salt = os.urandom(16)
-        self.__repository.api_key().store(name, _hash_api_key(api_key, salt), salt, creation_date)
+        self.__repository.api_key().store(
+            name, _hash_api_key(api_key, salt), salt, creation_date
+        )
         return api_key
 
     def list(self) -> List[ApiKey]:
@@ -52,5 +54,5 @@ def _create_random_api_key() -> str:
 
 
 def _hash_api_key(api_key: str, salt: bytes) -> bytes:
-    hashed = scrypt(bytes(api_key, 'UTF-8'), salt=salt, n=16384, r=8, p=1)
+    hashed = scrypt(bytes(api_key, "UTF-8"), salt=salt, n=16384, r=8, p=1)
     return hashed

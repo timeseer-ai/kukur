@@ -13,7 +13,8 @@ class ApiKeyMigration(Migration):  # pylint: disable=too-few-public-methods
     def migrate(self):
         with self._open_db() as db:
             cursor = db.cursor()
-            cursor.executescript('''
+            cursor.executescript(
+                """
                 create table if not exists ApiKey (
                     id integer primary key autoincrement,
                     name text not null unique,
@@ -21,7 +22,8 @@ class ApiKeyMigration(Migration):  # pylint: disable=too-few-public-methods
                     salt blob not null,
                     creation_date datetime not null
                 );
-            ''')
+            """
+            )
             db.commit()
 
 
@@ -38,33 +40,40 @@ class ApiKeyRepository(BaseRepository):
         It returns the newly created api_key."""
         with self._open_db() as db:
             cursor = db.cursor()
-            cursor.execute('''
+            cursor.execute(
+                """
                 insert into ApiKey (name, api_key, salt, creation_date)
                 values (?, ?, ?, ?)
-            ''', [name, api_key, salt, creation_date])
+            """,
+                [name, api_key, salt, creation_date],
+            )
             db.commit()
 
     def list(self) -> List[ApiKey]:
         """List all api keys."""
         with self._open_db() as db:
             cursor = db.cursor()
-            cursor.execute('''
+            cursor.execute(
+                """
             select name, creation_date
             from ApiKey
-            ''')
+            """
+            )
             results = cursor.fetchall()
-            return [ApiKey(name, creation_date)
-                    for name, creation_date in results]
+            return [ApiKey(name, creation_date) for name, creation_date in results]
 
     def get(self, name) -> Tuple[Optional[bytes], Optional[bytes]]:
         """Get an api key by name."""
         with self._open_db() as db:
             cursor = db.cursor()
-            cursor.execute('''
+            cursor.execute(
+                """
             select api_key, salt
             from ApiKey
             where name = ?
-            ''', [name])
+            """,
+                [name],
+            )
             result = cursor.fetchone()
             if result is None:
                 return None, None
@@ -75,19 +84,25 @@ class ApiKeyRepository(BaseRepository):
         """Check if api key exists."""
         with self._open_db() as db:
             cursor = db.cursor()
-            cursor.execute('''
+            cursor.execute(
+                """
             select count(*)
             from ApiKey
             where name = ?
-            ''', [name])
+            """,
+                [name],
+            )
             return cursor.fetchone()[0] == 1
 
     def revoke(self, name: str):
         """Delete an api key."""
         with self._open_db() as db:
             cursor = db.cursor()
-            cursor.execute('''
+            cursor.execute(
+                """
                 delete from ApiKey
                 where name = ?
-            ''', [name])
+            """,
+                [name],
+            )
             db.commit()
