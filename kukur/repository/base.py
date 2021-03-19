@@ -1,4 +1,7 @@
 """Common parts for all repositories."""
+# SPDX-FileCopyrightText: 2021 Timeseer.AI
+#
+# SPDX-License-Identifier: Apache-2.0
 import abc
 import contextlib
 import sqlite3

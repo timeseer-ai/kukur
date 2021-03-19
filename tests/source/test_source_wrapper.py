@@ -1,4 +1,6 @@
-
+# SPDX-FileCopyrightText: 2021 Timeseer.AI
+#
+# SPDX-License-Identifier: Apache-2.0
 from datetime import datetime, timedelta
 
 import pyarrow as pa

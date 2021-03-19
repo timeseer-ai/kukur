@@ -1,5 +1,7 @@
 """Provide remote access to Kukur over Arrow Flight."""
-
+# SPDX-FileCopyrightText: 2021 Timeseer.AI
+#
+# SPDX-License-Identifier: Apache-2.0
 import json
 
 from datetime import datetime, timedelta, timezone

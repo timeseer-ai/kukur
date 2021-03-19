@@ -1,5 +1,7 @@
 """Kukur makes time series data and metadata available to the Apache Arrow ecosystem."""
-
+# SPDX-FileCopyrightText: 2021 Timeseer.AI
+#
+# SPDX-License-Identifier: Apache-2.0
 import typing
 
 from datetime import datetime

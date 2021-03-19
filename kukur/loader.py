@@ -1,5 +1,7 @@
 """Generic data loaders for file based columnar data."""
-
+# SPDX-FileCopyrightText: 2021 Timeseer.AI
+#
+# SPDX-License-Identifier: Apache-2.0
 import io
 
 from pathlib import Path

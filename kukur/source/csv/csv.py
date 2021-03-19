@@ -6,7 +6,9 @@ Three formats are supported:
 - directory based, with one file per series
 - pivot, with many series as columns in one file
 """
-
+# SPDX-FileCopyrightText: 2021 Timeseer.AI
+#
+# SPDX-License-Identifier: Apache-2.0
 import csv
 
 from dataclasses import dataclass

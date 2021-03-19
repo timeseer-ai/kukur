@@ -1,5 +1,7 @@
 """Connections to InfluxDB data sources from Timeseer."""
-
+# SPDX-FileCopyrightText: 2021 Timeseer.AI
+#
+# SPDX-License-Identifier: Apache-2.0
 from datetime import datetime
 from typing import Any, Dict, List, Generator, Tuple
 

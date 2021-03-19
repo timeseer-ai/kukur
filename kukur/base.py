@@ -1,5 +1,7 @@
 """The main objects in Kukur."""
-
+# SPDX-FileCopyrightText: 2021 Timeseer.AI
+#
+# SPDX-License-Identifier: Apache-2.0
 import typing
 
 from dataclasses import dataclass

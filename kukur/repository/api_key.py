@@ -1,5 +1,7 @@
 """Persistence for api keys"""
-
+# SPDX-FileCopyrightText: 2021 Timeseer.AI
+#
+# SPDX-License-Identifier: Apache-2.0
 from typing import List, Tuple, Optional
 from datetime import datetime
 from kukur.repository.base import BaseRepository, Migration

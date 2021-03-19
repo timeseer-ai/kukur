@@ -1,5 +1,7 @@
 """Base classes for connections to SQL-like sources from Timeseer."""
-
+# SPDX-FileCopyrightText: 2021 Timeseer.AI
+#
+# SPDX-License-Identifier: Apache-2.0
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime

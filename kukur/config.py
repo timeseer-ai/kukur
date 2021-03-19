@@ -1,5 +1,7 @@
 """Read the Kukur configuration."""
-
+# SPDX-FileCopyrightText: 2021 Timeseer.AI
+#
+# SPDX-License-Identifier: Apache-2.0
 import glob
 
 import toml
