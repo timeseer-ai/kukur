@@ -1,0 +1,19 @@
+[source.row-feather]
+type = "feather"
+path = "examples/feather/row.feather"
+metadata_type = "csv"
+metadata = "examples/csv/row-metadata.csv"
+
+[source.dir-feather]
+type = "feather"
+format = "dir"
+path = "examples/feather/dir"
+metadata_type = "csv"
+metadata = "examples/csv/dir-metadata.csv"
+
+[source.pivot-feather]
+type = "feather"
+format = "pivot"
+path = "examples/feather/pivot.feather"
+metadata_type = "csv"
+metadata = "examples/csv/pivot-metadata.csv"
