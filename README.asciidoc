@@ -1,5 +1,6 @@
 ifndef::kukur-documentation[]
 = Kukur
+:source-highlighter: rouge
 endif::kukur-documentation[]
 
 ifdef::kukur-documentation[]
@@ -20,6 +21,27 @@ While `< 1.0.0`, changes to the minor version indicate breaking changes.
 == Usage
 
 Kukur can be used as a Python library or as a standalone application that exposes an Arrow Flight interface.
+
+== Development
+
+To start quickly, run Kukur as a Docker container:
+
+[source,bash]
+----
+$ make run-docker
+----
+
+Kukur will be available on exposed on port 8081.
+
+Alternatively, first set up a virtualenv, then start Kukur:
+
+[source,bash]
+----
+$ python -m venv venv
+$ source venv/bin/activate
+(venv) $ pip install -r requirements.txt
+(venv) $ python -m kukur.cli
+----
 
 ifndef::sources[]
 == Sources
