@@ -28,7 +28,11 @@ lint: format ## Lint the kukur code
 
 .PHONY: test
 test: ## Run the unit tests
-	python -m pytest
+	python -m pytest --ignore tests/integration
+
+.PHONY: integration-test
+integration-test: ## Run integration tests (this requires a running Kukur)
+	python -m pytest tests/integration
 
 .PHONY: deps
 deps: ## Install runtime dependencies

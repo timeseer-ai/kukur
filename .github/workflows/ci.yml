@@ -26,6 +26,11 @@ jobs:
       - name: Run tests
         run: make test
 
+      - name: Run integration test
+        run: |
+          python -m kukur.cli --config-file tests/integration/Kukur.toml &
+          make integration-test
+
   build_docker:
     name: Build Docker container
     if: github.ref == 'refs/heads/master'
