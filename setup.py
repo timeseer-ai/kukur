@@ -29,4 +29,7 @@ setuptools.setup(
           'toml',
       ],
     python_requires='>=3.6',
+    package_data = {
+        'kukur': ['py.typed'],
+    },
 )
