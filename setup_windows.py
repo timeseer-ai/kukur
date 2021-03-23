@@ -7,7 +7,7 @@ from cx_Freeze import setup, Executable
 
 executables = [
     Executable(
-        'windows/server_windows.py',
+        'kukur/cli.py',
         target_name='kukur.exe',
     ),
     Executable(

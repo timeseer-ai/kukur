@@ -1,5 +1,5 @@
-[[include]]
-glob = "tests/test_data/*/*.toml"
+[logging]
+path = 'kukur.log'
 
 [[include]]
 glob = "data/*.toml"

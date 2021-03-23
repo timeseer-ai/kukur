@@ -4,14 +4,13 @@ This is called by the init script of cx_freeze."""
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
 #
 # SPDX-License-Identifier: Apache-2.0
-
+import os
 import os.path
 import subprocess
 import sys
 import threading
 
 import cx_Logging
-import psutil
 
 
 class KukurService():
@@ -36,8 +35,6 @@ class KukurService():
     def stop(self):
         if self.process:
             cx_Logging.Debug('Stopping kukur.exe')
-            for child in psutil.Process(self.process.pid).children(recursive=True):
-                child.kill()
-            self.process.kill()
+            os.kill()
         self.stopRequestedEvent.set()
         self.stopEvent.wait()

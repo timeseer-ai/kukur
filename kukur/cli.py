@@ -10,11 +10,11 @@ import sys
 
 from dateutil.parser import parse as parse_date
 
+import kukur.logging
 import kukur.source.test as test_source
 
 from kukur.app import Kukur
 from kukur.config import from_toml
-from kukur.logging import configure
 from kukur.flight import (
     JSONFlightServer,
     KukurFlightServer,
@@ -171,13 +171,10 @@ def _api_keys(kukur_app: Kukur, args):
             writer.writerow((key.name, key.creation_date.isoformat()))
 
 
-def run():
-    """Start Kukur Cli.
-
-    This reads the configuration in Kukur.toml."""
+def _run():
     args = parse_args()
     config = from_toml(args.config_file)
-    configure(config, threaded=False)
+    kukur.logging.configure(config)
     app = Kukur(config)
     if args.action == "test":
         _test_source(app, args)
@@ -188,4 +185,4 @@ def run():
 
 
 if __name__ == "__main__":
-    run()
+    _run()
