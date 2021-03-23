@@ -1,7 +1,8 @@
-"""Base classes for connections to SQL-like sources from Timeseer."""
+"""Base classes for connections to SQL-like sources from Kukur."""
+
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
-#
 # SPDX-License-Identifier: Apache-2.0
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -68,7 +69,7 @@ class SQLConfig:  # pylint: disable=too-many-instance-attributes
         return config
 
 
-class SQLSource(ABC):
+class BaseSQLSource(ABC):
     """A SQL data source.
 
     Subclasses should implement a connect() method.
