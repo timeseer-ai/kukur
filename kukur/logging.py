@@ -11,7 +11,7 @@ from typing import Any, Dict
 
 def configure(config: Dict[str, Any]):
     """Configure the Python logger."""
-    log_format = "%(asctime)s %(levelname)s %(name)s %(processName)s : %(message)s"
+    log_format = "%(asctime)s %(levelname)s %(name)s %(threadName)s : %(message)s"
     if "logging" in config and "path" in config["logging"]:
         path: str = config["logging"]["path"]
         handler = logging.handlers.TimedRotatingFileHandler(
