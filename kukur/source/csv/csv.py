@@ -65,7 +65,7 @@ class CSVLoaders:
 
 
 class CSVSource:
-    """A CSV data source for Timeseer."""
+    """A CSV data source."""
 
     __loaders: CSVLoaders
     __data_format: str

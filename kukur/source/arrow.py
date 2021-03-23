@@ -17,7 +17,7 @@ from kukur.loader import Loader
 
 
 class BaseArrowSource(ABC):
-    """Base class for pyarrow file format data sources for Timeseer."""
+    """Base class for pyarrow file format data sources."""
 
     __loader: Loader
     __data_format: str

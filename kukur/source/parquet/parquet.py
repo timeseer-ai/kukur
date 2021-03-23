@@ -31,7 +31,7 @@ def from_config(config: Dict[str, str]):
 
 
 class ParquetSource(BaseArrowSource):
-    """A Parquet data source for Timeseer."""
+    """A Parquet data source."""
 
     def read_file(self, file_like) -> pa.Table:
         """Read the file_like object as Parquet."""

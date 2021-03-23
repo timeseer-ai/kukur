@@ -35,7 +35,7 @@ class InvalidClientConnection(Exception):
 
 
 def from_config(config: Dict[str, Any]):
-    """Create a new Timeseer influx source"""
+    """Create a new Influx data source"""
     if not HAS_INFLUX:
         raise InfluxdbNotInstalledError()
     host = config.get("host", "localhost")

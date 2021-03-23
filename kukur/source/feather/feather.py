@@ -30,7 +30,7 @@ def from_config(config: Dict[str, str]):
 
 
 class FeatherSource(BaseArrowSource):
-    """A Feather data source for Timeseer."""
+    """A Feather data source."""
 
     def read_file(self, file_like) -> pa.Table:
         """Read the file_like object as Feather."""
