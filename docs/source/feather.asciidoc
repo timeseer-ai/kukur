@@ -37,7 +37,7 @@ The row based format expects `path` to be a Feather file with 3 columns:
 
 - The first column contains the `series name` as a string
 - The second column contains the timestamp as https://arrow.apache.org/docs/python/generated/pyarrow.TimestampType.html#pyarrow.TimestampType[`pyarrow.TimestampType`].
-- The third column contains the value as a numerical type
+- The third column contains the value as a numerical type or as strings
 
 === Directory Based Format
 
@@ -51,7 +51,7 @@ Each file inside `path` is named `<series name>.feather`.
 The Feather file contains 2 columns:
 
 - The first column contains the timestamp as https://arrow.apache.org/docs/python/generated/pyarrow.TimestampType.html#pyarrow.TimestampType[`pyarrow.TimestampType`].
-- The second column contains the value as a numerical type
+- The second column contains the value as a numerical type or a string
 
 === Pivot Format
 
@@ -63,4 +63,5 @@ The pivot format expect `path` to be a Feather file.
 
 The first column in the file is a timestamp.
 Further columns contain the values.
+Some columns can be numerical while other columns contain strings.
 The name of each column is the series name.
