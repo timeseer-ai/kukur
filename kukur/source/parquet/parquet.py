@@ -7,9 +7,10 @@ Three formats are supported:
 
 Parquet DataSets are not yet supported.
 """
+
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
-#
 # SPDX-License-Identifier: Apache-2.0
+
 from datetime import datetime
 from typing import Dict, Generator
 
@@ -78,33 +79,44 @@ def _read_pivot_data(loader: Loader, selector: SeriesSelector) -> pa.Table:
     all_data = parquet.read_table(loader.open())
     if selector.name not in all_data.column_names:
         raise InvalidDataError(f'column "{selector.name}" not found')
-    schema = pa.schema([("ts", pa.timestamp("us", "utc")), ("value", pa.float64())])
-    return (
-        all_data.select([0, selector.name]).rename_columns(["ts", "value"]).cast(schema)
+    data = all_data.select([0, selector.name]).rename_columns(["ts", "value"])
+    schema = pa.schema(
+        [("ts", pa.timestamp("us", "utc")), ("value", _get_value_schema_type(data))]
     )
+    return data.cast(schema)
 
 
 def _read_row_data(loader: Loader, selector: SeriesSelector) -> pa.Table:
-    schema = pa.schema(
-        [
-            ("series name", pa.string()),
-            ("ts", pa.timestamp("us", "utc")),
-            ("value", pa.float64()),
-        ]
-    )
-    all_data = (
-        parquet.read_table(loader.open())
-        .rename_columns(["series name", "ts", "value"])
-        .cast(schema)
+    all_data = parquet.read_table(loader.open()).rename_columns(
+        ["series name", "ts", "value"]
     )
     # pylint: disable=no-member
     data = all_data.filter(
         pyarrow.compute.equal(all_data["series name"], pa.scalar(selector.name))
+    ).drop(["series name"])
+    schema = pa.schema(
+        [
+            ("ts", pa.timestamp("us", "utc")),
+            ("value", _get_value_schema_type(data)),
+        ]
     )
-    return data.drop(["series name"])
+    return data.cast(schema)
 
 
 def _read_directory_data(loader: Loader, selector: SeriesSelector) -> pa.Table:
     data = parquet.read_table(loader.open_child(f"{selector.name}.parquet"))
-    schema = pa.schema([("ts", pa.timestamp("us", "utc")), ("value", pa.float64())])
+    schema = pa.schema(
+        [
+            ("ts", pa.timestamp("us", "utc")),
+            ("value", _get_value_schema_type(data)),
+        ]
+    )
     return data.rename_columns(["ts", "value"]).cast(schema)
+
+
+def _get_value_schema_type(data: pa.Table):
+    value_type = pa.float64()
+    if len(data) > 0:
+        if pyarrow.types.is_string(data["value"][0].type):
+            value_type = pa.string()
+    return value_type
