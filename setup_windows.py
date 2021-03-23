@@ -1,4 +1,7 @@
 """Create Windows executables and installers for Kukur."""
+# SPDX-FileCopyrightText: 2021 Timeseer.AI
+#
+# SPDX-License-Identifier: Apache-2.0
 
 from cx_Freeze import setup, Executable
 
@@ -34,7 +37,6 @@ setup(
             "includes": [
                 'cx_Logging',
                 'windows.win_service',
-                'scipy.spatial.transform._rotation_groups',
             ],
             "include_files": [
                 ('windows/Kukur-windows.toml', 'Kukur-example.toml')

@@ -14,6 +14,7 @@ import kukur.source.test as test_source
 
 from kukur.app import Kukur
 from kukur.config import from_toml
+from kukur.logging import configure
 from kukur.flight import (
     JSONFlightServer,
     KukurFlightServer,
@@ -170,9 +171,13 @@ def _api_keys(kukur_app: Kukur, args):
             writer.writerow((key.name, key.creation_date.isoformat()))
 
 
-def _run():
+def run():
+    """Start Kukur Cli.
+
+    This reads the configuration in Kukur.toml."""
     args = parse_args()
     config = from_toml(args.config_file)
+    configure(config, threaded=False)
     app = Kukur(config)
     if args.action == "test":
         _test_source(app, args)
@@ -183,4 +188,4 @@ def _run():
 
 
 if __name__ == "__main__":
-    _run()
+    run()

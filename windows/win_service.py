@@ -1,6 +1,9 @@
 """Run Kukur as a Windows service.
 
 This is called by the init script of cx_freeze."""
+# SPDX-FileCopyrightText: 2021 Timeseer.AI
+#
+# SPDX-License-Identifier: Apache-2.0
 
 import os.path
 import subprocess

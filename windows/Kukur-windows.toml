@@ -1,5 +1,3 @@
-data_dir = "db/"
-
 [[include]]
 glob = "tests/test_data/*/*.toml"
 
