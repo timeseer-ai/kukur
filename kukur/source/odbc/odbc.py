@@ -1,7 +1,8 @@
-"""Connections to ODBC data sources from Timeseer."""
+"""Connections to ODBC data sources from Kukur."""
+
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
-#
 # SPDX-License-Identifier: Apache-2.0
+
 try:
     import pyodbc
 
@@ -9,7 +10,7 @@ try:
 except ImportError:
     HAS_ODBC = False
 
-from kukur.sql import SQLConfig, SQLSource
+from kukur.source.sql import BaseSQLSource, SQLConfig
 
 
 class ODBCNotInstalledError(Exception):
@@ -29,7 +30,7 @@ def from_config(data):
     return ODBCSource(config)
 
 
-class ODBCSource(SQLSource):
+class ODBCSource(BaseSQLSource):
     """An ODBC data source."""
 
     def __init__(self, config: SQLConfig):

@@ -1,10 +1,11 @@
-"""Connections to ADODB data sources from Timeseer.
+"""Connections to ADODB data sources from Kukur.
 
 This requires an installation of pywin32 (LGPL).
 """
+
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
-#
 # SPDX-License-Identifier: Apache-2.0
+
 try:
     import adodbapi
 
@@ -12,7 +13,7 @@ try:
 except ImportError:
     HAS_ADODB = False
 
-from kukur.sql import SQLConfig, SQLSource
+from kukur.source.sql import BaseSQLSource, SQLConfig
 
 
 class ADODBNotInstalledError(Exception):
@@ -36,7 +37,7 @@ def from_config(data):
     return ADODBSource(config)
 
 
-class ADODBSource(SQLSource):
+class ADODBSource(BaseSQLSource):
     """An ADODB data source."""
 
     def __init__(self, config: SQLConfig):
