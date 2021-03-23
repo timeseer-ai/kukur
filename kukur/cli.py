@@ -10,6 +10,7 @@ import sys
 
 from dateutil.parser import parse as parse_date
 
+import kukur.logging
 import kukur.source.test as test_source
 
 from kukur.app import Kukur
@@ -173,6 +174,7 @@ def _api_keys(kukur_app: Kukur, args):
 def _run():
     args = parse_args()
     config = from_toml(args.config_file)
+    kukur.logging.configure(config)
     app = Kukur(config)
     if args.action == "test":
         _test_source(app, args)
