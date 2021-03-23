@@ -35,6 +35,6 @@ class KukurService():
     def stop(self):
         if self.process:
             cx_Logging.Debug('Stopping kukur.exe')
-            os.kill(self.process.pid)
+            self.process.kill()
         self.stopRequestedEvent.set()
         self.stopEvent.wait()
