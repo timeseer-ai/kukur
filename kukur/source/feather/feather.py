@@ -10,18 +10,14 @@ Three formats are supported:
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-from datetime import datetime
-from typing import Dict, Generator
+from typing import Dict
 
 import pyarrow as pa
-import pyarrow.compute
 import pyarrow.feather as feather
-import pyarrow.types
 
-from kukur import Metadata, SeriesSelector
-
-from kukur.loader import Loader, from_config as loader_from_config
-from kukur.exceptions import InvalidDataError, InvalidSourceException
+from kukur.exceptions import InvalidSourceException
+from kukur.loader import from_config as loader_from_config
+from kukur.source.arrow import BaseArrowSource
 
 
 def from_config(config: Dict[str, str]):
@@ -33,90 +29,13 @@ def from_config(config: Dict[str, str]):
     return FeatherSource(data_format, loader)
 
 
-class FeatherSource:
+class FeatherSource(BaseArrowSource):
     """A Feather data source for Timeseer."""
 
-    __loader: Loader
-    __data_format: str
+    def read_file(self, file_like) -> pa.Table:
+        """Read the file_like object as Feather."""
+        return feather.read_table(file_like)
 
-    def __init__(self, data_format: str, loader: Loader):
-        """Create a new Feather data source."""
-        self.__loader = loader
-        self.__data_format = data_format
-
-    def search(self, selector: SeriesSelector) -> Generator[Metadata, None, None]:
-        """Feather does not support searching for time series."""
-
-    # pylint: disable=no-self-use
-    def get_metadata(self, selector: SeriesSelector) -> Metadata:
-        """Feather currently always returns empty metadata."""
-        return Metadata(selector)
-
-    def get_data(
-        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
-    ) -> pa.Table:
-        """Read data in one of the predefined formats.
-
-        The complete Feather file will be loaded in an Arrow table during processing.
-        """
-        data = self.__read_all_data(selector)
-        # pylint: disable=no-member
-        on_or_after = pyarrow.compute.greater_equal(data["ts"], pa.scalar(start_date))
-        before = pyarrow.compute.less(data["ts"], pa.scalar(end_date))
-        return data.filter(pyarrow.compute.and_(on_or_after, before))
-
-    def __read_all_data(self, selector: SeriesSelector) -> pa.Table:
-        if self.__data_format == "pivot":
-            return _read_pivot_data(self.__loader, selector)
-
-        if self.__data_format == "dir":
-            return _read_directory_data(self.__loader, selector)
-
-        return _read_row_data(self.__loader, selector)
-
-
-def _read_pivot_data(loader: Loader, selector: SeriesSelector) -> pa.Table:
-    all_data = feather.read_table(loader.open())
-    if selector.name not in all_data.column_names:
-        raise InvalidDataError(f'column "{selector.name}" not found')
-    data = all_data.select([0, selector.name]).rename_columns(["ts", "value"])
-    schema = pa.schema(
-        [("ts", pa.timestamp("us", "utc")), ("value", _get_value_schema_type(data))]
-    )
-    return data.cast(schema)
-
-
-def _read_row_data(loader: Loader, selector: SeriesSelector) -> pa.Table:
-    all_data = feather.read_table(loader.open()).rename_columns(
-        ["series name", "ts", "value"]
-    )
-    # pylint: disable=no-member
-    data = all_data.filter(
-        pyarrow.compute.equal(all_data["series name"], pa.scalar(selector.name))
-    ).drop(["series name"])
-    schema = pa.schema(
-        [
-            ("ts", pa.timestamp("us", "utc")),
-            ("value", _get_value_schema_type(data)),
-        ]
-    )
-    return data.cast(schema)
-
-
-def _read_directory_data(loader: Loader, selector: SeriesSelector) -> pa.Table:
-    data = feather.read_table(loader.open_child(f"{selector.name}.feather"))
-    schema = pa.schema(
-        [
-            ("ts", pa.timestamp("us", "utc")),
-            ("value", _get_value_schema_type(data)),
-        ]
-    )
-    return data.rename_columns(["ts", "value"]).cast(schema)
-
-
-def _get_value_schema_type(data: pa.Table):
-    value_type = pa.float64()
-    if len(data) > 0:
-        if pyarrow.types.is_string(data["value"][0].type):
-            value_type = pa.string()
-    return value_type
+    def get_file_extension(self) -> str:
+        """Return the default feather file extension."""
+        return "feather"
