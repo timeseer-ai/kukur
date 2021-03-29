@@ -330,6 +330,137 @@ Visit https://github.com/timeseer-ai/kukur to learn more.
 
 Kukur is open source software, licensed under the Apache License, Version 2.0.
 
+=== Domain Model
+
+To understand Kukur,
+three concepts need to be understood:
+
+- <<SeriesSelector>>
+- <<Metadata>>
+- <<Source>>
+
+==== SeriesSelector
+
+[plantuml]
+....
+class SeriesSelector {
+    source : str
+    name : str
+}
+....
+
+A time series data source contains hundreds, thousands or even millions of time series.
+A convenient and expressive way of selecting which time series should be queried is required.
+This is a `SeriesSelector`.
+
+The simplest mapping is associating a unique name with each series.
+It follows that the minimum unique identifier includes the source and the name of the time series.
+
+[cols="3*"]
+|===
+| Timestamp
+|Series name
+| Value
+|===
+
+Many time series databases add additional structure to this.
+
+In InfluxDB, for example, the layout looks like:
+
+[cols="6*"]
+|===
+| Timestamp
+3+| Series
+2+| Values
+
+| Timestamp
+| Measurement
+| Tag A
+| Tag B
+| Field A
+| Field B
+
+|===
+
+A time series is identified by a 'measurement name', multiple 'tag key-value pairs' and a 'field key'.
+
+NOTE: Kukur will move from alpha to beta status once support for this structure has been implemented.
+
+==== Metadata
+
+Kukur predefines a set of metadata fields that are all present in an ideal world.
+
+[plantuml]
+....
+class Metadata {
+    series: SeriesSelector
+    description : str
+    unit : str
+    limit_low : Optional[float]
+    limit_high : Optional[float]
+    accuracy : Optional[float]
+    interpolation_type: Optional[InterpolationType]
+    data_type: Optional[DataType]
+    dictionary_name: Optional[str]
+    dictionary: Optional[Dictionary]
+    process_type: Optional[ProcessType]
+}
+
+enum InterpolationType {
+    LINEAR
+    STEPPED
+}
+
+enum DataType {
+    FLOAT32
+    FLOAT64
+    STRING
+    DICTIONARY
+}
+
+class Dictionary {
+    mapping: Dict[int, str]
+}
+
+enum ProcessType {
+    CONTINUOUS
+    REGIME
+    BATCH
+}
+....
+
+Most of these fields are self-explanatory,
+but the `DICTIONARY` `DataType` warrants an explanation.
+
+Time series of type `DICTIONARY` store numerical values.
+Each numerical value is given a meaning.
+
+For example: the state of a pump could be `ON` or `OFF`.
+`OFF` can be represented as `0` in the time series data, while `ON` could be encoded as `1`.
+
+These dictionaries that map numerical values to string labels are often named as well,
+hence the `dictionary name` field.
+
+==== Source
+
+Kukur data sources implement at least three methods:
+
+[plantuml]
+....
+interface Source {
+    search()
+    get_metadata()
+    get_data()
+}
+....
+
+`search(SeriesSelector) -> Generator[Union[SeriesSelector, Metadata]]`::
+Return all time series matching the selector or even the metadata of them if it is readily available.
+`get_metadata(SeriesSelector) -> Metadata`::
+Return metadata for the selected time series.
+`get_data(SeriesSelector, Datetime, Datetime) -> pyarrow.Table`::
+Return data for the selected time series in the given time period.
+
 == Sources
 
 include::./source/sources.asciidoc[leveloffset=+1]
