@@ -36,7 +36,7 @@ def parse_args():
     )
     test_parser = subparsers.add_parser("test", help="Test data source connectivity")
     api_key_parser = subparsers.add_parser(
-        "api-key", help="Create an api key for the arrow flight interface"
+        "api-key", help="Create an api key for the Arrow Flight interface"
     )
 
     test_subparsers = test_parser.add_subparsers(

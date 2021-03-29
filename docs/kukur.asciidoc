@@ -11,6 +11,7 @@
 == What is Kukur?
 
 Kukur makes time series data and metadata available to the https://arrow.apache.org/[Apache Arrow] ecosystem.
+Kukur can be used as a Python library or as a standalone application that exposes an Arrow Flight interface.
 
 [WARNING]
 ====
@@ -21,9 +22,306 @@ Kukur uses semantic versioning.
 While `< 1.0.0`, changes to the minor version indicate breaking changes.
 ====
 
-== Usage
+Potential usage scenarios are:
 
-Kukur can be used as a Python library or as a standalone application that exposes an Arrow Flight interface.
+- ad-hoc in a data project
+- as a time series data integration hub on your own system
+- as a centrally managed time series data integration hub
+- as a library in a Python application that needs time series data
+
+== Getting Started
+
+This example shows how to:
+
+- run Kukur in a data project,
+- expose a CSV file through it
+- and connect to it using the Kukur client.
+
+The only prerequisite is a working Python 3 installation.
+Minor changes to the shell commands, but not the Kukur configuration, are required depending on your OS.
+
+=== Installation
+
+First create a new directory and enter it:
+
+[source,bash]
+----
+$ mkdir data-project
+$ cd data-project
+----
+
+Create a Python virtualenv and activate it:
+
+[source,bash]
+----
+$ python -m venv venv
+$ source venv/bin/activate
+----
+
+Install Kukur and list the command line options to verify that the installation was OK:
+
+[source,bash]
+----
+(venv) $ pip install kukur
+(venv) $ python -m kukur.cli --help
+usage: cli.py [-h] [--config-file CONFIG_FILE] {flight,test,api-key} ...
+
+Start Kukur.
+
+positional arguments:
+  {flight,test,api-key}
+                        Select the CLI action
+    flight              Enable the Arrow Flight interface (the default)
+    test                Test data source connectivity
+    api-key             Create an api key for the Arrow Flight interface
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --config-file CONFIG_FILE
+                        Path to the configuration file
+----
+
+=== Configuration
+
+Kukur connects to many different local or remote time series sources.
+A local CSV file will be used in this example.
+
+Create a directory `data/`:
+
+[source,bash]
+----
+(venv) $ mkdir data
+----
+
+Add the CSV data in `data/example.csv`:
+
+data/example.csv
+----
+outside-temperature,2020-01-02T00:00:00Z,1
+outside-temperature,2020-01-02T01:00:00Z,2
+outside-temperature,2020-01-02T02:00:00Z,3
+----
+
+The next step is to configure a Kukur data source that exposes this CSV to any client.
+
+Kukur uses https://toml.io/[TOML] as its configuration language.
+Create `Kukur.toml` and define a source called 'example' that exposes the `data/example.csv` CSV:
+
+Kukur.toml
+[source,toml]
+----
+[source.example]
+type = "csv"
+path = "data/example.csv"
+----
+
+Use the Kukur CLI to test connectivity:
+
+[source,bash]
+----
+(venv) $ python -m kukur.cli test data \
+    --source example \
+    --name outside-temperature \
+    --start 2020-01-01 \
+    --end 2021-01-01
+2021-03-29 11:12:37,855 INFO kukur.source.test MainThread : Requesting data for "outside-temperature (example)" from 2020-01-01 00:00:00 to 2021-01-01 00:00:00
+2020-01-02T00:00:00+00:00,1
+2020-01-02T01:00:00+00:00,2
+2020-01-02T02:00:00+00:00,3
+----
+
+[TIP]
+====
+The Kukur CLI logs to stderr, while the data itself is printed to stdout.
+The `test` CLI command can thus be (ab-)used to extract data from any configured data source as CSV.
+====
+
+Now, having this data is useful, but where Kukur sets itself apart is that it also provides an opinionated interface for metadata.
+
+Is the outside temperature defined in Kelvin?
+Unless we're probing a spacecraft at the dark side of the moon, this is unlikely, but there is no way to know.
+
+Our thermometer probably has measurement limits as well.
+When values outside the -20 deg C to 60 deg C scale that this particular thermometer supports appear,
+using them is probably not a good idea.
+
+Similarly, the person that was writing down the measurements is not able to read the values with infinite accuracy.
+At best, there will be a 0.5 deg C accuracy margin for any measurement.
+
+Many time series sources expose this kind of metadata and Kukur can read it.
+
+Let's create another CSV file:
+
+data/example-metadata.csv
+----
+series name,description,unit,lower limit,upper limit,accuracy
+outside-temperature,Temperature in Antwerp,deg C,-20,60,0.5
+----
+
+Kukur can mix-and-match metadata.
+For example,
+data can be stored in an InfluxDB database,
+while descriptions of the measurements are stored in a CSV file,
+but the sensor limits are stored in MS SQL database.
+
+Update the configuration:
+
+Kukur.toml
+[source,toml]
+----
+[source.example]
+type = "csv"
+path = "data/example.csv"
+metadata = "data/example-metadata.csv"
+----
+
+Request the metadata using the CLI:
+
+[source,bash]
+----
+(venv) $ python -m kukur.cli test metadata \
+    --source example
+    --name outside-temperature
+2021-03-29 11:41:48,936 INFO kukur.source.test MainThread : Requesting metadata for "outside-temperature (example)"
+series name,description,unit,lower limit,upper limit,accuracy,interpolation type,data type,dictionary name,dictionary,process type
+outside-temperature,Temperature in Antwerp,deg C,-20.0,60.0,0.5,,,,,
+----
+
+Many fields are blank because our CSV file did not contain them.
+
+[TIP]
+====
+The interpolation type for example is a very important piece of metadata.
+When resampling values of multiple time series to the same timestamps,
+using linear interpolation most likely results in different values than using stepwise interpolation.
+====
+
+=== Using the Kukur Client
+
+Now, having validated the Kukur configuration, let's start the Kukur server:
+
+[source,bash]
+----
+(venv) $ python -m kukur.cli
+----
+
+Open another shell, enter the virtualenv, start Python and import all Kukur objects:
+
+[source,bash]
+----
+$ source venv/bin/activate
+(venv) $ python
+Python 3.9.2 (default, Feb 20 2021, 18:40:11)
+[GCC 10.2.0] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+>>> from kukur import *
+----
+
+Let's try to request the metadata:
+
+[source,python]
+----
+>>> client = Client()
+>>> client.get_metadata(SeriesSelector('example', 'outside-temperature'))
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+  File "data-project/venv/lib/python3.9/site-packages/kukur/client.py", line 73, in get_metadata
+    results = list(
+  File "pyarrow/_flight.pyx", line 1239, in do_action
+  File "pyarrow/_flight.pyx", line 66, in pyarrow._flight.check_flight_status
+pyarrow._flight.FlightUnauthenticatedError: gRPC returned unauthenticated error, with message: invalid token. Detail: Unauthenticated
+----
+
+Kukur is secure by default and does not allow unauthenticated access.
+Since we're running Kukur locally, it's OK to enable anonymous access.
+
+Stop Kukur and update the configuration to:
+
+Kukur.toml
+[source,toml]
+----
+[flight]
+authentication = false
+
+[source.example]
+type = "csv"
+path = "data/example.csv"
+metadata = "data/example-metadata.csv"
+----
+
+Restart Kukur:
+
+[source,bash]
+----
+(venv) $ python -m kukur.cli
+----
+
+Alternatively, use `python -m kukur.cli api-key` to define local API keys.
+
+Now, go back to the Python session and request the metadata:
+
+[source,python]
+----
+>>> client.get_metadata(SeriesSelector('example', 'outside-temperature'))
+Metadata(series=SeriesSelector(source='example', name='outside-temperature'), description='Temperature in Antwerp', unit='deg C', limit_low=-20.0, limit_high=60.0, accuracy=0.5, interpolation_type=None, data_type=None, dictionary_name=None, dictionary=None, process_type=None)
+----
+
+Finally, read the data:
+
+[source,python]
+----
+>>> from datetime import datetime
+>>> client.get_data(SeriesSelector('example', 'outside-temperature'), datetime.fromisoformat('2020-01-01T00:00:00+00:00'), datetime.fromisoformat('2021-01-01T00:00:00+00:00'))
+pyarrow.Table
+ts: timestamp[us, tz=utc]
+value: int64
+----
+
+Data is always returned as an Apache Arrow table with two columns: a timestamp and a value.
+
+[source,python]
+----
+>>> table = _
+>>> table.to_pydict()
+{'ts': [datetime.datetime(2020, 1, 2, 0, 0, tzinfo=<UTC>), datetime.datetime(2020, 1, 2, 1, 0, tzinfo=<UTC>), datetime.datetime(2020, 1, 2, 2, 0, tzinfo=<UTC>)], 'value': [1, 2, 3]}
+----
+
+Using Kukur, we now have metadata and data in a format that allows us to correctly analyze our outside temperature.
+
+More importantly: we have made data access scalable,
+as the Kukur configuration can be used the next time data is needed.
+To do so we can store the Kukur configuration in a version control system, such as `git`.
+
+=== Storing the Configuration in Version Control
+
+This requires `git` to be installed.
+
+Create a local repository by running:
+
+[source,bash]
+----
+$ git init .
+----
+
+Ignore the data, virtualenv and Kukur databases using a `.gitignore` file:
+
++.gitignore+
+----
+data/
+venv/
+*.sqlite
+----
+
+Now track the current revision of the Kukur configuration:
+
+[source,bash]
+----
+$ git add Kukur.toml
+$ git commit -v
+----
+
+This repository can now be shared with other people,
+effortlessly granting them access to the same data sources.
 
 == Development
 
@@ -34,20 +332,20 @@ Kukur is open source software, licensed under the Apache License, Version 2.0.
 
 == Sources
 
-include::source/sources.asciidoc[leveloffset=+1]
+include::./source/sources.asciidoc[leveloffset=+1]
 
 == Sources reference
 
-include::source/adodb.asciidoc[leveloffset=+1]
+include::./source/adodb.asciidoc[leveloffset=+1]
 
-include::source/csv.asciidoc[leveloffset=+1]
+include::./source/csv.asciidoc[leveloffset=+1]
 
-include::source/feather.asciidoc[leveloffset=+1]
+include::./source/feather.asciidoc[leveloffset=+1]
 
-include::source/odbc.asciidoc[leveloffset=+1]
+include::./source/odbc.asciidoc[leveloffset=+1]
 
-include::source/parquet.asciidoc[leveloffset=+1]
+include::./source/parquet.asciidoc[leveloffset=+1]
 
-include::source/kukur.asciidoc[leveloffset=+1]
+include::./source/kukur.asciidoc[leveloffset=+1]
 
-include::source/influxdb.asciidoc[leveloffset=+1]
+include::./source/influxdb.asciidoc[leveloffset=+1]
