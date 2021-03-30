@@ -24,6 +24,7 @@ dictionary_query = "<query for a possible dictionary mapping>"
 dictionary_query_path = "<path to a dictionary query>"
 data_query = "<query for data of one series in time range>"
 data_query_path = "<path to data query>"
+data_timezone = "<override or specify time zone of timestamps returned by the odbc driver>"
 ```
 
 The examples given here operate on this schema:
@@ -176,3 +177,14 @@ data_query_datetime_format = "%Y-%m-%dT%H:%M:%S%z"
 This converts timestamps to the ISO8601 format.
 
 The data query can be read from a file by using `data_query_path` instead of `data_query`.
+
+If the query or driver returns dates without a time zone,
+the time zone can be specified by the `data_timezone` option.
+
+Example:
+
+```toml
+data_timezone = "UTC"
+```
+
+The exact available time zones are system-dependent.

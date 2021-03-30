@@ -1,4 +1,4 @@
-name: Build kukur
+name: Publish Kukur
 on:
   push:
     tags:
@@ -6,7 +6,7 @@ on:
 
 jobs:
   build:
-    name: Build container
+    name: Publish version to PyPI
     runs-on: ubuntu-latest
     steps:
 

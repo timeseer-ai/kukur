@@ -5,7 +5,7 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone, tzinfo
 from typing import Dict, Generator, List, Optional, Union
 
 import dateutil.parser
@@ -33,6 +33,7 @@ class SQLConfig:  # pylint: disable=too-many-instance-attributes
     dictionary_query: Optional[str] = None
     data_query: Optional[str] = None
     data_query_datetime_format: Optional[str] = None
+    data_timezone: Optional[tzinfo] = None
 
     @classmethod
     def from_dict(cls, data):
@@ -65,6 +66,8 @@ class SQLConfig:  # pylint: disable=too-many-instance-attributes
                 config.data_query = f.read()
 
         config.data_query_datetime_format = data.get("data_query_datetime_format")
+        if "data_timezone" in data:
+            config.data_timezone = dateutil.tz.gettz(data.get("data_timezone"))
 
         return config
 
@@ -130,11 +133,15 @@ class BaseSQLSource(ABC):
         )
         timestamps = []
         values = []
-        for row in cursor.fetchall():
+        for row in cursor:
             if isinstance(row[0], datetime):
-                timestamps.append(row[0])
+                ts = row[0]
             else:
-                timestamps.append(dateutil.parser.parse(row[0]))
+                ts = dateutil.parser.parse(row[0])
+            if self._config.data_timezone:
+                ts = ts.replace(tzinfo=self._config.data_timezone)
+            ts = ts.astimezone(timezone.utc)
+            timestamps.append(ts)
             values.append(row[1])
         return pa.Table.from_pydict({"ts": timestamps, "value": values})
 

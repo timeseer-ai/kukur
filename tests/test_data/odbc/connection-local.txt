@@ -1,0 +1,1 @@
+Driver={/usr/local/lib/libtdsodbc.so};Server=localhost;Port=1433;Database=TestData;UID=sa;PWD=Timeseer!AI;TDS_Version=8.0;ClientCharset=UTF-8

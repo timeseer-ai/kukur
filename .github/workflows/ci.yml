@@ -26,26 +26,19 @@ jobs:
       - name: Run tests
         run: make test
 
-      - name: Run integration test
-        run: |
-          python -m kukur.cli --config-file tests/integration/Kukur.toml &
-          make integration-test
-
-  build_docker:
-    name: Build Docker container
-    if: github.ref == 'refs/heads/master'
-    runs-on: ubuntu-latest
-    needs:
-      - lint_and_test
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-
       - name: Build docker container
         run: make build-docker
 
+      - name: Start integration test compose environment
+        run: docker-compose -f docker-compose.container.yml -f docker-compose.yml up -d
+        working-directory: tests/test_data
+
+      - name: Run integration test
+        run: make integration-test
+
       - name: Tag docker image
         run: docker tag kukur:latest docker.timeseer.ai/kukur:latest
+        if: github.ref == 'refs/heads/master'
 
       - name: Login to container registry
         uses: azure/docker-login@v1
@@ -53,6 +46,8 @@ jobs:
           login-server: docker.timeseer.ai
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
+        if: github.ref == 'refs/heads/master'
 
       - name: Push docker image
         run: docker push docker.timeseer.ai/kukur:latest
+        if: github.ref == 'refs/heads/master'
