@@ -1,7 +1,17 @@
 // SPDX-FileCopyrightText: 2021 Timeseer.AI
-//
 // SPDX-License-Identifier: Apache-2.0
+
 == InfluxDB
+
+[WARNING]
+====
+The InfluxDB data source is experimental.
+
+Time series are represented by stringifying the 'measurement name', 'tag keys and values' and 'field'.
+The SeriesSelector concepts needs to be refined through 'tags' and 'fields' to properly support InfluxDB.
+
+Furthermore, storing a password in the configuration should not be required.
+====
 
 Sources with ```type = "influxdb"``` configure InfluxDB sources.
 
@@ -12,7 +22,7 @@ Currently InfluxDB v1.8 is supported.
 ```toml
 [source.<name>]
 type = "influxdb"
-host = "<host IP / Address of the Influxdb server>"
+host = "<host IP / Address of the InfluxDB server>"
 port = <port of the InfluxDB server>
 ssl = <boolean to indicate if SSL needs to be used>
 database = "<name of the database to use>"
