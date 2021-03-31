@@ -33,6 +33,97 @@ Multiple types of time series sources are supported:
 
 Check the [documentation](https://kukur.timeseer.ai) for more info
 
+## Development
+
+Create a virtualenv and install dependencies:
+
+```bash
+$ python -m venv venv
+$ source venv/bin/activate
+(venv) $ make deps dev-deps
+```
+
+Launch Kukur using:
+
+```bash
+(venv) $ python -m kukur.cli
+```
+
+Lint and format:
+
+```bash
+(venv) $ make lint
+```
+
+Kukur uses [black](https://github.com/psf/black) to format all code.
+
+Run unit tests:
+
+```bash
+(venv) $ make test
+```
+
+### Integration Tests
+
+Kukur runs integration tests against real databases where possible.
+
+OS requirements to complete the integration tests are:
+
+- unixodbc
+- freetds
+
+Additional Python packages are also required:
+
+```bash
+(venv) $ pip install -r requirements-python.txt
+```
+
+Integration tests require Kukur to be running with a special configuration.
+Some time series databases need to be started using docker-compose.
+
+```bash
+$ docker-compose -f tests/test_data/docker-compose.yml up -d
+(venv) $ python -m kukur.cli --config-file tests/test_data/Kukur.toml
+```
+
+Since the location of the freetds libraries varies and this needs to be hardcoded in the unixodbc configuration,
+several configuration profiles exist.
+These profiles can be selected using the `KUKUR_INTEGRATION_TARGET` environment variable:
+
+- `/usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so`: the default, no `KUKUR_INTEGRATION_TARGET` required
+- `/usr/lib/libtdsodbc.so`: use `KUKUR_INTEGRATION_TARGET=linux`
+- `/usr/local/lib/libtdsodbc.so`: use `KUKUR_INTEGRATION_TARGET=local`
+
+Then, run the tests:
+
+```bash
+(venv) $ KUKUR_INTEGRATION_TARGET=linux make integration-test
+```
+
+Stop the databases using:
+
+```bash
+$ docker-compose -f tests/test_data/docker-compose.yml down
+```
+
+Alternatively, run Kukur in docker-compose as well to have a known stable setup:
+
+```bash
+$ docker-compose -f tests/test_data/docker-compose.yml -f tests/test_data/docker-compose.container.yml up -d
+```
+
+Run the tests using:
+
+```bash
+(venv) $ make integration-test
+```
+
+Stop all containers:
+
+```bash
+$ docker-compose -f tests/test_data/docker-compose.yml -f tests/test_data/docker-compose.container.yml down
+```
+
 ## License
 
 Copyright 2021 [Timeseer.AI](https://www.timeseer.ai)

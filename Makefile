@@ -44,7 +44,7 @@ dev-deps: ## Install development dependencies
 
 .PHONY: format
 format: ## Format the kukur code
-	black kukur/
+	black kukur/ tests/
 
 .PHONY: build-docker
 build-docker: ## Build a Docker container
