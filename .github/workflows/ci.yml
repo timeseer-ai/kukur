@@ -37,6 +37,10 @@ jobs:
         run: make integration-test
 
       - name: Tag docker image
+        run: docker tag kukur:latest docker.timeseer.ai/kukur:${GITHUB_SHA}
+        if: github.ref == 'refs/heads/master'
+
+      - name: Tag latest docker image
         run: docker tag kukur:latest docker.timeseer.ai/kukur:latest
         if: github.ref == 'refs/heads/master'
 
@@ -46,6 +50,10 @@ jobs:
           login-server: docker.timeseer.ai
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
+        if: github.ref == 'refs/heads/master'
+
+      - name: Push docker image
+        run: docker push docker.timeseer.ai/kukur:${GITHUB_SHA}
         if: github.ref == 'refs/heads/master'
 
       - name: Push docker image
