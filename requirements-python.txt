@@ -1,0 +1,2 @@
+pyodbc==4.0.30
+influxdb==5.3.1

@@ -6,8 +6,10 @@ RUN apt-get update \
     unixodbc-dev \
  && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt ./
+COPY requirements.txt requirements-python.txt ./
+
 RUN pip install --prefix=/install --no-warn-script-location -r requirements.txt
+RUN pip install --prefix=/install --no-warn-script-location -r requirements-python.txt
 
 FROM python:3.8-slim
 ENV APP_ROOT=/usr/src/app
@@ -22,7 +24,7 @@ ENTRYPOINT ["/entrypoint.sh"]
 
 RUN apt-get update \
  && apt-get --yes install \
-    unixodbc \
+    unixodbc tdsodbc \
  && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /install /usr/local

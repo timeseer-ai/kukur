@@ -1,0 +1,13 @@
+version: '2.3'
+
+services:
+  kukur:
+    build: ../../.
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./Kukur.toml:/usr/src/app/Kukur.toml
+      - .:/usr/src/app/tests/test_data
+    depends_on:
+      sql_server:
+        condition: service_healthy

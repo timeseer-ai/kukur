@@ -1,0 +1,31 @@
+version: '2.3'
+
+services:
+  sql_server:
+    build: odbc
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=Timeseer!AI
+      - TZ=UTC
+    ports:
+      - "1433:1433"
+    volumes:
+      - database-data:/var/opt/mssql
+    healthcheck:
+      test: /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$${SA_PASSWORD}" -Q "SELECT 1" -b -o /dev/null
+      interval: 5s
+      timeout: 5s
+      retries: 18
+      start_period: 10s
+  influxdb:
+    image: influxdb:1.8
+    ports:
+      - "8086:8086"
+    volumes:
+      - influx-data:/var/lib/influxdb
+      - ./influxdb/NOAA_data.txt.gz:/NOAA_data.txt.gz
+      - ./influxdb/import-data.sh:/docker-entrypoint-initdb.d/import-data.sh
+
+volumes:
+    database-data:
+    influx-data:

@@ -2,6 +2,8 @@
 
 They use the client to request data."""
 
+import os
+
 from datetime import datetime
 
 import pytest
@@ -16,13 +18,24 @@ def client() -> Client:
     return kukur_client
 
 
-def test_search(client: Client):
-    many_series = list(client.search(SeriesSelector("row")))
-    assert len(many_series) == 5
+@pytest.fixture
+def suffix_source():
+    def _suffix_source(source_name: str) -> str:
+        if "KUKUR_INTEGRATION_TARGET" in os.environ:
+            target = os.environ["KUKUR_INTEGRATION_TARGET"]
+            return f"{source_name}-{target}"
+        return source_name  # works in docker container
+
+    return _suffix_source
+
+
+def test_search(client: Client, suffix_source):
+    many_series = list(client.search(SeriesSelector(suffix_source("sql-list"))))
+    assert len(many_series) == 3
     dictionary_series = [
         series for series in many_series if series.series.name == "test-tag-6"
     ][0]
-    assert dictionary_series.description == "Valve X"
+    assert dictionary_series.description == "A dictionary series"
     assert dictionary_series.dictionary_name == "Active"
     assert dictionary_series.dictionary is not None
     assert len(dictionary_series.dictionary.mapping) == 2
@@ -30,9 +43,11 @@ def test_search(client: Client):
     assert dictionary_series.dictionary.mapping[1] == "ON"
 
 
-def test_metadata(client: Client):
-    dictionary_series = client.get_metadata(SeriesSelector("row", "test-tag-6"))
-    assert dictionary_series.description == "Valve X"
+def test_metadata(client: Client, suffix_source):
+    dictionary_series = client.get_metadata(
+        SeriesSelector(suffix_source("sql"), "test-tag-6")
+    )
+    assert dictionary_series.description == "A dictionary series"
     assert dictionary_series.dictionary_name == "Active"
     assert dictionary_series.dictionary is not None
     assert len(dictionary_series.dictionary.mapping) == 2
@@ -40,12 +55,14 @@ def test_metadata(client: Client):
     assert dictionary_series.dictionary.mapping[1] == "ON"
 
 
-def test_data(client: Client):
+def test_data(client: Client, suffix_source):
     start_date = datetime.fromisoformat("2020-01-01T00:00:00+00:00")
     end_date = datetime.fromisoformat("2021-01-01T00:00:00+00:00")
-    data = client.get_data(SeriesSelector("row", "test-tag-6"), start_date, end_date)
-    assert len(data) == 7
+    data = client.get_data(
+        SeriesSelector(suffix_source("sql-list"), "test-tag-6"), start_date, end_date
+    )
+    assert len(data) == 5
     assert data["ts"][0].as_py() == start_date
     assert data["value"][0].as_py() == 1.0
-    assert data["ts"][6].as_py() == datetime.fromisoformat("2020-07-01T00:00:00+00:00")
-    assert data["value"][6].as_py() == 1.0
+    assert data["ts"][4].as_py() == datetime.fromisoformat("2020-05-01T00:00:00+00:00")
+    assert data["value"][4].as_py() == 1.0

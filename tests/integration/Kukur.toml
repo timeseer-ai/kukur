@@ -1,5 +1,0 @@
-[flight]
-authentication = false
-
-[[include]]
-glob = "tests/test_data/csv/*.toml"

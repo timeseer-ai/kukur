@@ -1,0 +1,53 @@
+[source.sql]
+type = "odbc"
+connection_string_path = "tests/test_data/odbc/connection.txt"
+list_query_path = "tests/test_data/odbc/list.sql"
+metadata_query_path = "tests/test_data/odbc/metadata.sql"
+metadata_columns = ["description", "unit", "interpolation type", "data type", "dictionary name"]
+dictionary_query_path = "tests/test_data/odbc/dictionary.sql"
+data_query_path = "tests/test_data/odbc/data.sql"
+
+[source.sql-local]
+type = "odbc"
+connection_string_path = "tests/test_data/odbc/connection-local.txt"
+list_query_path = "tests/test_data/odbc/list.sql"
+metadata_query_path = "tests/test_data/odbc/metadata.sql"
+metadata_columns = ["description", "unit", "interpolation type", "data type", "dictionary name"]
+dictionary_query_path = "tests/test_data/odbc/dictionary.sql"
+data_query_path = "tests/test_data/odbc/data.sql"
+
+[source.sql-linux]
+type = "odbc"
+connection_string_path = "tests/test_data/odbc/connection-linux.txt"
+list_query_path = "tests/test_data/odbc/list.sql"
+metadata_query_path = "tests/test_data/odbc/metadata.sql"
+metadata_columns = ["description", "unit", "interpolation type", "data type", "dictionary name"]
+dictionary_query_path = "tests/test_data/odbc/dictionary.sql"
+data_query_path = "tests/test_data/odbc/data.sql"
+
+[source.sql-list]
+type = "odbc"
+connection_string_path = "tests/test_data/odbc/connection.txt"
+list_query_path = "tests/test_data/odbc/list-metadata.sql"
+list_columns = ["series name", "description", "unit", "interpolation type", "data type", "dictionary name"]
+dictionary_query_path = "tests/test_data/odbc/dictionary.sql"
+data_query_path = "tests/test_data/odbc/data.sql"
+data_timezone = "UTC"
+
+[source.sql-list-local]
+type = "odbc"
+connection_string_path = "tests/test_data/odbc/connection-local.txt"
+list_query_path = "tests/test_data/odbc/list-metadata.sql"
+list_columns = ["series name", "description", "unit", "interpolation type", "data type", "dictionary name"]
+dictionary_query_path = "tests/test_data/odbc/dictionary.sql"
+data_query_path = "tests/test_data/odbc/data.sql"
+data_timezone = "UTC"
+
+[source.sql-list-linux]
+type = "odbc"
+connection_string_path = "tests/test_data/odbc/connection-linux.txt"
+list_query_path = "tests/test_data/odbc/list-metadata.sql"
+list_columns = ["series name", "description", "unit", "interpolation type", "data type", "dictionary name"]
+dictionary_query_path = "tests/test_data/odbc/dictionary.sql"
+data_query_path = "tests/test_data/odbc/data.sql"
+data_timezone = "UTC"

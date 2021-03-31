@@ -1,0 +1,1 @@
+Driver={/usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so};Server=sql_server;Port=1433;Database=TestData;UID=sa;PWD=Timeseer!AI;TDS_Version=8.0;ClientCharset=UTF-8
