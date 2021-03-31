@@ -71,4 +71,4 @@ jobs:
       run: docker push timeseer/kukur:${KUKUR_VERSION}
 
     - name: Push latest docker image
-      run: docker push timeseer/kukur:${KUKUR_VERSION}
+      run: docker push timeseer/kukur:latest
