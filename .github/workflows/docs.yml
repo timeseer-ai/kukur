@@ -1,6 +1,10 @@
 name: Create documentation
 on:
   push:
+    branches:
+      - '**'
+    tags-ignore:
+      - '**'
     paths:
       - 'docs/**'
 
