@@ -17,6 +17,15 @@ services:
       timeout: 5s
       retries: 18
       start_period: 10s
+  influxdb:
+    image: influxdb:1.8
+    ports:
+      - "8086:8086"
+    volumes:
+      - influx-data:/var/lib/influxdb
+      - ./influxdb/NOAA_data.txt.gz:/NOAA_data.txt.gz
+      - ./influxdb/import-data.sh:/docker-entrypoint-initdb.d/import-data.sh
 
 volumes:
     database-data:
+    influx-data:
