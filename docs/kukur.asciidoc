@@ -105,7 +105,8 @@ outside-temperature,2020-01-02T02:00:00Z,3
 The next step is to configure a Kukur data source that exposes this CSV to any client.
 
 Kukur uses https://toml.io/[TOML] as its configuration language.
-Create `Kukur.toml` and define a source called 'example' that exposes the `data/example.csv` CSV:
+Create `Kukur.toml` in the root folder of your project.
+Define a source called 'example' that exposes the `data/example.csv` CSV:
 
 Kukur.toml
 [source,toml]
@@ -180,7 +181,7 @@ Request the metadata using the CLI:
 [source,bash]
 ----
 (venv) $ python -m kukur.cli test metadata \
-    --source example
+    --source example \
     --name outside-temperature
 2021-03-29 11:41:48,936 INFO kukur.source.test MainThread : Requesting metadata for "outside-temperature (example)"
 series name,description,unit,lower limit,upper limit,accuracy,interpolation type,data type,dictionary name,dictionary,process type
@@ -235,7 +236,8 @@ pyarrow._flight.FlightUnauthenticatedError: gRPC returned unauthenticated error,
 Kukur is secure by default and does not allow unauthenticated access.
 Since we're running Kukur locally, it's OK to enable anonymous access.
 
-Stop Kukur and update the configuration to:
+First stop Kukur.
+Then add a `[flight]` section to the configuration in `Kukur.toml`:
 
 Kukur.toml
 [source,toml]
@@ -271,7 +273,11 @@ Finally, read the data:
 [source,python]
 ----
 >>> from datetime import datetime
->>> client.get_data(SeriesSelector('example', 'outside-temperature'), datetime.fromisoformat('2020-01-01T00:00:00+00:00'), datetime.fromisoformat('2021-01-01T00:00:00+00:00'))
+>>> client.get_data(
+        SeriesSelector('example', 'outside-temperature'),
+        datetime.fromisoformat('2020-01-01T00:00:00+00:00'),
+        datetime.fromisoformat('2021-01-01T00:00:00+00:00'),
+    )
 pyarrow.Table
 ts: timestamp[us, tz=utc]
 value: int64
