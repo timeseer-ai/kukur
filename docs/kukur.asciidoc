@@ -329,6 +329,66 @@ $ git commit -v
 This repository can now be shared with other people,
 effortlessly granting them access to the same data sources.
 
+=== Using Docker
+
+In a data project that does not use Python,
+the https://hub.docker.com/r/timeseer/kukur[Kukur Docker container] can be used to export data as CSV for any supported source.
+
+[source,bash]
+----
+$ docker run --rm \
+    -u $(id -u) \
+    -v $(pwd)/Kukur.toml:/usr/src/app/Kukur.toml \
+    -v $(pwd)/data:/usr/src/app/data \
+    -it timeseer/kukur:latest python -m kukur.cli test data \
+        --source example \
+        --name outside-temperature \
+        --start 2020-01-01 \
+        --end 2021-01-01
+----
+
+`-u $(id -u)`::
+Run Kukur using your user.
+This ensures that permissions for volume mounts are correct,
+since Kukur does not run as root inside the container.
+`-v $(pwd)/Kukur.toml:/usr/src/app/Kukur.toml`::
+This mounts the Kukur configuration file `Kukur.toml` to the expected location inside the container.
+By using the `--config-file` command line flag, a different location can be chosen.
+`-v $(pwd)/data:/usr/src/app/data`::
+This mounts the CSV example data on the location that is specified in the configuration.
+Not required when connecting to data sources that are not file-based.
+
+The Arrow Flight interface is made available on port 8081 when running Kukur as a service.
+Use port mapping to expose it on localhost (`-p 8081:8081`).
+
+For example:
+
+[source,bash]
+----
+$ docker run --rm \
+    -u $(id -u) \
+    -v $(pwd)/Kukur.toml:/usr/src/app/Kukur.toml \
+    -v $(pwd)/data:/usr/src/app/data \
+    -p 8081:8081 \
+    -it timeseer/kukur:latest
+----
+
+Then, access it using the Kukur client:
+
+[source,bash]
+----
+(venv) $ python
+Python 3.9.2 (default, Feb 20 2021, 18:40:11)
+[GCC 10.2.0] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+>>> from kukur import *
+>>> client = Client()
+>>> client.get_metadata(SeriesSelector('example', 'outside-temperature'))
+Metadata(series=SeriesSelector(source='example', name='outside-temperature'), description='', unit='', limit_low=None, limit_high=None, accuracy=None, interpolation_type=None, data_type=None, dictionary_name=None, dictionary=None, process_type=None)
+----
+
+NOTE: when using API keys, use the `data_dir` configuration option to store them in another volume mounted location.
+
 == Development
 
 Kukur is developed on GitHub.
