@@ -527,6 +527,90 @@ Return metadata for the selected time series.
 `get_data(SeriesSelector, Datetime, Datetime) -> pyarrow.Table`::
 Return data for the selected time series in the given time period.
 
+== Configuration Reference
+
+Kukur is configured by editing a configuration file in the https://toml.io/[TOML] language.
+
+The default location of this configuration file is `Kukur.toml`.
+Alternative paths can be configured using the `--config-file` flag.
+
+=== Data Storage
+
+Kukur needs local data storage for API keys.
+
+The path to the local data storage of Kukur is configured by:
+
+[source,toml]
+----
+data_dir = "<path to data directory>"
+----
+
+`data_dir` is not required.
+By default, data is stored in the current working directory.
+
+=== Includes
+
+Other configuration files can be included from the main configuration file by using `[[include]]`.
+Multiple includes can be specified by using an array of tables:
+
+[source,toml]
+----
+[[include]]
+glob = "<file glob>"
+----
+
+The `glob` key is required.
+
+Paths in includes files are resolved relative to the application working directory.
+They are not relative to the included configuration file.
+
+Conflicts between configuration values are handled depending on the value type:
+
+- `string`: the last included field overrides earlier values
+- `list`: the items in the list are appended to the earlier list
+- `mapping`: the earlier mapping is updated with the new mapping, overriding existing keys
+
+Note that the main configuration file is processed before any includes.
+This means it is not possible to override configuration set by an include from the main configuration file.
+
+Example:
+
+[source,toml]
+----
+[[include]]
+glob = "tests/test_data/*/*.toml"
+----
+
+This will include all TOML files in a direct subdirectory of `tests/test_data/`.
+
+For example, `tests/test_data/csv/csv-examples.toml` could contain:
+
+[source,toml]
+----
+[source.row]
+type = "csv"
+path = "examples/csv/row.csv"
+metadata = "examples/csv/row-metadata.csv"
+----
+
+=== Arrow Flight
+
+A `[flight]` section configures the Arrow Flight interface.
+
+[source,toml]
+----
+[flight]
+host = "0.0.0.0"
+port = 8081
+authentication = true
+----
+
+Kukur listens on port `8081` of all IP addresses by default.
+
+Authentication can be turned off for local instances or when provided by external services
+by setting `authentication` to `false`.
+When authentication is turned on, an API key has to be supplied by callers.
+
 == Sources
 
 include::./source/sources.asciidoc[leveloffset=+1]
