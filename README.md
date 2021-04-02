@@ -1,8 +1,6 @@
 # Kukur
 
-
 Kukur makes time series data and metadata available to the [Apache Arrow](https://arrow.apache.org/) ecosystem.
-
 
 ---
 **WARNING**
@@ -18,6 +16,12 @@ While `< 1.0.0`, changes to the minor version indicate breaking changes.
 ## Usage
 
 Kukur can be used as a Python library or as a standalone application that exposes an Arrow Flight interface.
+
+A [Kukur Docker container](https://hub.docker.com/r/timeseer/kukur) is published to Docker Hub:
+
+```bash
+$ docker pull timeseer/kukur
+```
 
 ## Supported Sources
 
