@@ -37,6 +37,39 @@ Multiple types of time series sources are supported:
 
 Check the [documentation](https://kukur.timeseer.ai) for more info
 
+## Contributing
+
+Kukur welcomes contributions.
+For small fixes, just open a pull request on GitHub.
+Please discuss major changes in a GitHub issue first.
+
+Each file in Kukur requires an [SPDX](https://spdx.dev/) License Identifier and Copyright Text:
+
+```python
+# SPDX-FileCopyrightText: 2021 <you/your company>
+# SPDX-License-Identifier: Apache-2.0
+```
+
+Community interactions are governed by the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+## License
+
+Copyright 2021 [Timeseer.AI](https://www.timeseer.ai)
+
+```
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+```
+
 ## Development
 
 Create a virtualenv and install dependencies:
@@ -126,22 +159,4 @@ Stop all containers:
 
 ```bash
 $ docker-compose -f tests/test_data/docker-compose.yml -f tests/test_data/docker-compose.container.yml down
-```
-
-## License
-
-Copyright 2021 [Timeseer.AI](https://www.timeseer.ai)
-
-```
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
 ```
