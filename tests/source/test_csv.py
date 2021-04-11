@@ -74,3 +74,16 @@ def test_row_metadata_dictionary():
     assert metadata.data_type == DataType.DICTIONARY
     assert metadata.dictionary_name == "Active"
     assert isinstance(metadata.dictionary, Dictionary)
+
+
+def test_metadata_mapping(make_series):
+    source = from_config(
+        {
+            "metadata": "tests/test_data/csv/mapping-metadata.csv",
+            "metadata_mapping": "tests/test_data/csv/mapping-mapping.csv",
+        }
+    )
+    metadata = source.get_metadata(make_series())
+    assert metadata.series == SeriesSelector("fake", "test-tag-1")
+    assert metadata.unit == "kg"
+    assert metadata.limit_low == 1
