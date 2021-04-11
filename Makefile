@@ -21,10 +21,11 @@ run-docs: docs ## Run the documentation in a docker container on port 8080
 		kukur-documentation:latest
 
 .PHONY: lint
-lint: format ## Lint the kukur code
+lint: ## Lint the kukur code
 	flake8 kukur/
 	pylint -j 0 --disable=duplicate-code kukur/
 	mypy --ignore-missing-imports kukur/
+	black --check kukur/ tests/
 
 .PHONY: test
 test: ## Run the unit tests
