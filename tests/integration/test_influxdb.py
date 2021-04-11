@@ -2,6 +2,8 @@
 
 They use the client to request data."""
 
+import os
+
 from datetime import datetime
 
 import pytest
@@ -16,8 +18,15 @@ def client() -> Client:
     return kukur_client
 
 
+def suffix_source(source_name: str) -> str:
+    if "KUKUR_INTEGRATION_TARGET" in os.environ:
+        target = os.environ["KUKUR_INTEGRATION_TARGET"]
+        return f"{source_name}-{target}"
+    return source_name  # works in docker container
+
+
 def test_search(client: Client):
-    many_series = list(client.search(SeriesSelector("noaa")))
+    many_series = list(client.search(SeriesSelector(suffix_source("noaa"))))
     assert len(many_series) == 16
     series = [
         series
@@ -30,7 +39,9 @@ def test_search(client: Client):
 
 def test_metadata(client: Client):
     series = client.get_metadata(
-        SeriesSelector("noaa", "h2o_feet,location=coyote_creek::water_level")
+        SeriesSelector(
+            suffix_source("noaa"), "h2o_feet,location=coyote_creek::water_level"
+        )
     )
     assert series.limit_low == 6
     assert series.limit_high == 9
@@ -40,7 +51,9 @@ def test_data(client: Client):
     start_date = datetime.fromisoformat("2019-09-17T00:00:00+00:00")
     end_date = datetime.fromisoformat("2019-09-17T16:24:00+00:00")
     data = client.get_data(
-        SeriesSelector("noaa", "h2o_feet,location=coyote_creek::water_level"),
+        SeriesSelector(
+            suffix_source("noaa"), "h2o_feet,location=coyote_creek::water_level"
+        ),
         start_date,
         end_date,
     )

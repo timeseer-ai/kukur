@@ -4,6 +4,18 @@ database = "NOAA_water_database"
 metadata_sources = ["noaa"]
 host = "influxdb"
 
+[source.noaa-local]
+type = "influxdb"
+database = "NOAA_water_database"
+metadata_sources = ["noaa"]
+host = "localhost"
+
+[source.noaa-linux]
+type = "influxdb"
+database = "NOAA_water_database"
+metadata_sources = ["noaa"]
+host = "localhost"
+
 [metadata.noaa]
 type = "csv"
 metadata = "tests/test_data/influxdb/noaa-metadata.csv"
