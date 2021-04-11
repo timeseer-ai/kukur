@@ -28,6 +28,7 @@ metadata_query_path = "<path to metadata query>"
 metadata_columns = ["<metadata type of column 1>", "<metadata type of column 2"]
 dictionary_query = "<query for dictionary mappings>"
 dictionary_query_path = "<path to the dictionary query>"
+metadata_value_mapping = "<metadata_value_mapping name>"
 data_query = "<query for data of one series in time range>"
 data_query_path = "<path to data query>"
 data_query_datetime_format = "<strftime format>"
@@ -94,6 +95,23 @@ Supported columns are:
 - `dictionary name`
 - `process type` (`CONTINUOUS`, `REGIME`, `BATCH`)
 
+Not all ADODB sources can map metadata field values to the values expected by Kukur.
+Use `metadata_value_mapping` to convert them.
+
+Example:
+
+```toml
+[source.<name>]
+metadata_value_mapping = "adodb_lowercase"
+
+[metadata_value_mapping.adodb_lowercase."data type"]
+FLOAT64 = "float64"
+STRING = "string"
+DICTIONARY = "dictionary"
+```
+
+This example converts lowercase data types to the uppercase strings expected by Kukur.
+
 === Metadata
 
 The `metadata_query` is a query that accepts one parameter: the name of the series.
@@ -122,6 +140,22 @@ Supported types of metadata are:
 - `process type` (`CONTINUOUS`, `REGIME`, `BATCH`)
 
 The metadata query can be read from a file by using `metadata_query_path` instead of `metadata_query`.
+
+Metadata values can be converted using `metadata_value_mapping`.
+
+Example:
+
+```toml
+[source.<name>]
+metadata_value_mapping = "adodb_lowercase"
+
+[metadata_value_mapping.adodb_lowercase."data type"]
+FLOAT64 = "float64"
+STRING = "string"
+DICTIONARY = "dictionary"
+```
+
+This example converts lowercase data types to the uppercase strings expected by Kukur.
 
 === Dictionary
 
