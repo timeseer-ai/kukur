@@ -8,8 +8,8 @@ dictionary_dir = "tests/test_data/csv/dictionary"
 type = "csv"
 path = "tests/test_data/csv/mapping.csv"
 metadata = "tests/test_data/csv/mapping-metadata.csv"
-metadata_mapping = "tests/test_data/csv/mapping-mapping.csv"
-metadata_value_mapping = "tests/test_data/csv/mapping-value-mapping.csv"
+metadata_mapping = "ip21"
+metadata_value_mapping = "lowercase_example"
 
 [source.pivot]
 type = "csv"
@@ -22,3 +22,12 @@ type = "csv"
 path = "tests/test_data/csv/dir"
 metadata = "tests/test_data/csv/dir-metadata.csv"
 format = "dir"
+
+[metadata_mapping.ip21]
+"series name" = "NAME"
+description = "IP_DESCRIPTION"
+unit = "IP_ENG_UNITS"
+
+[metadata_value_mapping.lowercase_example."interpolation type"]
+LINEAR = "linear"
+STEPPED = "stepped"

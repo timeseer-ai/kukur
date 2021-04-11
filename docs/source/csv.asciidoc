@@ -10,7 +10,8 @@ Sources with `type = "csv"` configure CSV sources.
 type = "csv"
 data = "<path>"
 metadata = "<path>"
-metadata_mapping = "<path>"
+metadata_mapping = "<name>"
+metadata_value_mapping ="<name>"
 format = "row|pivot|dir"
 dictionary_dir = "<path>"
 ```
@@ -94,6 +95,7 @@ Supported types of metadata are:
 - `process type` (`CONTINUOUS`, `REGIME`, `BATCH`)
 
 Not all columns need to be present.
+Extra columns will be ignored.
 
 Example:
 
@@ -113,13 +115,56 @@ Example:
 1,ON
 ```
 
-A metadata mapping is optional.
-It maps columns in the CSV to the supported types of metadata.
+Columns in a metadata CSV often do not match the names of metadata fields in Kukur.
+An optional `metadata_mapping` maps Kukur field names to column names.
 
 Example:
 
-```csv
-series name,NAME
-description,IP_DESCRIPTION
-unit,IP_ENG_UNITS
+```toml
+[source.<name>]
+metadata_mapping = "ip21"
+
+[metadata_mapping.ip21]
+"series name" = "NAME"
+description = "IP_DESCRIPTION"
+unit = "IP_ENG_UNITS"
 ```
+
+Where the metadata CSV contains:
+
+```csv
+NAME,IP_ENG_UNITS,lower limit
+test-tag-1,kg,1
+```
+
+Fields that are not included in the mapping,
+such as `lower limit` in the example,
+translate to the corresponding metadata field or are skipped altogether.
+
+Metadata mappings can be shared between sources.
+
+Values in a metadata CSV can also be different.
+The optional `metadata_value_mapping` maps Kukur metadata field values to values as they appear in a source.
+
+Example:
+
+```toml
+[source.<name>]
+metadata_field_mapping = "lowercase_interpolation"
+
+[metadata_value_mapping.lowercase_interpolation."interpolation type"]
+LINEAR = "linear"
+STEPPED = "stepped"
+```
+
+In this example,
+when the `interpolation type` column contains the value `linear`,
+Kukur will interpret it as the expected uppercase `LINEAR`.
+
+```csv
+series name,interpolation type
+test-tag-1,linear
+```
+
+`metadata_mapping` and `metadata_field_mapping` can be used together
+to map wildly different metadata formats to a CSV supported by Kukur.

@@ -6,9 +6,10 @@ Three formats are supported:
 - directory based, with one file per series
 - pivot, with many series as columns in one file
 """
+
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
-#
 # SPDX-License-Identifier: Apache-2.0
+
 import csv
 
 from dataclasses import dataclass
@@ -23,6 +24,7 @@ from kukur import Dictionary, Metadata, SeriesSelector
 
 from kukur.loader import Loader, from_config as loader_from_config
 from kukur.exceptions import InvalidDataError, InvalidSourceException
+from kukur.source.metadata import MetadataMapper, MetadataValueMapper
 
 
 class InvalidMetadataError(Exception):
@@ -32,37 +34,21 @@ class InvalidMetadataError(Exception):
         Exception.__init__(self, f"invalid metadata: {message}")
 
 
-class InvalidMetadataMappingError(Exception):
-    """Raised when the metadata mapping is invalid."""
-
-    def __init__(self, message: str):
-        Exception.__init__(self, f"invalid metadata mapping: {message}")
-
-
-class InvalidMetadataValueMappingError(Exception):
-    """Raised when the metadata field mapping is invalid."""
-
-    def __init__(self, message: str):
-        Exception.__init__(self, f"invalid metadata value mapping: {message}")
-
-
-def from_config(config: Dict[str, str]):
+def from_config(
+    config: Dict[str, str],
+    metadata_mapper: MetadataMapper,
+    metadata_value_mapper: MetadataValueMapper,
+):
     """Create a new CSV data source from the given configuration dictionary."""
     loaders = CSVLoaders()
     if "path" in config:
         loaders.data = loader_from_config(config, "path", files_as_path=True)
     if "metadata" in config:
         loaders.metadata = loader_from_config(config, "metadata", "r")
-    if "metadata_mapping" in config:
-        loaders.metadata_mapping = loader_from_config(config, "metadata_mapping", "r")
-    if "metadata_value_mapping" in config:
-        loaders.metadata_value_mapping = loader_from_config(
-            config, "metadata_value_mapping", "r"
-        )
     if "dictionary_dir" in config:
         loaders.dictionary = loader_from_config(config, "dictionary_dir", "r")
     data_format = config.get("format", "row")
-    return CSVSource(data_format, loaders)
+    return CSVSource(data_format, loaders, metadata_mapper, metadata_value_mapper)
 
 
 @dataclass
@@ -71,32 +57,7 @@ class CSVLoaders:
 
     data: Optional[Loader] = None
     metadata: Optional[Loader] = None
-    metadata_mapping: Optional[Loader] = None
-    metadata_value_mapping: Optional[Loader] = None
     dictionary: Optional[Loader] = None
-
-
-class MetadataValueMapper:
-    """MetadataFieldMapper maps values for a metadata field to values known by Kukur."""
-
-    __mapping: Dict[str, Dict[str, str]]
-
-    def __init__(self):
-        self.__mapping = {}
-
-    def add_mapping(
-        self, field_name: str, kukur_field_value: str, other_field_value: str
-    ):
-        """Add a mapping for a metadata field value known to kukur to a foreign value."""
-        if field_name not in self.__mapping:
-            self.__mapping[field_name] = {}
-        self.__mapping[field_name][other_field_value] = kukur_field_value
-
-    def map_value(self, field_name: str, other_field_value: str):
-        """Map a field value as it's known in an external source to one known by Kukur."""
-        if field_name not in self.__mapping:
-            return other_field_value
-        return self.__mapping[field_name].get(other_field_value, other_field_value)
 
 
 class CSVSource:
@@ -104,31 +65,33 @@ class CSVSource:
 
     __loaders: CSVLoaders
     __data_format: str
+    __metadata_mapper: MetadataMapper
+    __metadata_value_mapper: MetadataValueMapper
 
     def __init__(
         self,
         data_format: str,
         loaders: CSVLoaders,
+        metadata_mapper: MetadataMapper,
+        metadata_value_mapper: MetadataValueMapper,
     ):
         """Create a new CSV data source."""
         self.__loaders = loaders
         self.__data_format = data_format
+        self.__metadata_mapper = metadata_mapper
+        self.__metadata_value_mapper = metadata_value_mapper
 
     def search(self, selector: SeriesSelector) -> Generator[Metadata, None, None]:
         """Search for series matching the given selector."""
         if self.__loaders.metadata is None:
             return
 
-        dummy_metadata = Metadata(selector)
-        mapping = self.__get_metadata_mapping(dummy_metadata)
-        value_mapping = self.__get_metadata_value_mapping()
-
         with self.__loaders.metadata.open() as metadata_file:
             reader = csv.DictReader(metadata_file)
             for row in reader:
-                if mapping["series name"] not in row:
+                if self.__metadata_mapper.from_kukur("series name") not in row:
                     raise InvalidMetadataError('column "series name" not found')
-                series_name = row[mapping["series name"]]
+                series_name = row[self.__metadata_mapper.from_kukur("series name")]
                 metadata = None
                 if selector.name is not None:
                     if series_name == selector.name:
@@ -140,11 +103,14 @@ class CSVSource:
 
                 if metadata is not None:
                     for field, _ in metadata:
-                        if mapping[field] in row:
+                        if self.__metadata_mapper.from_kukur(field) in row:
                             try:
-                                value = row[mapping[field]]
+                                value = row[self.__metadata_mapper.from_kukur(field)]
                                 metadata.set_field(
-                                    field, value_mapping.map_value(field, value)
+                                    field,
+                                    self.__metadata_value_mapper.from_source(
+                                        field, value
+                                    ),
                                 )
                             except ValueError:
                                 pass
@@ -160,22 +126,23 @@ class CSVSource:
         if self.__loaders.metadata is None:
             return metadata
 
-        mapping = self.__get_metadata_mapping(metadata)
-        value_mapping = self.__get_metadata_value_mapping()
-
         with self.__loaders.metadata.open() as metadata_file:
             reader = csv.DictReader(metadata_file)
             for row in reader:
-                if mapping["series name"] not in row:
+                if self.__metadata_mapper.from_kukur("series name") not in row:
                     raise InvalidMetadataError('column "series name" not found')
-                if row[mapping["series name"]] != selector.name:
+                if (
+                    row[self.__metadata_mapper.from_kukur("series name")]
+                    != selector.name
+                ):
                     continue
                 for field, _ in metadata:
-                    if mapping[field] in row:
+                    if self.__metadata_mapper.from_kukur(field) in row:
                         try:
-                            value = row[mapping[field]]
+                            value = row[self.__metadata_mapper.from_kukur(field)]
                             metadata.set_field(
-                                field, value_mapping.map_value(field, value)
+                                field,
+                                self.__metadata_value_mapper.from_source(field, value),
                             )
                         except ValueError:
                             pass
@@ -218,38 +185,6 @@ class CSVSource:
             return _read_directory_data(self.__loaders.data, selector)
 
         return _read_row_data(self.__loaders.data, selector)
-
-    def __get_metadata_mapping(self, metadata: Metadata) -> Dict[str, str]:
-        mapping = {k: k for k, _ in metadata}
-        mapping["series name"] = "series name"
-
-        if self.__loaders.metadata_mapping is None:
-            return mapping
-
-        with self.__loaders.metadata_mapping.open() as mapping_file:
-            reader = csv.reader(mapping_file)
-            for row in reader:
-                if len(row) != 2:
-                    raise InvalidMetadataMappingError("row length is not 2")
-                if row[0] in mapping:
-                    mapping[row[0]] = row[1]
-
-        return mapping
-
-    def __get_metadata_value_mapping(self) -> MetadataValueMapper:
-        mapper = MetadataValueMapper()
-
-        if self.__loaders.metadata_value_mapping is None:
-            return mapper
-
-        with self.__loaders.metadata_value_mapping.open() as mapping_file:
-            reader = csv.reader(mapping_file)
-            for row in reader:
-                if len(row) != 3:
-                    raise InvalidMetadataValueMappingError("row length is not 3")
-                mapper.add_mapping(row[0], row[1], row[2])
-
-        return mapper
 
 
 def _read_pivot_data(loader: Loader, selector: SeriesSelector) -> pa.Table:
