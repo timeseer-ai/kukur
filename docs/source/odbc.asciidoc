@@ -14,6 +14,7 @@ Inline configuration takes precedence over file-based configuration when both ar
 type = "odbc"
 connection_string = "<ODBC connection_string>"
 connection_string_path = "<path to connection string>"
+query_string_parameters = false
 list_query = "<query to list all time series in a source>"
 list_query_path = "<path to list_query>"
 list_columns = ["<metadata type of column 1>", "<metadata type of column 2"]
@@ -66,6 +67,14 @@ connection_string = "Driver={/usr/lib/libtdsodbc.so};Server=localhost;Port=1433;
 
 Alternatively, `connection_string_path` can point to a file that contains the connection string.
 Whitespace at the start and end of the connection string file is removed.
+
+Some ODBC drivers do not support parameter binding.
+Set `query_string_parameters` to `true`,
+to use string interpolation of parameters in queries.
+
+In that case use `{}` to format parameters into queries.
+In queries with multiple parameters, the order can be changed by using the argument position: `{1} {2} {0}`.
+Use a read-only connection with a minimal amount of privileges as https://owasp.org/www-community/attacks/SQL_Injection[SQL Injection] are possible in that case and cannot be prevented by Kukur.
 
 === Search
 

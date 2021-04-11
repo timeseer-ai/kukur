@@ -26,6 +26,7 @@ class SQLConfig:  # pylint: disable=too-many-instance-attributes
     """Configuration settings for a SQL connection."""
 
     connection_string: str
+    query_string_parameters: bool = False
     list_query: Optional[str] = None
     list_columns: List[str] = field(default_factory=list)
     metadata_query: Optional[str] = None
@@ -66,6 +67,7 @@ class SQLConfig:  # pylint: disable=too-many-instance-attributes
                 config.data_query = f.read()
 
         config.data_query_datetime_format = data.get("data_query_datetime_format")
+        config.query_string_parameters = data.get("query_string_parameters", False)
         if "data_timezone" in data:
             config.data_timezone = dateutil.tz.gettz(data.get("data_timezone"))
 
@@ -103,7 +105,13 @@ class BaseSQLSource(ABC):
             return metadata
         connection = self.connect()
         cursor = connection.cursor()
-        cursor.execute(self._config.metadata_query, [selector.name])
+
+        query = self._config.metadata_query
+        params = [selector.name]
+        if self._config.query_string_parameters:
+            query = query.format(*params)
+            params = []
+        cursor.execute(query, params)
         row = cursor.fetchone()
         if row:
             for i, name in enumerate(self._config.metadata_columns):
@@ -123,14 +131,19 @@ class BaseSQLSource(ABC):
             return pa.Table.from_pydict({"ts": [], "value": []})
         connection = self.connect()
         cursor = connection.cursor()
-        cursor.execute(
-            self._config.data_query,
-            [
-                selector.name,
-                self.__format_date(start_date),
-                self.__format_date(end_date),
-            ],
-        )
+
+        query = self._config.data_query
+        params = [
+            selector.name,
+            self.__format_date(start_date),
+            self.__format_date(end_date),
+        ]
+        if self._config.query_string_parameters:
+            query = query.format(*params)
+            params = []
+
+        cursor.execute(query, params)
+
         timestamps = []
         values = []
         for row in cursor:
@@ -189,7 +202,13 @@ class BaseSQLSource(ABC):
         if self._config.dictionary_query is None:
             return None
         mapping: Dict[int, str] = {}
-        cursor.execute(self._config.dictionary_query, [dictionary_name])
+
+        query = self._config.dictionary_query
+        params = [dictionary_name]
+        if self._config.query_string_parameters:
+            query = query.format(*params)
+            params = []
+        cursor.execute(query, params)
         for row in cursor.fetchall():
             mapping[int(row[0])] = row[1]
         if len(mapping) == 0:
