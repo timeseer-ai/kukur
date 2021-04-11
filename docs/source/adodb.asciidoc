@@ -106,7 +106,7 @@ metadata_value_mapping = "adodb_lowercase"
 
 [metadata_value_mapping.adodb_lowercase."data type"]
 FLOAT64 = "float64"
-STRING = "string"
+STRING = ["string", "text", "varchar"]
 DICTIONARY = "dictionary"
 ```
 
@@ -151,7 +151,7 @@ metadata_value_mapping = "adodb_lowercase"
 
 [metadata_value_mapping.adodb_lowercase."data type"]
 FLOAT64 = "float64"
-STRING = "string"
+STRING = ["string", "text", "varchar"]
 DICTIONARY = "dictionary"
 ```
 

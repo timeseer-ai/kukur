@@ -1,6 +1,6 @@
 """Metadata mappings for Kukur data sources."""
 
-from typing import Dict
+from typing import Dict, List, Union
 
 
 class MetadataMapper:
@@ -39,14 +39,20 @@ class MetadataValueMapper:
         self.__mapping = {}
 
     @classmethod
-    def from_config(cls, config: Dict[str, Dict[str, str]]) -> "MetadataValueMapper":
+    def from_config(
+        cls, config: Dict[str, Dict[str, Union[str, List[str]]]]
+    ) -> "MetadataValueMapper":
         """Create a new mapper from a double dictionary
 
         The double dictionary maps kukur field names and kukur field values to external values."""
         mapper = cls()
         for field_name, field_mapping in config.items():
             for field_value, external_field_value in field_mapping.items():
-                mapper.add_mapping(field_name, field_value, external_field_value)
+                if isinstance(external_field_value, str):
+                    mapper.add_mapping(field_name, field_value, external_field_value)
+                else:
+                    for choice in external_field_value:
+                        mapper.add_mapping(field_name, field_value, choice)
         return mapper
 
     def add_mapping(

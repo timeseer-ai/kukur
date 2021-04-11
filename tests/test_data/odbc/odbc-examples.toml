@@ -99,5 +99,5 @@ data_timezone = "UTC"
 
 [metadata_value_mapping.odbc_lowercase."data type"]
 FLOAT64 = "float64"
-STRING = "string"
+STRING = ["string", "text", "varchar"]
 DICTIONARY = "dictionary"

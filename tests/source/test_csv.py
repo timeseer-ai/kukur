@@ -78,3 +78,10 @@ def test_metadata_mapping():
     assert metadata.unit == "kg"
     assert metadata.limit_low == 1
     assert metadata.interpolation_type == InterpolationType.LINEAR
+
+
+def test_metadata_mapping_multiple():
+    metadata = get_source("mapping").get_metadata(make_series("mapping", "test-tag-1"))
+    assert metadata.data_type == DataType.FLOAT64
+    metadata = get_source("mapping").get_metadata(make_series("mapping", "test-tag-4"))
+    assert metadata.data_type == DataType.FLOAT64

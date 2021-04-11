@@ -150,20 +150,25 @@ Example:
 
 ```toml
 [source.<name>]
-metadata_field_mapping = "lowercase_interpolation"
+metadata_field_mapping = "example_value_mapping"
 
-[metadata_value_mapping.lowercase_interpolation."interpolation type"]
+[metadata_value_mapping.example_value_mapping."interpolation type"]
 LINEAR = "linear"
 STEPPED = "stepped"
+
+[metadata_value_mapping.example_value_mapping."data type"]
+FLOAT64 = ["int16", "int32"]
 ```
 
 In this example,
 when the `interpolation type` column contains the value `linear`,
 Kukur will interpret it as the expected uppercase `LINEAR`.
+When the `data type` column contains either `int16` or `int32`,
+Kukur will interpret it as `FLOAT64`.
 
 ```csv
-series name,interpolation type
-test-tag-1,linear
+series name,interpolation type,data type
+test-tag-1,linear,int32
 ```
 
 `metadata_mapping` and `metadata_field_mapping` can be used together
