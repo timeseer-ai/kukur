@@ -7,7 +7,7 @@ import pytest
 
 from dateutil.parser import parse as parse_date
 
-from kukur import SeriesSelector, DataType, Dictionary
+from kukur import SeriesSelector, DataType, Dictionary, InterpolationType
 from kukur.source.csv import from_config
 
 
@@ -81,9 +81,11 @@ def test_metadata_mapping(make_series):
         {
             "metadata": "tests/test_data/csv/mapping-metadata.csv",
             "metadata_mapping": "tests/test_data/csv/mapping-mapping.csv",
+            "metadata_value_mapping": "tests/test_data/csv/mapping-value-mapping.csv",
         }
     )
     metadata = source.get_metadata(make_series())
     assert metadata.series == SeriesSelector("fake", "test-tag-1")
     assert metadata.unit == "kg"
     assert metadata.limit_low == 1
+    assert metadata.interpolation_type == InterpolationType.LINEAR

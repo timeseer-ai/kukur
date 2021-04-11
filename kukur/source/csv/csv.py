@@ -39,6 +39,13 @@ class InvalidMetadataMappingError(Exception):
         Exception.__init__(self, f"invalid metadata mapping: {message}")
 
 
+class InvalidMetadataValueMappingError(Exception):
+    """Raised when the metadata field mapping is invalid."""
+
+    def __init__(self, message: str):
+        Exception.__init__(self, f"invalid metadata value mapping: {message}")
+
+
 def from_config(config: Dict[str, str]):
     """Create a new CSV data source from the given configuration dictionary."""
     loaders = CSVLoaders()
@@ -48,6 +55,10 @@ def from_config(config: Dict[str, str]):
         loaders.metadata = loader_from_config(config, "metadata", "r")
     if "metadata_mapping" in config:
         loaders.metadata_mapping = loader_from_config(config, "metadata_mapping", "r")
+    if "metadata_value_mapping" in config:
+        loaders.metadata_value_mapping = loader_from_config(
+            config, "metadata_value_mapping", "r"
+        )
     if "dictionary_dir" in config:
         loaders.dictionary = loader_from_config(config, "dictionary_dir", "r")
     data_format = config.get("format", "row")
@@ -61,7 +72,31 @@ class CSVLoaders:
     data: Optional[Loader] = None
     metadata: Optional[Loader] = None
     metadata_mapping: Optional[Loader] = None
+    metadata_value_mapping: Optional[Loader] = None
     dictionary: Optional[Loader] = None
+
+
+class MetadataValueMapper:
+    """MetadataFieldMapper maps values for a metadata field to values known by Kukur."""
+
+    __mapping: Dict[str, Dict[str, str]]
+
+    def __init__(self):
+        self.__mapping = {}
+
+    def add_mapping(
+        self, field_name: str, kukur_field_value: str, other_field_value: str
+    ):
+        """Add a mapping for a metadata field value known to kukur to a foreign value."""
+        if field_name not in self.__mapping:
+            self.__mapping[field_name] = {}
+        self.__mapping[field_name][other_field_value] = kukur_field_value
+
+    def map_value(self, field_name: str, other_field_value: str):
+        """Map a field value as it's known in an external source to one known by Kukur."""
+        if field_name not in self.__mapping:
+            return other_field_value
+        return self.__mapping[field_name].get(other_field_value, other_field_value)
 
 
 class CSVSource:
@@ -86,6 +121,7 @@ class CSVSource:
 
         dummy_metadata = Metadata(selector)
         mapping = self.__get_metadata_mapping(dummy_metadata)
+        value_mapping = self.__get_metadata_value_mapping()
 
         with self.__loaders.metadata.open() as metadata_file:
             reader = csv.DictReader(metadata_file)
@@ -106,7 +142,10 @@ class CSVSource:
                     for field, _ in metadata:
                         if mapping[field] in row:
                             try:
-                                metadata.set_field(field, row[mapping[field]])
+                                value = row[mapping[field]]
+                                metadata.set_field(
+                                    field, value_mapping.map_value(field, value)
+                                )
                             except ValueError:
                                 pass
                     if metadata.dictionary_name is not None:
@@ -122,6 +161,7 @@ class CSVSource:
             return metadata
 
         mapping = self.__get_metadata_mapping(metadata)
+        value_mapping = self.__get_metadata_value_mapping()
 
         with self.__loaders.metadata.open() as metadata_file:
             reader = csv.DictReader(metadata_file)
@@ -133,7 +173,10 @@ class CSVSource:
                 for field, _ in metadata:
                     if mapping[field] in row:
                         try:
-                            metadata.set_field(field, row[mapping[field]])
+                            value = row[mapping[field]]
+                            metadata.set_field(
+                                field, value_mapping.map_value(field, value)
+                            )
                         except ValueError:
                             pass
 
@@ -192,6 +235,21 @@ class CSVSource:
                     mapping[row[0]] = row[1]
 
         return mapping
+
+    def __get_metadata_value_mapping(self) -> MetadataValueMapper:
+        mapper = MetadataValueMapper()
+
+        if self.__loaders.metadata_value_mapping is None:
+            return mapper
+
+        with self.__loaders.metadata_value_mapping.open() as mapping_file:
+            reader = csv.reader(mapping_file)
+            for row in reader:
+                if len(row) != 3:
+                    raise InvalidMetadataValueMappingError("row length is not 3")
+                mapper.add_mapping(row[0], row[1], row[2])
+
+        return mapper
 
 
 def _read_pivot_data(loader: Loader, selector: SeriesSelector) -> pa.Table:
