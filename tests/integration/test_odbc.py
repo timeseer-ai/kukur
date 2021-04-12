@@ -66,3 +66,28 @@ def test_data(client: Client, suffix_source):
     assert data["value"][0].as_py() == 1.0
     assert data["ts"][4].as_py() == datetime.fromisoformat("2020-05-01T00:00:00+00:00")
     assert data["value"][4].as_py() == 1.0
+
+
+def test_metadata_string_query(client: Client, suffix_source):
+    dictionary_series = client.get_metadata(
+        SeriesSelector(suffix_source("sql-string"), "test-tag-6")
+    )
+    assert dictionary_series.description == "A dictionary series"
+    assert dictionary_series.dictionary_name == "Active"
+    assert dictionary_series.dictionary is not None
+    assert len(dictionary_series.dictionary.mapping) == 2
+    assert dictionary_series.dictionary.mapping[0] == "OFF"
+    assert dictionary_series.dictionary.mapping[1] == "ON"
+
+
+def test_data_string_query(client: Client, suffix_source):
+    start_date = datetime.fromisoformat("2020-01-01T00:00:00+00:00")
+    end_date = datetime.fromisoformat("2021-01-01T00:00:00+00:00")
+    data = client.get_data(
+        SeriesSelector(suffix_source("sql-string"), "test-tag-6"), start_date, end_date
+    )
+    assert len(data) == 5
+    assert data["ts"][0].as_py() == start_date
+    assert data["value"][0].as_py() == 1.0
+    assert data["ts"][4].as_py() == datetime.fromisoformat("2020-05-01T00:00:00+00:00")
+    assert data["value"][4].as_py() == 1.0
