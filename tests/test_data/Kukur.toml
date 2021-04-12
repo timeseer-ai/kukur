@@ -2,10 +2,4 @@
 authentication = false
 
 [[include]]
-glob = "tests/test_data/csv/*.toml"
-
-[[include]]
-glob = "tests/test_data/odbc/*.toml"
-
-[[include]]
-glob = "tests/test_data/influxdb/*.toml"
+glob = "tests/test_data/*/*.toml"

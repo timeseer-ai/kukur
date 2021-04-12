@@ -12,6 +12,7 @@ import dateutil.parser
 import pyarrow as pa
 
 from kukur import Dictionary, Metadata, SeriesSelector
+from kukur.source.metadata import MetadataValueMapper
 
 
 class InvalidMetadataError(Exception):
@@ -81,9 +82,11 @@ class BaseSQLSource(ABC):
     """
 
     _config: SQLConfig
+    _metadata_value_mapper: MetadataValueMapper
 
-    def __init__(self, config: SQLConfig):
+    def __init__(self, config: SQLConfig, metadata_value_mapper: MetadataValueMapper):
         self._config = config
+        self._metadata_value_mapper = metadata_value_mapper
 
     def search(
         self, selector: SeriesSelector
@@ -116,7 +119,9 @@ class BaseSQLSource(ABC):
         if row:
             for i, name in enumerate(self._config.metadata_columns):
                 if row[i] is not None:
-                    metadata.set_field(name, row[i])
+                    metadata.set_field(
+                        name, self._metadata_value_mapper.from_source(name, row[i])
+                    )
         if metadata.dictionary_name is not None:
             metadata.dictionary = self.__query_dictionary(
                 cursor, metadata.dictionary_name
@@ -191,7 +196,9 @@ class BaseSQLSource(ABC):
                     continue
                 if row[i] is None:
                     continue
-                metadata.set_field(name, row[i])
+                metadata.set_field(
+                    name, self._metadata_value_mapper.from_source(name, row[i])
+                )
             if metadata.dictionary_name is not None and dictionary_cursor is not None:
                 metadata.dictionary = self.__query_dictionary(
                     dictionary_cursor, metadata.dictionary_name

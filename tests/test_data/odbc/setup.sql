@@ -27,9 +27,9 @@ go
 if 0 = (select count(*) from Metadata)
     insert into Metadata (name, description, units, data_type, dictionary_name)
     values
-    ('test-tag-1', 'A test tag', 'm', 'FLOAT64', NULL),
-    ('test-tag-5', 'A string series', '', 'STRING', NULL),
-    ('test-tag-6', 'A dictionary series', '', 'DICTIONARY', 'Active');
+    ('test-tag-1', 'A test tag', 'm', 'float64', NULL),
+    ('test-tag-5', 'A string series', '', 'string', NULL),
+    ('test-tag-6', 'A dictionary series', '', 'dictionary', 'Active');
 go
 if 0 = (select count(*) from Dictionary)
     insert into Dictionary (name, value, label)

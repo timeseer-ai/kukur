@@ -1,5 +1,7 @@
 """Data sources for Kukur."""
 
+import inspect
+
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
@@ -17,9 +19,11 @@ import kukur.source.influxdb as influxdb
 from kukur import Metadata, SeriesSelector, Source as SourceProtocol
 from kukur.exceptions import InvalidSourceException
 
+from .metadata import MetadataMapper, MetadataValueMapper
+
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
-#
 # SPDX-License-Identifier: Apache-2.0
+
 _FACTORY = {
     "adodb": adodb.from_config,
     "csv": csv.from_config,
@@ -178,17 +182,17 @@ class SourceFactory:
                 source_type = options["type"]
                 if source_type not in _FACTORY:
                     raise InvalidSourceException(
-                        f'"{name}" has unknown type "{source_type}"'
+                        f'Source "{name}" has unknown type "{source_type}"'
                     )
-                data_source = _FACTORY[source_type](options)
+                data_source = self._make_source(source_type, options)
                 metadata_source = data_source
                 metadata_source_type = options.get("metadata_type", source_type)
                 if metadata_source_type != source_type:
                     if metadata_source_type not in _FACTORY:
                         raise InvalidSourceException(
-                            f'"{name}" has unknown metadata type "{metadata_source_type}"'
+                            f'"Source {name}" has unknown metadata type "{metadata_source_type}"'
                         )
-                    metadata_source = _FACTORY[metadata_source_type](options)
+                    metadata_source = self._make_source(metadata_source_type, options)
 
                 extra_metadata = []
                 for metadata_source_name in options.get("metadata_sources", []):
@@ -207,13 +211,50 @@ class SourceFactory:
         metadata_sources = {}
         for name, options in self.__config.get("metadata", {}).items():
             if "type" not in options:
-                raise InvalidSourceException(f'Metadata source "{name} has no type.')
+                raise InvalidSourceException(f'Metadata source "{name}" has no type.')
             source_type = options["type"]
             if source_type not in _FACTORY:
                 raise InvalidSourceException(
                     f'Metadata source "{name}" has unknown type "{source_type}"'
                 )
             metadata_sources[name] = MetadataSource(
-                _FACTORY[source_type](options), options.get("fields", [])
+                self._make_source(source_type, options), options.get("fields", [])
             )
         return metadata_sources
+
+    def _make_source(
+        self, source_type: str, source_config: Dict[str, Any]
+    ) -> SourceProtocol:
+        metadata_mapper = self._get_metadata_mapper(
+            source_config.get("metadata_mapping")
+        )
+        metadata_value_mapper = self._get_metadata_value_mapper(
+            source_config.get("metadata_value_mapping")
+        )
+
+        factory_function: Any = _FACTORY[source_type]
+
+        arguments: List[Any] = []
+        for parameter in inspect.signature(factory_function).parameters.values():
+            if parameter.annotation == MetadataMapper:
+                arguments.append(metadata_mapper)
+            elif parameter.annotation == MetadataValueMapper:
+                arguments.append(metadata_value_mapper)
+            else:
+                arguments.append(source_config)
+
+        return factory_function(*arguments)
+
+    def _get_metadata_mapper(self, name: Optional[str]) -> MetadataMapper:
+        if name is None or name not in self.__config.get("metadata_mapping", {}):
+            return MetadataMapper()
+
+        return MetadataMapper.from_config(self.__config["metadata_mapping"][name])
+
+    def _get_metadata_value_mapper(self, name: Optional[str]) -> MetadataValueMapper:
+        if name is None or name not in self.__config.get("metadata_value_mapping", {}):
+            return MetadataValueMapper()
+
+        return MetadataValueMapper.from_config(
+            self.__config["metadata_value_mapping"][name]
+        )

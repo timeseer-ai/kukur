@@ -13,6 +13,7 @@ try:
 except ImportError:
     HAS_ADODB = False
 
+from kukur.source.metadata import MetadataValueMapper
 from kukur.source.sql import BaseSQLSource, SQLConfig
 
 
@@ -25,7 +26,7 @@ class ADODBNotInstalledError(Exception):
         )
 
 
-def from_config(data):
+def from_config(data, metadata_value_mapper: MetadataValueMapper):
     """Create a new ADODB data source from a configuration dict.
 
     Raises ADODBNotInstalledError when the adodbapi module is not available."""
@@ -34,14 +35,14 @@ def from_config(data):
 
     config = SQLConfig.from_dict(data)
 
-    return ADODBSource(config)
+    return ADODBSource(config, metadata_value_mapper)
 
 
 class ADODBSource(BaseSQLSource):
     """An ADODB data source."""
 
-    def __init__(self, config: SQLConfig):
-        super().__init__(config)
+    def __init__(self, config: SQLConfig, metadata_value_mapper: MetadataValueMapper):
+        super().__init__(config, metadata_value_mapper)
         if not HAS_ADODB:
             raise ADODBNotInstalledError()
 
