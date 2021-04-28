@@ -3,6 +3,8 @@
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
+import logging
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, tzinfo
@@ -13,6 +15,8 @@ import pyarrow as pa
 
 from kukur import Dictionary, Metadata, SeriesSelector
 from kukur.source.metadata import MetadataValueMapper
+
+logger = logging.getLogger(__name__)
 
 
 class InvalidMetadataError(Exception):
@@ -93,12 +97,17 @@ class BaseSQLSource(ABC):
     ) -> Generator[Union[SeriesSelector, Metadata], None, None]:
         """Search for time series matching the given selector."""
         if self._config.list_query is None:
+            logger.debug('No list query configured for %s', selector.source)
             return
         if len(self._config.list_columns) == 0:
+            logger.debug('No list columns configured, returning series')
             for result in self.__search_names(selector):
+                logger.debug('Yielding %s', result)
                 yield result
             return
+        logger.debug('List columns configured, returning metadata')
         for metadata in self.__search_metadata(selector):
+            logger.debug('Yielding %s', metadata)
             yield metadata
 
     def get_metadata(self, selector: SeriesSelector) -> Metadata:
@@ -168,10 +177,13 @@ class BaseSQLSource(ABC):
     ) -> Generator[SeriesSelector, None, None]:
         connection = self.connect()
         cursor = connection.cursor()
+        logger.debug('Executing query: %s', self._config.list_query)
         cursor.execute(self._config.list_query)
 
+        logger.debug('Query executed, reading cursor')
         for (series_name,) in cursor:
             yield SeriesSelector(selector.source, series_name)
+        logger.debug('Finished reading cursor')
 
     def __search_metadata(
         self, selector: SeriesSelector
@@ -181,13 +193,17 @@ class BaseSQLSource(ABC):
         if self._config.dictionary_query is not None:
             dictionary_cursor = self.connect().cursor()
 
+        logger.debug('Executing query: %s', self._config.list_query)
         cursor.execute(self._config.list_query)
+
         series_name_index = None
         for i, name in enumerate(self._config.list_columns):
             if name == "series name":
                 series_name_index = i
         if series_name_index is None:
             raise InvalidMetadataError('column "series name" not found')
+
+        logger.debug('Query executed, reading cursor')
         for row in cursor:
             selector = SeriesSelector(selector.source, row[series_name_index])
             metadata = Metadata(selector)
@@ -204,6 +220,7 @@ class BaseSQLSource(ABC):
                     dictionary_cursor, metadata.dictionary_name
                 )
             yield metadata
+        logger.debug('Finished reading cursor')
 
     def __query_dictionary(self, cursor, dictionary_name: str) -> Optional[Dictionary]:
         if self._config.dictionary_query is None:

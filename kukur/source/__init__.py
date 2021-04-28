@@ -1,5 +1,6 @@
 """Data sources for Kukur."""
 
+import logging
 import inspect
 
 from dataclasses import dataclass, field
@@ -23,6 +24,8 @@ from .metadata import MetadataMapper, MetadataValueMapper
 
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
+
+logger = logging.getLogger(__name__)
 
 _FACTORY = {
     "adodb": adodb.from_config,
@@ -86,8 +89,10 @@ class SourceWrapper:
         If metadata sources are configured, query them as well and merge the results. This means that sources that
         are fast to search because they return metadata now also result in one additional query to each metadata
         source for each series."""
+        logger.debug('Searching for series in %s', selector.source)
         results = self.__source.metadata.search(selector)
         if results is None:
+            logger.debug('No results found in %s', selector.source)
             return
         for result in results:
             if (
@@ -95,8 +100,10 @@ class SourceWrapper:
                 or isinstance(result, SeriesSelector)
                 or result.series.name is None
             ):
+                logger.debug('Yielding %s', result)
                 yield result
             else:
+                logger.debug('Searching for metadata for %s', result)
                 extra_metadata = self.get_metadata(
                     SeriesSelector(result.series.source, result.series.name)
                 )

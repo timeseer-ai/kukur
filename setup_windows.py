@@ -1,7 +1,9 @@
 """Create Windows executables and installers for Kukur."""
+
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
-#
 # SPDX-License-Identifier: Apache-2.0
+
+import os
 
 from cx_Freeze import setup, Executable
 
@@ -41,6 +43,8 @@ setup(
             "include_files": [
                 ('windows/Kukur-windows.toml', 'Kukur-example.toml')
             ],
+            "excludes": ["mypy", "tkinter"],
+            "replace_paths": [(os.getcwd(), "")],
         },
         "bdist_msi": bdist_msi_options,
     },

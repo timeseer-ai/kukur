@@ -3,6 +3,8 @@
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
+import logging
+
 try:
     import pyodbc
 
@@ -12,6 +14,8 @@ except ImportError:
 
 from kukur.source.metadata import MetadataValueMapper
 from kukur.source.sql import BaseSQLSource, SQLConfig
+
+logger = logging.getLogger(__name__)
 
 
 class ODBCNotInstalledError(Exception):
@@ -40,4 +44,7 @@ class ODBCSource(BaseSQLSource):
             raise ODBCNotInstalledError()
 
     def connect(self):
-        return pyodbc.connect(self._config.connection_string)
+        logger.debug('Creating ODBC connection')
+        conn = pyodbc.connect(self._config.connection_string)
+        logger.debug('ODBC connection created')
+        return conn
