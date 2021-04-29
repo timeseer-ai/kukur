@@ -140,7 +140,7 @@ Then, run the tests:
 Stop the databases using:
 
 ```bash
-$ docker-compose -f tests/test_data/docker-compose.yml down
+$ docker-compose -f tests/test_data/docker-compose.yml down --volumes
 ```
 
 Alternatively, run Kukur in docker-compose as well to have a known stable setup:
@@ -158,5 +158,5 @@ Run the tests using:
 Stop all containers:
 
 ```bash
-$ docker-compose -f tests/test_data/docker-compose.yml -f tests/test_data/docker-compose.container.yml down
+$ docker-compose -f tests/test_data/docker-compose.yml -f tests/test_data/docker-compose.container.yml down --volumes
 ```
