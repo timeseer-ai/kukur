@@ -1,0 +1,213 @@
+= Connecting to Azure Data Lakes using Azure Synapse Analytics
+
+There is no one-size-fits-all approach to accessing time series data stored in containers in Azure general purpose v2 Storage Accounts (Azure Data Lake).
+Data is typically stored in blobs, organised using the https://docs.microsoft.com/en-us/azure/storage/blobs/data-lake-storage-namespace[Data Lake Storage Gen2 Hierarchical Namespace feature].
+Both the content of the blobs and their organisation is user defined.
+
+For example, one data lake could contain one Parquet file with all time series data points for one hour,
+organised as `<year>/<month>/data-<day>-<hour>.parquet`,
+while another stores one CSV file per day for each time series,
+as `<month>-<day>-<year>/<series name>.csv`.
+
+Kukur and other time series analytics tooling expects data sources to respond to queries that ask data for one time series in a given time period.
+Mapping this query to the file format and organisation of a data lake is the domain of specialized tooling,
+a data lake engine,
+such as https://docs.microsoft.com/en-us/azure/synapse-analytics/get-started-analyze-sql-on-demand[Azure Synapse Analytics serverless SQL pool], https://aws.amazon.com/athena[AWS Athena] or https://www.dremio.com/[Dremio].
+Structured views on the - to anyone but the human eye - unstructured data in the data lake are maintained in these engines.
+Kukur connects to and queries the data lake engine for time series data,
+which determines which blobs (files) to query
+and how to transform the content of these files to a single virtualized columnar representation.
+
+== Example
+
+Consider an Azure Synapse workspace `ws-timeseer`, connected to an Azure Data Lake Storage Gen2 storage account `sasynapsetimeseer`.
+The storage accounts contains a blob storage container `fs-synapse` that has the 'Hierarchical Namespace' feature enabled.
+
+image::images/05_workspace.png[]
+
+Inside the container, time series data is stored in Parquet files.
+
+Each Parquet file contains three columns:
+
+- series name: string
+- ts: timestamp[us, tz=UTC]
+- value: double
+
+[source,csv]
+----
+  series name                        ts  value
+0  test-tag-1 2021-01-01 00:00:00+00:00    0.5
+1  test-tag-2 2021-01-02 00:00:00+00:00  100.0
+2  test-tag-1 2021-01-03 00:00:00+00:00    1.5
+3  test-tag-2 2021-01-04 00:00:00+00:00 -100.0
+----
+
+The Parquet files in this example are organized in directories per year.
+Inside each directory,
+one file contains one month of time series data.
+
+image::images/10_lake.png[]
+
+=== Creating a view
+
+In the Synapse Analytics workspace,
+all data can be virtualized using the https://docs.microsoft.com/en-us/azure/synapse-analytics/sql/develop-openrowset[`OPENROWSET`] function and wildcard matching in the path that is provided to it.
+
+[source,sql]
+----
+SELECT
+    "series name", ts, value
+FROM
+    OPENROWSET(
+        BULK 'https://sasynapsetimeseer.dfs.core.windows.net/fs-synapse/historian-data/year=*/lake-*.parquet',
+        FORMAT='PARQUET'
+    ) AS [result]
+ORDER BY ts, "series name"
+----
+
+Running this query returns the expected results:
+
+image::images/15_query_results.png[]
+
+Directly using the previous query in Kukur and other tooling is not a good idea.
+The query would need to be updated everywhere it is used when small changes to the underlying storage are made.
+A SQL `VIEW` hides the internal complexity from any consumers.
+
+`VIEW` s cannot be created inside the `master` database that is available by default.
+A new `HistorianData` database will contain the `Timeseries` view.
+
+[source,sql]
+----
+CREATE DATABASE HistorianData;
+go
+USE HistorianData;
+go
+DROP VIEW IF EXISTS Timeseries;
+go
+CREATE VIEW Timeseries
+as
+SELECT
+    "series name", ts, value
+FROM
+    OPENROWSET(
+        BULK 'https://sasynapsetimeseer.dfs.core.windows.net/fs-synapse/historian-data/year=*/lake-*.parquet',
+        FORMAT='PARQUET'
+    ) AS [result];
+----
+
+This results in the straightforward query we set out to find:
+
+[source,sql]
+----
+select ts, value
+from Timeseries
+where "series name" = 'test-tag-1'
+  and ts between '2021-01-01T00:00:00Z' and '2021-02-01T00:00:00Z'
+order by ts
+----
+
+=== Authentication using Managed Identities
+
+Several https://docs.microsoft.com/en-us/sql/connect/odbc/using-azure-active-directory?view=azure-sqldw-latest[authentication methods] are  available when connecting to Azure Synapse from Kukur.
+
+In this example,
+Kukur is running on a Windows VM with a Managed Identity that will be used to authenticate to Synapse.
+Furthermore,
+by using a database scoped credential `SynapseIdentity`,
+anyone allowed to access the view will have access to the underlying data.
+
+[source,sql]
+----
+USE HistorianData;
+go
+CREATE MASTER KEY ENCRYPTION BY PASSWORD = '<STRONG PASSPHRASE>';
+go
+CREATE DATABASE SCOPED CREDENTIAL SynapseIdentity
+WITH IDENTITY = 'Managed Identity';
+----
+
+A database scoped credential cannot be used directly in a query,
+but must be part of a data source.
+
+[source,sql]
+----
+USE HistorianData;
+go
+CREATE EXTERNAL DATA SOURCE HistorianDataSource
+WITH (    LOCATION   = 'https://sasynapsetimeseer.dfs.core.windows.net/fs-synapse',
+          CREDENTIAL = SynapseIdentity
+)
+----
+
+The `Timeseries` view needs to be updated to use the newly created data source.
+
+[source,sql]
+----
+USE HistorianData;
+go
+DROP VIEW IF EXISTS Timeseries;
+go
+CREATE VIEW Timeseries
+as
+SELECT
+    "series name", ts, value
+FROM
+    OPENROWSET(
+        BULK 'historian-data/year=*/lake-*.parquet',
+        DATA_SOURCE = 'HistorianDataSource',
+        FORMAT='PARQUET'
+    ) AS [result];
+----
+
+The Windows VM that is running Kukur has the Managed Identity `ts-windows`.
+
+image::images/20_managed_identity.png[]
+
+A database user needs to be created for it and permissions for bulk operations,
+the `SynapseIdentity` credential and the `Timeseries` view need to be granted.
+
+[source,sql]
+----
+USE HistorianData;
+go
+CREATE USER [ts-windows] FROM EXTERNAL PROVIDER
+GRANT ADMINISTER DATABASE BULK OPERATIONS TO [ts-windows]
+GRANT CONTROL ON DATABASE SCOPED CREDENTIAL :: SynapseIdentity to [ts-windows]
+GRANT SELECT ON Object::dbo.[Timeseries] to [ts-windows]
+----
+
+Kukur uses the https://docs.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server?view=azure-sqldw-latest[ODBC Driver for SQL Server] to connect to Azure Synapse.
+Download and install it.
+
+Create a new ODBC data source in Kukur that connects using the ODBC driver to the SQL endpoint of the Synapse workspace.
+The connection string includes `Authentication=ActiveDirectoryMsi` to use the Managed Identity.
+
+../data/synapse.toml
+[source,toml]
+----
+[source.synapse]
+type = "odbc"
+connection_string = "Driver={ODBC Driver 17 for SQL Server};Server=tcp:ws-timeseer-ondemand.sql.azuresynapse.net,1433;Database=HistorianData;Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;Authentication=ActiveDirectoryMsi"
+data_query = "select ts, value from Timeseries where \"series name\" = ? and ts between ? and ? order by ts"
+data_timezone = "UTC"
+----
+
+Running this gives the expected result:
+
+[source]
+----
+(venv) PS C:\..\kukur> python -m kukur.cli test data --source synapse --name test-tag-1 --start 2021-01-01 --end 2021-02-01
+2021-04-29 09:44:08,589 INFO kukur.source.test MainThread : Requesting data for "test-tag-1 (synapse)" from 2021-01-01 00:00:00 to 2021-02-01 00:00:00
+2021-01-01T00:00:00+00:00,0.5
+2021-01-03T00:00:00+00:00,1.5
+2021-02-01T00:00:00+00:00,0.5
+----
+
+=== Optimizing data access
+
+In order to answer queries for the `Timeseries` view,
+Synapse needs to scan all files.
+This is not cost and time efficient.
+
+Azure Synapse supports using https://docs.microsoft.com/en-us/azure/synapse-analytics/sql/query-specific-files[file name information in queries].
+It is a good idea to organise the storage in the data lake to take advantage of this.

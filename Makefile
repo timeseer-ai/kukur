@@ -11,7 +11,7 @@ docs: ## Generate a documentation Docker container
 		-v $(shell pwd)/docs:/documents/kukur \
 		-v $(shell pwd)/docs/out:/documents/kukur/out \
 		asciidoctor/docker-asciidoctor \
-		asciidoctor -r asciidoctor-diagram --destination-dir kukur/out --out-file index.html kukur/kukur.asciidoc
+		asciidoctor -a data-uri -r asciidoctor-diagram --destination-dir kukur/out --out-file index.html kukur/kukur.asciidoc
 	docker build -t kukur-documentation:latest docs/
 
 .PHONY: run-docs
