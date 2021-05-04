@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 from datetime import datetime
-from typing import Any, Dict, Generator, Union
+from typing import Any, Dict, Generator, List, Union
 from pathlib import Path
 
 import pyarrow as pa
@@ -53,6 +53,10 @@ class Kukur:
     def get_api_keys(self) -> ApiKeys:
         """Return the api keys."""
         return ApiKeys(self.__repository)
+
+    def list_sources(self) -> List[str]:
+        """Return all the configured sources."""
+        return self.__source_factory.get_source_names()
 
     def _get_source(self, source_name: str) -> Source:
         source = self.__source_factory.get_source(source_name)

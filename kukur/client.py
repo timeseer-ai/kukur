@@ -5,7 +5,7 @@
 import json
 
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Generator, Tuple, Union
+from typing import Any, Dict, Generator, List, Tuple, Union
 
 import pyarrow as pa
 import pyarrow.flight as fl
@@ -110,6 +110,16 @@ class Client:
         }
         ticket = fl.Ticket(json.dumps(query))
         return self._get_client().do_get(ticket).read_all()
+
+    def list_sources(self) -> List[str]:
+        """List all configured sources.
+
+        Returns:
+            A list of source names that are configured in Kukur.
+        """
+        results = list(self._get_client().do_action(("list_sources")))
+        data = json.loads(results[0].body.to_pybytes())
+        return data
 
     def _get_client(self):
         if self._client is None:

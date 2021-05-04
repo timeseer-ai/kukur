@@ -49,3 +49,11 @@ def test_data(client: Client):
     assert data["value"][0].as_py() == 1.0
     assert data["ts"][6].as_py() == datetime.fromisoformat("2020-07-01T00:00:00+00:00")
     assert data["value"][6].as_py() == 1.0
+
+
+def test_sources(client: Client):
+    data = client.list_sources()
+    assert len(data) == 22
+    assert "sql" in data
+    assert "row" in data
+    assert "noaa" in data
