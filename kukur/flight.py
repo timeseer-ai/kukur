@@ -10,7 +10,7 @@ import pyarrow.flight as fl
 
 from dateutil.parser import parse as parse_date
 
-from kukur import Metadata, SeriesSelector, Source
+from kukur import Metadata, SeriesSelector
 from kukur.app import Kukur
 
 __all__ = ["JSONFlightServer"]
@@ -68,8 +68,8 @@ class JSONFlightServer(fl.FlightServerBase):
 class KukurFlightServer:
     """KukurFlightServer exposes the data sources provided by a SourceFactory over Arrow Flight."""
 
-    def __init__(self, source: Source):
-        self.__source = source
+    def __init__(self, app: Kukur):
+        self.__app = app
 
     def search(self, _, action: fl.Action) -> Generator[bytes, None, None]:
         """Search a data source for time series.
@@ -78,7 +78,7 @@ class KukurFlightServer:
         what is supported by the source."""
         request = json.loads(action.body.to_pybytes())
         selector = SeriesSelector(request["source"], request["name"])
-        for result in self.__source.search(selector):
+        for result in self.__app.search(selector):
             if isinstance(result, Metadata):
                 assert result.series.name is not None
                 metadata = result.camelcase()
@@ -100,7 +100,7 @@ class KukurFlightServer:
         """Return metadata for the given time series as JSON."""
         request = json.loads(action.body.to_pybytes())
         selector = SeriesSelector(request["source"], request["name"])
-        metadata = self.__source.get_metadata(selector).camelcase()
+        metadata = self.__app.get_metadata(selector).camelcase()
         metadata["series"] = {
             "source": selector.source,
             "name": selector.name,
@@ -114,8 +114,13 @@ class KukurFlightServer:
         )
         start_date = parse_date(request["start_date"])
         end_date = parse_date(request["end_date"])
-        data = self.__source.get_data(selector, start_date, end_date)
+        data = self.__app.get_data(selector, start_date, end_date)
         return fl.RecordBatchStream(data)
+
+    def list_sources(self, *_) -> List[bytes]:
+        """Return a list of all the configured sources."""
+        sources = self.__app.list_sources()
+        return [json.dumps(sources).encode()]
 
 
 class KukurServerAuthHandler(fl.ServerAuthHandler):
