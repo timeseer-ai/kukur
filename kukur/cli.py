@@ -125,7 +125,7 @@ def _serve(kukur_app: Kukur, server_config):
     server.register_action_handler("search", service.search)
     server.register_action_handler("get_metadata", service.get_metadata)
     server.register_get_handler("get_data", service.get_data)
-    server.register_action_handler("list_sources", service.list_sources)
+    server.register_action_handler("list_sources", kukur_app.list_sources)
     server.serve()
 
 
