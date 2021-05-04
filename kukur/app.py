@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Any, Dict, Generator, List, Union
 from pathlib import Path
 
+import json
 import pyarrow as pa
 
 from kukur import Metadata, SeriesSelector, Source
@@ -54,9 +55,10 @@ class Kukur:
         """Return the api keys."""
         return ApiKeys(self.__repository)
 
-    def list_sources(self) -> List[str]:
+    def list_sources(self, *_) -> List[bytes]:
         """Return all the configured sources."""
-        return self.__source_factory.get_source_names()
+        sources = self.__source_factory.get_source_names()
+        return [json.dumps(sources).encode()]
 
     def _get_source(self, source_name: str) -> Source:
         source = self.__source_factory.get_source(source_name)
