@@ -7,7 +7,8 @@ create table Metadata (
     description nvarchar(max),
     units nvarchar(max),
     data_type nvarchar(max),
-    dictionary_name nvarchar(max)
+    dictionary_name nvarchar(max),
+    stepped_interpolation int
 );
 go
 create table Dictionary (
@@ -25,11 +26,12 @@ create table Data (
 );
 go
 if 0 = (select count(*) from Metadata)
-    insert into Metadata (name, description, units, data_type, dictionary_name)
+    insert into Metadata (name, description, units, data_type, dictionary_name, stepped_interpolation)
     values
-    ('test-tag-1', 'A test tag', 'm', 'float64', NULL),
-    ('test-tag-5', 'A string series', '', 'string', NULL),
-    ('test-tag-6', 'A dictionary series', '', 'dictionary', 'Active');
+    ('test-tag-1', 'A test tag', 'm', 'float64', NULL, 0),
+    ('test-tag-4', 'A stepped test tag', 'm', 'float64', NULL, 1),
+    ('test-tag-5', 'A string series', '', 'string', NULL, 1),
+    ('test-tag-6', 'A dictionary series', '', 'dictionary', 'Active', 1);
 go
 if 0 = (select count(*) from Dictionary)
     insert into Dictionary (name, value, label)

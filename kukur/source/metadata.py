@@ -33,7 +33,7 @@ class MetadataMapper:
 class MetadataValueMapper:
     """MetadataFieldMapper maps values for a metadata field to values known by Kukur."""
 
-    __mapping: Dict[str, Dict[str, str]]
+    __mapping: Dict[str, Dict[Union[str, int], str]]
 
     def __init__(self):
         self.__mapping = {}
@@ -48,7 +48,7 @@ class MetadataValueMapper:
         mapper = cls()
         for field_name, field_mapping in config.items():
             for field_value, external_field_value in field_mapping.items():
-                if isinstance(external_field_value, str):
+                if isinstance(external_field_value, (str, int)):
                     mapper.add_mapping(field_name, field_value, external_field_value)
                 else:
                     for choice in external_field_value:
@@ -56,17 +56,22 @@ class MetadataValueMapper:
         return mapper
 
     def add_mapping(
-        self, field_name: str, kukur_field_value: str, external_field_value: str
+        self,
+        field_name: str,
+        kukur_field_value: str,
+        external_field_value: Union[str, int],
     ):
         """Add a mapping for a metadata field value known to kukur from the external value."""
         if field_name not in self.__mapping:
             self.__mapping[field_name] = {}
         self.__mapping[field_name][external_field_value] = kukur_field_value
 
-    def from_source(self, field_name: str, external_field_value: str) -> str:
+    def from_source(
+        self, field_name: str, external_field_value: Union[str, int]
+    ) -> str:
         """Map a field value as it's known in an external source to one known by Kukur."""
         if field_name not in self.__mapping:
-            return external_field_value
+            return str(external_field_value)
         return self.__mapping[field_name].get(
-            external_field_value, external_field_value
+            external_field_value, str(external_field_value)
         )
