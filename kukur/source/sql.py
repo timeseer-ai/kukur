@@ -36,6 +36,7 @@ class SQLConfig:  # pylint: disable=too-many-instance-attributes
     data_query: Optional[str] = None
     data_query_datetime_format: Optional[str] = None
     data_timezone: Optional[tzinfo] = None
+    data_query_timezone: Optional[tzinfo] = None
 
     @classmethod
     def from_dict(cls, data):
@@ -71,6 +72,10 @@ class SQLConfig:  # pylint: disable=too-many-instance-attributes
         config.query_string_parameters = data.get("query_string_parameters", False)
         if "data_timezone" in data:
             config.data_timezone = dateutil.tz.gettz(data.get("data_timezone"))
+        if "data_query_timezone" in data:
+            config.data_query_timezone = dateutil.tz.gettz(
+                data.get("data_query_timezone")
+            )
 
         return config
 
@@ -226,6 +231,9 @@ class BaseSQLSource(ABC):
     def __format_date(self, date):
         if self._config.data_query_datetime_format is not None:
             return date.strftime(self._config.data_query_datetime_format)
+        if self._config.data_query_timezone:
+            date = date.replace(tzinfo=self._config.data_timezone)
+            return date.replace(tzinfo=None)
         return date
 
     @abstractmethod
