@@ -19,6 +19,20 @@ class FakeSource:
         return pa.Table.from_pydict({"ts": [start_date, end_date], "value": [42, 24]})
 
 
+class EmptyOddHoursSource:
+    def get_metadata(self, selector: SeriesSelector) -> Metadata:
+        return Metadata(selector)
+
+    def get_data(
+        self, _: SeriesSelector, start_date: datetime, end_date: datetime
+    ) -> pa.Table:
+        if start_date.hour % 2 == 0:
+            return pa.Table.from_pydict(
+                {"ts": [start_date, end_date], "value": [42, 24]}
+            )
+        return pa.Table.from_pydict({"ts": [], "value": []})
+
+
 class TestSourceWrapper:
 
     selector = SeriesSelector("fake", "test-tag-1")
@@ -85,6 +99,16 @@ class TestSourceWrapper:
         assert data["value"][0] == 42
         assert data["ts"][1] == end_date
         assert data["value"][1] == 24
+
+    def test_empty_interval(self):
+        source = EmptyOddHoursSource()
+        wrapper = SourceWrapper(
+            Source(source, source), [], {"data_query_interval_seconds": 60 * 60}
+        )
+
+        end_date = datetime.fromisoformat("2020-01-02T00:00:00+00:00")
+        result = wrapper.get_data(self.selector, self.start_date, end_date)
+        assert len(result) == 24
 
 
 def _make_source():

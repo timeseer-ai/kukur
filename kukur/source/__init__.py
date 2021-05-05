@@ -134,12 +134,11 @@ class SourceWrapper:
         """Return the data for the given series in the given time frame, taking into account the request policy."""
         if start_date == end_date or selector.name is None:
             return pa.Table.from_pydict({"ts": [], "values": []})
-        return pa.concat_tables(
-            [
-                self.__source.data.get_data(selector, start, end)
-                for start, end in self.__to_intervals(start_date, end_date)
-            ]
-        )
+        tables = [
+            self.__source.data.get_data(selector, start, end)
+            for start, end in self.__to_intervals(start_date, end_date)
+        ]
+        return pa.concat_tables([table for table in tables if len(table) > 0])
 
     def __to_intervals(
         self, start_date: datetime, end_date: datetime
