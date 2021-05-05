@@ -149,6 +149,12 @@ Alternatively, run Kukur in docker-compose as well to have a known stable setup:
 $ docker-compose -f tests/test_data/docker-compose.yml -f tests/test_data/docker-compose.container.yml up -d
 ```
 
+or build the Kukur container to have the latest Kukur image:
+
+```bash
+$ docker-compose -f tests/test_data/docker-compose.yml -f tests/test_data/docker-compose.container.yml up --build
+```
+
 Run the tests using:
 
 ```bash

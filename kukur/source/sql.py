@@ -178,6 +178,7 @@ class BaseSQLSource(ABC):
     ) -> Generator[Metadata, None, None]:
         connection = self.connect()
         cursor = connection.cursor()
+        dictionary_cursor = None
         if self._config.dictionary_query is not None:
             dictionary_cursor = self.connect().cursor()
 

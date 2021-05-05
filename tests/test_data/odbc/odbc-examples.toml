@@ -97,6 +97,33 @@ data_query_path = "tests/test_data/odbc/data-string.sql"
 data_query_datetime_format = "%Y-%m-%dT%H:%M:%S"
 data_timezone = "UTC"
 
+[source.sql-no-dictionary-query]
+type = "odbc"
+connection_string_path = "tests/test_data/odbc/connection.txt"
+list_query_path = "tests/test_data/odbc/list.sql"
+metadata_query_path = "tests/test_data/odbc/metadata.sql"
+metadata_columns = ["description", "unit", "interpolation type", "data type", "dictionary name", "interpolation type"]
+metadata_value_mapping = "odbc_test"
+data_query_path = "tests/test_data/odbc/data.sql"
+
+[source.sql-no-dictionary-query-local]
+type = "odbc"
+connection_string_path = "tests/test_data/odbc/connection-local.txt"
+list_query_path = "tests/test_data/odbc/list.sql"
+metadata_query_path = "tests/test_data/odbc/metadata.sql"
+metadata_columns = ["description", "unit", "interpolation type", "data type", "dictionary name", "interpolation type"]
+metadata_value_mapping = "odbc_test"
+data_query_path = "tests/test_data/odbc/data.sql"
+
+[source.sql-no-dictionary-query-linux]
+type = "odbc"
+connection_string_path = "tests/test_data/odbc/connection-linux.txt"
+list_query_path = "tests/test_data/odbc/list.sql"
+metadata_query_path = "tests/test_data/odbc/metadata.sql"
+metadata_columns = ["description", "unit", "interpolation type", "data type", "dictionary name", "interpolation type"]
+metadata_value_mapping = "odbc_test"
+data_query_path = "tests/test_data/odbc/data.sql"
+
 [metadata_value_mapping.odbc_test."data type"]
 FLOAT64 = "float64"
 STRING = ["string", "text", "varchar"]
