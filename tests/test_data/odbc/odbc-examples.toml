@@ -3,9 +3,9 @@ type = "odbc"
 connection_string_path = "tests/test_data/odbc/connection.txt"
 list_query_path = "tests/test_data/odbc/list.sql"
 metadata_query_path = "tests/test_data/odbc/metadata.sql"
-metadata_columns = ["description", "unit", "interpolation type", "data type", "dictionary name"]
+metadata_columns = ["description", "unit", "interpolation type", "data type", "dictionary name", "interpolation type"]
 dictionary_query_path = "tests/test_data/odbc/dictionary.sql"
-metadata_value_mapping = "odbc_lowercase"
+metadata_value_mapping = "odbc_test"
 data_query_path = "tests/test_data/odbc/data.sql"
 
 [source.sql-local]
@@ -13,9 +13,9 @@ type = "odbc"
 connection_string_path = "tests/test_data/odbc/connection-local.txt"
 list_query_path = "tests/test_data/odbc/list.sql"
 metadata_query_path = "tests/test_data/odbc/metadata.sql"
-metadata_columns = ["description", "unit", "interpolation type", "data type", "dictionary name"]
+metadata_columns = ["description", "unit", "interpolation type", "data type", "dictionary name", "interpolation type"]
 dictionary_query_path = "tests/test_data/odbc/dictionary.sql"
-metadata_value_mapping = "odbc_lowercase"
+metadata_value_mapping = "odbc_test"
 data_query_path = "tests/test_data/odbc/data.sql"
 
 [source.sql-linux]
@@ -23,18 +23,18 @@ type = "odbc"
 connection_string_path = "tests/test_data/odbc/connection-linux.txt"
 list_query_path = "tests/test_data/odbc/list.sql"
 metadata_query_path = "tests/test_data/odbc/metadata.sql"
-metadata_columns = ["description", "unit", "interpolation type", "data type", "dictionary name"]
+metadata_columns = ["description", "unit", "interpolation type", "data type", "dictionary name", "interpolation type"]
 dictionary_query_path = "tests/test_data/odbc/dictionary.sql"
-metadata_value_mapping = "odbc_lowercase"
+metadata_value_mapping = "odbc_test"
 data_query_path = "tests/test_data/odbc/data.sql"
 
 [source.sql-list]
 type = "odbc"
 connection_string_path = "tests/test_data/odbc/connection.txt"
 list_query_path = "tests/test_data/odbc/list-metadata.sql"
-list_columns = ["series name", "description", "unit", "interpolation type", "data type", "dictionary name"]
+list_columns = ["series name", "description", "unit", "interpolation type", "data type", "dictionary name", "interpolation type"]
 dictionary_query_path = "tests/test_data/odbc/dictionary.sql"
-metadata_value_mapping = "odbc_lowercase"
+metadata_value_mapping = "odbc_test"
 data_query_path = "tests/test_data/odbc/data.sql"
 data_timezone = "UTC"
 
@@ -42,9 +42,9 @@ data_timezone = "UTC"
 type = "odbc"
 connection_string_path = "tests/test_data/odbc/connection-local.txt"
 list_query_path = "tests/test_data/odbc/list-metadata.sql"
-list_columns = ["series name", "description", "unit", "interpolation type", "data type", "dictionary name"]
+list_columns = ["series name", "description", "unit", "interpolation type", "data type", "dictionary name", "interpolation type"]
 dictionary_query_path = "tests/test_data/odbc/dictionary.sql"
-metadata_value_mapping = "odbc_lowercase"
+metadata_value_mapping = "odbc_test"
 data_query_path = "tests/test_data/odbc/data.sql"
 data_timezone = "UTC"
 
@@ -52,9 +52,9 @@ data_timezone = "UTC"
 type = "odbc"
 connection_string_path = "tests/test_data/odbc/connection-linux.txt"
 list_query_path = "tests/test_data/odbc/list-metadata.sql"
-list_columns = ["series name", "description", "unit", "interpolation type", "data type", "dictionary name"]
+list_columns = ["series name", "description", "unit", "interpolation type", "data type", "dictionary name", "interpolation type"]
 dictionary_query_path = "tests/test_data/odbc/dictionary.sql"
-metadata_value_mapping = "odbc_lowercase"
+metadata_value_mapping = "odbc_test"
 data_query_path = "tests/test_data/odbc/data.sql"
 data_timezone = "UTC"
 
@@ -64,9 +64,9 @@ connection_string_path = "tests/test_data/odbc/connection.txt"
 query_string_parameters = true
 list_query_path = "tests/test_data/odbc/list.sql"
 metadata_query_path = "tests/test_data/odbc/metadata-string.sql"
-metadata_columns = ["description", "unit", "interpolation type", "data type", "dictionary name"]
+metadata_columns = ["description", "unit", "interpolation type", "data type", "dictionary name", "interpolation type"]
 dictionary_query_path = "tests/test_data/odbc/dictionary-string.sql"
-metadata_value_mapping = "odbc_lowercase"
+metadata_value_mapping = "odbc_test"
 data_query_path = "tests/test_data/odbc/data-string.sql"
 data_query_datetime_format = "%Y-%m-%dT%H:%M:%S"
 data_timezone = "UTC"
@@ -77,9 +77,9 @@ connection_string_path = "tests/test_data/odbc/connection-local.txt"
 query_string_parameters = true
 list_query_path = "tests/test_data/odbc/list.sql"
 metadata_query_path = "tests/test_data/odbc/metadata-string.sql"
-metadata_columns = ["description", "unit", "interpolation type", "data type", "dictionary name"]
+metadata_columns = ["description", "unit", "interpolation type", "data type", "dictionary name", "interpolation type"]
 dictionary_query_path = "tests/test_data/odbc/dictionary-string.sql"
-metadata_value_mapping = "odbc_lowercase"
+metadata_value_mapping = "odbc_test"
 data_query_path = "tests/test_data/odbc/data-string.sql"
 data_query_datetime_format = "%Y-%m-%dT%H:%M:%S"
 data_timezone = "UTC"
@@ -90,14 +90,18 @@ connection_string_path = "tests/test_data/odbc/connection-linux.txt"
 query_string_parameters = true
 list_query_path = "tests/test_data/odbc/list.sql"
 metadata_query_path = "tests/test_data/odbc/metadata-string.sql"
-metadata_columns = ["description", "unit", "interpolation type", "data type", "dictionary name"]
+metadata_columns = ["description", "unit", "interpolation type", "data type", "dictionary name", "interpolation type"]
 dictionary_query_path = "tests/test_data/odbc/dictionary-string.sql"
-metadata_value_mapping = "odbc_lowercase"
+metadata_value_mapping = "odbc_test"
 data_query_path = "tests/test_data/odbc/data-string.sql"
 data_query_datetime_format = "%Y-%m-%dT%H:%M:%S"
 data_timezone = "UTC"
 
-[metadata_value_mapping.odbc_lowercase."data type"]
+[metadata_value_mapping.odbc_test."data type"]
 FLOAT64 = "float64"
 STRING = ["string", "text", "varchar"]
 DICTIONARY = "dictionary"
+
+[metadata_value_mapping.odbc_test."interpolation type"]
+LINEAR = 0
+STEPPED = 1

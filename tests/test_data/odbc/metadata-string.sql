@@ -1,1 +1,1 @@
-select description, units, 'LINEAR', data_type, dictionary_name from Metadata where name = '{}'
+select description, units, 'LINEAR', data_type, dictionary_name, stepped_interpolation from Metadata where name = '{}'
