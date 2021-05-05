@@ -103,3 +103,13 @@ def test_data_string_query(client: Client, suffix_source):
     assert data["value"][0].as_py() == 1.0
     assert data["ts"][4].as_py() == datetime.fromisoformat("2020-05-01T00:00:00+00:00")
     assert data["value"][4].as_py() == 1.0
+
+
+def test_metadata_no_dictionary_query(client: Client, suffix_source):
+    dictionary_series = client.get_metadata(
+        SeriesSelector(suffix_source("sql-no-dictionary-query"), "test-tag-6")
+    )
+    assert dictionary_series.description == "A dictionary series"
+    assert dictionary_series.interpolation_type == InterpolationType.STEPPED
+    assert dictionary_series.dictionary_name == "Active"
+    assert dictionary_series.dictionary is None
