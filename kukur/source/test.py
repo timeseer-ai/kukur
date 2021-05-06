@@ -1,13 +1,16 @@
 """Test connections to Timeseer data sources.
 
 This takes care to not persistently store metadata."""
+
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
-#
 # SPDX-License-Identifier: Apache-2.0
+
 import logging
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Generator, List
+
+from dateutil.tz import tzlocal
 
 from kukur import Metadata, SeriesSelector, Source
 
@@ -52,6 +55,8 @@ def data(
     end_date: datetime,
 ) -> Generator[List[Any], None, None]:
     """Test fetching data for a time series."""
+    start_date = _make_aware(start_date)
+    end_date = _make_aware(end_date)
     logger.info(
         'Requesting data for "%s (%s)" from %s to %s',
         series_name,
@@ -59,6 +64,7 @@ def data(
         start_date,
         end_date,
     )
+
     table = source.get_data(
         SeriesSelector(source_name, series_name), start_date, end_date
     )
@@ -72,3 +78,9 @@ def _get_metadata_header(result: Metadata) -> List[str]:
 
 def _get_metadata(result: Metadata) -> List[Any]:
     return [result.series.name] + [v for _, v in result]
+
+
+def _make_aware(timestamp: datetime) -> datetime:
+    if timestamp.tzinfo is None:
+        return timestamp.replace(tzinfo=tzlocal()).astimezone(timezone.utc)
+    return timestamp
