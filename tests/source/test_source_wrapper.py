@@ -38,6 +38,25 @@ class EmptyOddHoursSource:
         return pa.Table.from_pydict({"ts": [], "value": []})
 
 
+class EmptySource:
+    def get_metadata(self, selector: SeriesSelector) -> Metadata:
+        return Metadata(selector)
+
+    def get_data(
+        self, _: SeriesSelector, start_date: datetime, end_date: datetime
+    ) -> pa.Table:
+        return pa.Table.from_pydict({"ts": [], "value": []})
+
+
+def test_split_empty():
+    source = EmptySource()
+    wrapper = SourceWrapper(
+        Source(source, source), [], {"data_query_interval_seconds": 60 * 60}
+    )
+    result = wrapper.get_data(SELECTOR, START_DATE, END_DATE)
+    assert len(result) == 0
+
+
 def test_split_none():
     wrapper = SourceWrapper(_make_source(), [], {})
     result = wrapper.get_data(SELECTOR, START_DATE, END_DATE)

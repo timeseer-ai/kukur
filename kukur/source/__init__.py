@@ -138,7 +138,10 @@ class SourceWrapper:
             self.__source.data.get_data(selector, start, end)
             for start, end in self.__to_intervals(start_date, end_date)
         ]
-        return pa.concat_tables([table for table in tables if len(table) > 0])
+        tables = [table for table in tables if len(table) > 0]
+        if len(tables) == 0:
+            return pa.Table.from_pydict({"ts": [], "values": []})
+        return pa.concat_tables(tables)
 
     def __to_intervals(
         self, start_date: datetime, end_date: datetime
