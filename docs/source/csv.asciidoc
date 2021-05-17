@@ -8,7 +8,7 @@ Sources with `type = "csv"` configure CSV sources.
 ```toml
 [source.<name>]
 type = "csv"
-data = "<path>"
+path = "<path>"
 metadata = "<path>"
 metadata_mapping = "<name>"
 metadata_value_mapping ="<name>"
@@ -16,7 +16,7 @@ format = "row|pivot|dir"
 dictionary_dir = "<path>"
 ```
 
-`data` is required for time series sources.
+`path` is required for time series sources.
 It is optional when used as a metadata source.
 
 Three CSV data models are supported:
