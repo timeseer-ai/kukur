@@ -55,6 +55,8 @@ def test_split_empty():
     )
     result = wrapper.get_data(SELECTOR, START_DATE, END_DATE)
     assert len(result) == 0
+    assert "ts" in result.column_names
+    assert "value" in result.column_names
 
 
 def test_split_none():
@@ -74,6 +76,8 @@ def test_split_equal_start_end():
     )
     result = wrapper.get_data(SELECTOR, START_DATE, START_DATE)
     assert len(result) == 0
+    assert "ts" in result.column_names
+    assert "value" in result.column_names
 
 
 def test_split_one_day():
