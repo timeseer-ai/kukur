@@ -96,14 +96,14 @@ class BaseArrowSource(ABC):
     def _read_directory_data(self, selector: SeriesSelector) -> pa.Table:
         data = self.read_file(
             self.__loader.open_child(f"{selector.name}.{self.get_file_extension()}")
-        )
+        ).rename_columns(["ts", "value"])
         schema = pa.schema(
             [
                 ("ts", pa.timestamp("us", "utc")),
                 ("value", _get_value_schema_type(data)),
             ]
         )
-        return data.rename_columns(["ts", "value"]).cast(schema)
+        return data.cast(schema)
 
 
 def _get_value_schema_type(data: pa.Table):
