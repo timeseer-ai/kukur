@@ -636,4 +636,5 @@ include::./source/influxdb.asciidoc[leveloffset=+1]
 Kukur can connect to many different time series data sources using the options detailed in the <<Sources reference>>.
 Concrete examples of complex integrations are documented here.
 
+include::./ip21.asciidoc[leveloffset=+2]
 include::./azure-synapse.asciidoc[leveloffset=+2]

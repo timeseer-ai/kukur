@@ -1,0 +1,76 @@
+= Connecting to Aspen InfoPlus.21
+
+Kukur connects to AspenTech's InfoPlus.21 data historian using the Aspen SQLplus for Aspen InfoPlus.21 ODBC driver.
+
+First,
+create an https://docs.microsoft.com/en-us/sql/odbc/admin/odbc-data-source-administrator[ODBC data source] for the IP.21 server.
+
+Consider an ODBC data source `AB`.
+The basic Kukur configuration to connect is:
+
+[source,toml]
+----
+[source.IP21AB]
+type = "odbc"
+connection_string = "DSN=AB"
+----
+
+The next step is to configure a query to retrieve a list of time series and their metadata.
+
+The IP.21 database is very flexible, with possibly multiple repeat areas per record.
+The exact query will need some knowledge about the local configuration.
+
+This example will expose all time series defined by `IP_AnalogDef`:
+
+[source,toml]
+----
+[source.IP21AB]
+type = "odbc"
+connection_string = "DSN=AB"
+list_query = "SELECT NAME, IP_DESCRIPTION, IP_ENG_UNITS, IP_LOW_LIMIT, IP_HIGH_LIMIT, IP_DC_SIGNIFICANCE, IP_STEPPED,'FLOAT64' FROM IP_AnalogDef"
+list_columns = ["series name", "description", "unit", "lower limit", "upper limit", "accuracy", "interpolation type", "data type"]
+metadata_value_mapping = 'IP21_Mapping'
+
+[metadata_value_mapping.IP21_Mapping.'interpolation type']
+LINEAR = 'Interpolated'
+STEPPED = 'Stepped'
+----
+
+Note that this assumes that all time series defined here have a data type of `FLOAT64`.
+A mapping table like the interpolation type mapping can map data types returned by SQLplus to data types known in Kukur.
+
+The final step is to define queries to read data from time series.
+
+[WARN]
+====
+The SQLplus ODBC driver does not support query parameters.
+Ensure the connection is read-only when untrusted input can be provided to Kukur.
+====
+
+Kukur formats timestamps as `2020-02-13T19:05:43+00:00`.
+SQLplus does not accept all valid RFC3339/ISO8601 timestamps.
+This means a custom `data_query_datetime_format` is required,
+where the time zone information is provided as `Z` instead of `+00:00`.
+
+To avoid overloading the data historian, the time span of one query has been limited to one day of data.
+Kukur will split and recombine longer queries.
+
+[source,toml]
+----
+[source.IP21AB]
+type = "odbc"
+connection_string = "DSN=AB"
+list_query = "SELECT NAME, IP_DESCRIPTION, IP_ENG_UNITS, IP_LOW_LIMIT, IP_HIGH_LIMIT, IP_DC_SIGNIFICANCE, IP_STEPPED,'FLOAT64' FROM IP_AnalogDef"
+list_columns = ["series name", "description", "unit", "lower limit", "upper limit", "accuracy", "interpolation type", "data type"]
+metadata_value_mapping = 'IP21_Mapping'
+query_string_parameters = true
+data_query = "SELECT ISO8601(IP_TREND_TIME),IP_TREND_VALUE FROM IP_AnalogDef.1 WHERE NAME='{}' AND IP_TREND_TIME BETWEEN '{}' AND '{}' ORDER BY IP_TREND_TIME ASC"
+data_query_datetime_format = "%Y-%m-%dT%H:%M:%SZ"
+data_query_interval_seconds = 86400
+
+[metadata_value_mapping.IP21_Mapping.'interpolation type']
+LINEAR = 'Interpolated'
+STEPPED = 'Stepped'
+----
+
+Note that SQLplus also provides the `HISTORY` table that allows a more generic way to read data.
