@@ -4,7 +4,7 @@ import inspect
 
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any, Dict, Generator, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union
 
 import pyarrow as pa
 
@@ -162,9 +162,17 @@ class SourceFactory:
     """Source factory to create Source objects"""
 
     __config: Dict[str, Any]
+    __factory: Dict[str, Callable]
 
     def __init__(self, config):
         self.__config = config
+        self.__factory = _FACTORY.copy()
+
+    def register_source(
+        self, source_type_name: str, source_factory: Callable[..., SourceProtocol]
+    ):
+        """Register a new source type with the factory."""
+        self.__factory[source_type_name] = source_factory
 
     def get_source_names(self) -> List[str]:
         """Get the data sources names as configured in the Kukur configuration."""
@@ -182,7 +190,7 @@ class SourceFactory:
                 if "type" not in options:
                     raise InvalidSourceException(f'"{name}" has no type')
                 source_type = options["type"]
-                if source_type not in _FACTORY:
+                if source_type not in self.__factory:
                     raise InvalidSourceException(
                         f'Source "{name}" has unknown type "{source_type}"'
                     )
@@ -190,7 +198,7 @@ class SourceFactory:
                 metadata_source = data_source
                 metadata_source_type = options.get("metadata_type", source_type)
                 if metadata_source_type != source_type:
-                    if metadata_source_type not in _FACTORY:
+                    if metadata_source_type not in self.__factory:
                         raise InvalidSourceException(
                             f'"Source {name}" has unknown metadata type "{metadata_source_type}"'
                         )
@@ -215,7 +223,7 @@ class SourceFactory:
             if "type" not in options:
                 raise InvalidSourceException(f'Metadata source "{name}" has no type.')
             source_type = options["type"]
-            if source_type not in _FACTORY:
+            if source_type not in self.__factory:
                 raise InvalidSourceException(
                     f'Metadata source "{name}" has unknown type "{source_type}"'
                 )
@@ -234,7 +242,7 @@ class SourceFactory:
             source_config.get("metadata_value_mapping")
         )
 
-        factory_function: Any = _FACTORY[source_type]
+        factory_function: Any = self.__factory[source_type]
 
         arguments: List[Any] = []
         for parameter in inspect.signature(factory_function).parameters.values():
