@@ -7,6 +7,6 @@ set @startdate = ?;
 set @enddate = ?;
 
 if @name = 'test-tag-5'
-    select ts, str_value from Data where name = @name and ts between @startdate and @enddate;
+    select ts, str_value from Data where name = @name and ts >= @startdate and ts < @enddate;
 else
-    select ts, value from Data where name = @name and ts between @startdate and @enddate;
+    select ts, value from Data where name = @name and ts >= @startdate and ts < @enddate;

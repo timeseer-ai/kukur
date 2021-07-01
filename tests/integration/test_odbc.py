@@ -2,6 +2,7 @@
 
 They use the client to request data."""
 
+import math
 import os
 
 from datetime import datetime
@@ -113,3 +114,16 @@ def test_metadata_no_dictionary_query(client: Client, suffix_source):
     assert dictionary_series.interpolation_type == InterpolationType.STEPPED
     assert dictionary_series.dictionary_name == "Active"
     assert dictionary_series.dictionary is None
+
+
+def test_data_null(client: Client, suffix_source):
+    start_date = datetime.fromisoformat("2020-01-01T00:00:00+00:00")
+    end_date = datetime.fromisoformat("2021-01-01T00:00:00+00:00")
+    data = client.get_data(
+        SeriesSelector(suffix_source("sql-list"), "test-tag-7"), start_date, end_date
+    )
+    assert len(data) == 2
+    assert data["ts"][0].as_py() == start_date
+    assert math.isnan(data["value"][0].as_py())
+    assert data["ts"][1].as_py() == datetime.fromisoformat("2020-02-02T00:00:00+00:00")
+    assert data["value"][1].as_py() == 1.0
