@@ -164,8 +164,11 @@ class BaseSQLSource(ABC):
             if self._config.data_timezone:
                 ts = ts.replace(tzinfo=self._config.data_timezone)
             ts = ts.astimezone(timezone.utc)
+            value = row[1]
+            if value is None:
+                value = float("nan")
             timestamps.append(ts)
-            values.append(row[1])
+            values.append(value)
         return pa.Table.from_pydict({"ts": timestamps, "value": values})
 
     def __search_names(
