@@ -67,7 +67,7 @@ def test_metadata(client: Client, suffix_source):
     assert dictionary_series.dictionary.mapping[1] == "ON"
 
 
-def test_data(client: Client, suffix_source):
+def test_dictionary_data(client: Client, suffix_source):
     start_date = datetime.fromisoformat("2020-01-01T00:00:00+00:00")
     end_date = datetime.fromisoformat("2021-01-01T00:00:00+00:00")
     data = client.get_data(
