@@ -123,10 +123,14 @@ class BaseSQLSource(ABC):
         row = cursor.fetchone()
         if row:
             for i, name in enumerate(self._config.metadata_columns):
-                if row[i] is not None:
-                    metadata.set_field(
-                        name, self._metadata_value_mapper.from_source(name, row[i])
-                    )
+                value = row[i]
+                if value is None:
+                    continue
+                if isinstance(value, str) and value == "":
+                    continue
+                metadata.set_field(
+                    name, self._metadata_value_mapper.from_source(name, value)
+                )
         if metadata.dictionary_name is not None:
             metadata.dictionary = self.__query_dictionary(
                 cursor, metadata.dictionary_name
@@ -203,10 +207,13 @@ class BaseSQLSource(ABC):
             for i, name in enumerate(self._config.list_columns):
                 if i == series_name_index:
                     continue
-                if row[i] is None:
+                value = row[i]
+                if value is None:
+                    continue
+                if isinstance(value, str) and value == "":
                     continue
                 metadata.set_field(
-                    name, self._metadata_value_mapper.from_source(name, row[i])
+                    name, self._metadata_value_mapper.from_source(name, value)
                 )
             if metadata.dictionary_name is not None and dictionary_cursor is not None:
                 metadata.dictionary = self.__query_dictionary(
