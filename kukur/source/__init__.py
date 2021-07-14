@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union
 
 import pyarrow as pa
+import pyarrow.types
 
 import kukur.source.adodb as adodb
 import kukur.source.csv as csv
@@ -138,10 +139,7 @@ class SourceWrapper:
             self.__source.data.get_data(selector, start, end)
             for start, end in self.__to_intervals(start_date, end_date)
         ]
-        tables = [table for table in tables if len(table) > 0]
-        if len(tables) == 0:
-            return pa.Table.from_pydict({"ts": [], "value": []})
-        return pa.concat_tables(tables)
+        return _concat_tables(tables)
 
     def __to_intervals(
         self, start_date: datetime, end_date: datetime
@@ -268,3 +266,57 @@ class SourceFactory:
         return MetadataValueMapper.from_config(
             self.__config["metadata_value_mapping"][name]
         )
+
+
+def _concat_tables(tables: List[pa.Table]) -> List[pa.Table]:
+    """Safely concatenate multiple pyarrow.Table's.
+
+    If any of the given tables contains strings, the result will contain a
+    string value. If any of the given tables contains a floating point number,
+    the value will be a double."""
+    tables = [table for table in tables if len(table) > 0]
+    if len(tables) == 0:
+        return pa.Table.from_pydict({"ts": [], "value": []})
+
+    schema = pa.schema(
+        [
+            ("ts", pa.timestamp("us", "utc")),
+            ("value", pa.float64()),
+        ]
+    )
+
+    if _has_any_string(tables):
+        schema = pa.schema(
+            [
+                ("ts", pa.timestamp("us", "utc")),
+                ("value", pa.string()),
+            ]
+        )
+
+    if _is_all_integer(tables):
+        schema = pa.schema(
+            [
+                ("ts", pa.timestamp("us", "utc")),
+                ("value", pa.int64()),
+            ]
+        )
+
+    return pa.concat_tables([table.cast(schema) for table in tables])
+
+
+def _has_any_string(tables: List[pa.Table]) -> bool:
+    string_tables = [
+        table
+        for table in tables
+        if pyarrow.types.is_string(table.schema.field("value").type)
+    ]
+    return len(string_tables) > 0
+
+
+def _is_all_integer(tables: List[pa.Table]) -> bool:
+    integer_tables = [
+        table
+        for table in tables
+        if pyarrow.types.is_integer(table.schema.field("value").type)
+    ]
+    return len(integer_tables) == len(tables)

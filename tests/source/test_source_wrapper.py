@@ -48,6 +48,42 @@ class EmptySource:
         return pa.Table.from_pydict({"ts": [], "value": []})
 
 
+class DifferentNumericalTypesSource:
+    def get_metadata(self, selector: SeriesSelector) -> Metadata:
+        return Metadata(selector)
+
+    def get_data(
+        self, _: SeriesSelector, start_date: datetime, end_date: datetime
+    ) -> pa.Table:
+        if start_date.hour % 2 == 0:
+            return pa.Table.from_pydict({"ts": [start_date], "value": [1]})
+        return pa.Table.from_pydict({"ts": [start_date], "value": [2.5]})
+
+
+class OnlyIntegersSource:
+    def get_metadata(self, selector: SeriesSelector) -> Metadata:
+        return Metadata(selector)
+
+    def get_data(
+        self, _: SeriesSelector, start_date: datetime, end_date: datetime
+    ) -> pa.Table:
+        if start_date.hour % 2 == 0:
+            return pa.Table.from_pydict({"ts": [start_date], "value": [1]})
+        return pa.Table.from_pydict({"ts": [start_date], "value": [2]})
+
+
+class SomeStringTypesSource:
+    def get_metadata(self, selector: SeriesSelector) -> Metadata:
+        return Metadata(selector)
+
+    def get_data(
+        self, _: SeriesSelector, start_date: datetime, end_date: datetime
+    ) -> pa.Table:
+        if start_date.hour % 2 == 0:
+            return pa.Table.from_pydict({"ts": [start_date], "value": ["ok"]})
+        return pa.Table.from_pydict({"ts": [start_date], "value": [2.5]})
+
+
 def test_split_empty():
     source = EmptySource()
     wrapper = SourceWrapper(
@@ -140,6 +176,42 @@ def test_empty_interval():
     assert data["ts"][0] == START_DATE
     assert data["ts"][1] == START_DATE + timedelta(hours=1)
     assert data["ts"][2] == START_DATE + timedelta(hours=2)
+
+
+def test_merge_numerical_types():
+    source = DifferentNumericalTypesSource()
+
+    wrapper = SourceWrapper(
+        Source(source, source), [], {"data_query_interval_seconds": 60 * 60}
+    )
+
+    end_date = datetime.fromisoformat("2020-01-02T00:00:00+00:00")
+    result = wrapper.get_data(SELECTOR, START_DATE, end_date)
+    assert result.field("value").type == pa.float64()
+
+
+def test_keep_integers():
+    source = OnlyIntegersSource()
+
+    wrapper = SourceWrapper(
+        Source(source, source), [], {"data_query_interval_seconds": 60 * 60}
+    )
+
+    end_date = datetime.fromisoformat("2020-01-02T00:00:00+00:00")
+    result = wrapper.get_data(SELECTOR, START_DATE, end_date)
+    assert result.field("value").type == pa.int64()
+
+
+def test_string_when_any():
+    source = SomeStringTypesSource()
+
+    wrapper = SourceWrapper(
+        Source(source, source), [], {"data_query_interval_seconds": 60 * 60}
+    )
+
+    end_date = datetime.fromisoformat("2020-01-02T00:00:00+00:00")
+    result = wrapper.get_data(SELECTOR, START_DATE, end_date)
+    assert result.field("value").type == pa.string()
 
 
 def _make_source():
