@@ -171,6 +171,10 @@ class BaseSQLSource(ABC):
             value = row[1]
             if value is None:
                 value = float("nan")
+            if isinstance(value, bytes):
+                continue
+            if isinstance(value, datetime):
+                value = value.isoformat()
             timestamps.append(ts)
             values.append(value)
         return pa.Table.from_pydict({"ts": timestamps, "value": values})
