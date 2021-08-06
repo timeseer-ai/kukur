@@ -1,0 +1,70 @@
+# Connecting to GE Proficy Historian
+
+Kukur connects to GE Proficy using the Proficy OLE DB Provider.
+The OLE DB Provider needs to be installed as part of the Proficy client tools.
+
+Kukur initiates OLEDB connections using the <<ADODB>> source type.
+
+To connect to the default Proficy Historian, use the following `connection_string`:
+
+[source,TOML]
+----
+[source.MyProficy]
+type = "adodb"
+connection_string = "Provider=ihOLEDB.iHistorian.1;User Id=;Password="
+----
+
+Metadata about time series is available in the `ihTags` table.
+
+It is required to map the values for `data type` and `interpolation type` defined in Proficy to those known in Kukur.
+Additionally, `RowCount = 0` needs to be added to the `where`-clause,
+since by default only 5000 rows are returned by the OLEDB provider.
+
+[source,TOML]
+----
+[source.MyProficy]
+type = "adodb"
+connection_string = "Provider=ihOLEDB.iHistorian.1;User Id=;Password="
+list_query = "select Tagname, Description, EngUnits, DataType, StepValue, LoEngineeringUnits, HiEngineeringUnits from ihtags where RowCount = 0"
+list_columns = ["series name", "description", "unit", "data type", "interpolation type", "lower limit", "upper limit"]
+metadata_value_mapping = "PROFICY_mapping"
+
+[metadata_value_mapping.PROFICY_mapping."data type"]
+FLOAT64 = ["Scaled", "SingleFloat", "DoubleFloat", "SingleInteger", "DoubleInteger", "Quad Integer", "Unsigned Single Integer", "Unsigned Double Integer", "Unsigned Quad Integer", "USingleInteger", "UDoubleInteger", "UQuadInteger"]
+STRING = ["Boolean", "FixedString", "VariableString", "Byte"]
+
+[metadata_value_mapping.PROFICY_mapping."interpolation type"]
+LINEAR = 0
+STEPPED = 1
+----
+
+Time zone handling is crucial when requesting data.
+Kukur uses timestamps in UTC by default.
+Using the `timezone = '0'` `where`-clause ensures that Proficy also interprets and returns dates in UTC.
+
+The OLEDB provider does not accepts the timestamps as provided by Kukur through `pywin32`,
+so a conversion to a date time string is required.
+
+The complete configuration is:
+
+[source,TOML]
+----
+[source.MyProficy]
+type = "adodb"
+connection_string = "Provider=ihOLEDB.iHistorian.1;User Id=;Password="
+list_query = "select Tagname, Description, EngUnits, DataType, StepValue, LoEngineeringUnits, HiEngineeringUnits from ihtags where RowCount = 0"
+list_columns = ["series name", "description", "unit", "data type", "interpolation type", "lower limit", "upper limit"]
+metadata_value_mapping = "PROFICY_mapping"
+data_query = "select TimeStamp, Value from ihRawData where RowCount = 0 and SamplingMode = 'RawByTime' and timezone = '0' and Tagname = ? and TimeStamp >= ? and TimeStamp < ? order by Timestamp asc"
+data_query_interval_seconds = 86400
+data_query_datetime_format = "%Y-%m-%d %H:%M:%S"
+data_timezone = "UTC"
+
+[metadata_value_mapping.PROFICY_mapping."data type"]
+FLOAT64 = ["Scaled", "SingleFloat", "DoubleFloat", "SingleInteger", "DoubleInteger", "Quad Integer", "Unsigned Single Integer", "Unsigned Double Integer", "Unsigned Quad Integer", "USingleInteger", "UDoubleInteger", "UQuadInteger"]
+STRING = ["Boolean", "FixedString", "VariableString", "Byte"]
+
+[metadata_value_mapping.PROFICY_mapping."interpolation type"]
+LINEAR = 0
+STEPPED = 1
+----
