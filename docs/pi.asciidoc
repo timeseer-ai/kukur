@@ -48,7 +48,7 @@ list_query = "select tag, descriptor, engunits, zero - (span/2), zero + (span/2)
 list_columns = ["series name", "description", "unit", "lower limit", "upper limit", "accuracy", "data type", "interpolation type", "dictionary name"]
 metadata_value_mapping = "PI_mapping"
 dictionary_query = "select code, name from pids where digitalset = ?"
-data_query = "select time, value from picomp2 where tag = ? and time between ? and ?"
+data_query = "select time, value from picomp2 where tag = ? and time >= ? and time < ?"
 data_query_datetime_format = "%Y-%m-%d %H:%M:%S"
 data_query_interval_seconds = 86400
 

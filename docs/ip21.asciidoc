@@ -64,7 +64,7 @@ list_query = "SELECT NAME, IP_DESCRIPTION, IP_ENG_UNITS, IP_LOW_LIMIT, IP_HIGH_L
 list_columns = ["series name", "description", "unit", "lower limit", "upper limit", "accuracy", "interpolation type", "data type"]
 metadata_value_mapping = 'IP21_Mapping'
 query_string_parameters = true
-data_query = "SELECT ISO8601(IP_TREND_TIME),IP_TREND_VALUE FROM IP_AnalogDef.1 WHERE NAME='{}' AND IP_TREND_TIME BETWEEN '{}' AND '{}' ORDER BY IP_TREND_TIME ASC"
+data_query = "SELECT ISO8601(IP_TREND_TIME),IP_TREND_VALUE FROM IP_AnalogDef.1 WHERE NAME='{}' AND IP_TREND_TIME >= '{}' AND IP_TREND_TIME < '{}' ORDER BY IP_TREND_TIME ASC"
 data_query_datetime_format = "%Y-%m-%dT%H:%M:%SZ"
 data_query_interval_seconds = 86400
 
