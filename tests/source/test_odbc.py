@@ -31,6 +31,41 @@ class DummySQLSource(BaseSQLSource):
         return self.db
 
 
+class MockSQLIterator:
+    def __next__(self):
+        raise StopIteration()
+
+
+class MockSQLCursor:
+    def __init__(self, execute_fn):
+        self.execute_fn = execute_fn
+
+    def execute(self, query, params):
+        self.execute_fn(query, params)
+
+    def __iter__(self):
+        return MockSQLIterator()
+
+
+class MockSQLConnection:
+    def __init__(self, execute_fn):
+        self.execute_fn = execute_fn
+
+    def cursor(self) -> MockSQLCursor:
+        return MockSQLCursor(self.execute_fn)
+
+
+class MockSQLSource(BaseSQLSource):
+    """SQL source that mocks the connection."""
+
+    def __init__(self, config: SQLConfig, mapper: MetadataValueMapper, execute_fn):
+        super().__init__(config, mapper)
+        self.execute_fn = execute_fn
+
+    def connect(self) -> MockSQLConnection:
+        return MockSQLConnection(self.execute_fn)
+
+
 def test_metadata_value():
     config = SQLConfig(
         ":memory:",
@@ -172,3 +207,52 @@ def test_datetime_values():
         data["value"][0].as_py()
         == datetime.fromisoformat("2021-01-02T12:34:56+00:00").isoformat()
     )
+
+
+def test_timezone_on_queries():
+    config = SQLConfig.from_dict(
+        dict(
+            connection_string=":memory:",
+            data_query="select ts, value from Data where series_name = ? and ts between ? and ?",
+            data_query_timezone="EST",
+        )
+    )
+
+    start_date = None
+
+    def execute_fn(query, params):
+        nonlocal start_date
+        start_date = params[1]
+
+    source = MockSQLSource(config, MetadataValueMapper(), execute_fn)
+    source.get_data(
+        SeriesSelector("dummy", "series"),
+        datetime.fromisoformat("2021-08-01T00:00:00+00:00"),
+        datetime.fromisoformat("2021-08-02T00:00:00+00:00"),
+    )
+    assert start_date == datetime.fromisoformat("2021-07-31T19:00:00")
+
+
+def test_string_in_timezone_on_queries():
+    config = SQLConfig.from_dict(
+        dict(
+            connection_string=":memory:",
+            data_query="select ts, value from Data where series_name = ? and ts between ? and ?",
+            data_query_datetime_format="%Y-%m-%d %H:%M:%S",
+            data_query_timezone="EST",
+        )
+    )
+
+    start_date = None
+
+    def execute_fn(query, params):
+        nonlocal start_date
+        start_date = params[1]
+
+    source = MockSQLSource(config, MetadataValueMapper(), execute_fn)
+    source.get_data(
+        SeriesSelector("dummy", "series"),
+        datetime.fromisoformat("2021-08-01T00:00:00+00:00"),
+        datetime.fromisoformat("2021-08-02T00:00:00+00:00"),
+    )
+    assert start_date == "2021-07-31 19:00:00"

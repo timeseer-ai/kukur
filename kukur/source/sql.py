@@ -243,11 +243,12 @@ class BaseSQLSource(ABC):
         return Dictionary(mapping)
 
     def __format_date(self, date):
+        if self._config.data_query_timezone:
+            date = date.astimezone(self._config.data_query_timezone).replace(
+                tzinfo=None
+            )
         if self._config.data_query_datetime_format is not None:
             return date.strftime(self._config.data_query_datetime_format)
-        if self._config.data_query_timezone:
-            date = date.replace(tzinfo=self._config.data_timezone)
-            return date.replace(tzinfo=None)
         return date
 
     @abstractmethod
