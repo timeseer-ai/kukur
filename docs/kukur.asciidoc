@@ -638,4 +638,5 @@ Concrete examples of complex integrations are documented here.
 
 include::./ip21.asciidoc[leveloffset=+2]
 include::./azure-synapse.asciidoc[leveloffset=+2]
+include::./proficy.asciidoc[leveloffset=+2]
 include::./pi.asciidoc[leveloffset=+2]
