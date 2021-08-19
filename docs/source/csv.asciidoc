@@ -150,7 +150,7 @@ Example:
 
 ```toml
 [source.<name>]
-metadata_field_mapping = "example_value_mapping"
+metadata_value_mapping = "example_value_mapping"
 
 [metadata_value_mapping.example_value_mapping."interpolation type"]
 LINEAR = "linear"
@@ -171,5 +171,5 @@ series name,interpolation type,data type
 test-tag-1,linear,int32
 ```
 
-`metadata_mapping` and `metadata_field_mapping` can be used together
+`metadata_mapping` and `metadata_value_mapping` can be used together
 to map wildly different metadata formats to a CSV supported by Kukur.
