@@ -8,6 +8,8 @@ Parameters common to all data sources are documented here.
 ```toml
 [source.<name>]
 type = "<the type of the source>"
+query_retry_count = 0 # number of retries
+query_retry_delay = 1.0 # seconds between retries as float
 metadata_type = "<the type of the metadata source>"
 metadata_sources = [] # names of additional metadata sources
 data_query_interval_seconds = 123456 # <number of seconds>
@@ -46,6 +48,11 @@ Additional metadata can be loaded from other sources as described in the section
 When multiple sources return an entry for the same metadata field, the source that occurs first in this list
 gets priority.
 Metadata returned by the source itself or by the `metadata` type configuration takes precendence over any additional sources configured here.
+
+`query_retry_count` and `query_retry_delay` allow retrying all queries to a source in case of failure.
+By default no requests will be retried.
+`query_retry_delay` accepts floating point numbers,
+for example `query_retry_delay = 0.5` will wait for 0.5 second after the first failure and between subsequent retries.
 
 `data_query_interval_seconds` defines the maximum duration of the interval in which data is queried in one request.
 A longer query is split in intervals of this length and later on reassembled.

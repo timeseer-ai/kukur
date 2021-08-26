@@ -1,6 +1,9 @@
 """Data sources for Kukur."""
 
+import functools
 import inspect
+import logging
+import time
 
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -24,6 +27,8 @@ from .metadata import MetadataMapper, MetadataValueMapper
 
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
+
+logger = logging.getLogger(__name__)
 
 _FACTORY = {
     "adodb": adodb.from_config,
@@ -54,6 +59,23 @@ class Source:
     data: SourceProtocol
 
 
+def _retry(retry_count: int, retry_delay: float, data_fn, log_message: str):
+    while True:
+        try:
+            return data_fn()
+        except Exception as err:  # pylint: disable=broad-except
+            retry_count = retry_count - 1
+            if retry_count < 0:
+                raise err
+            logger.info(
+                "%s, %d retries left",
+                log_message,
+                retry_count + 1,
+                exc_info=True,
+            )
+            time.sleep(retry_delay)
+
+
 class SourceWrapper:
     """Handles query policy for a data source.
 
@@ -64,6 +86,8 @@ class SourceWrapper:
 
     __source: Source
     __metadata: List[MetadataSource]
+    __query_retry_count: int
+    __query_retry_delay: float
     __data_query_interval: Optional[timedelta] = None
 
     def __init__(
@@ -71,6 +95,8 @@ class SourceWrapper:
     ):
         self.__source = source
         self.__metadata = metadata_sources
+        self.__query_retry_count = common_options.get("query_retry_count", 0)
+        self.__query_retry_delay = common_options.get("query_retry_delay", 1.0)
         if "data_query_interval_seconds" in common_options:
             self.__data_query_interval = timedelta(
                 seconds=common_options["data_query_interval_seconds"]
@@ -87,7 +113,13 @@ class SourceWrapper:
         If metadata sources are configured, query them as well and merge the results. This means that sources that
         are fast to search because they return metadata now also result in one additional query to each metadata
         source for each series."""
-        results = self.__source.metadata.search(selector)
+        query_fn = functools.partial(self.__source.metadata.search, selector)
+        results = _retry(
+            self.__query_retry_count,
+            self.__query_retry_delay,
+            query_fn,
+            f"Search query for {selector.source} failed",
+        )
         if results is None:
             return
         for result in results:
@@ -117,7 +149,13 @@ class SourceWrapper:
         for metadata_source in list(reversed(self.__metadata)) + [
             MetadataSource(self.__source.metadata)
         ]:
-            received_metadata = metadata_source.source.get_metadata(selector)
+            query_fn = functools.partial(metadata_source.source.get_metadata, selector)
+            received_metadata = _retry(
+                self.__query_retry_count,
+                self.__query_retry_delay,
+                query_fn,
+                f'Metadata query for "{selector.name}" ({selector.source}) failed',
+            )
             if len(metadata_source.fields) == 0:
                 for k, v in received_metadata:
                     if v is not None and v != "":
@@ -136,10 +174,23 @@ class SourceWrapper:
         if start_date == end_date or selector.name is None:
             return pa.Table.from_pydict({"ts": [], "value": []})
         tables = [
-            self.__source.data.get_data(selector, start, end)
+            self._get_data_chunk(selector, start, end)
             for start, end in self.__to_intervals(start_date, end_date)
         ]
         return _concat_tables(tables)
+
+    def _get_data_chunk(
+        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
+    ):
+        query_fn = functools.partial(
+            self.__source.data.get_data, selector, start_date, end_date
+        )
+        return _retry(
+            self.__query_retry_count,
+            self.__query_retry_delay,
+            query_fn,
+            f'Data query for "{selector.name}" ({selector.source}) ({start_date} to {end_date}) failed',
+        )
 
     def __to_intervals(
         self, start_date: datetime, end_date: datetime

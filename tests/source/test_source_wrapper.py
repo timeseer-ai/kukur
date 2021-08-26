@@ -4,6 +4,7 @@
 from datetime import datetime, timedelta
 
 import pyarrow as pa
+import pytest
 
 from kukur.source import Source, SourceWrapper, SeriesSelector, Metadata
 
@@ -82,6 +83,36 @@ class SomeStringTypesSource:
         if start_date.hour % 2 == 0:
             return pa.Table.from_pydict({"ts": [start_date], "value": ["ok"]})
         return pa.Table.from_pydict({"ts": [start_date], "value": [2.5]})
+
+
+class FailureSource:
+
+    __failure_count: int
+
+    def __init__(self, *, failure_count=1) -> None:
+        self.__failure_count = failure_count
+
+    def search(self, selector: SeriesSelector):
+        if self.__failure_count == 0:
+            yield Metadata(selector)
+        else:
+            self.__failure_count = self.__failure_count - 1
+            raise Exception("Search failure")
+
+    def get_metadata(self, selector: SeriesSelector) -> Metadata:
+        if self.__failure_count == 0:
+            return Metadata(selector)
+        self.__failure_count = self.__failure_count - 1
+        raise Exception("Metadata failure")
+
+    def get_data(
+        self, _: SeriesSelector, start_date: datetime, end_date: datetime
+    ) -> pa.Table:
+        if self.__failure_count == 0:
+            return pa.Table.from_pydict({"ts": [start_date], "value": [2.5]})
+
+        self.__failure_count = self.__failure_count - 1
+        raise Exception("Data failure")
 
 
 def test_split_empty():
@@ -212,6 +243,46 @@ def test_string_when_any():
     end_date = datetime.fromisoformat("2020-01-02T00:00:00+00:00")
     result = wrapper.get_data(SELECTOR, START_DATE, end_date)
     assert result.field("value").type == pa.string()
+
+
+def test_failure_propagated():
+    source = FailureSource()
+    wrapper = SourceWrapper(Source(source, source), [], {})
+    with pytest.raises(Exception):
+        wrapper.get_data(SELECTOR, START_DATE, END_DATE)
+
+
+def test_retry_on_search_failure():
+    source = FailureSource()
+    wrapper = SourceWrapper(
+        Source(source, source), [], {"query_retry_count": 1, "query_retry_delay": 0.05}
+    )
+    wrapper.search(SELECTOR)
+
+
+def test_retry_on_metadata_failure():
+    source = FailureSource()
+    wrapper = SourceWrapper(
+        Source(source, source), [], {"query_retry_count": 1, "query_retry_delay": 0.05}
+    )
+    wrapper.get_metadata(SELECTOR)
+
+
+def test_retry_on_data_failure():
+    source = FailureSource()
+    wrapper = SourceWrapper(
+        Source(source, source), [], {"query_retry_count": 1, "query_retry_delay": 0.05}
+    )
+    wrapper.get_data(SELECTOR, START_DATE, END_DATE)
+
+
+def test_exception_after_too_many_retries():
+    source = FailureSource(failure_count=2)
+    wrapper = SourceWrapper(
+        Source(source, source), [], {"query_retry_count": 1, "query_retry_delay": 0.05}
+    )
+    with pytest.raises(Exception):
+        wrapper.get_data(SELECTOR, START_DATE, END_DATE)
 
 
 def _make_source():
