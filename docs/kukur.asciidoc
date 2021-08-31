@@ -492,6 +492,7 @@ enum ProcessType {
     CONTINUOUS
     REGIME
     BATCH
+    COUNTER
 }
 ....
 
