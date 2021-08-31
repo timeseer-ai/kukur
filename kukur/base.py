@@ -62,6 +62,7 @@ class ProcessType(Enum):
     CONTINUOUS = "CONTINUOUS"
     REGIME = "REGIME"
     BATCH = "BATCH"
+    COUNTER = "COUNTER"
 
 
 @dataclass

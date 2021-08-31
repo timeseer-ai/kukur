@@ -94,7 +94,7 @@ Supported columns are:
 - `interpolation type` (`LINEAR`, `STEPPED`)
 - `data type` (`FLOAT32`, `FLOAT64`, `STRING`, `DICTIONARY`. `CATEGORICAL`)
 - `dictionary name`
-- `process type` (`CONTINUOUS`, `REGIME`, `BATCH`)
+- `process type` (`CONTINUOUS`, `REGIME`, `BATCH`, `COUNTER`)
 
 Not all ADODB sources can map metadata field values to the values expected by Kukur.
 Use `metadata_value_mapping` to convert them.
@@ -138,7 +138,7 @@ Supported types of metadata are:
 - `interpolation type` (`LINEAR`, `STEPPED`)
 - `data type` (`FLOAT32`, `FLOAT64`, `STRING`, `DICTIONARY`, `CATEGORICAL`)
 - `dictionary name`
-- `process type` (`CONTINUOUS`, `REGIME`, `BATCH`)
+- `process type` (`CONTINUOUS`, `REGIME`, `BATCH`, `COUNTER`)
 
 The metadata query can be read from a file by using `metadata_query_path` instead of `metadata_query`.
 

@@ -92,7 +92,7 @@ Supported types of metadata are:
 - `interpolation type` (`LINEAR`, `STEPPED`)
 - `data type` (`FLOAT32`, `FLOAT64`, `STRING`, `DICTIONARY`, `CATEGORICAL`)
 - `dictionary name`
-- `process type` (`CONTINUOUS`, `REGIME`, `BATCH`)
+- `process type` (`CONTINUOUS`, `REGIME`, `BATCH`, `COUNTER`)
 
 Not all columns need to be present.
 Extra columns will be ignored.
