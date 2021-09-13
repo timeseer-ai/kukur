@@ -168,6 +168,15 @@ class BaseSQLSource(ABC):
         timestamps = []
         values = []
         for row in cursor:
+            if self._config.enable_trace_logging:
+                logger.info(
+                    'Data from "%s (%s)" at %s has value %s with type %s',
+                    selector.source,
+                    selector.name,
+                    row[0],
+                    row[1],
+                    type(row[1]),
+                )
             if isinstance(row[0], datetime):
                 ts = row[0]
             else:
@@ -175,15 +184,6 @@ class BaseSQLSource(ABC):
             if self._config.data_timezone:
                 ts = ts.replace(tzinfo=self._config.data_timezone)
             ts = ts.astimezone(timezone.utc)
-            if self._config.enable_trace_logging:
-                logger.info(
-                    'Data from "%s (%s)" at %s has value %s with type %s',
-                    selector.source,
-                    selector.name,
-                    ts,
-                    row[1],
-                    type(row[1]),
-                )
             value = row[1]
             if value is None:
                 value = float("nan")
