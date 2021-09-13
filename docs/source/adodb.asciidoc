@@ -34,6 +34,7 @@ data_query_path = "<path to data query>"
 data_query_datetime_format = "<strftime format>"
 data_query_timezone = "<override or specify time zone of timestamps to send a naive timestamp to the adodb driver>"
 data_timezone = "<override or specify time zone of timestamps returned by the adodb driver>"
+enable_trace_logging = false
 ```
 
 The examples given here operate on an Excel file with three sheets:
@@ -227,3 +228,9 @@ data_timezone = "UTC"
 ```
 
 The exact available time zones are system-dependent.
+
+Set `enable_trace_logging` to `true` to log the fetched data before conversion.
+
+```toml
+enable_trace_logging = true
+```

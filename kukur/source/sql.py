@@ -3,6 +3,8 @@
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
+import logging
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, tzinfo
@@ -13,6 +15,8 @@ import pyarrow as pa
 
 from kukur import Dictionary, Metadata, SeriesSelector
 from kukur.source.metadata import MetadataValueMapper
+
+logger = logging.getLogger(__name__)
 
 
 class InvalidMetadataError(Exception):
@@ -37,6 +41,7 @@ class SQLConfig:  # pylint: disable=too-many-instance-attributes
     data_query_datetime_format: Optional[str] = None
     data_timezone: Optional[tzinfo] = None
     data_query_timezone: Optional[tzinfo] = None
+    enable_trace_logging: bool = False
 
     @classmethod
     def from_dict(cls, data):
@@ -76,6 +81,8 @@ class SQLConfig:  # pylint: disable=too-many-instance-attributes
             config.data_query_timezone = dateutil.tz.gettz(
                 data.get("data_query_timezone")
             )
+        if "enable_trace_logging" in data:
+            config.enable_trace_logging = data.get("enable_trace_logging", False)
 
         return config
 
@@ -161,6 +168,15 @@ class BaseSQLSource(ABC):
         timestamps = []
         values = []
         for row in cursor:
+            if self._config.enable_trace_logging:
+                logger.info(
+                    'Data from "%s (%s)" at %s has value %s with type %s',
+                    selector.source,
+                    selector.name,
+                    row[0],
+                    row[1],
+                    type(row[1]),
+                )
             if isinstance(row[0], datetime):
                 ts = row[0]
             else:

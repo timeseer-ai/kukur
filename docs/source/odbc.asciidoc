@@ -28,6 +28,7 @@ data_query = "<query for data of one series in time range>"
 data_query_path = "<path to data query>"
 data_query_timezone = "<override or specify time zone of timestamps to send a naive timestamp to the odbc driver>"
 data_timezone = "<override or specify time zone of timestamps returned by the odbc driver>"
+enable_trace_logging = false
 ```
 
 The examples given here operate on this schema:
@@ -241,3 +242,9 @@ data_timezone = "UTC"
 ```
 
 The exact available time zones are system-dependent.
+
+Set `enable_trace_logging` to `true` to log the fetched data before conversion.
+
+```toml
+enable_trace_logging = true
+```
