@@ -14,13 +14,14 @@ metadata_mapping = "<name>"
 metadata_value_mapping ="<name>"
 format = "row|pivot|dir"
 dictionary_dir = "<path>"
+quality_mapping ="<name>"
 ```
 
 `path` is required for time series sources.
 It is optional when used as a metadata source.
 
 Three CSV data models are supported:
-- row based (series name, timestamp, value)
+- row based (series name, timestamp, value, quality (optional))
 - pivot (multiple series with values at the same timestamp)
 - directory based, one CSV file per tag
 
@@ -173,3 +174,22 @@ test-tag-1,linear,int32
 
 `metadata_mapping` and `metadata_value_mapping` can be used together
 to map wildly different metadata formats to a CSV supported by Kukur.
+
+=== Quality
+
+There is a possibility to add a quality column in the csv to represent the opc quality of the data point.
+In this case a mapping needs to be provided.
+
+Example:
+
+```toml
+[source.<name>]
+quality_mapping = "example_opc_mapping"
+
+[quality_mapping.example_opc_mapping]
+GOOD = [[192], [194, 200]]
+
+```
+In this example we map the opc quality of 192 and the range of 194-200 as a good quality point.
+
+A quality column is not available for a csv with a pivot data model.

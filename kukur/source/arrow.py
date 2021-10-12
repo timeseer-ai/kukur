@@ -73,7 +73,10 @@ class BaseArrowSource(ABC):
             raise InvalidDataError(f'column "{selector.name}" not found')
         data = all_data.select([0, selector.name]).rename_columns(["ts", "value"])
         schema = pa.schema(
-            [("ts", pa.timestamp("us", "utc")), ("value", _get_value_schema_type(data))]
+            [
+                ("ts", pa.timestamp("us", "utc")),
+                ("value", _get_value_schema_type(data)),
+            ]
         )
         return data.cast(schema)
 

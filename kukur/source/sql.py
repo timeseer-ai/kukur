@@ -149,7 +149,7 @@ class BaseSQLSource(ABC):
     ) -> pa.Table:
         """Return data using the specified DB-API query."""
         if self._config.data_query is None:
-            return pa.Table.from_pydict({"ts": [], "value": []})
+            return pa.Table.from_pydict({"ts": [], "value": [], "quality": []})
         connection = self.connect()
         cursor = connection.cursor()
 

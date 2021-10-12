@@ -25,6 +25,7 @@ from kukur import Dictionary, Metadata, SeriesSelector
 from kukur.loader import Loader, from_config as loader_from_config
 from kukur.exceptions import InvalidDataError, InvalidSourceException
 from kukur.source.metadata import MetadataMapper, MetadataValueMapper
+from kukur.source.quality import QualityMapper
 
 
 class InvalidMetadataError(Exception):
@@ -38,6 +39,7 @@ def from_config(
     config: Dict[str, str],
     metadata_mapper: MetadataMapper,
     metadata_value_mapper: MetadataValueMapper,
+    quality_mapper: QualityMapper,
 ):
     """Create a new CSV data source from the given configuration dictionary."""
     loaders = CSVLoaders()
@@ -48,7 +50,9 @@ def from_config(
     if "dictionary_dir" in config:
         loaders.dictionary = loader_from_config(config, "dictionary_dir", "r")
     data_format = config.get("format", "row")
-    return CSVSource(data_format, loaders, metadata_mapper, metadata_value_mapper)
+    return CSVSource(
+        data_format, loaders, metadata_mapper, metadata_value_mapper, quality_mapper
+    )
 
 
 @dataclass
@@ -67,6 +71,7 @@ class CSVSource:
     __data_format: str
     __metadata_mapper: MetadataMapper
     __metadata_value_mapper: MetadataValueMapper
+    __quality_mapper: QualityMapper
 
     def __init__(
         self,
@@ -74,12 +79,14 @@ class CSVSource:
         loaders: CSVLoaders,
         metadata_mapper: MetadataMapper,
         metadata_value_mapper: MetadataValueMapper,
-    ):
+        quality_mapper: QualityMapper,
+    ):  # pylint:disable=too-many-arguments
         """Create a new CSV data source."""
         self.__loaders = loaders
         self.__data_format = data_format
         self.__metadata_mapper = metadata_mapper
         self.__metadata_value_mapper = metadata_value_mapper
+        self.__quality_mapper = quality_mapper
 
     def search(self, selector: SeriesSelector) -> Generator[Metadata, None, None]:
         """Search for series matching the given selector."""
@@ -182,43 +189,68 @@ class CSVSource:
             return _read_pivot_data(self.__loaders.data, selector)
 
         if self.__data_format == "dir":
-            return _read_directory_data(self.__loaders.data, selector)
+            return self._read_directory_data(self.__loaders.data, selector)
 
-        return _read_row_data(self.__loaders.data, selector)
+        return self._read_row_data(self.__loaders.data, selector)
+
+    def _read_row_data(self, loader: Loader, selector: SeriesSelector) -> pa.Table:
+        columns = ["series name", "ts", "value"]
+        if self.__quality_mapper.is_present():
+            columns.append("quality")
+        read_options = pyarrow.csv.ReadOptions(column_names=columns)
+        convert_options = pyarrow.csv.ConvertOptions(
+            column_types={"ts": pa.timestamp("us", "utc")},
+        )
+        all_data = pyarrow.csv.read_csv(
+            loader.open(), read_options=read_options, convert_options=convert_options
+        )
+        if self.__quality_mapper.is_present():
+            kukur_quality_values = self._map_quality(all_data["quality"])
+            all_data = all_data.set_column(
+                3, "quality", pa.array(kukur_quality_values, type=pa.int8())
+            )
+
+        # pylint: disable=no-member
+        data = all_data.filter(
+            pyarrow.compute.equal(all_data["series name"], pa.scalar(selector.name))
+        )
+        return data.drop(["series name"])
+
+    def _read_directory_data(
+        self, loader: Loader, selector: SeriesSelector
+    ) -> pa.Table:
+        columns = ["ts", "value"]
+        if self.__quality_mapper.is_present():
+            columns.append("quality")
+        read_options = pyarrow.csv.ReadOptions(column_names=columns)
+        convert_options = pyarrow.csv.ConvertOptions(
+            column_types={"ts": pa.timestamp("us", "utc")},
+        )
+        all_data = pyarrow.csv.read_csv(
+            loader.open_child(f"{selector.name}.csv"),
+            read_options=read_options,
+            convert_options=convert_options,
+        )
+        if self.__quality_mapper.is_present():
+            kukur_quality_values = self._map_quality(all_data["quality"])
+            all_data = all_data.set_column(
+                2, "quality", pa.array(kukur_quality_values, type=pa.int8())
+            )
+        return all_data
+
+    def _map_quality(self, quality_data: pa.array) -> pa.Table:
+        kukur_quality_values = []
+        for source_quality_value in quality_data:
+            kukur_quality_values.append(
+                self.__quality_mapper.from_source(source_quality_value.as_py())
+            )
+        return kukur_quality_values
 
 
 def _read_pivot_data(loader: Loader, selector: SeriesSelector) -> pa.Table:
     all_data = pyarrow.csv.read_csv(loader.open())
     if selector.name not in all_data.column_names:
         raise InvalidDataError(f'column "{selector.name}" not found')
+    columns = ["ts", "value"]
     schema = pa.schema([("ts", pa.timestamp("us", "utc")), ("value", pa.float64())])
-    return (
-        all_data.select([0, selector.name]).rename_columns(["ts", "value"]).cast(schema)
-    )
-
-
-def _read_row_data(loader: Loader, selector: SeriesSelector) -> pa.Table:
-    read_options = pyarrow.csv.ReadOptions(column_names=["series name", "ts", "value"])
-    convert_options = pyarrow.csv.ConvertOptions(
-        column_types={"ts": pa.timestamp("us", "utc")}
-    )
-    all_data = pyarrow.csv.read_csv(
-        loader.open(), read_options=read_options, convert_options=convert_options
-    )
-    # pylint: disable=no-member
-    data = all_data.filter(
-        pyarrow.compute.equal(all_data["series name"], pa.scalar(selector.name))
-    )
-    return data.drop(["series name"])
-
-
-def _read_directory_data(loader: Loader, selector: SeriesSelector) -> pa.Table:
-    read_options = pyarrow.csv.ReadOptions(column_names=["ts", "value"])
-    convert_options = pyarrow.csv.ConvertOptions(
-        column_types={"ts": pa.timestamp("us", "utc")}
-    )
-    return pyarrow.csv.read_csv(
-        loader.open_child(f"{selector.name}.csv"),
-        read_options=read_options,
-        convert_options=convert_options,
-    )
+    return all_data.select([0, selector.name]).rename_columns(columns).cast(schema)

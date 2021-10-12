@@ -22,6 +22,7 @@ import kukur.source.influxdb as influxdb
 
 from kukur import Metadata, SeriesSelector, Source as SourceProtocol
 from kukur.exceptions import InvalidSourceException
+from kukur.source.quality import QualityMapper
 
 from .metadata import MetadataMapper, MetadataValueMapper
 
@@ -172,7 +173,7 @@ class SourceWrapper:
     ) -> pa.Table:
         """Return the data for the given series in the given time frame, taking into account the request policy."""
         if start_date == end_date or selector.name is None:
-            return pa.Table.from_pydict({"ts": [], "value": []})
+            return pa.Table.from_pydict({"ts": [], "value": [], "quality": []})
         tables = [
             self._get_data_chunk(selector, start, end)
             for start, end in self.__to_intervals(start_date, end_date)
@@ -290,6 +291,7 @@ class SourceFactory:
         metadata_value_mapper = self._get_metadata_value_mapper(
             source_config.get("metadata_value_mapping")
         )
+        quality_mapper = self._get_quality_mapper(source_config.get("quality_mapping"))
 
         factory_function: Any = self.__factory[source_type]
 
@@ -299,6 +301,8 @@ class SourceFactory:
                 arguments.append(metadata_mapper)
             elif parameter.annotation == MetadataValueMapper:
                 arguments.append(metadata_value_mapper)
+            elif parameter.annotation == QualityMapper:
+                arguments.append(quality_mapper)
             else:
                 arguments.append(source_config)
 
@@ -318,6 +322,12 @@ class SourceFactory:
             self.__config["metadata_value_mapping"][name]
         )
 
+    def _get_quality_mapper(self, name: Optional[str]) -> QualityMapper:
+        if name is None or name not in self.__config.get("quality_mapping", {}):
+            return QualityMapper()
+
+        return QualityMapper.from_config(self.__config["quality_mapping"][name])
+
 
 def _concat_tables(tables: List[pa.Table]) -> List[pa.Table]:
     """Safely concatenate multiple pyarrow.Table's.
@@ -327,7 +337,7 @@ def _concat_tables(tables: List[pa.Table]) -> List[pa.Table]:
     the value will be a double."""
     tables = [table for table in tables if len(table) > 0]
     if len(tables) == 0:
-        return pa.Table.from_pydict({"ts": [], "value": []})
+        return pa.Table.from_pydict({"ts": [], "value": [], "quality": []})
 
     schema = pa.schema(
         [
@@ -352,6 +362,9 @@ def _concat_tables(tables: List[pa.Table]) -> List[pa.Table]:
             ]
         )
 
+    if _has_quality_data_flag(tables):
+        schema = schema.append(pa.field("quality", pa.int8()))
+
     return pa.concat_tables([table.cast(schema) for table in tables])
 
 
@@ -371,3 +384,8 @@ def _is_all_integer(tables: List[pa.Table]) -> bool:
         if pyarrow.types.is_integer(table.schema.field("value").type)
     ]
     return len(integer_tables) == len(tables)
+
+
+def _has_quality_data_flag(tables: List[pa.Table]) -> bool:
+    quality_table = [table for table in tables if "quality" in table.column_names]
+    return len(quality_table) > 0
