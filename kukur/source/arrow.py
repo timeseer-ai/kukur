@@ -14,6 +14,7 @@ import pyarrow.types
 from kukur import Metadata, SeriesSelector
 from kukur.exceptions import InvalidDataError
 from kukur.loader import Loader
+from kukur.source.quality import QualityMapper
 
 
 class BaseArrowSource(ABC):
@@ -21,11 +22,13 @@ class BaseArrowSource(ABC):
 
     __loader: Loader
     __data_format: str
+    __quality_mapper: QualityMapper
 
-    def __init__(self, data_format: str, loader: Loader):
+    def __init__(self, data_format: str, loader: Loader, quality_mapper: QualityMapper):
         """Create a new data source."""
         self.__loader = loader
         self.__data_format = data_format
+        self.__quality_mapper = quality_mapper
 
     @abstractmethod
     def read_file(self, file_like) -> pa.Table:
@@ -81,9 +84,10 @@ class BaseArrowSource(ABC):
         return data.cast(schema)
 
     def _read_row_data(self, selector: SeriesSelector) -> pa.Table:
-        all_data = self.read_file(self.__loader.open()).rename_columns(
-            ["series name", "ts", "value"]
-        )
+        columns = ["series name", "ts", "value"]
+        if self.__quality_mapper.is_present():
+            columns.append("quality")
+        all_data = self.read_file(self.__loader.open()).rename_columns(columns)
         # pylint: disable=no-member
         data = all_data.filter(
             pyarrow.compute.equal(all_data["series name"], pa.scalar(selector.name))
@@ -94,19 +98,43 @@ class BaseArrowSource(ABC):
                 ("value", _get_value_schema_type(data)),
             ]
         )
+
+        if self.__quality_mapper.is_present():
+            schema = schema.append(pa.field("quality", pa.int8()))
+            kukur_quality_values = self._map_quality(all_data["quality"])
+            data = data.set_column(
+                2, "quality", pa.array(kukur_quality_values, type=pa.int8())
+            )
+
         return data.cast(schema)
 
     def _read_directory_data(self, selector: SeriesSelector) -> pa.Table:
+        columns = ["ts", "value"]
+        if self.__quality_mapper.is_present():
+            columns.append("quality")
+
         data = self.read_file(
             self.__loader.open_child(f"{selector.name}.{self.get_file_extension()}")
-        ).rename_columns(["ts", "value"])
+        ).rename_columns(columns)
         schema = pa.schema(
             [
                 ("ts", pa.timestamp("us", "utc")),
                 ("value", _get_value_schema_type(data)),
             ]
         )
+        if self.__quality_mapper.is_present():
+            schema = schema.append(pa.field("quality", pa.int8()))
+            kukur_quality_values = self._map_quality(data["quality"])
+            data = data.set_column(
+                2, "quality", pa.array(kukur_quality_values, type=pa.int8())
+            )
         return data.cast(schema)
+
+    def _map_quality(self, quality_data: pa.array) -> pa.Table:
+        return [
+            self.__quality_mapper.from_source(source_quality_value.as_py())
+            for source_quality_value in quality_data
+        ]
 
 
 def _get_value_schema_type(data: pa.Table):

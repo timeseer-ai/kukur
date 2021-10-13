@@ -12,6 +12,7 @@ Feather supports the same source layouts as CSV:
 type = "feather"
 format = "row|dir|pivot"
 path = "<path to data>"
+quality_mapping = "<name>"
 ```
 
 `path` is required.
@@ -33,7 +34,7 @@ metadata_type = "csv"
 format = "row"
 ```
 
-The row based format expects `path` to be a Feather file with 3 columns:
+The row based format expects `path` to be a Feather file with at least 3 columns:
 
 - The first column contains the `series name` as a string
 - The second column contains the timestamp as https://arrow.apache.org/docs/python/generated/pyarrow.TimestampType.html#pyarrow.TimestampType[`pyarrow.TimestampType`].
@@ -48,7 +49,7 @@ format = "dir"
 The directory based format expects `path` to be a directory containing Feather files.
 Each file inside `path` is named `<series name>.feather`.
 
-The Feather file contains 2 columns:
+The Feather file contains at least 2 columns:
 
 - The first column contains the timestamp as https://arrow.apache.org/docs/python/generated/pyarrow.TimestampType.html#pyarrow.TimestampType[`pyarrow.TimestampType`].
 - The second column contains the value as a numerical type or a string
@@ -65,3 +66,42 @@ The first column in the file is a timestamp.
 Further columns contain the values.
 Some columns can be numerical while other columns contain strings.
 The name of each column is the series name.
+
+=== Quality
+
+There is a possibility to add a quality column in the Feather file to represent the quality of the data point in the source, e.g. OPC quality code.
+In this case a mapping needs to be provided.
+
+Example:
+
+```toml
+[source.<name>]
+quality_mapping = "example_mapping"
+
+[quality_mapping.example_mapping]
+GOOD = [192, 194, 197]
+
+```
+In this example we map the OPC quality of 192, 194 and 197 defined in the source as a good quality point in Kukur.
+
+It is also possible to include ranges in the quality mapping.
+
+Example:
+
+```toml
+[quality_mapping.example_mapping]
+GOOD = [[192], [194, 200]]
+```
+In this example we map the OPC quality of 192, and the range of 194-200 defined in the source as a good quality point in Kukur.
+
+If string values are used in the source, similar configuration can be used.
+
+Example:
+
+```toml
+[quality_mapping.example_mapping]
+GOOD = ["GoodQuality", "ExcellentQuality"]
+```
+In this example we map the "GoodQuality" and "ExcellentQuality" defined in the source as a good quality point in Kukur.
+
+A quality column is not available for a Feather file with a pivot data format.

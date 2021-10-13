@@ -19,15 +19,16 @@ import pyarrow.parquet as parquet
 from kukur.exceptions import InvalidSourceException
 from kukur.loader import from_config as loader_from_config
 from kukur.source.arrow import BaseArrowSource
+from kukur.source.quality import QualityMapper
 
 
-def from_config(config: Dict[str, str]):
+def from_config(config: Dict[str, str], quality_mapper: QualityMapper):
     """Create a new Parquet data source from the given configuration dictionary."""
     loader = loader_from_config(config, files_as_path=True)
     if "path" not in config:
         raise InvalidSourceException('Parquet sources require a "path" entry')
     data_format = config.get("format", "row")
-    return ParquetSource(data_format, loader)
+    return ParquetSource(data_format, loader, quality_mapper)
 
 
 class ParquetSource(BaseArrowSource):

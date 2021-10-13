@@ -37,6 +37,17 @@ def test_dir():
     assert table["value"][0].as_py() == 1.0
 
 
+def test_dir_quality():
+    table = get_source("dir-parquet-quality").get_data(
+        make_series("dir-parquet"), START_DATE, END_DATE
+    )
+    assert len(table) == 5
+    assert table.column_names == ["ts", "value", "quality"]
+    assert table["ts"][0].as_py() == START_DATE
+    assert table["value"][0].as_py() == 1.0
+    assert table["quality"][0].as_py() == 1
+
+
 def test_dir_string():
     table = get_source("dir-parquet").get_data(
         make_series("dir-parquet", "test-tag-5"), START_DATE, END_DATE
@@ -55,6 +66,17 @@ def test_row():
     assert table.column_names == ["ts", "value"]
     assert table["ts"][0].as_py() == START_DATE
     assert table["value"][0].as_py() == 1.0
+
+
+def test_row_quality():
+    table = get_source("row-parquet-quality").get_data(
+        make_series("row-parquet-quality"), START_DATE, END_DATE
+    )
+    assert len(table) == 5
+    assert table.column_names == ["ts", "value", "quality"]
+    assert table["ts"][0].as_py() == START_DATE
+    assert table["value"][0].as_py() == 1.0
+    assert table["quality"][0].as_py() == 1
 
 
 def test_pivot():

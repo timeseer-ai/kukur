@@ -18,15 +18,16 @@ import pyarrow.feather as feather
 from kukur.exceptions import InvalidSourceException
 from kukur.loader import from_config as loader_from_config
 from kukur.source.arrow import BaseArrowSource
+from kukur.source.quality import QualityMapper
 
 
-def from_config(config: Dict[str, str]):
+def from_config(config: Dict[str, str], quality_mapper: QualityMapper):
     """Create a new Feather data source from the given configuration dictionary."""
     data_format = config.get("format", "row")
     if "path" not in config:
         raise InvalidSourceException('Feather sources require a "path" entry')
     loader = loader_from_config(config, files_as_path=True)
-    return FeatherSource(data_format, loader)
+    return FeatherSource(data_format, loader, quality_mapper)
 
 
 class FeatherSource(BaseArrowSource):
