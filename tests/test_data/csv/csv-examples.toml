@@ -6,7 +6,7 @@ dictionary_dir = "tests/test_data/csv/dictionary"
 
 [source.row_quality]
 type = "csv"
-path = "tests/test_data/csv/row_quality.csv"
+path = "tests/test_data/csv/row-quality.csv"
 metadata = "tests/test_data/csv/row-metadata.csv"
 dictionary_dir = "tests/test_data/csv/dictionary"
 quality_mapping = "opc_mapping_strings"

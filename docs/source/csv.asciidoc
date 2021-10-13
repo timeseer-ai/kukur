@@ -208,8 +208,8 @@ Example:
 
 ```toml
 [quality_mapping.example_mapping]
-GOOD = ["GoodQuality", "ExcelentQuality"]
+GOOD = ["GoodQuality", "ExcellentQuality"]
 ```
-In this example we map the "GoodQuality" and "ExcelentQuality" defined in the source as a good quality point in Kukur.
+In this example we map the "GoodQuality" and "ExcellentQuality" defined in the source as a good quality point in Kukur.
 
-A quality column is not available for a csv with a pivot data model.
+A quality column is not available for a CSV with a pivot data model.
