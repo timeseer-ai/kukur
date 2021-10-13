@@ -111,6 +111,46 @@ fields = ["lower limit", "upper limit"]
 Note that sources that are fast when listing all time series in the source by returning metadata in the same query,
 will need to do an additional query to each of the configured metadata sources for each time series in the source.
 
+== Quality
+
+There is a possibility, for some types of sources, to add a quality column in the source file that represents the quality of the data point in the source, e.g. OPC quality code.
+
+In this case a mapping needs to be provided.
+
+Example:
+
+```toml
+[source.<name>]
+quality_mapping = "example_mapping"
+
+[quality_mapping.example_mapping]
+GOOD = [192, 194, 197]
+
+```
+In this example we map the OPC quality of 192, 194 and 197 defined in the source as a good quality point in Kukur.
+
+It is also possible to include ranges in the quality mapping.
+
+Example:
+
+```toml
+[quality_mapping.example_mapping]
+GOOD = [[192], [194, 200]]
+```
+In this example we map the OPC quality of 192, and the range of 194-200 defined in the source as a good quality point in Kukur.
+
+If string values are used in the source, similar configuration can be used.
+
+Example:
+
+```toml
+[quality_mapping.example_mapping]
+GOOD = ["GoodQuality", "ExcellentQuality"]
+```
+In this example we map the "GoodQuality" and "ExcellentQuality" defined in the source as a good quality point in Kukur.
+
+A quality column is not available for a source file with a pivot data format.
+
 == Supported Sources
 
 Multiple types of time series sources are supported:
