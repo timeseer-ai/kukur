@@ -177,28 +177,39 @@ to map wildly different metadata formats to a CSV supported by Kukur.
 
 === Quality
 
-There is a possibility to add a quality column in the csv to represent the quality of the data point in the source, e.g. OPC quality code.
+There is a possibility to add a quality column in the CSV to represent the quality of the data point in the source, e.g. OPC quality code.
 In this case a mapping needs to be provided.
 
 Example:
 
 ```toml
 [source.<name>]
-quality_mapping = "example_opc_mapping"
+quality_mapping = "example_mapping"
 
-[quality_mapping.example_opc_mapping]
+[quality_mapping.example_mapping]
 GOOD = [192, 194, 197]
 
 ```
-In this example we map the OPC quality of 192, 194 and 197 as a good quality point.
+In this example we map the OPC quality of 192, 194 and 197 defined in the source as a good quality point in Kukur.
 
 It is also possible to include ranges in the quality mapping.
 
 Example:
+
 ```toml
-[quality_mapping.example_opc_mapping]
+[quality_mapping.example_mapping]
 GOOD = [[192], [194, 200]]
 ```
-In this example we map the OPC quality of 192, and the range of 194-200 as a good quality point.
+In this example we map the OPC quality of 192, and the range of 194-200 defined in the source as a good quality point in Kukur.
+
+If string values are used in the source, similar configuration can be used.
+
+Example:
+
+```toml
+[quality_mapping.example_mapping]
+GOOD = ["GoodQuality", "ExcelentQuality"]
+```
+In this example we map the "GoodQuality" and "ExcelentQuality" defined in the source as a good quality point in Kukur.
 
 A quality column is not available for a csv with a pivot data model.
