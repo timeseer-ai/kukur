@@ -177,7 +177,7 @@ to map wildly different metadata formats to a CSV supported by Kukur.
 
 === Quality
 
-There is a possibility to add a quality column in the Parquet file.
+There is a possibility to add a quality column in the CSV file.
 Check the
 ifdef::sources[]
 <<Quality, source documentation>>
@@ -185,4 +185,6 @@ endif::sources[]
 ifndef::sources[]
 link:sources.asciidoc#Quality[source documentation]
 endif::sources[]
-to configure a quality column.
+to configure the mapping of a value in the quality column to a quality status known to Kukur.
+
+A quality column is not available for a CSV file with a pivot data format.

@@ -149,8 +149,6 @@ GOOD = ["GoodQuality", "ExcellentQuality"]
 ```
 In this example we map the "GoodQuality" and "ExcellentQuality" defined in the source as a good quality point in Kukur.
 
-A quality column is not available for a source file with a pivot data format.
-
 == Supported Sources
 
 Multiple types of time series sources are supported:
