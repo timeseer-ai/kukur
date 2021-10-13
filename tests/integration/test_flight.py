@@ -53,7 +53,7 @@ def test_data(client: Client):
 
 def test_sources(client: Client):
     data = client.list_sources()
-    assert len(data) == 31
+    assert len(data) == 33
     assert "sql" in data
     assert "row" in data
     assert "noaa" in data

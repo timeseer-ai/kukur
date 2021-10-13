@@ -15,6 +15,7 @@ import pyarrow as pa
 
 from kukur import Dictionary, Metadata, SeriesSelector
 from kukur.source.metadata import MetadataValueMapper
+from kukur.source.quality import QualityMapper
 
 logger = logging.getLogger(__name__)
 
@@ -95,10 +96,17 @@ class BaseSQLSource(ABC):
 
     _config: SQLConfig
     _metadata_value_mapper: MetadataValueMapper
+    _quality_mapper: QualityMapper
 
-    def __init__(self, config: SQLConfig, metadata_value_mapper: MetadataValueMapper):
+    def __init__(
+        self,
+        config: SQLConfig,
+        metadata_value_mapper: MetadataValueMapper,
+        quality_mapper: QualityMapper,
+    ):
         self._config = config
         self._metadata_value_mapper = metadata_value_mapper
+        self._quality_mapper = quality_mapper
 
     def search(
         self, selector: SeriesSelector
@@ -167,6 +175,7 @@ class BaseSQLSource(ABC):
 
         timestamps = []
         values = []
+        qualities = []
         for row in cursor:
             if self._config.enable_trace_logging:
                 logger.info(
@@ -191,8 +200,15 @@ class BaseSQLSource(ABC):
                 continue
             if isinstance(value, datetime):
                 value = value.isoformat()
+            if self._quality_mapper.is_present():
+                quality = self._quality_mapper.from_source(row[2])
+                qualities.append(quality)
             timestamps.append(ts)
             values.append(value)
+        if self._quality_mapper.is_present():
+            return pa.Table.from_pydict(
+                {"ts": timestamps, "value": values, "quality": qualities}
+            )
         return pa.Table.from_pydict({"ts": timestamps, "value": values})
 
     def __search_names(

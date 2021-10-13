@@ -133,6 +133,26 @@ metadata_columns = ["description", "unit", "interpolation type", "data type", "d
 metadata_value_mapping = "odbc_test"
 data_query_path = "tests/test_data/odbc/data.sql"
 
+[source.sql-quality]
+type = "odbc"
+connection_string_path = "tests/test_data/odbc/connection.txt"
+list_query_path = "tests/test_data/odbc/list.sql"
+metadata_query_path = "tests/test_data/odbc/metadata.sql"
+metadata_columns = ["description", "unit", "interpolation type", "data type", "dictionary name", "interpolation type"]
+metadata_value_mapping = "odbc_test"
+data_query_path = "tests/test_data/odbc/data-quality.sql"
+quality_mapping = "opc_mapping_ranges"
+
+[source.sql-quality-str]
+type = "odbc"
+connection_string_path = "tests/test_data/odbc/connection.txt"
+list_query_path = "tests/test_data/odbc/list.sql"
+metadata_query_path = "tests/test_data/odbc/metadata.sql"
+metadata_columns = ["description", "unit", "interpolation type", "data type", "dictionary name", "interpolation type"]
+metadata_value_mapping = "odbc_test"
+data_query_path = "tests/test_data/odbc/data-quality-string.sql"
+quality_mapping = "opc_mapping_strings"
+
 [metadata_value_mapping.odbc_test."data type"]
 FLOAT64 = "float64"
 STRING = ["string", "text", "varchar"]
@@ -141,3 +161,9 @@ DICTIONARY = "dictionary"
 [metadata_value_mapping.odbc_test."interpolation type"]
 LINEAR = 0
 STEPPED = 1
+
+[quality_mapping.opc_mapping_ranges]
+GOOD = [[192], [194, 198]]
+
+[quality_mapping.opc_mapping_strings]
+GOOD = ["GoodQuality", "Decent"]
