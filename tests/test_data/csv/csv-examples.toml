@@ -50,4 +50,4 @@ STEPPED = "stepped"
 FLOAT64 = ["int16", "int32"]
 
 [quality_mapping.opc_mapping]
-GOOD = [[192], [194, 200]]
+GOOD = [[192], [194, 200], ["GOOD"]]

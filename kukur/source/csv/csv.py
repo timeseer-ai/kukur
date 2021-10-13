@@ -233,18 +233,16 @@ class CSVSource:
         )
         if self.__quality_mapper.is_present():
             kukur_quality_values = self._map_quality(all_data["quality"])
-            all_data = all_data.set_column(
+            return all_data.set_column(
                 2, "quality", pa.array(kukur_quality_values, type=pa.int8())
             )
         return all_data
 
     def _map_quality(self, quality_data: pa.array) -> pa.Table:
-        kukur_quality_values = []
-        for source_quality_value in quality_data:
-            kukur_quality_values.append(
-                self.__quality_mapper.from_source(source_quality_value.as_py())
-            )
-        return kukur_quality_values
+        return [
+            self.__quality_mapper.from_source(source_quality_value.as_py())
+            for source_quality_value in quality_data
+        ]
 
 
 def _read_pivot_data(loader: Loader, selector: SeriesSelector) -> pa.Table:

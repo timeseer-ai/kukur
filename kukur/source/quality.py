@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from enum import Enum
-from typing import Dict
+from typing import Dict, List, Union
 
 
 class Quality(Enum):
@@ -18,7 +18,7 @@ class QualityMapper:
     """QualityMapper maps quality values used in a source to the quality values of Kukur.
     GOOD = 1 and BAD = 0."""
 
-    __good_mapping: list
+    __good_mapping: List[Union[str, int]]
 
     @classmethod
     def from_config(cls, config: Dict[str, str]) -> "QualityMapper":
@@ -31,13 +31,13 @@ class QualityMapper:
                         mapper.add_mapping_range(
                             range(int(value_list[0]), int(value_list[1]))
                         )
-                    mapper.add_mapping(int(value_list[0]))
+                    mapper.add_mapping(value_list[0])
         return mapper
 
     def __init__(self):
         self.__good_mapping = []
 
-    def add_mapping(self, quality_value: int):
+    def add_mapping(self, quality_value: Union[str, int]):
         """Add a mapping"""
         self.__good_mapping.append(quality_value)
 
@@ -45,7 +45,7 @@ class QualityMapper:
         """Add a mapping range"""
         self.__good_mapping.extend(quality_values)
 
-    def from_source(self, source_quality_value: int) -> int:
+    def from_source(self, source_quality_value: Union[str, int]) -> int:
         """Map a quality value of a source to the Kukur quality value."""
         if source_quality_value in self.__good_mapping:
             return Quality.GOOD.value
