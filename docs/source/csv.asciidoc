@@ -187,9 +187,18 @@ Example:
 quality_mapping = "example_opc_mapping"
 
 [quality_mapping.example_opc_mapping]
-GOOD = [[192], [194, 200]]
+GOOD = [192, 194, 197]
 
 ```
-In this example we map the opc quality of 192 and the range of 194-200 as a good quality point.
+In this example we map the OPC quality of 192, 194 and 197 as a good quality point.
+
+It is also possible to include ranges in the quality mapping.
+
+Example:
+```toml
+[quality_mapping.example_opc_mapping]
+GOOD = [[192], [194, 200]]
+```
+In this example we map the OPC quality of 192, and the range of 194-200 as a good quality point.
 
 A quality column is not available for a csv with a pivot data model.

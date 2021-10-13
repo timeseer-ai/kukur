@@ -50,18 +50,6 @@ def test_dir_quality():
     assert table["quality"][3].as_py() == 1
 
 
-def test_dir_quality_string():
-    table = get_source("dir-quality").get_data(
-        make_series("dir-quality", "test-tag-5"), START_DATE, END_DATE
-    )
-    assert len(table) == 7
-    assert table.column_names == ["ts", "value", "quality"]
-    assert table["ts"][0].as_py() == START_DATE
-    assert table["value"][0].as_py() == "A"
-    assert table["quality"][0].as_py() == 1
-    assert table["quality"][6].as_py() == 0
-
-
 def test_row():
     table = get_source("row").get_data(make_series("row"), START_DATE, END_DATE)
     assert len(table) == 5

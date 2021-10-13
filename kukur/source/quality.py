@@ -4,11 +4,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from enum import Enum
-from typing import Dict, List, Union
+from typing import Any, Dict, List, Union
 
 
 class Quality(Enum):
-    """Enumerate to define the Kukur quality."""
+    """Enumeration of possible Kukur quality flags."""
 
     BAD = 0
     GOOD = 1
@@ -21,17 +21,20 @@ class QualityMapper:
     __good_mapping: List[Union[str, int]]
 
     @classmethod
-    def from_config(cls, config: Dict[str, str]) -> "QualityMapper":
+    def from_config(cls, config: Dict[str, Any]) -> "QualityMapper":
         """Create a new mapper from a dictionary that maps Kukur quality values to external quality values."""
         mapper = cls()
         for quality, quality_values in config.items():
             if quality == Quality.GOOD.name:
                 for value_list in quality_values:
-                    if len(value_list) > 1:
-                        mapper.add_mapping_range(
-                            range(int(value_list[0]), int(value_list[1]))
-                        )
-                    mapper.add_mapping(value_list[0])
+                    if isinstance(value_list, list):
+                        if len(value_list) > 1:
+                            mapper.add_mapping_range(
+                                range(int(value_list[0]), int(value_list[1]) + 1)
+                            )
+                        mapper.add_mapping(value_list[0])
+                        continue
+                    mapper.add_mapping(value_list)
         return mapper
 
     def __init__(self):
