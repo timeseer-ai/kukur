@@ -68,8 +68,8 @@ def data(
     table = source.get_data(
         SeriesSelector(source_name, series_name), start_date, end_date
     )
-    for ts, value in zip(table["ts"], table["value"]):
-        yield [ts.as_py().isoformat(), value.as_py()]
+    for ts, value, quality in zip(table["ts"], table["value"], table["quality"]):
+        yield [ts.as_py().isoformat(), value.as_py(), quality.as_py()]
 
 
 def _get_metadata_header(result: Metadata) -> List[str]:

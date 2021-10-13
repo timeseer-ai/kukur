@@ -1,0 +1,5 @@
+test-tag-1,2020-01-01T00:00:00Z,1,GoodQuality
+test-tag-1,2020-02-01T00:00:00Z,2,GoodQuality
+test-tag-1,2020-03-01T00:00:00Z,2,BadQuality
+test-tag-1,2020-04-01T00:00:00Z,1,GoodQuality
+test-tag-1,2020-05-01T00:00:00Z,1,GoodQuality

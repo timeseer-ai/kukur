@@ -4,6 +4,13 @@ path = "tests/test_data/csv/row.csv"
 metadata = "tests/test_data/csv/row-metadata.csv"
 dictionary_dir = "tests/test_data/csv/dictionary"
 
+[source.row_quality]
+type = "csv"
+path = "tests/test_data/csv/row-quality.csv"
+metadata = "tests/test_data/csv/row-metadata.csv"
+dictionary_dir = "tests/test_data/csv/dictionary"
+quality_mapping = "opc_mapping_strings"
+
 [source.mapping]
 type = "csv"
 path = "tests/test_data/csv/mapping.csv"
@@ -23,6 +30,13 @@ path = "tests/test_data/csv/dir"
 metadata = "tests/test_data/csv/dir-metadata.csv"
 format = "dir"
 
+[source.dir-quality]
+type = "csv"
+path = "tests/test_data/csv/dir_quality"
+metadata = "tests/test_data/csv/dir-metadata.csv"
+format = "dir"
+quality_mapping = "opc_mapping_ranges"
+
 [metadata_mapping.ip21]
 "series name" = "NAME"
 description = "IP_DESCRIPTION"
@@ -34,3 +48,9 @@ STEPPED = "stepped"
 
 [metadata_value_mapping.example_value_mapping."data type"]
 FLOAT64 = ["int16", "int32"]
+
+[quality_mapping.opc_mapping_strings]
+GOOD = ["GoodQuality", "Decent"]
+
+[quality_mapping.opc_mapping_ranges]
+GOOD = [[192], [194, 198]]
