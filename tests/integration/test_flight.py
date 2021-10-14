@@ -51,6 +51,21 @@ def test_data(client: Client):
     assert data["value"][6].as_py() == 1.0
 
 
+def test_data_with_quality(client: Client):
+    start_date = datetime.fromisoformat("2020-01-01T00:00:00+00:00")
+    end_date = datetime.fromisoformat("2021-01-01T00:00:00+00:00")
+    data = client.get_data(
+        SeriesSelector("row_quality", "test-tag-1"), start_date, end_date
+    )
+    assert len(data) == 5
+    assert data["ts"][0].as_py() == start_date
+    assert data["value"][0].as_py() == 1.0
+    assert data["quality"][0].as_py() == 1
+    assert data["ts"][2].as_py() == datetime.fromisoformat("2020-03-01T00:00:00+00:00")
+    assert data["value"][2].as_py() == 2.0
+    assert data["quality"][2].as_py() == 0
+
+
 def test_sources(client: Client):
     data = client.list_sources()
     assert len(data) == 33
