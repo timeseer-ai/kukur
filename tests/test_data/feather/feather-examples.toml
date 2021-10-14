@@ -17,3 +17,24 @@ format = "pivot"
 path = "tests/test_data/feather/pivot.feather"
 metadata_type = "csv"
 metadata = "tests/test_data/csv/pivot-metadata.csv"
+
+[source.row-feather-quality]
+type = "feather"
+path = "tests/test_data/feather/row-quality.feather"
+metadata_type = "csv"
+metadata = "tests/test_data/csv/row-metadata.csv"
+quality_mapping = "opc_mapping_strings"
+
+[source.dir-feather-quality]
+type = "feather"
+format = "dir"
+path = "tests/test_data/feather/dir_quality"
+metadata_type = "csv"
+metadata = "tests/test_data/csv/dir-metadata.csv"
+quality_mapping = "opc_mapping_ranges"
+
+[quality_mapping.opc_mapping_strings]
+GOOD = ["GoodQuality", "Decent"]
+
+[quality_mapping.opc_mapping_ranges]
+GOOD = [[192], [194, 198]]
