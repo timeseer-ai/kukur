@@ -29,6 +29,7 @@ data_query_path = "<path to data query>"
 data_query_timezone = "<override or specify time zone of timestamps to send a naive timestamp to the odbc driver>"
 data_timezone = "<override or specify time zone of timestamps returned by the odbc driver>"
 enable_trace_logging = false
+quality_mapping = "<name>"
 ```
 
 The examples given here operate on this schema:
@@ -248,3 +249,24 @@ Set `enable_trace_logging` to `true` to log the fetched data before conversion.
 ```toml
 enable_trace_logging = true
 ```
+
+=== Quality
+
+There is a possibility to add a quality column.
+
+In this case the data query changes:
+
+```toml
+data_query = "select ts, value, quality from Data where name = ? and ts between ? and ?"
+```
+
+Where `quality` represents the column that contains the data point quality of the ODBC source.
+
+Check the
+ifdef::sources[]
+<<Quality, source documentation>>
+endif::sources[]
+ifndef::sources[]
+link:sources.asciidoc#Quality[source documentation]
+endif::sources[]
+to configure the mapping of a value in the quality column to a quality status known to Kukur.

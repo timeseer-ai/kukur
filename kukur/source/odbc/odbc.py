@@ -11,6 +11,7 @@ except ImportError:
     HAS_ODBC = False
 
 from kukur.source.metadata import MetadataValueMapper
+from kukur.source.quality import QualityMapper
 from kukur.source.sql import BaseSQLSource, SQLConfig
 
 
@@ -21,21 +22,28 @@ class ODBCNotInstalledError(Exception):
         Exception.__init__(self, "the pyodbc modules is not available. Install pyodbc")
 
 
-def from_config(data, metadata_value_mapper: MetadataValueMapper):
+def from_config(
+    data, metadata_value_mapper: MetadataValueMapper, quality_mapper: QualityMapper
+):
     """Create a new ODBC data source from a configuration dict."""
     if not HAS_ODBC:
         raise ODBCNotInstalledError()
 
     config = SQLConfig.from_dict(data)
 
-    return ODBCSource(config, metadata_value_mapper)
+    return ODBCSource(config, metadata_value_mapper, quality_mapper)
 
 
 class ODBCSource(BaseSQLSource):
     """An ODBC data source."""
 
-    def __init__(self, config: SQLConfig, metadata_value_mapper: MetadataValueMapper):
-        super().__init__(config, metadata_value_mapper)
+    def __init__(
+        self,
+        config: SQLConfig,
+        metadata_value_mapper: MetadataValueMapper,
+        quality_mapper: QualityMapper,
+    ):
+        super().__init__(config, metadata_value_mapper, quality_mapper)
         if not HAS_ODBC:
             raise ODBCNotInstalledError()
 

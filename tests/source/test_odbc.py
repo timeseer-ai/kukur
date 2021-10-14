@@ -13,14 +13,20 @@ from dateutil.parser import parse as parse_date
 
 from kukur import Metadata, SeriesSelector
 from kukur.source.metadata import MetadataValueMapper
+from kukur.source.quality import QualityMapper
 from kukur.source.sql import BaseSQLSource, SQLConfig
 
 
 class DummySQLSource(BaseSQLSource):
     """In-memory SQLite database."""
 
-    def __init__(self, config: SQLConfig, mapper: MetadataValueMapper):
-        super().__init__(config, mapper)
+    def __init__(
+        self,
+        config: SQLConfig,
+        mapper: MetadataValueMapper,
+        quality_mapper: QualityMapper,
+    ):
+        super().__init__(config, mapper, quality_mapper)
         sqlite3.register_converter("datetime", parse_date)
         self.db = sqlite3.connect(
             config.connection_string,
@@ -58,8 +64,14 @@ class MockSQLConnection:
 class MockSQLSource(BaseSQLSource):
     """SQL source that mocks the connection."""
 
-    def __init__(self, config: SQLConfig, mapper: MetadataValueMapper, execute_fn):
-        super().__init__(config, mapper)
+    def __init__(
+        self,
+        config: SQLConfig,
+        mapper: MetadataValueMapper,
+        quality_mapper: QualityMapper,
+        execute_fn,
+    ):
+        super().__init__(config, mapper, quality_mapper)
         self.execute_fn = execute_fn
 
     def connect(self) -> MockSQLConnection:
@@ -72,7 +84,7 @@ def test_metadata_value():
         metadata_query="select dictionary_name from Metadata where series_name = ?",
         metadata_columns=["dictionary name"],
     )
-    source = DummySQLSource(config, MetadataValueMapper())
+    source = DummySQLSource(config, MetadataValueMapper(), QualityMapper())
     source.db.executescript(
         """
         create table Metadata (
@@ -93,7 +105,7 @@ def test_metadata_none_value_on_empty_return():
         metadata_query="select dictionary_name from Metadata where series_name = ?",
         metadata_columns=["dictionary name"],
     )
-    source = DummySQLSource(config, MetadataValueMapper())
+    source = DummySQLSource(config, MetadataValueMapper(), QualityMapper())
     source.db.executescript(
         """
         create table Metadata (
@@ -114,7 +126,7 @@ def test_list_none_value_on_empty_return():
         list_query="select series_name, dictionary_name from Metadata",
         list_columns=["series name", "dictionary name"],
     )
-    source = DummySQLSource(config, MetadataValueMapper())
+    source = DummySQLSource(config, MetadataValueMapper(), QualityMapper())
     source.db.executescript(
         """
         create table Metadata (
@@ -135,7 +147,7 @@ def test_blob_values():
         ":memory:",
         data_query="select ts, value from Data where series_name = ? and ts between ? and ?",
     )
-    source = DummySQLSource(config, MetadataValueMapper())
+    source = DummySQLSource(config, MetadataValueMapper(), QualityMapper())
     source.db.execute(
         """
         create table Data (
@@ -177,7 +189,7 @@ def test_datetime_values():
         ":memory:",
         data_query="select ts, value from Data where series_name = ? and ts between ? and ?",
     )
-    source = DummySQLSource(config, MetadataValueMapper())
+    source = DummySQLSource(config, MetadataValueMapper(), QualityMapper())
     source.db.execute(
         """
         create table Data (
@@ -224,7 +236,7 @@ def test_timezone_on_queries():
         nonlocal start_date
         start_date = params[1]
 
-    source = MockSQLSource(config, MetadataValueMapper(), execute_fn)
+    source = MockSQLSource(config, MetadataValueMapper(), QualityMapper(), execute_fn)
     source.get_data(
         SeriesSelector("dummy", "series"),
         datetime.fromisoformat("2021-08-01T00:00:00+00:00"),
@@ -249,10 +261,60 @@ def test_string_in_timezone_on_queries():
         nonlocal start_date
         start_date = params[1]
 
-    source = MockSQLSource(config, MetadataValueMapper(), execute_fn)
+    source = MockSQLSource(config, MetadataValueMapper(), QualityMapper(), execute_fn)
     source.get_data(
         SeriesSelector("dummy", "series"),
         datetime.fromisoformat("2021-08-01T00:00:00+00:00"),
         datetime.fromisoformat("2021-08-02T00:00:00+00:00"),
     )
     assert start_date == "2021-07-31 19:00:00"
+
+
+def test_quality_flag():
+    config = SQLConfig(
+        ":memory:",
+        data_query="select ts, value, quality from Data where series_name = ? and ts between ? and ?",
+    )
+    quality_mapper = QualityMapper()
+    quality_mapper.add_mapping(192)
+    source = DummySQLSource(config, MetadataValueMapper(), quality_mapper)
+    source.db.execute(
+        """
+        create table Data (
+            ts datetime,
+            series_name text,
+            value text,
+            quality int
+        );
+        """
+    )
+    source.db.execute(
+        "insert into Data (ts, series_name, value, quality) values (?, ?, ?, ?)",
+        [
+            datetime.fromisoformat("2021-01-02T00:00:00+00:00"),
+            "quality-series",
+            "good-quality",
+            192,
+        ],
+    )
+    source.db.execute(
+        "insert into Data (ts, series_name, value, quality) values (?, ?, ?, ?)",
+        [
+            datetime.fromisoformat("2021-01-02T00:00:00+00:00"),
+            "quality-series",
+            "bad-quality",
+            1,
+        ],
+    )
+
+    data = source.get_data(
+        SeriesSelector("dummy", "quality-series"),
+        datetime.fromisoformat("2021-01-01T00:00:00+00:00"),
+        datetime.fromisoformat("2021-02-01T00:00:00+00:00"),
+    )
+
+    assert len(data) == 2
+    assert data["value"][0].as_py() == "good-quality"
+    assert data["quality"][0].as_py() == 1
+    assert data["value"][1].as_py() == "bad-quality"
+    assert data["quality"][1].as_py() == 0
