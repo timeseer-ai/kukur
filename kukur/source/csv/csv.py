@@ -24,6 +24,7 @@ from kukur import Dictionary, Metadata, SeriesSelector
 
 from kukur.loader import Loader, from_config as loader_from_config
 from kukur.exceptions import InvalidDataError, InvalidSourceException
+from kukur.metadata import fields
 from kukur.source.metadata import MetadataMapper, MetadataValueMapper
 from kukur.source.quality import QualityMapper
 
@@ -109,11 +110,11 @@ class CSVSource:
                     metadata = Metadata(SeriesSelector(selector.source, series_name))
 
                 if metadata is not None:
-                    for field, _ in metadata:
+                    for field, _ in metadata.iter_human():
                         if self.__metadata_mapper.from_kukur(field) in row:
                             try:
                                 value = row[self.__metadata_mapper.from_kukur(field)]
-                                metadata.set_field(
+                                metadata.coerce_field(
                                     field,
                                     self.__metadata_value_mapper.from_source(
                                         field, value
@@ -121,9 +122,10 @@ class CSVSource:
                                 )
                             except ValueError:
                                 pass
-                    if metadata.dictionary_name is not None:
-                        metadata.dictionary = self.__get_dictionary(
-                            metadata.dictionary_name
+                    dictionary_name = metadata.get_field(fields.DictionaryName)
+                    if dictionary_name is not None:
+                        metadata.set_field(
+                            fields.Dictionary, self.__get_dictionary(dictionary_name)
                         )
                     yield metadata
 
@@ -143,19 +145,22 @@ class CSVSource:
                     != selector.name
                 ):
                     continue
-                for field, _ in metadata:
+                for field, _ in metadata.iter_human():
                     if self.__metadata_mapper.from_kukur(field) in row:
                         try:
                             value = row[self.__metadata_mapper.from_kukur(field)]
-                            metadata.set_field(
+                            metadata.coerce_field(
                                 field,
                                 self.__metadata_value_mapper.from_source(field, value),
                             )
                         except ValueError:
                             pass
 
-            if metadata.dictionary_name is not None:
-                metadata.dictionary = self.__get_dictionary(metadata.dictionary_name)
+            dictionary_name = metadata.get_field(fields.DictionaryName)
+            if dictionary_name is not None:
+                metadata.set_field(
+                    fields.Dictionary, self.__get_dictionary(dictionary_name)
+                )
 
         return metadata
 

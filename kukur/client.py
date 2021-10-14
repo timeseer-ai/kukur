@@ -10,7 +10,7 @@ from typing import Any, Dict, Generator, List, Tuple, Union
 import pyarrow as pa
 import pyarrow.flight as fl
 
-from kukur import Dictionary, Metadata, SeriesSelector
+from kukur import Metadata, SeriesSelector
 
 
 class Client:
@@ -130,18 +130,7 @@ class Client:
 
 
 def _read_metadata(data: Dict[str, Any]) -> Metadata:
-    series = SeriesSelector(data["series"]["source"], data["series"]["name"])
-    metadata = Metadata(series)
-    for k, v in data.items():
-        if v is None:
-            continue
-        if k == "series":
-            continue
-        if k == "dictionary":
-            metadata.set_field(k, Dictionary(dict(v)))
-            continue
-        metadata.set_field(k, v)
-    return metadata
+    return Metadata.from_data(data)
 
 
 class ClientAuthenticationHandler(fl.ClientAuthHandler):

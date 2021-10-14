@@ -13,10 +13,10 @@ from .base import (
     DataType,
     Dictionary,
     InterpolationType,
-    Metadata,
     ProcessType,
     SeriesSelector,
 )
+from .metadata import Metadata
 from .client import Client
 
 

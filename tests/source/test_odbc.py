@@ -7,11 +7,11 @@ import math
 import sqlite3
 
 from datetime import datetime
-from typing import Any, List
 
 from dateutil.parser import parse as parse_date
 
-from kukur import Metadata, SeriesSelector
+from kukur import SeriesSelector
+from kukur.metadata import fields
 from kukur.source.metadata import MetadataValueMapper
 from kukur.source.quality import QualityMapper
 from kukur.source.sql import BaseSQLSource, SQLConfig
@@ -96,7 +96,7 @@ def test_metadata_value():
     """
     )
     metadata = source.get_metadata(SeriesSelector("dummy", "random"))
-    assert metadata.dictionary_name == "prisma"
+    assert metadata.get_field(fields.DictionaryName) == "prisma"
 
 
 def test_metadata_none_value_on_empty_return():
@@ -117,7 +117,7 @@ def test_metadata_none_value_on_empty_return():
     """
     )
     metadata = source.get_metadata(SeriesSelector("dummy", "random"))
-    assert metadata.dictionary_name is None
+    assert metadata.get_field(fields.DictionaryName) is None
 
 
 def test_list_none_value_on_empty_return():
@@ -139,7 +139,7 @@ def test_list_none_value_on_empty_return():
     )
     for metadata in source.search(SeriesSelector("dummy")):
         assert metadata.series.name == "random"
-        assert metadata.dictionary_name is None
+        assert metadata.get_field(fields.DictionaryName) is None
 
 
 def test_blob_values():

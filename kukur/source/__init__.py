@@ -163,9 +163,10 @@ class SourceWrapper:
                         metadata.set_field(k, v)
             else:
                 for field_name in metadata_source.fields:
-                    field_value = received_metadata.get_field(field_name)
+                    metadata_field = received_metadata.find_field(field_name)
+                    field_value = received_metadata.get_field(metadata_field)
                     if field_value is not None and field_value != "":
-                        metadata.set_field(field_name, field_value)
+                        metadata.set_field(metadata_field, field_value)
         return metadata
 
     def get_data(

@@ -6,7 +6,8 @@ from datetime import datetime
 
 import pytest
 
-from kukur import Client, SeriesSelector
+from kukur import Client, Metadata, SeriesSelector
+from kukur.metadata import fields
 
 
 @pytest.fixture
@@ -22,22 +23,25 @@ def test_search(client: Client):
     dictionary_series = [
         series for series in many_series if series.series.name == "test-tag-6"
     ][0]
-    assert dictionary_series.description == "Valve X"
-    assert dictionary_series.dictionary_name == "Active"
-    assert dictionary_series.dictionary is not None
-    assert len(dictionary_series.dictionary.mapping) == 2
-    assert dictionary_series.dictionary.mapping[0] == "OFF"
-    assert dictionary_series.dictionary.mapping[1] == "ON"
+    assert isinstance(dictionary_series, Metadata)
+    assert dictionary_series.get_field(fields.Description) == "Valve X"
+    assert dictionary_series.get_field(fields.DictionaryName) == "Active"
+    dictionary = dictionary_series.get_field(fields.Dictionary)
+    assert dictionary is not None
+    assert len(dictionary.mapping) == 2
+    assert dictionary.mapping[0] == "OFF"
+    assert dictionary.mapping[1] == "ON"
 
 
 def test_metadata(client: Client):
     dictionary_series = client.get_metadata(SeriesSelector("row", "test-tag-6"))
-    assert dictionary_series.description == "Valve X"
-    assert dictionary_series.dictionary_name == "Active"
-    assert dictionary_series.dictionary is not None
-    assert len(dictionary_series.dictionary.mapping) == 2
-    assert dictionary_series.dictionary.mapping[0] == "OFF"
-    assert dictionary_series.dictionary.mapping[1] == "ON"
+    assert dictionary_series.get_field(fields.Description) == "Valve X"
+    assert dictionary_series.get_field(fields.DictionaryName) == "Active"
+    dictionary = dictionary_series.get_field(fields.Dictionary)
+    assert dictionary is not None
+    assert len(dictionary.mapping) == 2
+    assert dictionary.mapping[0] == "OFF"
+    assert dictionary.mapping[1] == "ON"
 
 
 def test_data(client: Client):
@@ -68,7 +72,7 @@ def test_data_with_quality(client: Client):
 
 def test_sources(client: Client):
     data = client.list_sources()
-    assert len(data) == 33
+    assert len(data) == 37
     assert "sql" in data
     assert "row" in data
     assert "noaa" in data

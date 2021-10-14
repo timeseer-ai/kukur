@@ -8,7 +8,8 @@ from datetime import datetime
 
 import pytest
 
-from kukur import Client, SeriesSelector
+from kukur import Client, Metadata, SeriesSelector
+from kukur.metadata import fields
 
 
 @pytest.fixture
@@ -33,8 +34,9 @@ def test_search(client: Client):
         for series in many_series
         if series.series.name == "h2o_feet,location=coyote_creek::water_level"
     ][0]
-    assert series.limit_low == 6
-    assert series.limit_high == 9
+    assert isinstance(series, Metadata)
+    assert series.get_field(fields.LimitLow) == 6
+    assert series.get_field(fields.LimitHigh) == 9
 
 
 def test_metadata(client: Client):
@@ -43,8 +45,8 @@ def test_metadata(client: Client):
             suffix_source("noaa"), "h2o_feet,location=coyote_creek::water_level"
         )
     )
-    assert series.limit_low == 6
-    assert series.limit_high == 9
+    assert series.get_field(fields.LimitLow) == 6
+    assert series.get_field(fields.LimitHigh) == 9
 
 
 def test_data(client: Client):

@@ -8,6 +8,7 @@ from dateutil.parser import parse as parse_date
 import kukur.config
 
 from kukur import SeriesSelector, DataType, Dictionary, InterpolationType, Source
+from kukur.metadata import fields
 from kukur.source import SourceFactory
 
 
@@ -82,31 +83,31 @@ def test_row_metadata():
     series = make_series("row")
     metadata = get_source("row").get_metadata(series)
     assert metadata.series == series
-    assert isinstance(metadata.description, str)
-    assert isinstance(metadata.unit, str)
-    assert isinstance(metadata.limit_low, float)
-    assert isinstance(metadata.limit_high, float)
-    assert isinstance(metadata.accuracy, float)
+    assert isinstance(metadata.get_field(fields.Description), str)
+    assert isinstance(metadata.get_field(fields.Unit), str)
+    assert isinstance(metadata.get_field(fields.LimitLow), float)
+    assert isinstance(metadata.get_field(fields.LimitHigh), float)
+    assert isinstance(metadata.get_field(fields.Accuracy), float)
 
 
 def test_row_metadata_dictionary():
     metadata = get_source("row").get_metadata(SeriesSelector("row", "test-tag-6"))
     assert metadata.series == SeriesSelector("row", "test-tag-6")
-    assert metadata.data_type == DataType.DICTIONARY
-    assert metadata.dictionary_name == "Active"
-    assert isinstance(metadata.dictionary, Dictionary)
+    assert metadata.get_field(fields.DataType) == DataType.DICTIONARY
+    assert metadata.get_field(fields.DictionaryName) == "Active"
+    assert isinstance(metadata.get_field(fields.Dictionary), Dictionary)
 
 
 def test_metadata_mapping():
     metadata = get_source("mapping").get_metadata(make_series("mapping"))
     assert metadata.series == SeriesSelector("mapping", "test-tag-1")
-    assert metadata.unit == "kg"
-    assert metadata.limit_low == 1
-    assert metadata.interpolation_type == InterpolationType.LINEAR
+    assert metadata.get_field(fields.Unit) == "kg"
+    assert metadata.get_field(fields.LimitLow) == 1
+    assert metadata.get_field(fields.InterpolationType) == InterpolationType.LINEAR
 
 
 def test_metadata_mapping_multiple():
     metadata = get_source("mapping").get_metadata(make_series("mapping", "test-tag-1"))
-    assert metadata.data_type == DataType.FLOAT64
+    assert metadata.get_field(fields.DataType) == DataType.FLOAT64
     metadata = get_source("mapping").get_metadata(make_series("mapping", "test-tag-4"))
-    assert metadata.data_type == DataType.FLOAT64
+    assert metadata.get_field(fields.DataType) == DataType.FLOAT64

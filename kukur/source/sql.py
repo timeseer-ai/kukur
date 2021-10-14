@@ -14,6 +14,7 @@ import dateutil.parser
 import pyarrow as pa
 
 from kukur import Dictionary, Metadata, SeriesSelector
+from kukur.metadata import fields
 from kukur.source.metadata import MetadataValueMapper
 from kukur.source.quality import QualityMapper
 
@@ -143,12 +144,14 @@ class BaseSQLSource(ABC):
                     continue
                 if isinstance(value, str) and value == "":
                     continue
-                metadata.set_field(
+                metadata.coerce_field(
                     name, self._metadata_value_mapper.from_source(name, value)
                 )
-        if metadata.dictionary_name is not None:
-            metadata.dictionary = self.__query_dictionary(
-                cursor, metadata.dictionary_name
+
+        dictionary_name = metadata.get_field(fields.DictionaryName)
+        if dictionary_name is not None:
+            metadata.set_field(
+                fields.Dictionary, self.__query_dictionary(cursor, dictionary_name)
             )
         return metadata
 
@@ -248,12 +251,14 @@ class BaseSQLSource(ABC):
                     continue
                 if isinstance(value, str) and value == "":
                     continue
-                metadata.set_field(
+                metadata.coerce_field(
                     name, self._metadata_value_mapper.from_source(name, value)
                 )
-            if metadata.dictionary_name is not None and dictionary_cursor is not None:
-                metadata.dictionary = self.__query_dictionary(
-                    dictionary_cursor, metadata.dictionary_name
+            dictionary_name = metadata.get_field(fields.DictionaryName)
+            if dictionary_name is not None and dictionary_cursor is not None:
+                metadata.set_field(
+                    fields.Dictionary,
+                    self.__query_dictionary(dictionary_cursor, dictionary_name),
                 )
             yield metadata
 
