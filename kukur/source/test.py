@@ -77,11 +77,11 @@ def data(
 
 
 def _get_metadata_header(result: Metadata) -> List[str]:
-    return ["series name"] + [k for k, _ in result.iter_human()]
+    return ["series name"] + [k for k, _ in result.iter_serialized()]
 
 
 def _get_metadata(result: Metadata) -> List[Any]:
-    return [result.series.name] + [v for _, v in result.iter_human()]
+    return [result.series.name] + [v for _, v in result.iter_serialized()]
 
 
 def _make_aware(timestamp: datetime) -> datetime:

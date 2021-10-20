@@ -80,7 +80,7 @@ Metadata sources provide extra metadata for series in time series sources.
 All time series sources that provide metadata can be used as a metadata source.
 They accept the same configuration parameters as the time series source.
 
-One optional parameter specifies which metadata fields will be used from the given source.
+The optional `fields` parameter specifies which metadata fields will be used from the given source.
 
 Possible metadata fields are:
 
@@ -92,7 +92,6 @@ Possible metadata fields are:
 - `interpolation type`
 - `data type`
 - `dictionary name`
-- `process type`
 
 Example:
 

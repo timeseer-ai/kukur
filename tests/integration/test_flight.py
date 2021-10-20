@@ -33,6 +33,16 @@ def test_search(client: Client):
     assert dictionary.mapping[1] == "ON"
 
 
+def test_search_custom_metadata(client: Client):
+    all_metadata = list(client.search(SeriesSelector("custom-fields")))
+    assert len(all_metadata) == 1
+    metadata = all_metadata[0]
+    assert isinstance(metadata, Metadata)
+    assert metadata.get_field(fields.Description) == "Test for custom metadata fields"
+    assert metadata.get_field_by_name("process type") == "BATCH"
+    assert metadata.get_field_by_name("location") == "Antwerp"
+
+
 def test_metadata(client: Client):
     dictionary_series = client.get_metadata(SeriesSelector("row", "test-tag-6"))
     assert dictionary_series.get_field(fields.Description) == "Valve X"
@@ -42,6 +52,13 @@ def test_metadata(client: Client):
     assert len(dictionary.mapping) == 2
     assert dictionary.mapping[0] == "OFF"
     assert dictionary.mapping[1] == "ON"
+
+
+def test_custom_metadata(client: Client):
+    metadata = client.get_metadata(SeriesSelector("custom-fields", "test-tag-custom"))
+    assert metadata.get_field(fields.Description) == "Test for custom metadata fields"
+    assert metadata.get_field_by_name("process type") == "BATCH"
+    assert metadata.get_field_by_name("location") == "Antwerp"
 
 
 def test_data(client: Client):
@@ -72,7 +89,7 @@ def test_data_with_quality(client: Client):
 
 def test_sources(client: Client):
     data = client.list_sources()
-    assert len(data) == 37
+    assert len(data) == 39
     assert "sql" in data
     assert "row" in data
     assert "noaa" in data

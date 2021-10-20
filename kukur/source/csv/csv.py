@@ -14,7 +14,7 @@ import csv
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, Generator, Optional
+from typing import Any, Dict, Generator, List, Optional
 
 import pyarrow as pa
 import pyarrow.csv
@@ -37,7 +37,7 @@ class InvalidMetadataError(Exception):
 
 
 def from_config(
-    config: Dict[str, str],
+    config: Dict[str, Any],
     metadata_mapper: MetadataMapper,
     metadata_value_mapper: MetadataValueMapper,
     quality_mapper: QualityMapper,
@@ -51,9 +51,11 @@ def from_config(
     if "dictionary_dir" in config:
         loaders.dictionary = loader_from_config(config, "dictionary_dir", "r")
     data_format = config.get("format", "row")
-    return CSVSource(
-        data_format, loaders, metadata_mapper, metadata_value_mapper, quality_mapper
-    )
+    metadata_fields: List[str] = config.get("metadata_fields", [])
+    if len(metadata_fields) == 0:
+        metadata_fields = config.get("fields", [])
+    mappers = CSVMappers(metadata_mapper, metadata_value_mapper, quality_mapper)
+    return CSVSource(data_format, metadata_fields, loaders, mappers)
 
 
 @dataclass
@@ -65,29 +67,35 @@ class CSVLoaders:
     dictionary: Optional[Loader] = None
 
 
+@dataclass
+class CSVMappers:
+    """Value mappers for CSV sources."""
+
+    metadata: MetadataMapper
+    metadata_values: MetadataValueMapper
+    quality: QualityMapper
+
+
 class CSVSource:
     """A CSV data source."""
 
     __loaders: CSVLoaders
     __data_format: str
-    __metadata_mapper: MetadataMapper
-    __metadata_value_mapper: MetadataValueMapper
-    __quality_mapper: QualityMapper
+    __metadata_fields: List[str]
+    __mappers: CSVMappers
 
     def __init__(
         self,
         data_format: str,
+        metadata_fields: List[str],
         loaders: CSVLoaders,
-        metadata_mapper: MetadataMapper,
-        metadata_value_mapper: MetadataValueMapper,
-        quality_mapper: QualityMapper,
-    ):  # pylint:disable=too-many-arguments
+        mappers: CSVMappers,
+    ):
         """Create a new CSV data source."""
         self.__loaders = loaders
+        self.__metadata_fields = metadata_fields
         self.__data_format = data_format
-        self.__metadata_mapper = metadata_mapper
-        self.__metadata_value_mapper = metadata_value_mapper
-        self.__quality_mapper = quality_mapper
+        self.__mappers = mappers
 
     def search(self, selector: SeriesSelector) -> Generator[Metadata, None, None]:
         """Search for series matching the given selector."""
@@ -97,9 +105,9 @@ class CSVSource:
         with self.__loaders.metadata.open() as metadata_file:
             reader = csv.DictReader(metadata_file)
             for row in reader:
-                if self.__metadata_mapper.from_kukur("series name") not in row:
+                if self.__mappers.metadata.from_kukur("series name") not in row:
                     raise InvalidMetadataError('column "series name" not found')
-                series_name = row[self.__metadata_mapper.from_kukur("series name")]
+                series_name = row[self.__mappers.metadata.from_kukur("series name")]
                 metadata = None
                 if selector.name is not None:
                     if series_name == selector.name:
@@ -110,13 +118,16 @@ class CSVSource:
                     metadata = Metadata(SeriesSelector(selector.source, series_name))
 
                 if metadata is not None:
-                    for field, _ in metadata.iter_human():
-                        if self.__metadata_mapper.from_kukur(field) in row:
+                    field_names = [field for field, _ in metadata.iter_names()]
+                    if len(self.__metadata_fields) > 0:
+                        field_names = self.__metadata_fields
+                    for field in field_names:
+                        if self.__mappers.metadata.from_kukur(field) in row:
                             try:
-                                value = row[self.__metadata_mapper.from_kukur(field)]
+                                value = row[self.__mappers.metadata.from_kukur(field)]
                                 metadata.coerce_field(
                                     field,
-                                    self.__metadata_value_mapper.from_source(
+                                    self.__mappers.metadata_values.from_source(
                                         field, value
                                     ),
                                 )
@@ -138,20 +149,25 @@ class CSVSource:
         with self.__loaders.metadata.open() as metadata_file:
             reader = csv.DictReader(metadata_file)
             for row in reader:
-                if self.__metadata_mapper.from_kukur("series name") not in row:
+                if self.__mappers.metadata.from_kukur("series name") not in row:
                     raise InvalidMetadataError('column "series name" not found')
                 if (
-                    row[self.__metadata_mapper.from_kukur("series name")]
+                    row[self.__mappers.metadata.from_kukur("series name")]
                     != selector.name
                 ):
                     continue
-                for field, _ in metadata.iter_human():
-                    if self.__metadata_mapper.from_kukur(field) in row:
+                field_names = [field for field, _ in metadata.iter_names()]
+                if len(self.__metadata_fields) > 0:
+                    field_names = self.__metadata_fields
+                for field in field_names:
+                    if self.__mappers.metadata.from_kukur(field) in row:
                         try:
-                            value = row[self.__metadata_mapper.from_kukur(field)]
+                            value = row[self.__mappers.metadata.from_kukur(field)]
                             metadata.coerce_field(
                                 field,
-                                self.__metadata_value_mapper.from_source(field, value),
+                                self.__mappers.metadata_values.from_source(
+                                    field, value
+                                ),
                             )
                         except ValueError:
                             pass
@@ -200,7 +216,7 @@ class CSVSource:
 
     def _read_row_data(self, loader: Loader, selector: SeriesSelector) -> pa.Table:
         columns = ["series name", "ts", "value"]
-        if self.__quality_mapper.is_present():
+        if self.__mappers.quality.is_present():
             columns.append("quality")
         read_options = pyarrow.csv.ReadOptions(column_names=columns)
         convert_options = pyarrow.csv.ConvertOptions(
@@ -209,7 +225,7 @@ class CSVSource:
         all_data = pyarrow.csv.read_csv(
             loader.open(), read_options=read_options, convert_options=convert_options
         )
-        if self.__quality_mapper.is_present():
+        if self.__mappers.quality.is_present():
             kukur_quality_values = self._map_quality(all_data["quality"])
             all_data = all_data.set_column(
                 3, "quality", pa.array(kukur_quality_values, type=pa.int8())
@@ -225,7 +241,7 @@ class CSVSource:
         self, loader: Loader, selector: SeriesSelector
     ) -> pa.Table:
         columns = ["ts", "value"]
-        if self.__quality_mapper.is_present():
+        if self.__mappers.quality.is_present():
             columns.append("quality")
         read_options = pyarrow.csv.ReadOptions(column_names=columns)
         convert_options = pyarrow.csv.ConvertOptions(
@@ -236,7 +252,7 @@ class CSVSource:
             read_options=read_options,
             convert_options=convert_options,
         )
-        if self.__quality_mapper.is_present():
+        if self.__mappers.quality.is_present():
             kukur_quality_values = self._map_quality(all_data["quality"])
             return all_data.set_column(
                 2, "quality", pa.array(kukur_quality_values, type=pa.int8())
@@ -245,7 +261,7 @@ class CSVSource:
 
     def _map_quality(self, quality_data: pa.array) -> pa.Table:
         return [
-            self.__quality_mapper.from_source(source_quality_value.as_py())
+            self.__mappers.quality.from_source(source_quality_value.as_py())
             for source_quality_value in quality_data
         ]
 

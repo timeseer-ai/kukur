@@ -111,3 +111,48 @@ def test_metadata_mapping_multiple():
     assert metadata.get_field(fields.DataType) == DataType.FLOAT64
     metadata = get_source("mapping").get_metadata(make_series("mapping", "test-tag-4"))
     assert metadata.get_field(fields.DataType) == DataType.FLOAT64
+
+
+def test_custom_fields_search() -> None:
+    all_metadata = list(
+        get_source("custom-fields-simple").search(SeriesSelector("custom-fields"))
+    )
+    assert len(all_metadata) == 1
+    metadata = all_metadata[0]
+    assert isinstance(metadata, kukur.Metadata)
+    assert metadata.get_field(fields.Description) == "Test for custom metadata fields"
+    assert metadata.get_field_by_name("location") == "Antwerp"
+    assert "plant" not in [name for name, _ in metadata.iter_names()]
+
+
+def test_custom_fields_metadata() -> None:
+    metadata = get_source("custom-fields-simple").get_metadata(
+        SeriesSelector("custom-fields", "test-tag-custom")
+    )
+    assert isinstance(metadata, kukur.Metadata)
+    assert metadata.get_field(fields.Description) == "Test for custom metadata fields"
+    assert metadata.get_field_by_name("location") == "Antwerp"
+    assert "plant" not in [name for name, _ in metadata.iter_names()]
+
+
+def test_custom_fields_extra_metadata() -> None:
+    metadata = get_source("custom-fields").get_metadata(
+        make_series("custom-fields", "test-tag-custom")
+    )
+    assert metadata.get_field(fields.Description) == "Test for custom metadata fields"
+    assert metadata.get_field_by_name("process type") == "BATCH"
+    assert metadata.get_field_by_name("location") == "Antwerp"
+    assert "plant" not in [name for name, _ in metadata.iter_names()]
+
+
+def test_custom_fields_search_extra_metadata() -> None:
+    all_metadata = list(
+        get_source("custom-fields").search(SeriesSelector("custom-fields"))
+    )
+    assert len(all_metadata) == 1
+    metadata = all_metadata[0]
+    assert isinstance(metadata, kukur.Metadata)
+    assert metadata.get_field(fields.Description) == "Test for custom metadata fields"
+    assert metadata.get_field_by_name("process type") == "BATCH"
+    assert metadata.get_field_by_name("location") == "Antwerp"
+    assert "plant" not in [name for name, _ in metadata.iter_names()]

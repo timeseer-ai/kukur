@@ -136,9 +136,9 @@ class SourceWrapper:
                 extra_metadata = self.get_metadata(
                     SeriesSelector(result.series.source, result.series.name)
                 )
-                for k, v in result:
+                for k, v in result.iter_names():
                     if v is not None and v != "":
-                        extra_metadata.set_field(k, v)
+                        extra_metadata.set_field_by_name(k, v)
                 yield extra_metadata
 
     def get_metadata(self, selector: SeriesSelector) -> Metadata:
@@ -160,15 +160,14 @@ class SourceWrapper:
                 f'Metadata query for "{selector.name}" ({selector.source}) failed',
             )
             if len(metadata_source.fields) == 0:
-                for k, v in received_metadata:
+                for k, v in received_metadata.iter_names():
                     if v is not None and v != "":
-                        metadata.set_field(k, v)
+                        metadata.set_field_by_name(k, v)
             else:
                 for field_name in metadata_source.fields:
-                    metadata_field = received_metadata.find_field(field_name)
-                    field_value = received_metadata.get_field(metadata_field)
+                    field_value = received_metadata.get_field_by_name(field_name)
                     if field_value is not None and field_value != "":
-                        metadata.set_field(metadata_field, field_value)
+                        metadata.set_field_by_name(field_name, field_value)
         return metadata
 
     def get_data(

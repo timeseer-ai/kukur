@@ -37,6 +37,26 @@ metadata = "tests/test_data/csv/dir-metadata.csv"
 format = "dir"
 quality_mapping = "opc_mapping_ranges"
 
+[source.custom-fields-simple]
+type = "csv"
+metadata = "tests/test_data/csv/custom-fields-metadata.csv"
+metadata_fields = ["description", "unit", "lower limit", "upper limit", "location"]
+metadata_mapping = "custom"
+
+[source.custom-fields]
+type = "csv"
+metadata = "tests/test_data/csv/custom-fields-metadata.csv"
+metadata_fields = ["description", "unit", "lower limit", "upper limit", "location"]
+metadata_mapping = "custom"
+metadata_sources = ["custom-fields-extra"]
+
+[metadata.custom-fields-extra]
+fields = ["process type"]
+type = "csv"
+metadata = "tests/test_data/csv/custom-fields-extra-metadata.csv"
+metadata_mapping = "custom"
+metadata_value_mapping = "custom"
+
 [metadata_mapping.ip21]
 "series name" = "NAME"
 description = "IP_DESCRIPTION"
@@ -48,6 +68,15 @@ STEPPED = "stepped"
 
 [metadata_value_mapping.example_value_mapping."data type"]
 FLOAT64 = ["int16", "int32"]
+
+[metadata_mapping.custom]
+"lower limit" = "limitlow"
+"upper limit" = "limithigh"
+location = "loc"
+"process type" = "proctype"
+
+[metadata_value_mapping.custom."process type"]
+BATCH = "batch"
 
 [quality_mapping.opc_mapping_strings]
 GOOD = ["GoodQuality", "Decent"]

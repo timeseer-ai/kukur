@@ -455,6 +455,7 @@ NOTE: Kukur will move from alpha to beta status once support for this structure 
 ==== Metadata
 
 Kukur predefines a set of metadata fields that are all present in an ideal world.
+Custom fields can be added both programmatically and using configuration.
 
 [plantuml]
 ....
@@ -469,7 +470,6 @@ class Metadata {
     data_type: Optional[DataType]
     dictionary_name: Optional[str]
     dictionary: Optional[Dictionary]
-    process_type: Optional[ProcessType]
 }
 
 enum InterpolationType {
@@ -486,13 +486,6 @@ enum DataType {
 
 class Dictionary {
     mapping: Dict[int, str]
-}
-
-enum ProcessType {
-    CONTINUOUS
-    REGIME
-    BATCH
-    COUNTER
 }
 ....
 

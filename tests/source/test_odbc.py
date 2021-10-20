@@ -10,7 +10,7 @@ from datetime import datetime
 
 from dateutil.parser import parse as parse_date
 
-from kukur import SeriesSelector
+from kukur import InterpolationType, Metadata, SeriesSelector
 from kukur.metadata import fields
 from kukur.source.metadata import MetadataValueMapper
 from kukur.source.quality import QualityMapper
@@ -140,6 +140,55 @@ def test_list_none_value_on_empty_return():
     for metadata in source.search(SeriesSelector("dummy")):
         assert metadata.series.name == "random"
         assert metadata.get_field(fields.DictionaryName) is None
+
+
+def test_custom_fields() -> None:
+    config = SQLConfig(
+        ":memory:",
+        metadata_query="select interpolation_type, process_type from Metadata where series_name = ?",
+        metadata_columns=["interpolation type", "process type"],
+    )
+    source = DummySQLSource(config, MetadataValueMapper(), QualityMapper())
+    source.db.executescript(
+        """
+        create table Metadata (
+            series_name text,
+            interpolation_type text,
+            process_type text
+        );
+
+        insert into Metadata (series_name, interpolation_type, process_type) values ('random', 'LINEAR', 'batch');
+        """
+    )
+    metadata = source.get_metadata(SeriesSelector("dummy", "random"))
+    assert metadata.get_field(fields.InterpolationType) == InterpolationType.LINEAR
+    assert metadata.get_field_by_name("process type") == "batch"
+
+
+def test_custom_fields_search() -> None:
+    config = SQLConfig(
+        ":memory:",
+        list_query="select series_name, interpolation_type, process_type from Metadata",
+        list_columns=["series name", "interpolation type", "process type"],
+    )
+    source = DummySQLSource(config, MetadataValueMapper(), QualityMapper())
+    source.db.executescript(
+        """
+        create table Metadata (
+            series_name text,
+            interpolation_type text,
+            process_type text
+        );
+
+        insert into Metadata (series_name, interpolation_type, process_type) values ('random', 'LINEAR', 'batch');
+        """
+    )
+    all_metadata = list(source.search(SeriesSelector("dummy")))
+    assert len(all_metadata) == 1
+    metadata = all_metadata[0]
+    assert isinstance(metadata, Metadata)
+    assert metadata.get_field(fields.InterpolationType) == InterpolationType.LINEAR
+    assert metadata.get_field_by_name("process type") == "batch"
 
 
 def test_blob_values():

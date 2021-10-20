@@ -3,7 +3,7 @@
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Optional
+from typing import Any, Callable, Generic, Optional, TypeVar
 
 from kukur.base import (
     DataType as KukurDataType,
@@ -11,16 +11,67 @@ from kukur.base import (
     InterpolationType as KukurInterpolationType,
 )
 
-from . import Metadata, MetadataField
+T = TypeVar("T")
+
+
+class MetadataField(Generic[T]):
+    """A typed metadata field.
+
+    This class is generic over the actual type of the field value.
+
+    JSON-ready data dictionary conversions should be provided for all non-trivial implementations."""
+
+    def __init__(
+        self,
+        name: str,
+        *,
+        default: T,
+        serialized_name: str,
+        serialize: Optional[Callable[[T], Any]] = None,
+        deserialize: Optional[Callable[[Any], T]] = None,
+    ):
+        self.__name = name
+        self.__default = default
+        self.__serialized_name = serialized_name
+        self.__serialize = serialize
+        self.__deserialize = deserialize
+
+    def __repr__(self) -> str:
+        return f'MetadataField("{self.__name}")'
+
+    def __hash__(self):
+        return hash(self.__name)
+
+    def name(self) -> str:
+        """Return the name of the metadata field."""
+        return self.__name
+
+    def default(self) -> T:
+        """Return the default (empty) value for this field."""
+        return self.__default
+
+    def serialized_name(self) -> str:
+        """Return the name of the field in a JSON dictionary."""
+        return self.__serialized_name
+
+    def serialize(self, value: T) -> Any:
+        """Convert a field of this type to JSON."""
+        if self.__serialize is None:
+            return value
+        return self.__serialize(value)
+
+    def deserialize(self, value: Any) -> T:
+        """Convert the result of a serialization to a proper value."""
+        if self.__deserialize is None:
+            return value
+        return self.__deserialize(value)
 
 
 Description = MetadataField[str](
     "description", default="", serialized_name="description"
 )
-Metadata.register_field(Description)
 
 Unit = MetadataField[str]("unit", default="", serialized_name="unit")
-Metadata.register_field(Unit)
 
 
 def _parse_float(number: Optional[Any]) -> Optional[float]:
@@ -35,7 +86,6 @@ LimitLow = MetadataField[Optional[float]](
     serialized_name="limitLow",
     deserialize=_parse_float,
 )
-Metadata.register_field(LimitLow)
 
 
 LimitHigh = MetadataField[Optional[float]](
@@ -44,7 +94,6 @@ LimitHigh = MetadataField[Optional[float]](
     serialized_name="limitHigh",
     deserialize=_parse_float,
 )
-Metadata.register_field(LimitHigh)
 
 
 Accuracy = MetadataField[Optional[float]](
@@ -53,7 +102,6 @@ Accuracy = MetadataField[Optional[float]](
     serialized_name="accuracy",
     deserialize=_parse_float,
 )
-Metadata.register_field(Accuracy)
 
 
 def _interpolation_type_to_json(
@@ -79,7 +127,6 @@ InterpolationType = MetadataField[Optional[KukurInterpolationType]](
     serialize=_interpolation_type_to_json,
     deserialize=_interpolation_type_from_json,
 )
-Metadata.register_field(InterpolationType)
 
 
 def _data_type_to_json(data_type: Optional[KukurDataType]) -> Optional[str]:
@@ -101,13 +148,11 @@ DataType = MetadataField[Optional[KukurDataType]](
     serialize=_data_type_to_json,
     deserialize=_data_type_from_json,
 )
-Metadata.register_field(DataType)
 
 
 DictionaryName = MetadataField[Optional[str]](
     "dictionary name", default=None, serialized_name="dictionaryName"
 )
-Metadata.register_field(DictionaryName)
 
 
 def _dictionary_to_json(
@@ -133,4 +178,16 @@ Dictionary = MetadataField[Optional[KukurDictionary]](
     serialize=_dictionary_to_json,
     deserialize=_dictionary_from_json,
 )
-Metadata.register_field(Dictionary)
+
+
+def register_default_fields(cls) -> None:
+    """Register all common metadata fields to the Metadata class."""
+    cls.register_field(Description)
+    cls.register_field(Unit)
+    cls.register_field(LimitLow)
+    cls.register_field(LimitHigh)
+    cls.register_field(Accuracy)
+    cls.register_field(InterpolationType)
+    cls.register_field(DataType)
+    cls.register_field(DictionaryName)
+    cls.register_field(Dictionary)
