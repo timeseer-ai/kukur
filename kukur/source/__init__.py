@@ -12,13 +12,15 @@ from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union
 import pyarrow as pa
 import pyarrow.types
 
-import kukur.source.adodb as adodb
-import kukur.source.csv as csv
-import kukur.source.feather as feather
-import kukur.source.kukur as kukur_source
-import kukur.source.odbc as odbc
-import kukur.source.parquet as parquet
-import kukur.source.influxdb as influxdb
+from kukur.source import (
+    adodb,
+    csv,
+    feather,
+    kukur as kukur_source,
+    odbc,
+    parquet,
+    influxdb,
+)
 
 from kukur import Metadata, SeriesSelector, Source as SourceProtocol
 from kukur.exceptions import InvalidSourceException
@@ -203,8 +205,7 @@ class SourceWrapper:
         current_date = start_date
         while current_date < end_date:
             next_date = current_date + self.__data_query_interval
-            if next_date > end_date:
-                next_date = end_date
+            next_date = min(next_date, end_date)
             yield (current_date, next_date)
             current_date = next_date
 
