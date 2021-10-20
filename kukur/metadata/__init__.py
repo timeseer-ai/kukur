@@ -118,7 +118,7 @@ class MetadataFields:
             raise AttributeError()
         return self.__values[field]
 
-    def camelcase(self) -> dict[str, Any]:
+    def to_data(self) -> dict[str, Any]:
         """Convert the metadata to a Dictionary with camelcase keys as expected in JSON."""
         return {
             k.serialized_name(): k.serialize(self.get_field(k)) for k in self._fields
@@ -161,9 +161,9 @@ class Metadata(MetadataFields):
         super().__init__(values)
         self.series = series
 
-    def camelcase(self) -> dict[str, Any]:
+    def to_data(self) -> dict[str, Any]:
         """Convert the metadata to a Dictionary with camelcase keys as expected in JSON."""
-        data = super().camelcase()
+        data = super().to_data()
         data["series"] = {
             "source": self.series.source,
             "name": self.series.name,

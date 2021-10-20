@@ -81,7 +81,7 @@ class KukurFlightServer:
         for result in self.__source.search(selector):
             if isinstance(result, Metadata):
                 assert result.series.name is not None
-                metadata = result.camelcase()
+                metadata = result.to_data()
                 yield json.dumps(metadata).encode()
             else:
                 assert result.name is not None
@@ -95,7 +95,7 @@ class KukurFlightServer:
         """Return metadata for the given time series as JSON."""
         request = json.loads(action.body.to_pybytes())
         selector = SeriesSelector(request["source"], request["name"])
-        metadata = self.__source.get_metadata(selector).camelcase()
+        metadata = self.__source.get_metadata(selector).to_data()
         return [json.dumps(metadata).encode()]
 
     def get_data(self, _, request) -> Any:

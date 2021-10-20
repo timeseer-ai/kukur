@@ -17,7 +17,7 @@ SERIES = SeriesSelector("test", "test-tag-1")
 
 def test_series_json():
     metadata = Metadata(SERIES)
-    data = metadata.camelcase()
+    data = metadata.to_data()
     assert data["series"]["source"] == "test"
     assert data["series"]["name"] == "test-tag-1"
 
@@ -35,7 +35,7 @@ def test_description():
 
 def test_description_json():
     metadata = Metadata(SERIES, {fields.Description: "a test tag"})
-    data = metadata.camelcase()
+    data = metadata.to_data()
     assert data["description"] == "a test tag"
 
     new_metadata = Metadata.from_data(data, SERIES)
@@ -52,7 +52,7 @@ def test_unit():
 
 def test_unit_json():
     metadata = Metadata(SERIES, {fields.Unit: "kg"})
-    data = metadata.camelcase()
+    data = metadata.to_data()
     assert data["unit"] == "kg"
 
     new_metadata = Metadata.from_data(data, SERIES)
@@ -69,7 +69,7 @@ def test_limit_low():
 
 def test_limit_low_json():
     metadata = Metadata(SERIES, {fields.LimitLow: 0})
-    data = metadata.camelcase()
+    data = metadata.to_data()
     assert data["limitLow"] == 0
 
     new_metadata = Metadata.from_data(data, SERIES)
@@ -92,7 +92,7 @@ def test_limit_high():
 
 def test_limit_high_json():
     metadata = Metadata(SERIES, {fields.LimitHigh: 0})
-    data = metadata.camelcase()
+    data = metadata.to_data()
     assert data["limitHigh"] == 0
 
     new_metadata = Metadata.from_data(data, SERIES)
@@ -115,7 +115,7 @@ def test_accuracy():
 
 def test_accuracy_json():
     metadata = Metadata(SERIES, {fields.Accuracy: 0.2})
-    data = metadata.camelcase()
+    data = metadata.to_data()
     assert data["accuracy"] == 0.2
 
     new_metadata = Metadata.from_data(data, SERIES)
@@ -138,7 +138,7 @@ def test_interpolation_type():
 
 def test_interpolation_type_json():
     metadata = Metadata(SERIES, {fields.InterpolationType: InterpolationType.LINEAR})
-    data = metadata.camelcase()
+    data = metadata.to_data()
     assert data["interpolationType"] == "LINEAR"
 
     new_metadata = Metadata.from_data(data, SERIES)
@@ -161,7 +161,7 @@ def test_data_type():
 
 def test_data_type_json():
     metadata = Metadata(SERIES, {fields.DataType: DataType.STRING})
-    data = metadata.camelcase()
+    data = metadata.to_data()
     assert data["dataType"] == "STRING"
 
     new_metadata = Metadata.from_data(data, SERIES)
@@ -184,7 +184,7 @@ def test_dictionary_name():
 
 def test_dictionary_name_json():
     metadata = Metadata(SERIES, {fields.DictionaryName: "onoff"})
-    data = metadata.camelcase()
+    data = metadata.to_data()
     assert data["dictionaryName"] == "onoff"
 
     new_metadata = Metadata.from_data(data, SERIES)
@@ -205,7 +205,7 @@ def test_dictionary_json():
     dictionary = Dictionary({0: "OFF", 1: "ON"})
 
     metadata = Metadata(SERIES, {fields.Dictionary: dictionary})
-    data = metadata.camelcase()
+    data = metadata.to_data()
     assert data["dictionary"] == [(0, "OFF"), (1, "ON")]
 
     new_metadata = Metadata.from_data(data, SERIES)
@@ -228,7 +228,7 @@ def test_process_type():
 
 def test_process_type_json():
     metadata = Metadata(SERIES, {fields.ProcessType: ProcessType.BATCH})
-    data = metadata.camelcase()
+    data = metadata.to_data()
     assert data["processType"] == "BATCH"
 
     new_metadata = Metadata.from_data(data, SERIES)
