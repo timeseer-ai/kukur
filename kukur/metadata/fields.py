@@ -1,12 +1,14 @@
 """Time series metadata fields common to all time series."""
 
+# SPDX-FileCopyrightText: 2021 Timeseer.AI
+# SPDX-License-Identifier: Apache-2.0
+
 from typing import Any, Optional
 
 from kukur.base import (
     DataType as KukurDataType,
     Dictionary as KukurDictionary,
     InterpolationType as KukurInterpolationType,
-    ProcessType as KukurProcessType,
 )
 
 from . import Metadata, MetadataField
@@ -132,25 +134,3 @@ Dictionary = MetadataField[Optional[KukurDictionary]](
     deserialize=_dictionary_from_json,
 )
 Metadata.register_field(Dictionary)
-
-
-def _process_type_to_json(process_type: Optional[KukurProcessType]) -> Optional[str]:
-    if process_type is None:
-        return None
-    return process_type.value
-
-
-def _process_type_from_json(process_type: Optional[str]) -> Optional[KukurProcessType]:
-    if process_type is None:
-        return None
-    return KukurProcessType(process_type)
-
-
-ProcessType = MetadataField[Optional[KukurProcessType]](
-    "process type",
-    default=None,
-    serialized_name="processType",
-    serialize=_process_type_to_json,
-    deserialize=_process_type_from_json,
-)
-Metadata.register_field(ProcessType)

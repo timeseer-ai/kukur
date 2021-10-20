@@ -13,7 +13,6 @@ from .base import (
     DataType,
     Dictionary,
     InterpolationType,
-    ProcessType,
     SeriesSelector,
 )
 from .metadata import Metadata
@@ -47,6 +46,5 @@ __all__ = [
     "Dictionary",
     "InterpolationType",
     "Metadata",
-    "ProcessType",
     "SeriesSelector",
 ]

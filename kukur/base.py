@@ -53,12 +53,3 @@ class DataType(Enum):
     STRING = "STRING"
     DICTIONARY = "DICTIONARY"
     CATEGORICAL = "CATEGORICAL"
-
-
-class ProcessType(Enum):
-    """ProcessType represents the process type of an analysis"""
-
-    CONTINUOUS = "CONTINUOUS"
-    REGIME = "REGIME"
-    BATCH = "BATCH"
-    COUNTER = "COUNTER"

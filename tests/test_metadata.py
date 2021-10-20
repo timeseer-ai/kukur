@@ -7,7 +7,6 @@ from kukur import (
     DataType,
     Dictionary,
     InterpolationType,
-    ProcessType,
     SeriesSelector,
 )
 from kukur.metadata import Metadata, fields
@@ -216,26 +215,3 @@ def test_dictionary_coerce():
     metadata = Metadata(SERIES)
     metadata.coerce_field("dictionary", [(0, "OFF"), (1, "ON")])
     assert metadata.get_field(fields.Dictionary) == Dictionary({0: "OFF", 1: "ON"})
-
-
-def test_process_type():
-    metadata = Metadata(SERIES)
-    assert metadata.get_field(fields.ProcessType) is None
-
-    metadata.set_field(fields.ProcessType, ProcessType.BATCH)
-    assert metadata.get_field(fields.ProcessType) == ProcessType.BATCH
-
-
-def test_process_type_json():
-    metadata = Metadata(SERIES, {fields.ProcessType: ProcessType.BATCH})
-    data = metadata.to_data()
-    assert data["processType"] == "BATCH"
-
-    new_metadata = Metadata.from_data(data, SERIES)
-    assert new_metadata.get_field(fields.ProcessType) == ProcessType.BATCH
-
-
-def test_process_type_coerce():
-    metadata = Metadata(SERIES)
-    metadata.coerce_field("process type", "REGIME")
-    assert metadata.get_field(fields.ProcessType) == ProcessType.REGIME
