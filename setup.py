@@ -28,8 +28,8 @@ setuptools.setup(
           'pytz',
           'toml',
       ],
-    python_requires='>=3.6',
-    package_data = {
+    python_requires='>=3.9',
+    package_data={
         'kukur': ['py.typed'],
     },
 )
