@@ -87,24 +87,25 @@ class BaseArrowSource(ABC):
         columns = ["series name", "ts", "value"]
         if self.__quality_mapper.is_present():
             columns.append("quality")
+
         all_data = self.read_file(self.__loader.open()).rename_columns(columns)
+        schema = pa.schema(
+            [
+                ("ts", pa.timestamp("us", "utc")),
+                ("value", _get_value_schema_type(all_data)),
+            ]
+        )
+        if self.__quality_mapper.is_present():
+            schema = schema.append(pa.field("quality", pa.int8()))
+            kukur_quality_values = self._map_quality(all_data["quality"])
+            all_data = all_data.set_column(
+                3, "quality", pa.array(kukur_quality_values, type=pa.int8())
+            )
+
         # pylint: disable=no-member
         data = all_data.filter(
             pyarrow.compute.equal(all_data["series name"], pa.scalar(selector.name))
         ).drop(["series name"])
-        schema = pa.schema(
-            [
-                ("ts", pa.timestamp("us", "utc")),
-                ("value", _get_value_schema_type(data)),
-            ]
-        )
-
-        if self.__quality_mapper.is_present():
-            schema = schema.append(pa.field("quality", pa.int8()))
-            kukur_quality_values = self._map_quality(all_data["quality"])
-            data = data.set_column(
-                2, "quality", pa.array(kukur_quality_values, type=pa.int8())
-            )
 
         return data.cast(schema)
 
