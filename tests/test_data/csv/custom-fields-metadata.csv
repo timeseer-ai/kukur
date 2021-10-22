@@ -1,0 +1,2 @@
+series name,description,unit,limitlow,limithigh,plant,loc
+test-tag-custom,Test for custom metadata fields,kPa,1,10,PA,Antwerp

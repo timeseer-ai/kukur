@@ -13,10 +13,9 @@ from .base import (
     DataType,
     Dictionary,
     InterpolationType,
-    Metadata,
-    ProcessType,
     SeriesSelector,
 )
+from .metadata import Metadata
 from .client import Client
 
 
@@ -47,6 +46,5 @@ __all__ = [
     "Dictionary",
     "InterpolationType",
     "Metadata",
-    "ProcessType",
     "SeriesSelector",
 ]

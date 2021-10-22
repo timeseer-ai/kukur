@@ -13,7 +13,8 @@ Three formats are supported:
 from typing import Dict
 
 import pyarrow as pa
-import pyarrow.feather as feather
+
+from pyarrow import feather
 
 from kukur.exceptions import InvalidSourceException
 from kukur.loader import from_config as loader_from_config

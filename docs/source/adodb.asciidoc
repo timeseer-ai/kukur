@@ -85,7 +85,7 @@ list_query = "select name, description, units, [interpolation type], [data type]
 list_columns = ["series name", "description", "unit", "interpolation type", "data type", "dictionary name"]
 ```
 
-Supported columns are:
+Built-in metadata columns are:
 
 - `series name` (required)
 - `description`
@@ -96,7 +96,8 @@ Supported columns are:
 - `interpolation type` (`LINEAR`, `STEPPED`)
 - `data type` (`FLOAT32`, `FLOAT64`, `STRING`, `DICTIONARY`. `CATEGORICAL`)
 - `dictionary name`
-- `process type` (`CONTINUOUS`, `REGIME`, `BATCH`, `COUNTER`)
+
+Custom metadata fields can be defined by including them in the `list_columns` list.
 
 Not all ADODB sources can map metadata field values to the values expected by Kukur.
 Use `metadata_value_mapping` to convert them.
@@ -123,14 +124,14 @@ The `metadata_query` is a query that accepts one parameter: the name of the seri
 metadata_query = "select description, units, [interpolation type], [data type], [dictionary name] from [Metadata$] where name = ?"
 ```
 
-The columns in the result set need to be mapped to the supported types of metadata.
+The columns in the result set should be mapped to a supported type of metadata.
 The `metadata_columns` entry contains a list with the positional mapping.
 
 ```toml
 metadata_columns = ["description", "unit", "interpolation type", "data type", "dictionary name"]
 ```
 
-Supported types of metadata are:
+Built-in types of metadata are:
 
 - `description`
 - `unit`
@@ -140,7 +141,8 @@ Supported types of metadata are:
 - `interpolation type` (`LINEAR`, `STEPPED`)
 - `data type` (`FLOAT32`, `FLOAT64`, `STRING`, `DICTIONARY`, `CATEGORICAL`)
 - `dictionary name`
-- `process type` (`CONTINUOUS`, `REGIME`, `BATCH`, `COUNTER`)
+
+Custom metadata fields can be defined by including them in the `metadata_columns` list.
 
 The metadata query can be read from a file by using `metadata_query_path` instead of `metadata_query`.
 

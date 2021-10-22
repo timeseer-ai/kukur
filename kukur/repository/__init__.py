@@ -14,11 +14,9 @@ class RepositoryRegistry:  # pylint: disable=too-few-public-methods
     """RepositoryRegistry provides access to the different repositories in Kukur."""
 
     __data_dir: Optional[Path]
-    __connection_string: Optional[str] = None
 
-    def __init__(self, *, data_dir: Path = None, connection_string: str = None):
+    def __init__(self, *, data_dir: Path = None):
         self.__data_dir = data_dir
-        self.__connection_string = connection_string
 
     def api_key(self) -> ApiKeyRepository:
         """Return the repository used to store api keys."""

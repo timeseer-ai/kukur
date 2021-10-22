@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Dict, Protocol, Union
 
 try:
-    import azure.storage.blob as blob
+    from azure.storage import blob
 
     HAS_AZURE = True
 except ImportError:

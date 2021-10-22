@@ -12,13 +12,15 @@ from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union
 import pyarrow as pa
 import pyarrow.types
 
-import kukur.source.adodb as adodb
-import kukur.source.csv as csv
-import kukur.source.feather as feather
-import kukur.source.kukur as kukur_source
-import kukur.source.odbc as odbc
-import kukur.source.parquet as parquet
-import kukur.source.influxdb as influxdb
+from kukur.source import (
+    adodb,
+    csv,
+    feather,
+    kukur as kukur_source,
+    odbc,
+    parquet,
+    influxdb,
+)
 
 from kukur import Metadata, SeriesSelector, Source as SourceProtocol
 from kukur.exceptions import InvalidSourceException
@@ -134,9 +136,9 @@ class SourceWrapper:
                 extra_metadata = self.get_metadata(
                     SeriesSelector(result.series.source, result.series.name)
                 )
-                for k, v in result:
+                for k, v in result.iter_names():
                     if v is not None and v != "":
-                        extra_metadata.set_field(k, v)
+                        extra_metadata.set_field_by_name(k, v)
                 yield extra_metadata
 
     def get_metadata(self, selector: SeriesSelector) -> Metadata:
@@ -158,14 +160,14 @@ class SourceWrapper:
                 f'Metadata query for "{selector.name}" ({selector.source}) failed',
             )
             if len(metadata_source.fields) == 0:
-                for k, v in received_metadata:
+                for k, v in received_metadata.iter_names():
                     if v is not None and v != "":
-                        metadata.set_field(k, v)
+                        metadata.set_field_by_name(k, v)
             else:
                 for field_name in metadata_source.fields:
-                    field_value = received_metadata.get_field(field_name)
+                    field_value = received_metadata.get_field_by_name(field_name)
                     if field_value is not None and field_value != "":
-                        metadata.set_field(field_name, field_value)
+                        metadata.set_field_by_name(field_name, field_value)
         return metadata
 
     def get_data(
@@ -202,8 +204,7 @@ class SourceWrapper:
         current_date = start_date
         while current_date < end_date:
             next_date = current_date + self.__data_query_interval
-            if next_date > end_date:
-                next_date = end_date
+            next_date = min(next_date, end_date)
             yield (current_date, next_date)
             current_date = next_date
 

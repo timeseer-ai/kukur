@@ -6,7 +6,8 @@ from datetime import datetime, timedelta
 import pyarrow as pa
 import pytest
 
-from kukur.source import Source, SourceWrapper, SeriesSelector, Metadata
+from kukur import SeriesSelector, Metadata
+from kukur.source import Source, SourceWrapper
 
 
 SELECTOR = SeriesSelector("fake", "test-tag-1")

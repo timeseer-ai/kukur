@@ -14,6 +14,7 @@ import dateutil.parser
 import pyarrow as pa
 
 from kukur import Dictionary, Metadata, SeriesSelector
+from kukur.metadata import fields
 from kukur.source.metadata import MetadataValueMapper
 from kukur.source.quality import QualityMapper
 
@@ -50,28 +51,28 @@ class SQLConfig:  # pylint: disable=too-many-instance-attributes
         if "connection_string" in data:
             connection_string = data["connection_string"]
         else:
-            with open(data["connection_string_path"]) as f:
+            with open(data["connection_string_path"], encoding="utf-8") as f:
                 connection_string = f.read().strip()
 
         config = SQLConfig(connection_string)
 
         config.list_query = data.get("list_query")
         if config.list_query is None and "list_query_path" in data:
-            with open(data["list_query_path"]) as f:
+            with open(data["list_query_path"], encoding="utf-8") as f:
                 config.list_query = f.read()
         config.list_columns = data.get("list_columns", [])
         config.metadata_query = data.get("metadata_query")
         if config.metadata_query is None and "metadata_query_path" in data:
-            with open(data["metadata_query_path"]) as f:
+            with open(data["metadata_query_path"], encoding="utf-8") as f:
                 config.metadata_query = f.read()
         config.metadata_columns = data.get("metadata_columns", [])
         config.dictionary_query = data.get("dictionary_query")
         if config.dictionary_query is None and "dictionary_query_path" in data:
-            with open(data["dictionary_query_path"]) as f:
+            with open(data["dictionary_query_path"], encoding="utf-8") as f:
                 config.dictionary_query = f.read()
         config.data_query = data.get("data_query")
         if config.data_query is None and "data_query_path" in data:
-            with open(data["data_query_path"]) as f:
+            with open(data["data_query_path"], encoding="utf-8") as f:
                 config.data_query = f.read()
 
         config.data_query_datetime_format = data.get("data_query_datetime_format")
@@ -143,12 +144,14 @@ class BaseSQLSource(ABC):
                     continue
                 if isinstance(value, str) and value == "":
                     continue
-                metadata.set_field(
+                metadata.coerce_field(
                     name, self._metadata_value_mapper.from_source(name, value)
                 )
-        if metadata.dictionary_name is not None:
-            metadata.dictionary = self.__query_dictionary(
-                cursor, metadata.dictionary_name
+
+        dictionary_name = metadata.get_field(fields.DictionaryName)
+        if dictionary_name is not None:
+            metadata.set_field(
+                fields.Dictionary, self.__query_dictionary(cursor, dictionary_name)
             )
         return metadata
 
@@ -248,12 +251,14 @@ class BaseSQLSource(ABC):
                     continue
                 if isinstance(value, str) and value == "":
                     continue
-                metadata.set_field(
+                metadata.coerce_field(
                     name, self._metadata_value_mapper.from_source(name, value)
                 )
-            if metadata.dictionary_name is not None and dictionary_cursor is not None:
-                metadata.dictionary = self.__query_dictionary(
-                    dictionary_cursor, metadata.dictionary_name
+            dictionary_name = metadata.get_field(fields.DictionaryName)
+            if dictionary_name is not None and dictionary_cursor is not None:
+                metadata.set_field(
+                    fields.Dictionary,
+                    self.__query_dictionary(dictionary_cursor, dictionary_name),
                 )
             yield metadata
 

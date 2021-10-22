@@ -8,6 +8,7 @@ from dateutil.parser import parse as parse_date
 import kukur.config
 
 from kukur import SeriesSelector, DataType, Dictionary, InterpolationType, Source
+from kukur.metadata import fields
 from kukur.source import SourceFactory
 
 
@@ -82,31 +83,76 @@ def test_row_metadata():
     series = make_series("row")
     metadata = get_source("row").get_metadata(series)
     assert metadata.series == series
-    assert isinstance(metadata.description, str)
-    assert isinstance(metadata.unit, str)
-    assert isinstance(metadata.limit_low, float)
-    assert isinstance(metadata.limit_high, float)
-    assert isinstance(metadata.accuracy, float)
+    assert isinstance(metadata.get_field(fields.Description), str)
+    assert isinstance(metadata.get_field(fields.Unit), str)
+    assert isinstance(metadata.get_field(fields.LimitLow), float)
+    assert isinstance(metadata.get_field(fields.LimitHigh), float)
+    assert isinstance(metadata.get_field(fields.Accuracy), float)
 
 
 def test_row_metadata_dictionary():
     metadata = get_source("row").get_metadata(SeriesSelector("row", "test-tag-6"))
     assert metadata.series == SeriesSelector("row", "test-tag-6")
-    assert metadata.data_type == DataType.DICTIONARY
-    assert metadata.dictionary_name == "Active"
-    assert isinstance(metadata.dictionary, Dictionary)
+    assert metadata.get_field(fields.DataType) == DataType.DICTIONARY
+    assert metadata.get_field(fields.DictionaryName) == "Active"
+    assert isinstance(metadata.get_field(fields.Dictionary), Dictionary)
 
 
 def test_metadata_mapping():
     metadata = get_source("mapping").get_metadata(make_series("mapping"))
     assert metadata.series == SeriesSelector("mapping", "test-tag-1")
-    assert metadata.unit == "kg"
-    assert metadata.limit_low == 1
-    assert metadata.interpolation_type == InterpolationType.LINEAR
+    assert metadata.get_field(fields.Unit) == "kg"
+    assert metadata.get_field(fields.LimitLow) == 1
+    assert metadata.get_field(fields.InterpolationType) == InterpolationType.LINEAR
 
 
 def test_metadata_mapping_multiple():
     metadata = get_source("mapping").get_metadata(make_series("mapping", "test-tag-1"))
-    assert metadata.data_type == DataType.FLOAT64
+    assert metadata.get_field(fields.DataType) == DataType.FLOAT64
     metadata = get_source("mapping").get_metadata(make_series("mapping", "test-tag-4"))
-    assert metadata.data_type == DataType.FLOAT64
+    assert metadata.get_field(fields.DataType) == DataType.FLOAT64
+
+
+def test_custom_fields_search() -> None:
+    all_metadata = list(
+        get_source("custom-fields-simple").search(SeriesSelector("custom-fields"))
+    )
+    assert len(all_metadata) == 1
+    metadata = all_metadata[0]
+    assert isinstance(metadata, kukur.Metadata)
+    assert metadata.get_field(fields.Description) == "Test for custom metadata fields"
+    assert metadata.get_field_by_name("location") == "Antwerp"
+    assert "plant" not in [name for name, _ in metadata.iter_names()]
+
+
+def test_custom_fields_metadata() -> None:
+    metadata = get_source("custom-fields-simple").get_metadata(
+        SeriesSelector("custom-fields", "test-tag-custom")
+    )
+    assert isinstance(metadata, kukur.Metadata)
+    assert metadata.get_field(fields.Description) == "Test for custom metadata fields"
+    assert metadata.get_field_by_name("location") == "Antwerp"
+    assert "plant" not in [name for name, _ in metadata.iter_names()]
+
+
+def test_custom_fields_extra_metadata() -> None:
+    metadata = get_source("custom-fields").get_metadata(
+        make_series("custom-fields", "test-tag-custom")
+    )
+    assert metadata.get_field(fields.Description) == "Test for custom metadata fields"
+    assert metadata.get_field_by_name("process type") == "BATCH"
+    assert metadata.get_field_by_name("location") == "Antwerp"
+    assert "plant" not in [name for name, _ in metadata.iter_names()]
+
+
+def test_custom_fields_search_extra_metadata() -> None:
+    all_metadata = list(
+        get_source("custom-fields").search(SeriesSelector("custom-fields"))
+    )
+    assert len(all_metadata) == 1
+    metadata = all_metadata[0]
+    assert isinstance(metadata, kukur.Metadata)
+    assert metadata.get_field(fields.Description) == "Test for custom metadata fields"
+    assert metadata.get_field_by_name("process type") == "BATCH"
+    assert metadata.get_field_by_name("location") == "Antwerp"
+    assert "plant" not in [name for name, _ in metadata.iter_names()]
