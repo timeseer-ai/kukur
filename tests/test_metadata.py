@@ -9,7 +9,7 @@ from kukur import (
     InterpolationType,
     SeriesSelector,
 )
-from kukur.metadata import Metadata, fields
+from kukur.metadata import Metadata, MetadataField, fields
 
 SERIES = SeriesSelector("test", "test-tag-1")
 
@@ -38,6 +38,15 @@ def test_repr() -> None:
     )
     assert "'custom': 'value'" in repr(metadata)
     assert "'custom2': 'value2'" in repr(metadata)
+
+
+def test_typed_field() -> None:
+    CustomField = MetadataField[str]("custom", default="", serialized_name="custom")
+    Metadata.register_field(CustomField, after_field=fields.Description)
+
+    metadata = Metadata(SERIES)
+    metadata.set_field(CustomField, "test")
+    assert list(metadata.iter_names())[1] == ("custom", "test")
 
 
 def test_description() -> None:
