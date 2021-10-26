@@ -27,9 +27,16 @@ class MetadataFields:
     __values: dict[Union[str, MetadataField], Any]
 
     @classmethod
-    def register_field(cls, field: MetadataField[T]):
-        """Register a new metadata field"""
-        cls._fields.append(field)
+    def register_field(
+        cls, field: MetadataField[T], *, after_field: Optional[MetadataField] = None
+    ):
+        """Register a new metadata field.
+
+        Optionally insert it right after the given field in the field ordering."""
+        if after_field is not None:
+            cls._fields.insert(cls._fields.index(after_field) + 1, field)
+        else:
+            cls._fields.append(field)
 
     def __init__(self, values: Optional[dict[MetadataField, Any]] = None):
         self.__values = {k: k.default() for k in self._fields}
@@ -129,11 +136,6 @@ class Metadata(MetadataFields):
     """Metadata fields for one time series."""
 
     series: SeriesSelector
-
-    @classmethod
-    def register_field(cls, field: MetadataField[T]):
-        """Register a new metadata field"""
-        super().register_field(field)
 
     @classmethod
     def from_data(
