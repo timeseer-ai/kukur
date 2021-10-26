@@ -90,8 +90,10 @@ Built-in metadata columns are:
 - `series name` (required)
 - `description`
 - `unit`
-- `lower limit`
-- `upper limit`
+- `functional lower limit`
+- `functional upper limit`
+- `physical lower limit`
+- `physical upper limit`
 - `accuracy`
 - `interpolation type` (`LINEAR`, `STEPPED`)
 - `data type` (`FLOAT32`, `FLOAT64`, `STRING`, `DICTIONARY`. `CATEGORICAL`)
@@ -135,8 +137,10 @@ Built-in types of metadata are:
 
 - `description`
 - `unit`
-- `lower limit`
-- `upper limit`
+- `functional lower limit`
+- `functional upper limit`
+- `physical lower limit`
+- `physical upper limit`
 - `accuracy`
 - `interpolation type` (`LINEAR`, `STEPPED`)
 - `data type` (`FLOAT32`, `FLOAT64`, `STRING`, `DICTIONARY`, `CATEGORICAL`)

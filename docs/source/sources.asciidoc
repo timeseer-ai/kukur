@@ -86,8 +86,10 @@ Possible metadata fields are:
 
 - `description`
 - `unit`
-- `lower limit`
-- `upper limit`
+- `functional lower limit`
+- `functional upper limit`
+- `physical lower limit`
+- `physical upper limit`
 - `accuracy`
 - `interpolation type`
 - `data type`

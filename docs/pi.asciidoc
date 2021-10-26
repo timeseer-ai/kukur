@@ -18,8 +18,8 @@ To list time series and collect metadata, use:
 [source.PIAB]
 type = "adodb"
 connection_string = "Provider = PIOLEDB;Data Source = PIAB"
-list_query = "select tag, descriptor, engunits, zero - (span/2), zero + (span/2), compdev, pointtype, step, digitalset from pipoint2"
-list_columns = ["series name", "description", "unit", "lower limit", "upper limit", "accuracy", "data type", "interpolation type", "dictionary name"]
+list_query = "select tag, descriptor, engunits, zero, zero + span, compdev, pointtype, step, digitalset from pipoint2"
+list_columns = ["series name", "description", "unit", "physical lower limit", "physical upper limit", "accuracy", "data type", "interpolation type", "dictionary name"]
 metadata_value_mapping = "PI_mapping"
 dictionary_query = "select code, name from pids where digitalset = ?"
 
@@ -33,6 +33,9 @@ LINEAR = 0
 STEPPED = 1
 ----
 
+The example above uses the OSIsoft recommended interpretation of the `zero` and `span` PI point attributes.
+Update the calculation of the `physical lower limit` and `physical upper limit` as needed when diverging from this.
+
 The ISO8601/RFC3339 timestamps provided by Kukur to the OLEDB driver when requesting data are not natively accepted.
 They need to be converted to a format accepted by PI using `data_query_datetime_format` .
 
@@ -44,8 +47,8 @@ Kukur will split and recombine longer queries.
 [source.PIAB]
 type = "adodb"
 connection_string = "Provider = PIOLEDB;Data Source = PIAB"
-list_query = "select tag, descriptor, engunits, zero - (span/2), zero + (span/2), compdev, pointtype, step, digitalset from pipoint2"
-list_columns = ["series name", "description", "unit", "lower limit", "upper limit", "accuracy", "data type", "interpolation type", "dictionary name"]
+list_query = "select tag, descriptor, engunits, zero, zero + span, compdev, pointtype, step, digitalset from pipoint2"
+list_columns = ["series name", "description", "unit", "physical lower limit", "physical upper limit", "accuracy", "data type", "interpolation type", "dictionary name"]
 metadata_value_mapping = "PI_mapping"
 dictionary_query = "select code, name from pids where digitalset = ?"
 data_query = "select time, value from picomp2 where tag = ? and time >= ? and time < ?"

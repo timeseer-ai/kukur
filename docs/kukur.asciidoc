@@ -142,7 +142,7 @@ Now, having this data is useful, but where Kukur sets itself apart is that it al
 Is the outside temperature defined in Kelvin?
 Unless we're probing a spacecraft at the dark side of the moon, this is unlikely, but there is no way to know.
 
-Our thermometer probably has measurement limits as well.
+Our thermometer probably has physical measurement limits as well.
 When values outside the -20 deg C to 60 deg C scale that this particular thermometer supports appear,
 using them is probably not a good idea.
 
@@ -155,7 +155,7 @@ Let's create another CSV file:
 
 data/example-metadata.csv
 ----
-series name,description,unit,lower limit,upper limit,accuracy
+series name,description,unit,physical lower limit,physical upper limit,accuracy
 outside-temperature,Temperature in Antwerp,deg C,-20,60,0.5
 ----
 
@@ -184,8 +184,8 @@ Request the metadata using the CLI:
     --source example \
     --name outside-temperature
 2021-03-29 11:41:48,936 INFO kukur.source.test MainThread : Requesting metadata for "outside-temperature (example)"
-series name,description,unit,lower limit,upper limit,accuracy,interpolation type,data type,dictionary name,dictionary,process type
-outside-temperature,Temperature in Antwerp,deg C,-20.0,60.0,0.5,,,,,
+series name,description,unit,physical lower limit,physical upper limit,functional lower limit,functional upper limit,accuracy,interpolation type,data type,dictionary name,dictionary
+outside-temperature,Temperature in Antwerp,deg C,-20.0,60.0,,,0.5,,,,
 ----
 
 Many fields are blank because our CSV file did not contain them.
@@ -265,7 +265,7 @@ Now, go back to the Python session and request the metadata:
 [source,python]
 ----
 >>> client.get_metadata(SeriesSelector('example', 'outside-temperature'))
-Metadata(series=SeriesSelector(source='example', name='outside-temperature'), description='Temperature in Antwerp', unit='deg C', limit_low=-20.0, limit_high=60.0, accuracy=0.5, interpolation_type=None, data_type=None, dictionary_name=None, dictionary=None, process_type=None)
+Metadata(SeriesSelector(source='example', name='outside-temperature'), {'description': 'Temperature in Antwerp', 'unit': 'deg C', 'physical lower limit': -20.0, 'physical upper limit': 60.0, 'functional lower limit': None, 'functional upper limit': None, 'accuracy': 0.5, 'interpolation type': None, 'data type': None, 'dictionary name': None, 'dictionary': None})
 ----
 
 Finally, read the data:
@@ -384,7 +384,7 @@ Type "help", "copyright", "credits" or "license" for more information.
 >>> from kukur import *
 >>> client = Client()
 >>> client.get_metadata(SeriesSelector('example', 'outside-temperature'))
-Metadata(series=SeriesSelector(source='example', name='outside-temperature'), description='', unit='', limit_low=None, limit_high=None, accuracy=None, interpolation_type=None, data_type=None, dictionary_name=None, dictionary=None, process_type=None)
+Metadata(SeriesSelector(source='example', name='outside-temperature'), {'description': 'Temperature in Antwerp', 'unit': 'deg C', 'physical lower limit': -20.0, 'physical upper limit': 60.0, 'functional lower limit': None, 'functional upper limit': None, 'accuracy': 0.5, 'interpolation type': None, 'data type': None, 'dictionary name': None, 'dictionary': None})
 ----
 
 NOTE: when using API keys, use the `data_dir` configuration option to store them in another volume mounted location.
@@ -463,8 +463,10 @@ class Metadata {
     series: SeriesSelector
     description : str
     unit : str
-    limit_low : Optional[float]
-    limit_high : Optional[float]
+    limit_low_physical : Optional[float]
+    limit_high_physical : Optional[float]
+    limit_low_functional : Optional[float]
+    limit_high_functional : Optional[float]
     accuracy : Optional[float]
     interpolation_type: Optional[InterpolationType]
     data_type: Optional[DataType]
@@ -489,8 +491,13 @@ class Dictionary {
 }
 ....
 
-Most of these fields are self-explanatory,
-but the `DICTIONARY` `DataType` warrants an explanation.
+Both physical and functional limits are configurable.
+Physical limits are limits of the actual sensor that collected the time series data.
+Functional limits are the limits of the expected range of the time series.
+For example, while my thermometer could indicate -20 deg C (physical lower limit),
+anything below -5 deg C (functional lower limit) would be cause for alarm.
+
+The `DICTIONARY` `DataType` warrants an explanation as well.
 
 Time series of type `DICTIONARY` store numerical values.
 Each numerical value is given a meaning.
