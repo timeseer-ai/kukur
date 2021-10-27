@@ -80,18 +80,34 @@ def _parse_float(number: Optional[Any]) -> Optional[float]:
     return float(number)
 
 
-LimitLow = MetadataField[Optional[float]](
-    "lower limit",
+LimitLowPhysical = MetadataField[Optional[float]](
+    "physical lower limit",
     default=None,
-    serialized_name="limitLow",
+    serialized_name="limitLowPhysical",
     deserialize=_parse_float,
 )
 
 
-LimitHigh = MetadataField[Optional[float]](
-    "upper limit",
+LimitHighPhysical = MetadataField[Optional[float]](
+    "physical upper limit",
     default=None,
-    serialized_name="limitHigh",
+    serialized_name="limitHighPhysical",
+    deserialize=_parse_float,
+)
+
+
+LimitLowFunctional = MetadataField[Optional[float]](
+    "functional lower limit",
+    default=None,
+    serialized_name="limitLowFunctional",
+    deserialize=_parse_float,
+)
+
+
+LimitHighFunctional = MetadataField[Optional[float]](
+    "functional upper limit",
+    default=None,
+    serialized_name="limitHighFunctional",
     deserialize=_parse_float,
 )
 
@@ -184,8 +200,10 @@ def register_default_fields(cls) -> None:
     """Register all common metadata fields to the Metadata class."""
     cls.register_field(Description)
     cls.register_field(Unit)
-    cls.register_field(LimitLow)
-    cls.register_field(LimitHigh)
+    cls.register_field(LimitLowPhysical)
+    cls.register_field(LimitHighPhysical)
+    cls.register_field(LimitLowFunctional)
+    cls.register_field(LimitHighFunctional)
     cls.register_field(Accuracy)
     cls.register_field(InterpolationType)
     cls.register_field(DataType)

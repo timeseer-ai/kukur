@@ -35,8 +35,8 @@ def test_search(client: Client):
         if series.series.name == "h2o_feet,location=coyote_creek::water_level"
     ][0]
     assert isinstance(series, Metadata)
-    assert series.get_field(fields.LimitLow) == 6
-    assert series.get_field(fields.LimitHigh) == 9
+    assert series.get_field(fields.LimitLowFunctional) == 6
+    assert series.get_field(fields.LimitHighFunctional) == 9
 
 
 def test_metadata(client: Client):
@@ -45,8 +45,8 @@ def test_metadata(client: Client):
             suffix_source("noaa"), "h2o_feet,location=coyote_creek::water_level"
         )
     )
-    assert series.get_field(fields.LimitLow) == 6
-    assert series.get_field(fields.LimitHigh) == 9
+    assert series.get_field(fields.LimitLowFunctional) == 6
+    assert series.get_field(fields.LimitHighFunctional) == 9
 
 
 def test_data(client: Client):

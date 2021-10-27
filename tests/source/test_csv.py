@@ -28,7 +28,7 @@ START_DATE = parse_date("2020-01-01T00:00:00Z")
 END_DATE = parse_date("2020-11-01T00:00:00Z")
 
 
-def test_dir():
+def test_dir() -> None:
     table = get_source("dir").get_data(
         make_series("dir", "test-tag-1"), START_DATE, END_DATE
     )
@@ -38,7 +38,7 @@ def test_dir():
     assert table["value"][0].as_py() == 1.0
 
 
-def test_dir_quality():
+def test_dir_quality() -> None:
     table = get_source("dir-quality").get_data(
         make_series("dir-quality", "test-tag-1"), START_DATE, END_DATE
     )
@@ -51,7 +51,7 @@ def test_dir_quality():
     assert table["quality"][3].as_py() == 1
 
 
-def test_row():
+def test_row() -> None:
     table = get_source("row").get_data(make_series("row"), START_DATE, END_DATE)
     assert len(table) == 5
     assert table.column_names == ["ts", "value"]
@@ -59,7 +59,7 @@ def test_row():
     assert table["value"][0].as_py() == 1.0
 
 
-def test_row_quality():
+def test_row_quality() -> None:
     table = get_source("row_quality").get_data(
         make_series("row_quality"), START_DATE, END_DATE
     )
@@ -71,7 +71,7 @@ def test_row_quality():
     assert table["quality"][2].as_py() == 0
 
 
-def test_pivot():
+def test_pivot() -> None:
     table = get_source("pivot").get_data(make_series("pivot"), START_DATE, END_DATE)
     assert len(table) == 7
     assert table.column_names == ["ts", "value"]
@@ -79,18 +79,18 @@ def test_pivot():
     assert table["value"][0].as_py() == 1.0
 
 
-def test_row_metadata():
+def test_row_metadata() -> None:
     series = make_series("row")
     metadata = get_source("row").get_metadata(series)
     assert metadata.series == series
     assert isinstance(metadata.get_field(fields.Description), str)
     assert isinstance(metadata.get_field(fields.Unit), str)
-    assert isinstance(metadata.get_field(fields.LimitLow), float)
-    assert isinstance(metadata.get_field(fields.LimitHigh), float)
+    assert isinstance(metadata.get_field(fields.LimitLowFunctional), float)
+    assert isinstance(metadata.get_field(fields.LimitHighFunctional), float)
     assert isinstance(metadata.get_field(fields.Accuracy), float)
 
 
-def test_row_metadata_dictionary():
+def test_row_metadata_dictionary() -> None:
     metadata = get_source("row").get_metadata(SeriesSelector("row", "test-tag-6"))
     assert metadata.series == SeriesSelector("row", "test-tag-6")
     assert metadata.get_field(fields.DataType) == DataType.DICTIONARY
@@ -98,15 +98,15 @@ def test_row_metadata_dictionary():
     assert isinstance(metadata.get_field(fields.Dictionary), Dictionary)
 
 
-def test_metadata_mapping():
+def test_metadata_mapping() -> None:
     metadata = get_source("mapping").get_metadata(make_series("mapping"))
     assert metadata.series == SeriesSelector("mapping", "test-tag-1")
     assert metadata.get_field(fields.Unit) == "kg"
-    assert metadata.get_field(fields.LimitLow) == 1
+    assert metadata.get_field(fields.LimitLowFunctional) == 1
     assert metadata.get_field(fields.InterpolationType) == InterpolationType.LINEAR
 
 
-def test_metadata_mapping_multiple():
+def test_metadata_mapping_multiple() -> None:
     metadata = get_source("mapping").get_metadata(make_series("mapping", "test-tag-1"))
     assert metadata.get_field(fields.DataType) == DataType.FLOAT64
     metadata = get_source("mapping").get_metadata(make_series("mapping", "test-tag-4"))

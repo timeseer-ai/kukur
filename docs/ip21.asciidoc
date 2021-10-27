@@ -27,8 +27,8 @@ This example will expose all time series defined by `IP_AnalogDef`:
 [source.IP21AB]
 type = "odbc"
 connection_string = "DSN=AB"
-list_query = "SELECT NAME, IP_DESCRIPTION, IP_ENG_UNITS, IP_LOW_LIMIT, IP_HIGH_LIMIT, IP_DC_SIGNIFICANCE, IP_STEPPED,'FLOAT64' FROM IP_AnalogDef"
-list_columns = ["series name", "description", "unit", "lower limit", "upper limit", "accuracy", "interpolation type", "data type"]
+list_query = "SELECT NAME, IP_DESCRIPTION, IP_ENG_UNITS, IP_LOW_LOW_LIMIT, IP_LOW_LIMIT, IP_HIGH_LIMIT, IP_HIGH_HIGH_LIMIT, IP_DC_SIGNIFICANCE, IP_STEPPED,'FLOAT64' FROM IP_AnalogDef"
+list_columns = ["series name", "description", "unit", "physical lower limit", "functional lower limit", "functional upper limit", "physical upper limit", "accuracy", "interpolation type", "data type"]
 metadata_value_mapping = 'IP21_Mapping'
 
 [metadata_value_mapping.IP21_Mapping.'interpolation type']
@@ -38,6 +38,11 @@ STEPPED = 'Stepped'
 
 Note that this assumes that all time series defined here have a data type of `FLOAT64`.
 A mapping table like the interpolation type mapping can map data types returned by SQLplus to data types known in Kukur.
+
+Pay special attention to the configured limits.
+The example assumes that both `IP_LOW_LOW_LIMIT` and `IP_LOW_LIMIT` have been configured.
+The `IP_LOW_LOW_LIMIT` maps to the `physical lower limit` field in Kukur and represents the lower limit of the sensor.
+The `IP_LOW_LIMIT` maps to the `functional lower limit` field in Kukur and represents the expected lower limit of the process.
 
 The final step is to define queries to read data from time series.
 
@@ -60,8 +65,8 @@ Kukur will split and recombine longer queries.
 [source.IP21AB]
 type = "odbc"
 connection_string = "DSN=AB"
-list_query = "SELECT NAME, IP_DESCRIPTION, IP_ENG_UNITS, IP_LOW_LIMIT, IP_HIGH_LIMIT, IP_DC_SIGNIFICANCE, IP_STEPPED,'FLOAT64' FROM IP_AnalogDef"
-list_columns = ["series name", "description", "unit", "lower limit", "upper limit", "accuracy", "interpolation type", "data type"]
+list_query = "SELECT NAME, IP_DESCRIPTION, IP_ENG_UNITS, IP_LOW_LOW_LIMIT, IP_LOW_LIMIT, IP_HIGH_LIMIT, IP_HIGH_HIGH_LIMIT, IP_DC_SIGNIFICANCE, IP_STEPPED,'FLOAT64' FROM IP_AnalogDef"
+list_columns = ["series name", "description", "unit", "physical lower limit", "functional lower limit", "functional upper limit", "physical upper limit", "accuracy", "interpolation type", "data type"]
 metadata_value_mapping = 'IP21_Mapping'
 query_string_parameters = true
 data_query = "SELECT ISO8601(IP_TREND_TIME),IP_TREND_VALUE FROM IP_AnalogDef.1 WHERE NAME='{}' AND IP_TREND_TIME >= '{}' AND IP_TREND_TIME < '{}' ORDER BY IP_TREND_TIME ASC"

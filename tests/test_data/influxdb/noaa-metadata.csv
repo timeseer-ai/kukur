@@ -1,2 +1,2 @@
-series name,lower limit,upper limit
+series name,functional lower limit,functional upper limit
 "h2o_feet,location=coyote_creek::water_level",6,9

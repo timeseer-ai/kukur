@@ -40,13 +40,13 @@ quality_mapping = "opc_mapping_ranges"
 [source.custom-fields-simple]
 type = "csv"
 metadata = "tests/test_data/csv/custom-fields-metadata.csv"
-metadata_fields = ["description", "unit", "lower limit", "upper limit", "location"]
+metadata_fields = ["description", "unit", "functional lower limit", "functional upper limit", "location"]
 metadata_mapping = "custom"
 
 [source.custom-fields]
 type = "csv"
 metadata = "tests/test_data/csv/custom-fields-metadata.csv"
-metadata_fields = ["description", "unit", "lower limit", "upper limit", "location"]
+metadata_fields = ["description", "unit", "functional lower limit", "functional upper limit", "location"]
 metadata_mapping = "custom"
 metadata_sources = ["custom-fields-extra"]
 
@@ -70,8 +70,8 @@ STEPPED = "stepped"
 FLOAT64 = ["int16", "int32"]
 
 [metadata_mapping.custom]
-"lower limit" = "limitlow"
-"upper limit" = "limithigh"
+"functional lower limit" = "limitlow"
+"functional upper limit" = "limithigh"
 location = "loc"
 "process type" = "proctype"
 

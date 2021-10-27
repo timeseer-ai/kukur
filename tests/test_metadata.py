@@ -83,50 +83,96 @@ def test_unit_json() -> None:
     assert new_metadata.get_field(fields.Unit) == "kg"
 
 
-def test_limit_low() -> None:
+def test_physical_limit_low() -> None:
     metadata = Metadata(SERIES)
-    assert metadata.get_field(fields.LimitLow) is None
+    assert metadata.get_field(fields.LimitLowPhysical) is None
 
-    metadata.set_field(fields.LimitLow, 0)
-    assert metadata.get_field(fields.LimitLow) == 0
+    metadata.set_field(fields.LimitLowPhysical, 0)
+    assert metadata.get_field(fields.LimitLowPhysical) == 0
 
 
-def test_limit_low_json() -> None:
-    metadata = Metadata(SERIES, {fields.LimitLow: 0})
+def test_physical_limit_low_json() -> None:
+    metadata = Metadata(SERIES, {fields.LimitLowPhysical: 0})
     data = metadata.to_data()
-    assert data["limitLow"] == 0
+    assert data["limitLowPhysical"] == 0
 
     new_metadata = Metadata.from_data(data, SERIES)
-    assert new_metadata.get_field(fields.LimitLow) == 0
+    assert new_metadata.get_field(fields.LimitLowPhysical) == 0
 
 
-def test_limit_low_coerce() -> None:
+def test_physical_limit_low_coerce() -> None:
     metadata = Metadata(SERIES)
-    metadata.coerce_field("lower limit", "0")
-    assert metadata.get_field(fields.LimitLow) == 0
+    metadata.coerce_field("physical lower limit", "0")
+    assert metadata.get_field(fields.LimitLowPhysical) == 0
 
 
-def test_limit_high() -> None:
+def test_physical_limit_high() -> None:
     metadata = Metadata(SERIES)
-    assert metadata.get_field(fields.LimitHigh) is None
+    assert metadata.get_field(fields.LimitHighPhysical) is None
 
-    metadata.set_field(fields.LimitHigh, 0)
-    assert metadata.get_field(fields.LimitHigh) == 0
+    metadata.set_field(fields.LimitHighPhysical, 0)
+    assert metadata.get_field(fields.LimitHighPhysical) == 0
 
 
-def test_limit_high_json() -> None:
-    metadata = Metadata(SERIES, {fields.LimitHigh: 0})
+def test_physical_limit_high_json() -> None:
+    metadata = Metadata(SERIES, {fields.LimitHighPhysical: 0})
     data = metadata.to_data()
-    assert data["limitHigh"] == 0
+    assert data["limitHighPhysical"] == 0
 
     new_metadata = Metadata.from_data(data, SERIES)
-    assert new_metadata.get_field(fields.LimitHigh) == 0
+    assert new_metadata.get_field(fields.LimitHighPhysical) == 0
 
 
-def test_limit_high_coerce() -> None:
+def test_physical_limit_high_coerce() -> None:
     metadata = Metadata(SERIES)
-    metadata.coerce_field("upper limit", "0")
-    assert metadata.get_field(fields.LimitHigh) == 0
+    metadata.coerce_field("physical upper limit", "0")
+    assert metadata.get_field(fields.LimitHighPhysical) == 0
+
+
+def test_functional_limit_low() -> None:
+    metadata = Metadata(SERIES)
+    assert metadata.get_field(fields.LimitLowFunctional) is None
+
+    metadata.set_field(fields.LimitLowFunctional, 0)
+    assert metadata.get_field(fields.LimitLowFunctional) == 0
+
+
+def test_functional_limit_low_json() -> None:
+    metadata = Metadata(SERIES, {fields.LimitLowFunctional: 0})
+    data = metadata.to_data()
+    assert data["limitLowFunctional"] == 0
+
+    new_metadata = Metadata.from_data(data, SERIES)
+    assert new_metadata.get_field(fields.LimitLowFunctional) == 0
+
+
+def test_functional_limit_low_coerce() -> None:
+    metadata = Metadata(SERIES)
+    metadata.coerce_field("functional lower limit", "0")
+    assert metadata.get_field(fields.LimitLowFunctional) == 0
+
+
+def test_functional_limit_high() -> None:
+    metadata = Metadata(SERIES)
+    assert metadata.get_field(fields.LimitHighFunctional) is None
+
+    metadata.set_field(fields.LimitHighFunctional, 0)
+    assert metadata.get_field(fields.LimitHighFunctional) == 0
+
+
+def test_functional_limit_high_json() -> None:
+    metadata = Metadata(SERIES, {fields.LimitHighFunctional: 0})
+    data = metadata.to_data()
+    assert data["limitHighFunctional"] == 0
+
+    new_metadata = Metadata.from_data(data, SERIES)
+    assert new_metadata.get_field(fields.LimitHighFunctional) == 0
+
+
+def test_functional_limit_high_coerce() -> None:
+    metadata = Metadata(SERIES)
+    metadata.coerce_field("functional upper limit", "0")
+    assert metadata.get_field(fields.LimitHighFunctional) == 0
 
 
 def test_accuracy() -> None:

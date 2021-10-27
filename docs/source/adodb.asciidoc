@@ -88,14 +88,7 @@ list_columns = ["series name", "description", "unit", "interpolation type", "dat
 Built-in metadata columns are:
 
 - `series name` (required)
-- `description`
-- `unit`
-- `lower limit`
-- `upper limit`
-- `accuracy`
-- `interpolation type` (`LINEAR`, `STEPPED`)
-- `data type` (`FLOAT32`, `FLOAT64`, `STRING`, `DICTIONARY`. `CATEGORICAL`)
-- `dictionary name`
+include::{include-path}/metadata-fields.asciidoc[]
 
 Custom metadata fields can be defined by including them in the `list_columns` list.
 
@@ -133,14 +126,7 @@ metadata_columns = ["description", "unit", "interpolation type", "data type", "d
 
 Built-in types of metadata are:
 
-- `description`
-- `unit`
-- `lower limit`
-- `upper limit`
-- `accuracy`
-- `interpolation type` (`LINEAR`, `STEPPED`)
-- `data type` (`FLOAT32`, `FLOAT64`, `STRING`, `DICTIONARY`, `CATEGORICAL`)
-- `dictionary name`
+include::{include-path}/metadata-fields.asciidoc[]
 
 Custom metadata fields can be defined by including them in the `metadata_columns` list.
 

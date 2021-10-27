@@ -86,21 +86,14 @@ A header row describes the metadata entry.
 Supported types of metadata are:
 
 - `series name` (required)
-- `description`
-- `unit`
-- `lower limit`
-- `upper limit`
-- `accuracy`
-- `interpolation type` (`LINEAR`, `STEPPED`)
-- `data type` (`FLOAT32`, `FLOAT64`, `STRING`, `DICTIONARY`, `CATEGORICAL`)
-- `dictionary name`
+include::{include-path}/metadata-fields.asciidoc[]
 
 Not all columns need to be present.
 
 Example:
 
 ```csv
-series name,unit,lower limit,upper limit,accuracy
+series name,unit,functional lower limit,functional upper limit,accuracy
 test-tag-1,m,0,1,0.1
 ```
 
@@ -157,7 +150,7 @@ test-tag-1,kg,1
 ```
 
 Fields that are not included in the mapping,
-such as `lower limit` in the example,
+such as `functional lower limit` in the example,
 translate to the corresponding metadata field or are skipped altogether.
 
 Metadata mappings can be shared between sources.

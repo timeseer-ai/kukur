@@ -84,14 +84,7 @@ The optional `fields` parameter specifies which metadata fields will be used fro
 
 Possible metadata fields are:
 
-- `description`
-- `unit`
-- `lower limit`
-- `upper limit`
-- `accuracy`
-- `interpolation type`
-- `data type`
-- `dictionary name`
+include::{include-path}/metadata-fields.asciidoc[]
 
 Example:
 
