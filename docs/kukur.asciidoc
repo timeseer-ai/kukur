@@ -3,6 +3,7 @@
 :toc:
 :kukur-documentation:
 :sources:
+:include-path: ./includes
 
 // SPDX-FileCopyrightText: 2021 Timeseer.AI
 //
