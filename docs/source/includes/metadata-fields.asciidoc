@@ -5,6 +5,7 @@
 - `physical lower limit`
 - `physical upper limit`
 - `accuracy`
+- `accuracy percentage`
 - `interpolation type` (`LINEAR`, `STEPPED`)
 - `data type` (`FLOAT32`, `FLOAT64`, `STRING`, `DICTIONARY`, `CATEGORICAL`)
 - `dictionary name`

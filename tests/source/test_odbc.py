@@ -191,6 +191,70 @@ def test_custom_fields_search() -> None:
     assert metadata.get_field_by_name("process type") == "batch"
 
 
+def test_accuracy_percentage_metadata() -> None:
+    config = SQLConfig(
+        ":memory:",
+        metadata_query="select accuracy_percentage, limit_low, limit_high from Metadata where series_name = ?",
+        metadata_columns=[
+            "accuracy percentage",
+            "physical lower limit",
+            "physical upper limit",
+        ],
+    )
+    source = DummySQLSource(config, MetadataValueMapper(), QualityMapper())
+    source.db.executescript(
+        """
+        create table Metadata (
+            series_name text,
+            accuracy_percentage integer,
+            limit_low integer,
+            limit_high integer
+        );
+
+        insert into Metadata (series_name, accuracy_percentage, limit_low, limit_high) values ('random', 2, 0, 10);
+        """
+    )
+    metadata = source.get_metadata(SeriesSelector("dummy", "random"))
+    assert metadata.get_field(fields.AccuracyPercentage) == 2
+    assert metadata.get_field(fields.LimitLowPhysical) == 0
+    assert metadata.get_field(fields.LimitHighPhysical) == 10
+    assert metadata.get_field(fields.Accuracy) == 0.2
+
+
+def test_accuracy_percentage_search() -> None:
+    config = SQLConfig(
+        ":memory:",
+        list_query="select series_name, accuracy_percentage, limit_low, limit_high from Metadata",
+        list_columns=[
+            "series name",
+            "accuracy percentage",
+            "physical lower limit",
+            "physical upper limit",
+        ],
+    )
+    source = DummySQLSource(config, MetadataValueMapper(), QualityMapper())
+    source.db.executescript(
+        """
+        create table Metadata (
+            series_name text,
+            accuracy_percentage integer,
+            limit_low integer,
+            limit_high integer
+        );
+
+        insert into Metadata (series_name, accuracy_percentage, limit_low, limit_high) values ('random', 2, 0, 10);
+        """
+    )
+    all_metadata = list(source.search(SeriesSelector("dummy")))
+    assert len(all_metadata) == 1
+    metadata = all_metadata[0]
+    assert isinstance(metadata, Metadata)
+    assert metadata.get_field(fields.AccuracyPercentage) == 2
+    assert metadata.get_field(fields.LimitLowPhysical) == 0
+    assert metadata.get_field(fields.LimitHighPhysical) == 10
+    assert metadata.get_field(fields.Accuracy) == 0.2
+
+
 def test_blob_values():
     config = SQLConfig(
         ":memory:",
