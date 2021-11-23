@@ -125,7 +125,11 @@ def _calculate_accuracy(metadata, accuracy: Optional[float]) -> Optional[float]:
     if accuracy is not None:
         return accuracy
     accuracy_percentage = metadata.get_field(AccuracyPercentage)
-    if accuracy_percentage is None:
+    if (
+        accuracy_percentage is None
+        or accuracy_percentage < 0
+        or accuracy_percentage > 100
+    ):
         return None
     low_limit = metadata.get_field(LimitLowPhysical)
     if low_limit is None:
@@ -148,11 +152,21 @@ Accuracy = MetadataField[Optional[float]](
     calculate=_calculate_accuracy,
 )
 
+
+def _parse_accuracy_percentage_float(number: Optional[Any]) -> Optional[float]:
+    if number is None:
+        return None
+    parsed_number = float(number)
+    if parsed_number < 0 or parsed_number > 100:
+        return None
+    return parsed_number
+
+
 AccuracyPercentage = MetadataField[Optional[float]](
     "accuracy percentage",
     default=None,
     serialized_name="accuracyPercentage",
-    deserialize=_parse_float,
+    deserialize=_parse_accuracy_percentage_float,
 )
 
 
