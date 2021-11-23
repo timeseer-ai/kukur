@@ -156,3 +156,21 @@ def test_custom_fields_search_extra_metadata() -> None:
     assert metadata.get_field_by_name("process type") == "BATCH"
     assert metadata.get_field_by_name("location") == "Antwerp"
     assert "plant" not in [name for name, _ in metadata.iter_names()]
+
+
+def test_metadata_accuracy_percentage() -> None:
+    metadata = get_source("row").get_metadata(SeriesSelector("row", "test-tag-1"))
+    assert metadata.get_field(fields.AccuracyPercentage) == 2
+    assert metadata.get_field(fields.LimitLowPhysical) == 0
+    assert metadata.get_field(fields.LimitHighPhysical) == 10
+    assert metadata.get_field(fields.Accuracy) == 0.2
+
+
+def test_search_metadata_accuracy_percentage() -> None:
+    all_metadata = list(get_source("row").search(SeriesSelector("row")))
+    metadata = all_metadata[0]
+    assert isinstance(metadata, kukur.Metadata)
+    assert metadata.get_field(fields.AccuracyPercentage) == 2
+    assert metadata.get_field(fields.LimitLowPhysical) == 0
+    assert metadata.get_field(fields.LimitHighPhysical) == 10
+    assert metadata.get_field(fields.Accuracy) == 0.2

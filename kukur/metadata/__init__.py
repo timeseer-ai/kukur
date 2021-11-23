@@ -47,13 +47,13 @@ class MetadataFields:
     def iter_fields(self) -> Generator[tuple[MetadataField, Any], None, None]:
         """Iterate over all typed metadata fields and their values."""
         for field in self._fields:
-            yield (field, self.__values.get(field))
+            yield (field, field.calculated_value(self, self.__values.get(field)))
 
     def iter_names(self) -> Generator[tuple[str, Any], None, None]:
         """Iterate over all metadata fields (typed and untyped) and return their names and values."""
         for field, value in self.__values.items():
             if isinstance(field, MetadataField):
-                yield (field.name(), value)
+                yield (field.name(), field.calculated_value(self, value))
             else:
                 yield (field, value)
 
@@ -61,7 +61,10 @@ class MetadataFields:
         """Iterate over all metadata fields, but use the human readable names and serialized values."""
         for field, value in self.__values.items():
             if isinstance(field, MetadataField):
-                yield (field.name(), field.serialize(value))
+                yield (
+                    field.name(),
+                    field.serialize(field.calculated_value(self, value)),
+                )
             else:
                 yield (field, value)
 
@@ -102,7 +105,7 @@ class MetadataFields:
         """Return the value of the given field."""
         if field not in self._fields:
             raise AttributeError()
-        return self.__values[field]
+        return field.calculated_value(self, self.__values[field])
 
     def get_field_by_name(self, field_name: str) -> Any:
         """Return the value of the given field.

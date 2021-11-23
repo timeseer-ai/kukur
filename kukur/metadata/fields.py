@@ -29,12 +29,14 @@ class MetadataField(Generic[T]):
         serialized_name: str,
         serialize: Optional[Callable[[T], Any]] = None,
         deserialize: Optional[Callable[[Any], T]] = None,
+        calculate: Optional[Callable[[Any, Any], T]] = None,
     ):
         self.__name = name
         self.__default = default
         self.__serialized_name = serialized_name
         self.__serialize = serialize
         self.__deserialize = deserialize
+        self.__calculate = calculate
 
     def __repr__(self) -> str:
         return f'MetadataField("{self.__name}")'
@@ -65,6 +67,12 @@ class MetadataField(Generic[T]):
         if self.__deserialize is None:
             return value
         return self.__deserialize(value)
+
+    def calculated_value(self, metadata, value: Any) -> T:
+        """Convert the value based on the calculate function."""
+        if self.__calculate is None:
+            return value
+        return self.__calculate(metadata, value)
 
 
 Description = MetadataField[str](
@@ -112,10 +120,38 @@ LimitHighFunctional = MetadataField[Optional[float]](
 )
 
 
+def _calculate_accuracy(metadata, accuracy: Optional[float]) -> Optional[float]:
+    """Calculate the accuracy based on the accuracy percentage."""
+    if accuracy is not None:
+        return accuracy
+    accuracy_percentage = metadata.get_field(AccuracyPercentage)
+    if accuracy_percentage is None:
+        return None
+    low_limit = metadata.get_field(LimitLowPhysical)
+    if low_limit is None:
+        low_limit = metadata.get_field(LimitLowFunctional)
+        if low_limit is None:
+            return None
+    high_limit = metadata.get_field(LimitHighPhysical)
+    if high_limit is None:
+        high_limit = metadata.get_field(LimitHighFunctional)
+        if high_limit is None:
+            return None
+    return (high_limit - low_limit) * float(accuracy_percentage) / 100
+
+
 Accuracy = MetadataField[Optional[float]](
     "accuracy",
     default=None,
     serialized_name="accuracy",
+    deserialize=_parse_float,
+    calculate=_calculate_accuracy,
+)
+
+AccuracyPercentage = MetadataField[Optional[float]](
+    "accuracy percentage",
+    default=None,
+    serialized_name="accuracyPercentage",
     deserialize=_parse_float,
 )
 
@@ -205,6 +241,7 @@ def register_default_fields(cls) -> None:
     cls.register_field(LimitLowFunctional)
     cls.register_field(LimitHighFunctional)
     cls.register_field(Accuracy)
+    cls.register_field(AccuracyPercentage)
     cls.register_field(InterpolationType)
     cls.register_field(DataType)
     cls.register_field(DictionaryName)
