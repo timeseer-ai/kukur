@@ -20,3 +20,6 @@ def configure(config: Dict[str, Any]):
         logging.basicConfig(level=logging.INFO, format=log_format, handlers=[handler])
     else:
         logging.basicConfig(level=logging.INFO, format=log_format)
+
+    logging.getLogger("azure.identity").setLevel(logging.WARNING)
+    logging.getLogger("azure.core").setLevel(logging.WARNING)

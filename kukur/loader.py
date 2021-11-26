@@ -4,10 +4,12 @@
 # SPDX-License-Identifier: Apache-2.0
 import io
 
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Protocol, Union
+from typing import Dict, Optional, Protocol, Union
 
 try:
+    from azure.identity import DefaultAzureCredential
     from azure.storage import blob
 
     HAS_AZURE = True
@@ -89,26 +91,39 @@ class FileLoader:
         return path.open(mode=self.__mode)
 
 
+@dataclass
+class AzureBlobConfiguration:
+    """Connection details for an Azure blob inside a container.
+
+    When the connection string does not include authentication tokens, provide an identity."""
+
+    connection_string: str
+    container: str
+    identity: Optional[str] = None
+
+
 class AzureBlobLoader:
     """Load data from Azure blobs"""
 
     __mode: str
-    __connection_string: str
-    __container: str
+    __config: AzureBlobConfiguration
     __path: str
 
-    def __init__(self, mode, connection_string, container, path):
+    def __init__(
+        self,
+        mode: str,
+        config: AzureBlobConfiguration,
+        path,
+    ):
         self.__mode = mode
-        self.__connection_string = connection_string
-        self.__container = container
+        self.__config = config
         self.__path = path
         if not HAS_AZURE:
             raise AzureNotInstalledError()
 
     def open(self):
         """Read the contents of the Blob given by path in a BytesIO/StringIO buffer."""
-        client = blob.BlobServiceClient.from_connection_string(self.__connection_string)
-        container_client = client.get_container_client(self.__container)
+        container_client = self._get_container_client()
         downloader = container_client.download_blob(self.__path)
         if "b" in self.__mode:
             buffer = io.BytesIO()
@@ -121,15 +136,13 @@ class AzureBlobLoader:
 
     def has_child(self, name: str) -> bool:
         """Test if the given child blob exists."""
-        client = blob.BlobServiceClient.from_connection_string(self.__connection_string)
-        container_client = client.get_container_client(self.__container)
+        container_client = self._get_container_client()
         blob_client = container_client.get_blob_client(self.__path + "/" + name)
         return blob_client.exists()
 
     def open_child(self, name: str):
         """Read the contents of the Blob given by path/name in a BytesIO buffer."""
-        client = blob.BlobServiceClient.from_connection_string(self.__connection_string)
-        container_client = client.get_container_client(self.__container)
+        container_client = self._get_container_client()
         downloader = container_client.download_blob(self.__path + "/" + name)
         buffer: Union[io.BytesIO, io.StringIO]
         if "b" in self.__mode:
@@ -140,6 +153,19 @@ class AzureBlobLoader:
             buffer.write(downloader.content_as_bytes().decode())
         buffer.seek(0)
         return buffer
+
+    def _get_container_client(self):
+        if self.__config.identity is not None and self.__config.identity == "default":
+            credential = DefaultAzureCredential()
+            client = blob.BlobServiceClient.from_connection_string(
+                self.__config.connection_string, credential
+            )
+        else:
+            client = blob.BlobServiceClient.from_connection_string(
+                self.__config.connection_string
+            )
+
+        return client.get_container_client(self.__config.container)
 
 
 def from_config(
@@ -160,9 +186,13 @@ def from_config(
     if loader_type == "azure-blob":
         if not HAS_AZURE:
             raise AzureNotInstalledError()
-        connection_string = config["azure_connection_string"]
-        container = config["azure_container"]
+        azure_config = AzureBlobConfiguration(
+            config["azure_connection_string"],
+            config["azure_container"],
+            config.get("azure_identity"),
+        )
+
         path = config[key]
-        return AzureBlobLoader(mode, connection_string, container, path)
+        return AzureBlobLoader(mode, azure_config, path)
 
     raise UnknownLoaderError(loader_type)
