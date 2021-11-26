@@ -26,19 +26,12 @@ class MetadataFields:
     _fields: list[MetadataField] = []
     __values: dict[Union[str, MetadataField], Any]
 
-    @classmethod
-    def register_field(
-        cls, field: MetadataField[T], *, after_field: Optional[MetadataField] = None
+    def __init__(
+        self,
+        fields: list[MetadataField],
+        values: Optional[dict[MetadataField, Any]] = None,
     ):
-        """Register a new metadata field.
-
-        Optionally insert it right after the given field in the field ordering."""
-        if after_field is not None:
-            cls._fields.insert(cls._fields.index(after_field) + 1, field)
-        else:
-            cls._fields.append(field)
-
-    def __init__(self, values: Optional[dict[MetadataField, Any]] = None):
+        self._fields = fields
         self.__values = {k: k.default() for k in self._fields}
         if values is not None:
             for field, value in values.items():
@@ -138,7 +131,20 @@ class MetadataFields:
 class Metadata(MetadataFields):
     """Metadata fields for one time series."""
 
+    _fields: list[MetadataField] = []
     series: SeriesSelector
+
+    @classmethod
+    def register_field(
+        cls, field: MetadataField[T], *, after_field: Optional[MetadataField] = None
+    ):
+        """Register a new metadata field.
+
+        Optionally insert it right after the given field in the field ordering."""
+        if after_field is not None:
+            cls._fields.insert(cls._fields.index(after_field) + 1, field)
+        else:
+            cls._fields.append(field)
 
     @classmethod
     def from_data(
@@ -163,7 +169,7 @@ class Metadata(MetadataFields):
         series: SeriesSelector,
         values: Optional[dict[MetadataField, Any]] = None,
     ):
-        super().__init__(values)
+        super().__init__(self._fields, values)
         self.series = series
 
     def __repr__(self) -> str:
