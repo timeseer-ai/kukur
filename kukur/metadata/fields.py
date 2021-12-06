@@ -156,10 +156,7 @@ Accuracy = MetadataField[Optional[float]](
 def _parse_accuracy_percentage_float(number: Optional[Any]) -> Optional[float]:
     if number is None:
         return None
-    parsed_number = float(number)
-    if parsed_number < 0 or parsed_number > 100:
-        return None
-    return parsed_number
+    return float(number)
 
 
 AccuracyPercentage = MetadataField[Optional[float]](
