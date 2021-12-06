@@ -216,7 +216,7 @@ def test_accuracy_percentage_outside_range() -> None:
     metadata.set_field(fields.AccuracyPercentage, 200)
     metadata.set_field(fields.LimitLowPhysical, 0)
     metadata.set_field(fields.LimitHighPhysical, 10)
-    assert metadata.get_field(fields.Accuracy) == None
+    assert metadata.get_field(fields.Accuracy) is None
     assert metadata.get_field(fields.AccuracyPercentage) == 200
 
 
@@ -248,7 +248,7 @@ def test_accuracy_percentage_no_limits() -> None:
     assert metadata.get_field(fields.Accuracy) is None
 
     metadata.set_field(fields.AccuracyPercentage, 2)
-    assert metadata.get_field(fields.Accuracy) == None
+    assert metadata.get_field(fields.Accuracy) is None
     assert metadata.get_field(fields.AccuracyPercentage) == 2
 
 
@@ -282,8 +282,8 @@ def test_percentage_accuracy_json_outside_range() -> None:
     assert data["accuracyPercentage"] == 200
 
     new_metadata = Metadata.from_data(data, SERIES)
-    assert new_metadata.get_field(fields.Accuracy) == None
-    assert new_metadata.get_field(fields.AccuracyPercentage) == None
+    assert new_metadata.get_field(fields.Accuracy) is None
+    assert new_metadata.get_field(fields.AccuracyPercentage) == 200
 
 
 def test_percentage_accuracy_json_with_accuracy() -> None:
@@ -307,7 +307,7 @@ def test_percentage_accuracy_json_with_accuracy() -> None:
 
 def test_percentage_accuracy_coerce() -> None:
     metadata = Metadata(SERIES)
-    metadata.coerce_field("accuracyPercentage", "2")
+    metadata.coerce_field("accuracy percentage", "2")
     metadata.coerce_field("physical lower limit", "0")
     metadata.coerce_field("physical upper limit", "10")
     assert metadata.get_field(fields.Accuracy) == 0.2
@@ -315,17 +315,17 @@ def test_percentage_accuracy_coerce() -> None:
 
 def test_percentage_accuracy_coerce_outside_range() -> None:
     metadata = Metadata(SERIES)
-    metadata.coerce_field("accuracyPercentage", "200")
+    metadata.coerce_field("accuracy percentage", "200")
     metadata.coerce_field("physical lower limit", "0")
     metadata.coerce_field("physical upper limit", "10")
-    assert metadata.get_field(fields.Accuracy) == None
-    assert metadata.get_field(fields.AccuracyPercentage) == None
+    assert metadata.get_field(fields.Accuracy) is None
+    assert metadata.get_field(fields.AccuracyPercentage) == 200
 
 
 def test_percentage_accuracy_coerce_with_accuracy() -> None:
     metadata = Metadata(SERIES)
     metadata.coerce_field("accuracy", "1")
-    metadata.coerce_field("accuracyPercentage", "2")
+    metadata.coerce_field("accuracy percentage", "2")
     metadata.coerce_field("physical lower limit", "0")
     metadata.coerce_field("physical upper limit", "10")
     assert metadata.get_field(fields.Accuracy) == 1
