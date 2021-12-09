@@ -46,7 +46,7 @@ Kukur will split and recombine longer queries.
 ----
 [source.PIAB]
 type = "adodb"
-connection_string = "Provider = PIOLEDB;Data Source = PIAB"
+connection_string = "Provider = PIOLEDB;Data Source = PIAB;Time Zone = UTC"
 list_query = "select tag, descriptor, engunits, zero, zero + span, compdev, pointtype, step, digitalset from pipoint2"
 list_columns = ["series name", "description", "unit", "physical lower limit", "physical upper limit", "accuracy", "data type", "interpolation type", "dictionary name"]
 metadata_value_mapping = "PI_mapping"
@@ -54,6 +54,8 @@ dictionary_query = "select code, name from pids where digitalset = ?"
 data_query = "select time, value from picomp2 where tag = ? and time >= ? and time < ?"
 data_query_datetime_format = "%Y-%m-%d %H:%M:%S"
 data_query_interval_seconds = 86400
+data_query_timezone = "UTC"
+data_timezone = "UTC"
 
 [metadata_value_mapping.PI_mapping."data type"]
 FLOAT64 = ["R", "I", " "]
@@ -65,7 +67,7 @@ LINEAR = 0
 STEPPED = 1
 ----
 
-The PI OLEDB provider expects timestamps in the local time zone.
-Kukur provides UTC timestamps.
-Should Kukur not be running on a system where the time zone is UTC,
-either configure the time zone using the `data_query_timezone` and `data_timezone` configuration option or add the `Time Zone = UTC` https://livelibrary.osisoft.com/LiveLibrary/content/en/oledb-pro-v3/GUID-245A53D3-9B04-4676-9EF8-CB21399F1500#addHistory=true&filename=GUID-838BE162-7485-42BF-BF8E-C6138AA141D8.xml&docid=GUID-D747F282-2206-48F5-8FE2-724418728A06&inner_id=&tid=&query=&scope=&resource=&toc=false&eventType=lcContent.loadDocGUID-D747F282-2206-48F5-8FE2-724418728A06[property] to the `connection_string`.
+The PI OLEDB provider expects and produces timestamps in the local time zone by default.
+Adding the `Time Zone = UTC` parameter to the connection string and configuring the `data_query_timezone` and `data_timezone` properties ensures that timestamps are always interpreted as UTC.
+This avoids problems around daylight savings time changes,
+which are unavoidable when using local times.
