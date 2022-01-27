@@ -26,7 +26,7 @@ def from_toml(path):
                 if k not in config:
                     config[k] = v
                 elif isinstance(config[k], list):
-                    config[k].append(v)
+                    config[k].extend(v)
                 elif isinstance(config[k], dict):
                     config[k].update(v)
                 else:
