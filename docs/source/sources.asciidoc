@@ -24,6 +24,7 @@ Valid values are:
 
 - `adodb`
 - `csv`
+- `delta`
 - `feather`
 - `influxdb`
 - `kukur`
