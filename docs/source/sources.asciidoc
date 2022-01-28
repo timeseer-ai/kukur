@@ -150,6 +150,7 @@ ifndef::sources[]
 - link:feather.asciidoc[Apache Feather] files
 - link:parquet.asciidoc[Apache Parquet] files
 - link:csv.asciidoc[CSV] files
+- link:delta.asciidoc[Delta Lake] tables
 - link:influxdb.asciidoc[InfluxDB] data sources
 - Other link:kukur.asciidoc[Kukur or Timeseer instances]
 - link:odbc.asciidoc[ODBC] data sources
@@ -162,6 +163,7 @@ ifdef::sources[]
 - <<Apache Feather>> files
 - <<Apache Parquet>> files
 - <<CSV>> files
+- <<Delta Lake>> tables
 - <<InfluxDB>> databases
 - Other <<Kukur,Kukur or Timeseer instances>>
 - <<ODBC>> data sources

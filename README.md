@@ -109,12 +109,6 @@ OS requirements to complete the integration tests are:
 - unixodbc
 - freetds
 
-Additional Python packages are also required:
-
-```bash
-(venv) $ pip install -r requirements-python.txt
-```
-
 Integration tests require Kukur to be running with a special configuration.
 Some time series databases need to be started using docker-compose.
 

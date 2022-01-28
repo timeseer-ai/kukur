@@ -18,7 +18,6 @@ path = "tests/test_data/parquet/pivot.parquet"
 metadata_type = "csv"
 metadata = "tests/test_data/csv/pivot-metadata.csv"
 
-
 [source.row-parquet-quality]
 type = "parquet"
 path = "tests/test_data/parquet/row-quality.parquet"
@@ -33,9 +32,3 @@ path = "tests/test_data/parquet/dir_quality"
 metadata_type = "csv"
 metadata = "tests/test_data/csv/dir-metadata.csv"
 quality_mapping = "opc_mapping_ranges"
-
-[quality_mapping.opc_mapping_strings]
-GOOD = ["GoodQuality", "Decent"]
-
-[quality_mapping.opc_mapping_ranges]
-GOOD = [[192], [194, 198]]

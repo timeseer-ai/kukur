@@ -41,7 +41,7 @@ deps: ## Install runtime dependencies
 
 .PHONY: dev-deps
 dev-deps: ## Install development dependencies
-	pip install -r requirements-dev.txt
+	pip install -r requirements-dev.txt -r requirements-python.txt
 
 .PHONY: format
 format: ## Format the kukur code
