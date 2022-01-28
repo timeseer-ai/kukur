@@ -1,0 +1,90 @@
+// SPDX-FileCopyrightText: 2022 Timeseer.AI
+// SPDX-License-Identifier: Apache-2.0
+
+== Delta Lake
+
+Sources with `type = "delta"` configure https://delta.io/[Delta Lake] sources.
+
+Delta Lake supports the `row` and `pivot` formats:
+
+```
+[source.<name>]
+type = "delta"
+format = "row|pivot"
+uri = "<uri of Delta Lake>"
+```
+
+`format` defaults to `"row"`.
+
+`uri` is required.
+
+Metadata in Delta Lakes is not supported.
+Use a different `metadata_type` to connect to metadata.
+
+For example:
+
+```toml
+metadata_type = "csv"
+```
+
+=== Connecting to a Delta Lake on Azure
+
+The https://github.com/delta-io/delta-rs[delta-rs] library used by Kukur supports Delta Lakes in an Azure storage account.
+Unfortunately it uses environment variables for configuration.
+This means one instance of Kukur is able to connect to one storage account only.
+
+For example:
+
+```toml
+[source."Delta"]
+type = "delta"
+uri = "abfss://poc@satsdeltalake.dfs.core.windows.net/tsai-antwerp"
+```
+
+This configuration connects to the `satsdeltalake` storage account.
+It opens the `tsai-antwerp` Delta Lake in the `poc` container.
+
+Multiple https://github.com/delta-io/delta-rs/blob/python-v0.5.5/rust/src/storage/azure/mod.rs[authentication options] are available.
+
+The recommended authentication method while running on Azure includes using a Managed Identity.
+To do so,
+the `AZURE_STORAGE_ACCOUNT` environment variable should duplicate the storage account given in the `uri`.
+Next to this,
+when not running on Azure App Service,
+the `IDENTITY_HEADER` environment variable should be set to any value,
+for example `foo`.
+
+=== Row format
+
+```toml
+format = "row"
+```
+
+The row based format expects to find a Delta Lake at the given `uri` with at least 3 columns:
+
+- The first column contains the `series name` as a string
+- The second column contains the timestamp
+- The third column contains the value as a numerical type or as strings
+- A fourth optional column contains quality data
+
+Guidance and mapping options for the quality column can be found in the
+ifdef::sources[]
+<<Quality, source documentation>>
+endif::sources[]
+ifndef::sources[]
+link:sources.asciidoc#Quality[source documentation]
+endif::sources[]
+.
+
+=== Pivot Format
+
+```toml
+format = "pivot"
+```
+
+The pivot format expect to find a Delta Lake at the given `URI`.
+
+The first column in the lake is a timestamp.
+Further columns contain the values.
+Some columns can be numerical while other columns contain strings.
+The name of each column is the series name.

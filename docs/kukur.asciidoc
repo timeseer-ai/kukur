@@ -621,17 +621,19 @@ include::./source/sources.asciidoc[leveloffset=+1]
 
 include::./source/adodb.asciidoc[leveloffset=+1]
 
-include::./source/csv.asciidoc[leveloffset=+1]
-
 include::./source/feather.asciidoc[leveloffset=+1]
-
-include::./source/odbc.asciidoc[leveloffset=+1]
 
 include::./source/parquet.asciidoc[leveloffset=+1]
 
-include::./source/kukur.asciidoc[leveloffset=+1]
+include::./source/csv.asciidoc[leveloffset=+1]
+
+include::./source/delta.asciidoc[leveloffset=+1]
 
 include::./source/influxdb.asciidoc[leveloffset=+1]
+
+include::./source/kukur.asciidoc[leveloffset=+1]
+
+include::./source/odbc.asciidoc[leveloffset=+1]
 
 == Connectivity guides
 

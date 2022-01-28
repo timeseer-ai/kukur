@@ -15,6 +15,7 @@ import pyarrow.types
 from kukur.source import (
     adodb,
     csv,
+    delta,
     feather,
     kukur as kukur_source,
     odbc,
@@ -36,6 +37,7 @@ logger = logging.getLogger(__name__)
 _FACTORY = {
     "adodb": adodb.from_config,
     "csv": csv.from_config,
+    "delta": delta.from_config,
     "feather": feather.from_config,
     "odbc": odbc.from_config,
     "parquet": parquet.from_config,
