@@ -66,9 +66,7 @@ class DeltaLakeSource(BaseArrowSource):
         raise NotImplementedError()
 
 
-def from_config(
-    config: dict[str, str], quality_mapper: QualityMapper
-) -> DeltaLakeSource:
+def from_config(config: dict, quality_mapper: QualityMapper) -> DeltaLakeSource:
     """Create a new delta lake data source from the given configuration dictionary."""
     if not HAS_DELTA_LAKE:
         raise DeltaLakeNotInstalledError()
@@ -80,4 +78,9 @@ def from_config(
         )
     if "uri" not in config:
         raise InvalidSourceException('Delta lake sources require an "uri" entry')
-    return DeltaLakeSource(data_format, DeltaLakeLoader(config), quality_mapper)
+    return DeltaLakeSource(
+        data_format,
+        DeltaLakeLoader(config),
+        quality_mapper,
+        sort_by_timestamp=config.get("sort_by_timestamp", False),
+    )

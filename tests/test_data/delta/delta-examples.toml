@@ -15,3 +15,8 @@ format = "pivot"
 uri = "tests/test_data/delta/delta-pivot"
 metadata_type = "csv"
 metadata = "tests/test_data/csv/pivot-metadata.csv"
+
+[source.unordered-delta]
+type = "delta"
+uri = "tests/test_data/delta/delta-unordered"
+sort_by_timestamp = true

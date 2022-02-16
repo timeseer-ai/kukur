@@ -66,3 +66,17 @@ def test_pivot_string():
     assert table.column_names == ["ts", "value"]
     assert table["ts"][0].as_py() == START_DATE
     assert table["value"][0].as_py() == "A"
+
+
+def test_unordered():
+    table = get_source("unordered-delta").get_data(
+        make_series("unordered-delta"), START_DATE, END_DATE
+    )
+    assert len(table) == 5
+    assert table.column_names == ["ts", "value"]
+    assert table["ts"][0].as_py() == START_DATE
+    assert table["ts"][0].as_py() < table["ts"][1].as_py()
+    assert table["ts"][1].as_py() < table["ts"][2].as_py()
+    assert table["ts"][2].as_py() < table["ts"][3].as_py()
+    assert table["ts"][3].as_py() < table["ts"][4].as_py()
+    assert table["value"][0].as_py() == 1.0

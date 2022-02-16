@@ -12,11 +12,15 @@ Delta Lake supports the `row` and `pivot` formats:
 type = "delta"
 format = "row|pivot"
 uri = "<uri of Delta Lake>"
+sort_by_timestamp = false
 ```
 
 `format` defaults to `"row"`.
 
 `uri` is required.
+
+`sort_by_timestamp` is an optional parameter to sort unordered delta lake sources. 
+Default is `False`.
 
 Metadata in Delta Lakes is not supported.
 Use a different `metadata_type` to connect to metadata.
