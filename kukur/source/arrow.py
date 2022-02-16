@@ -23,12 +23,21 @@ class BaseArrowSource(ABC):
     __loader: Loader
     __data_format: str
     __quality_mapper: QualityMapper
+    __sort_by_timestamp: bool = False
 
-    def __init__(self, data_format: str, loader: Loader, quality_mapper: QualityMapper):
+    def __init__(
+        self,
+        data_format: str,
+        loader: Loader,
+        quality_mapper: QualityMapper,
+        *,
+        sort_by_timestamp: bool = False,
+    ):
         """Create a new data source."""
         self.__loader = loader
         self.__data_format = data_format
         self.__quality_mapper = quality_mapper
+        self.__sort_by_timestamp = sort_by_timestamp
 
     @abstractmethod
     def read_file(self, file_like) -> pa.Table:
@@ -56,6 +65,8 @@ class BaseArrowSource(ABC):
         The complete file will be loaded in an Arrow table during processing.
         """
         data = self.__read_all_data(selector)
+        if self.__sort_by_timestamp is True:
+            data = data.sort_by("ts")
         # pylint: disable=no-member
         on_or_after = pyarrow.compute.greater_equal(data["ts"], pa.scalar(start_date))
         before = pyarrow.compute.less(data["ts"], pa.scalar(end_date))
