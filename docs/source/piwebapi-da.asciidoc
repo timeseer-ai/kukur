@@ -1,0 +1,89 @@
+// SPDX-FileCopyrightText: 2022 Timeseer.AI
+// SPDX-License-Identifier: Apache-2.0
+
+== PI Data Archive using Web API
+
+Sources with `type = "piwebapi-da"` configure connections to OSIsoft PI Data Archive using the PI Web API.
+
+```toml
+[source.<name>]
+type = "piwebapi-da"
+data_archive_uri = "The self-URI of the DataServer"
+max_returned_items_per_call = 150000
+verify_ssl = true
+username = "" # optional: username for basic authentication
+password = "" # optional: password for basic authentication
+```
+
+`source` and `data_archive_uri` are required fields.
+
+`data_archive_uri` is the URI of the `DataServer` resource in PI Web API that corresponds to the Data Archive.
+
+To get this value,
+open `https://pi.example.org/piwebapi/dataservers` and copy the `Self` link from the response:
+
+```
+{
+  "Links": {},
+  "Items": [
+    {
+      "WebId": "F1DSBd9Ab83Y90SNSjy4JtD5fQVk0tVFMtUEk",
+      "Id": "6f40df05-d9cd-44f7-8d4a-3cb826d0f97d",
+      "Name": "mypiserver",
+      "Path": "\\\\PIServers[mypiserver]",
+      "IsConnected": true,
+      "ServerVersion": "3.4.440.477",
+      "ServerTime": "2022-02-18T15:10:08.8757629Z",
+      "Links": {
+        "Self": "https://pi.example.org/piwebapi/dataservers/F1DSBd9Ab83Y90SNSjy4JtD5fQVk0tVFMtUEk",
+        "Points": "https://pi.example.org/piwebapi/dataservers/F1DSBd9Ab83Y90SNSjy4JtD5fQVk0tVFMtUEk/points",
+        "EnumerationSets": "https://pi.example.org/piwebapi/dataservers/F1DSBd9Ab83Y90SNSjy4JtD5fQVk0tVFMtUEk/enumerationsets"
+      }
+    }
+  ]
+}
+```
+
+The PI Web API configuration limits the https://docs.osisoft.com/bundle/pi-web-api/page/restrictions-on-number-of-items-per-call.html[maximum number of items] returned in a response to one request.
+This limit is applied to the number of time series (PI Points) and to the number of values.
+The default setting is `150000`.
+
+Adapt the number in the Kukur configuration when it has been increased or decreased on the server.
+Since the number of values returned in a data request is also limited by this setting,
+ensure that the `data_query_interval_seconds` option is set to a safe value.
+
+For example,
+a time series that is being recorded at 1 value per second,
+will have 86400 values per day.
+This means a safe value of `data_query_interval_seconds` is `86400` when the default limit of `150000` is in place in PI Web API.
+For a time series that is being recorded at 1 value per minute and can have 44640 values per month,
+`data_query_interval_seconds = 2678400` is a safe value.
+
+Set `verify_ssl` to `false` when PI Web API uses a self-signed certificate.
+
+By default,
+Kerberos https://docs.osisoft.com/bundle/pi-web-api/page/authentication-methods.html[authentication] is tried.
+When Basic authentication is required,
+set the `username` and `password` fields in the configuration.
+
+For example,
+this defines a `pi` source,
+with the Web API running on `pi.example.org`:
+
+```toml
+[source.pi]
+type = "piwebapi-da"
+data_archive_uri = "https://pi.example.org/piwebapi/dataservers/F1DSBd9Ab83Y90SNSjy4JtD5fQVk0tVFMtUEk"
+```
+
+When the Web API is using a self-signed certificate and basic authentication,
+the configuration becomes:
+
+```toml
+[source.pi]
+type = "piwebapi-da"
+data_archive_uri = "https://pi.example.org/piwebapi/dataservers/F1DSBd9Ab83Y90SNSjy4JtD5fQVk0tVFMtUEk"
+verify_ssl = false
+username = "auser"
+password = "apassword"
+```
