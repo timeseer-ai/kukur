@@ -30,6 +30,7 @@ Valid values are:
 - `kukur`
 - `oledb`
 - `parquet`
+- `piwebapi-da`
 
 `type` is required.
 
@@ -41,6 +42,7 @@ Valid values are:
 - `csv`
 - `kukur`
 - `oledb`
+- `piwebapi-da`
 
 `metadata_type` is optional.
 The `type` is used when not specified.
@@ -155,6 +157,7 @@ ifndef::sources[]
 - link:influxdb.asciidoc[InfluxDB] data sources
 - Other link:kukur.asciidoc[Kukur or Timeseer instances]
 - link:odbc.asciidoc[ODBC] data sources
+- link:piwebapi-da.asciidoc[PI Data Archive] using PI Web API
 
 Source-specific parameters are documented in the linked documents.
 endif::sources[]
@@ -168,6 +171,7 @@ ifdef::sources[]
 - <<InfluxDB>> databases
 - Other <<Kukur,Kukur or Timeseer instances>>
 - <<ODBC>> data sources
+- <<PI Data Archive using Web API>>
 
 Source-specific parameters are documented in the linked sources reference.
 endif::sources[]

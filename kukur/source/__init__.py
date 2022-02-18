@@ -17,10 +17,11 @@ from kukur.source import (
     csv,
     delta,
     feather,
+    influxdb,
     kukur as kukur_source,
     odbc,
     parquet,
-    influxdb,
+    piwebapi_da,
 )
 
 from kukur import Metadata, SeriesSelector, Source as SourceProtocol
@@ -39,10 +40,11 @@ _FACTORY = {
     "csv": csv.from_config,
     "delta": delta.from_config,
     "feather": feather.from_config,
+    "influxdb": influxdb.from_config,
+    "kukur": kukur_source.from_config,
     "odbc": odbc.from_config,
     "parquet": parquet.from_config,
-    "kukur": kukur_source.from_config,
-    "influxdb": influxdb.from_config,
+    "piwebapi-da": piwebapi_da.from_config,
 }
 
 
