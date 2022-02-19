@@ -15,6 +15,7 @@ from .base import (
     InterpolationType,
     SeriesSelector,
 )
+from .exceptions import KukurException  # noqa
 from .metadata import Metadata
 from .client import Client
 

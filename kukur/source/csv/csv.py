@@ -23,17 +23,17 @@ import pyarrow.compute
 from kukur import Dictionary, Metadata, SeriesSelector
 
 from kukur.loader import Loader, from_config as loader_from_config
-from kukur.exceptions import InvalidDataError, InvalidSourceException
+from kukur.exceptions import InvalidDataError, InvalidSourceException, KukurException
 from kukur.metadata import fields
 from kukur.source.metadata import MetadataMapper, MetadataValueMapper
 from kukur.source.quality import QualityMapper
 
 
-class InvalidMetadataError(Exception):
+class InvalidMetadataError(KukurException):
     """Raised when the metadata is invalid."""
 
     def __init__(self, message: str):
-        Exception.__init__(self, f"invalid metadata: {message}")
+        KukurException.__init__(self, f"invalid metadata: {message}")
 
 
 def from_config(

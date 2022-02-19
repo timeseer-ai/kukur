@@ -13,18 +13,10 @@ try:
 except ImportError:
     HAS_ADODB = False
 
+from kukur.exceptions import MissingModuleException
 from kukur.source.metadata import MetadataValueMapper
 from kukur.source.quality import QualityMapper
 from kukur.source.sql import BaseSQLSource, SQLConfig
-
-
-class ADODBNotInstalledError(Exception):
-    """Raised when the adodbapi module of pywin32 is not available."""
-
-    def __init__(self):
-        Exception.__init__(
-            self, "the adodbapi modules is not available. Install pywin32."
-        )
 
 
 def from_config(
@@ -34,7 +26,7 @@ def from_config(
 
     Raises ADODBNotInstalledError when the adodbapi module is not available."""
     if not HAS_ADODB:
-        raise ADODBNotInstalledError()
+        raise MissingModuleException("pywin32", "adodb")
 
     config = SQLConfig.from_dict(data)
 
@@ -52,7 +44,7 @@ class ADODBSource(BaseSQLSource):
     ):
         super().__init__(config, metadata_value_mapper, quality_mapper)
         if not HAS_ADODB:
-            raise ADODBNotInstalledError()
+            raise MissingModuleException("pywin32", "adodb")
 
     def connect(self):
         return adodbapi.connect(self._config.connection_string)

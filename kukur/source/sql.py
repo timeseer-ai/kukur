@@ -14,6 +14,7 @@ import dateutil.parser
 import pyarrow as pa
 
 from kukur import Dictionary, Metadata, SeriesSelector
+from kukur.exceptions import KukurException
 from kukur.metadata import fields
 from kukur.source.metadata import MetadataValueMapper
 from kukur.source.quality import QualityMapper
@@ -21,11 +22,11 @@ from kukur.source.quality import QualityMapper
 logger = logging.getLogger(__name__)
 
 
-class InvalidMetadataError(Exception):
+class InvalidMetadataError(KukurException):
     """Raised when the metadata is invalid."""
 
     def __init__(self, message: str):
-        Exception.__init__(self, f"invalid metadata: {message}")
+        KukurException.__init__(self, f"invalid metadata: {message}")
 
 
 @dataclass

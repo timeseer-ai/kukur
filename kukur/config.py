@@ -6,12 +6,14 @@ import glob
 
 import toml
 
+from kukur.exceptions import KukurException
 
-class InvalidIncludeException(Exception):
+
+class InvalidIncludeException(KukurException):
     """Raised when the include configuration is invalid."""
 
     def __init__(self, message: str):
-        Exception.__init__(self, f"invalid include: {message}")
+        KukurException.__init__(self, f"invalid include: {message}")
 
 
 def from_toml(path):
