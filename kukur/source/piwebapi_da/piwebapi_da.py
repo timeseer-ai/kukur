@@ -8,14 +8,30 @@ from datetime import datetime
 from typing import Generator, Optional
 
 import pyarrow as pa
-import requests
-import urllib3
+
+try:
+    import urllib3
+    from requests import Session
+
+    HAS_REQUESTS = True
+except ImportError:
+    HAS_REQUESTS = False
 
 from dateutil.parser import parse as parse_date
-from requests_kerberos import HTTPKerberosAuth
+
+try:
+    from requests_kerberos import HTTPKerberosAuth
+
+    HAS_REQUESTS_KERBEROS = True
+except ImportError:
+    HAS_REQUESTS_KERBEROS = False
 
 from kukur import DataType, Dictionary, InterpolationType, Metadata, SeriesSelector
-from kukur.exceptions import InvalidDataError, InvalidSourceException
+from kukur.exceptions import (
+    InvalidDataError,
+    InvalidSourceException,
+    MissingModuleException,
+)
 from kukur.metadata import fields
 
 
@@ -29,7 +45,7 @@ class _RequestProperties:
 class _DictionaryLookup:  # pylint: disable=too-few-public-methods
     def __init__(
         self,
-        session: requests.Session,
+        session,
         request_properties: _RequestProperties,
         data_archive: dict,
     ):
@@ -196,17 +212,17 @@ class PIWebAPIDataArchiveSource:
             {"ts": timestamps, "value": values, "quality": quality_flags}
         )
 
-    def _get_session(self) -> requests.Session:
-        session = requests.Session()
-        if self.__basic_auth is None:
+    def _get_session(self):
+        session = Session()
+        if self.__basic_auth is None and HAS_REQUESTS_KERBEROS:
             session.auth = HTTPKerberosAuth(
                 mutual_authentication="REQUIRED", sanitize_mutual_error_response=False
             )
-        else:
+        elif self.__basic_auth is not None:
             session.auth = self.__basic_auth
         return session
 
-    def _get_data_url(self, session: requests.Session, selector: SeriesSelector) -> str:
+    def _get_data_url(self, session, selector: SeriesSelector) -> str:
         response = session.get(
             self.__data_archive_uri,
             verify=self.__request_properties.verify_ssl,
@@ -269,4 +285,6 @@ def from_config(config: dict) -> PIWebAPIDataArchiveSource:
         raise InvalidSourceException(
             'piwebapi-da sources require a "data_archive_uri" entry'
         )
+    if not HAS_REQUESTS:
+        raise MissingModuleException("requests", "piwebapi-da")
     return PIWebAPIDataArchiveSource(config)
