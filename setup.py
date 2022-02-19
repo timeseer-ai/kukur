@@ -28,8 +28,18 @@ setuptools.setup(
           'pytz',
           'toml',
       ],
+    extras_require={
+        "adodb": ["pywin32"],
+        "delta": ["deltalake"],
+        "influxdb": ["influxdb"],
+        "odbc": ["pyodbc"],
+        "piwebapi": ["requests", "requests-kerberos"],
+    },
     python_requires='>=3.9',
     package_data={
         'kukur': ['py.typed'],
+    },
+    entry_points={
+        "console_scripts": ["kukur = kukur.cli:_run"],
     },
 )

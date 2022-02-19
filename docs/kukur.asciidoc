@@ -64,8 +64,8 @@ Install Kukur and list the command line options to verify that the installation 
 [source,bash]
 ----
 (venv) $ pip install kukur
-(venv) $ python -m kukur.cli --help
-usage: cli.py [-h] [--config-file CONFIG_FILE] {flight,test,api-key} ...
+(venv) $ kukur --help
+usage: kukur [-h] [--config-file CONFIG_FILE] {flight,test,api-key} ...
 
 Start Kukur.
 
@@ -80,6 +80,22 @@ optional arguments:
   -h, --help            show this help message and exit
   --config-file CONFIG_FILE
                         Path to the configuration file
+----
+
+Kukur supports "extras" at install time.
+Use these to install requirements for the given source.
+
+- `[adodb]` for connections to ADODB and OLEDB data sources
+- `[delta]` for connections to Delta Lakes
+- `[influxdb]` for connections to InfluxDB
+- `[odbc]` for connections to ODBC data sources
+- `[piwebapi]` for connections to PI Web API
+
+For example:
+
+[source,bash]
+----
+(venv) $ pip install kukur[adodb,odbc]
 ----
 
 === Configuration
@@ -121,7 +137,7 @@ Use the Kukur CLI to test connectivity:
 
 [source,bash]
 ----
-(venv) $ python -m kukur.cli test data \
+(venv) $ kukur test data \
     --source example \
     --name outside-temperature \
     --start 2020-01-01 \
@@ -181,7 +197,7 @@ Request the metadata using the CLI:
 
 [source,bash]
 ----
-(venv) $ python -m kukur.cli test metadata \
+(venv) $ kukur test metadata \
     --source example \
     --name outside-temperature
 2021-03-29 11:41:48,936 INFO kukur.source.test MainThread : Requesting metadata for "outside-temperature (example)"
@@ -204,7 +220,7 @@ Now, having validated the Kukur configuration, let's start the Kukur server:
 
 [source,bash]
 ----
-(venv) $ python -m kukur.cli
+(venv) $ kukur
 ----
 
 Open another shell, enter the virtualenv, start Python and import all Kukur objects:
@@ -256,10 +272,10 @@ Restart Kukur:
 
 [source,bash]
 ----
-(venv) $ python -m kukur.cli
+(venv) $ kukur
 ----
 
-Alternatively, use `python -m kukur.cli api-key` to define local API keys.
+Alternatively, use `kukur api-key` to define local API keys.
 
 Now, go back to the Python session and request the metadata:
 
@@ -362,14 +378,34 @@ Not required when connecting to data sources that are not file-based.
 The Arrow Flight interface is made available on port 8081 when running Kukur as a service.
 Use port mapping to expose it on localhost (`-p 8081:8081`).
 
-For example:
+For API key storage,
+Kukur creates a sqlite database and stores it in the path given by `data_dir`.
+Define a data directory in `Kukur.toml`:
+
+Kukur.toml
+[source,toml]
+----
+data_dir = "db"
+
+[flight]
+authentication = false
+
+[source.example]
+type = "csv"
+path = "data/example.csv"
+metadata = "data/example-metadata.csv"
+----
+
+Create that directory and run the docker container while mounting it:
 
 [source,bash]
 ----
+$ mkdir db
 $ docker run --rm \
     -u $(id -u) \
     -v $(pwd)/Kukur.toml:/usr/src/app/Kukur.toml \
     -v $(pwd)/data:/usr/src/app/data \
+    -v $(pwd)/db:/usr/src/app/db \
     -p 8081:8081 \
     -it timeseer/kukur:latest
 ----
@@ -387,8 +423,6 @@ Type "help", "copyright", "credits" or "license" for more information.
 >>> client.get_metadata(SeriesSelector('example', 'outside-temperature'))
 Metadata(SeriesSelector(source='example', name='outside-temperature'), {'description': 'Temperature in Antwerp', 'unit': 'deg C', 'physical lower limit': -20.0, 'physical upper limit': 60.0, 'functional lower limit': None, 'functional upper limit': None, 'accuracy': 0.5, 'interpolation type': None, 'data type': None, 'dictionary name': None, 'dictionary': None})
 ----
-
-NOTE: when using API keys, use the `data_dir` configuration option to store them in another volume mounted location.
 
 == Development
 
