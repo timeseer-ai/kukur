@@ -19,18 +19,9 @@ except ImportError:
 
 from pyarrow import Table
 
-from kukur.exceptions import InvalidSourceException
+from kukur.exceptions import InvalidSourceException, MissingModuleException
 from kukur.source.arrow import BaseArrowSource
 from kukur.source.quality import QualityMapper
-
-
-class DeltaLakeNotInstalledError(Exception):
-    """Raised when the deltalake module is not available."""
-
-    def __init__(self):
-        Exception.__init__(
-            self, "the deltalake python module is not available. Install deltalake"
-        )
 
 
 class DeltaLakeLoader:
@@ -69,7 +60,7 @@ class DeltaLakeSource(BaseArrowSource):
 def from_config(config: dict, quality_mapper: QualityMapper) -> DeltaLakeSource:
     """Create a new delta lake data source from the given configuration dictionary."""
     if not HAS_DELTA_LAKE:
-        raise DeltaLakeNotInstalledError()
+        raise MissingModuleException("deltalake", "delta")
 
     data_format = config.get("format", "row")
     if data_format not in ["row", "pivot"]:

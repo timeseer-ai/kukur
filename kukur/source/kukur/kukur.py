@@ -12,13 +12,6 @@ from kukur.client import Client
 from kukur.exceptions import InvalidDataError
 
 
-class TimeseerNotInstalledError(Exception):
-    """Raised when the timeseer is not available."""
-
-    def __init__(self):
-        Exception.__init__(self, "the timeseer is not available. Install timeseer.")
-
-
 def from_config(config: Dict[str, Any]):
     """Create a new Kukur source"""
     source_name = config["source"]

@@ -10,16 +10,10 @@ try:
 except ImportError:
     HAS_ODBC = False
 
+from kukur.exceptions import MissingModuleException
 from kukur.source.metadata import MetadataValueMapper
 from kukur.source.quality import QualityMapper
 from kukur.source.sql import BaseSQLSource, SQLConfig
-
-
-class ODBCNotInstalledError(Exception):
-    """Raised when the pyodbc module is not available."""
-
-    def __init__(self):
-        Exception.__init__(self, "the pyodbc modules is not available. Install pyodbc")
 
 
 def from_config(
@@ -27,7 +21,7 @@ def from_config(
 ):
     """Create a new ODBC data source from a configuration dict."""
     if not HAS_ODBC:
-        raise ODBCNotInstalledError()
+        raise MissingModuleException("pyodbc", "odbc")
 
     config = SQLConfig.from_dict(data)
 
@@ -45,7 +39,7 @@ class ODBCSource(BaseSQLSource):
     ):
         super().__init__(config, metadata_value_mapper, quality_mapper)
         if not HAS_ODBC:
-            raise ODBCNotInstalledError()
+            raise MissingModuleException("pyodbc", "odbc")
 
     def connect(self):
         return pyodbc.connect(self._config.connection_string)

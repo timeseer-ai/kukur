@@ -10,27 +10,26 @@ from typing import Dict, Optional, Protocol, Union
 
 try:
     from azure.identity import DefaultAzureCredential
+
+    HAS_AZURE_IDENTITY = True
+except ImportError:
+    HAS_AZURE_IDENTITY = False
+
+try:
     from azure.storage import blob
 
-    HAS_AZURE = True
+    HAS_AZURE_STORAGE_BLOB = True
 except ImportError:
-    HAS_AZURE = False
+    HAS_AZURE_STORAGE_BLOB = False
 
-from kukur.exceptions import InvalidDataError
+from kukur.exceptions import InvalidDataError, KukurException, MissingModuleException
 
 
-class UnknownLoaderError(Exception):
+class UnknownLoaderError(KukurException):
     """Raised when the specified loader is unknown."""
 
     def __init__(self, message: str):
-        Exception.__init__(self, f"unknown loader: {message}")
-
-
-class AzureNotInstalledError(Exception):
-    """Raised when the blob module of azure is not available."""
-
-    def __init__(self):
-        Exception.__init__(self, "the blob modules is not available. Install azure.")
+        KukurException.__init__(self, f"unknown loader: {message}")
 
 
 class Loader(Protocol):
@@ -118,8 +117,10 @@ class AzureBlobLoader:
         self.__mode = mode
         self.__config = config
         self.__path = path
-        if not HAS_AZURE:
-            raise AzureNotInstalledError()
+        if not HAS_AZURE_IDENTITY:
+            raise MissingModuleException("azure-identity")
+        if not HAS_AZURE_STORAGE_BLOB:
+            raise MissingModuleException("azure-storage-blob")
 
     def open(self):
         """Read the contents of the Blob given by path in a BytesIO/StringIO buffer."""
@@ -184,8 +185,10 @@ def from_config(
     if loader_type == "file":
         return FileLoader(Path(config[key]), mode, files_as_path)
     if loader_type == "azure-blob":
-        if not HAS_AZURE:
-            raise AzureNotInstalledError()
+        if not HAS_AZURE_IDENTITY:
+            raise MissingModuleException("azure-identity")
+        if not HAS_AZURE_STORAGE_BLOB:
+            raise MissingModuleException("azure-storage-blob")
         azure_config = AzureBlobConfiguration(
             config["azure_connection_string"],
             config["azure_container"],

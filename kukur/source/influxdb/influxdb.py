@@ -17,27 +17,20 @@ except ImportError:
     HAS_INFLUX = False
 
 from kukur import Metadata, SeriesSelector
-from kukur.exceptions import InvalidDataError
+from kukur.exceptions import InvalidDataError, KukurException, MissingModuleException
 
 
-class InfluxdbNotInstalledError(Exception):
-    """Raised when the influxdb is not available."""
-
-    def __init__(self):
-        Exception.__init__(self, "the influxdb is not available. Install influxdb.")
-
-
-class InvalidClientConnection(Exception):
+class InvalidClientConnection(KukurException):
     """Raised when an error occured when making the connection."""
 
     def __init__(self, message: str):
-        Exception.__init__(self, f"Connection error: {message}")
+        KukurException.__init__(self, f"Connection error: {message}")
 
 
 def from_config(config: Dict[str, Any]):
     """Create a new Influx data source"""
     if not HAS_INFLUX:
-        raise InfluxdbNotInstalledError()
+        raise MissingModuleException("influxdb", "influxdb")
     host = config.get("host", "localhost")
     port = config.get("port", 8086)
     ssl = config.get("ssl", False)
@@ -64,7 +57,7 @@ class InfluxSource:
         password: str,
     ):
         if not HAS_INFLUX:
-            raise InfluxdbNotInstalledError()
+            raise MissingModuleException("influxdb", "influxdb")
         try:
             if username != "" and password != "":
                 self.__client = InfluxDBClient(
