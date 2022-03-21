@@ -129,19 +129,31 @@ class PIWebAPIDataArchiveSource:
             session, self.__request_properties, data_archive
         )
 
-        response = session.get(
-            data_archive["Links"]["Points"],
-            verify=self.__request_properties.verify_ssl,
-            params=dict(maxCount=self.__request_properties.max_returned_items_per_call),
-        )
-        response.raise_for_status()
-
-        for point in response.json().get("Items", []):
-            metadata = _get_metadata(
-                SeriesSelector(selector.source, point["Name"]), point, dictionary_lookup
+        page = 0
+        while True:
+            response = session.get(
+                data_archive["Links"]["Points"],
+                verify=self.__request_properties.verify_ssl,
+                params=dict(
+                    maxCount=self.__request_properties.max_returned_items_per_call,
+                    startIndex=page
+                    * self.__request_properties.max_returned_items_per_call,
+                ),
             )
-            if metadata is not None:
-                yield metadata
+            response.raise_for_status()
+            points = response.json().get("Items", [])
+            if len(points) == 0:
+                break
+
+            page = page + 1
+            for point in points:
+                metadata = _get_metadata(
+                    SeriesSelector(selector.source, point["Name"]),
+                    point,
+                    dictionary_lookup,
+                )
+                if metadata is not None:
+                    yield metadata
 
     def get_metadata(self, selector: SeriesSelector) -> Metadata:
         """Return metadata for one tag."""
