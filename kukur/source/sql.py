@@ -145,9 +145,12 @@ class BaseSQLSource(ABC):
                     continue
                 if isinstance(value, str) and value == "":
                     continue
-                metadata.coerce_field(
-                    name, self._metadata_value_mapper.from_source(name, value)
-                )
+                try:
+                    metadata.coerce_field(
+                        name, self._metadata_value_mapper.from_source(name, value)
+                    )
+                except ValueError:
+                    pass
 
         dictionary_name = metadata.get_field(fields.DictionaryName)
         if dictionary_name is not None:
@@ -252,9 +255,12 @@ class BaseSQLSource(ABC):
                     continue
                 if isinstance(value, str) and value == "":
                     continue
-                metadata.coerce_field(
-                    name, self._metadata_value_mapper.from_source(name, value)
-                )
+                try:
+                    metadata.coerce_field(
+                        name, self._metadata_value_mapper.from_source(name, value)
+                    )
+                except ValueError:
+                    pass
             dictionary_name = metadata.get_field(fields.DictionaryName)
             if dictionary_name is not None and dictionary_cursor is not None:
                 metadata.set_field(
