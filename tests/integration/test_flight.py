@@ -89,7 +89,7 @@ def test_data_with_quality(client: Client):
 
 def test_sources(client: Client):
     data = client.list_sources()
-    assert len(data) == 43
+    assert len(data) == 46
     assert "sql" in data
     assert "row" in data
     assert "noaa" in data
