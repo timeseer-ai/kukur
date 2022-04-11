@@ -30,7 +30,7 @@ setuptools.setup(
       ],
     extras_require={
         "adodb": ["pywin32"],
-        "crate": ["crate"],
+        "cratedb": ["crate"],
         "delta": ["deltalake"],
         "influxdb": ["influxdb"],
         "odbc": ["pyodbc"],

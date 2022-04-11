@@ -1,14 +1,11 @@
-// SPDX-FileCopyrightText: 2021 Timeseer.AI
-//
+// SPDX-FileCopyrightText: 2022 Timeseer.AI
 // SPDX-License-Identifier: Apache-2.0
 
-== ADODB
+== CrateDB
 
-Sources with `type = "adodb"` configure ADODB sources.
+Sources with `type = "cratedb"` configure https://crate.io/[CrateDB] sources.
 
-ADODB is supported on Windows only.
-Install https://github.com/mhammond/pywin32/releases[pywin32] separately to enable.
-Data sources supporting OLEDB can be accessed through ADODB.
+CrateDB support requires the https://pypi.org/project/crate/[crate] Python package.
 
 The connection string and queries can either be configured in the configuration file,
 or loaded from files.
@@ -16,8 +13,8 @@ Inline configuration takes precedence over file-based configuration when both ar
 
 ```toml
 [source.<name>]
-type = "adodb"
-connection_string = "<ADODB connection_string>"
+type = "cratedb"
+connection_string = "<cratedb connection_string>"
 connection_string_path = "<path to connection string>"
 query_string_parameters = false
 list_query = "<query to list all time series in a source>"
@@ -32,36 +29,40 @@ metadata_value_mapping = "<metadata_value_mapping name>"
 data_query = "<query for data of one series in time range>"
 data_query_path = "<path to data query>"
 data_query_datetime_format = "<strftime format>"
-data_query_timezone = "<override or specify time zone of timestamps to send a naive timestamp to the adodb driver>"
-data_timezone = "<override or specify time zone of timestamps returned by the adodb driver>"
+data_query_timezone = "<override or specify time zone of timestamps to send a naive timestamp to the crate client>"
+data_timezone = "<override or specify time zone of timestamps returned by the crate client>"
 enable_trace_logging = false
 quality_mapping = "<name>"
 ```
 
-The examples given here operate on an Excel file with three sheets:
+Example here use the following schema:
 
+```sql
+create table Data (
+    timestamp timestamp with time zone,
+    name text,
+    value double precision,
+    unit text
+)
 ```
-Metadata$: name, description, units, [interpolation type], [data type], [dictionary name]
-Dictionary$: name, value, label
-Data$: name, timestamp, value
-```
+
+This assumes only one unit is ever present per time series.
 
 === Connection
 
 The `connection_string` contains the provider and various options.
 
 ```toml
-connection_string = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=examples/adodb/adodb.xlsx;Extended Properties=\"Excel 12.0 XML; HDR=YES\""
+connection_string = "localhost:4200"
 ```
 
 Alternatively, `connection_string_path` can point to a file that contains the connection string.
 Whitespace at the start and end of the connection string file is removed.
 
-Some ADODB drivers do not support parameter binding.
-Set `query_string_parameters` to `true`,
-to use string interpolation of parameters in queries.
+Version 0.26 of the crate client does not support parameter binding for timestamps with timezones.
+Set `query_string_parameters` to `true` to work around this.
 
-In that case use `{}` to format parameters into queries.
+Use `{}` to format parameters into queries.
 In queries with multiple parameters, the order can be changed by using the argument position: `{1} {2} {0}`.
 Use a read-only connection with a minimal amount of privileges as https://owasp.org/www-community/attacks/SQL_Injection[SQL Injection] are possible in that case and cannot be prevented by Kukur.
 
@@ -72,7 +73,7 @@ It returns a list of time series names found in the source.
 When provided, it does not need a series to have been used in another context before it can be analyzed.
 
 ```toml
-list_query = "select name from [Metadata$]"
+list_query = "select distinct name from Data"
 ```
 
 The query can be read from a file by using `list_query_path` instead of `list_query`.
@@ -81,8 +82,8 @@ The query can either return only series names or all metadata.
 When it returns all metadata, include a `list_columns` entry that describes all columns:
 
 ```toml
-list_query = "select name, description, units, [interpolation type], [data type], [dictionary name] from [Metadata$]"
-list_columns = ["series name", "description", "unit", "interpolation type", "data type", "dictionary name"]
+list_query = "select distinct name, unit from Data"
+list_columns = ["series name", "unit"]
 ```
 
 Built-in metadata columns are:
@@ -92,16 +93,16 @@ include::{include-path}/metadata-fields.asciidoc[]
 
 Custom metadata fields can be defined by including them in the `list_columns` list.
 
-Not all ADODB sources can map metadata field values to the values expected by Kukur.
+Not all CrateDB sources can map metadata field values to the values expected by Kukur.
 Use `metadata_value_mapping` to convert them.
 
 Example:
 
 ```toml
 [source.<name>]
-metadata_value_mapping = "adodb_lowercase"
+metadata_value_mapping = "crate_lowercase"
 
-[metadata_value_mapping.adodb_lowercase."data type"]
+[metadata_value_mapping.crate_lowercase."data type"]
 FLOAT64 = "float64"
 STRING = ["string", "text", "varchar"]
 DICTIONARY = "dictionary"
@@ -114,14 +115,14 @@ This example converts lowercase data types to the uppercase strings expected by 
 The `metadata_query` is a query that accepts one parameter: the name of the series.
 
 ```toml
-metadata_query = "select description, units, [interpolation type], [data type], [dictionary name] from [Metadata$] where name = ?"
+metadata_query = "select unit from Data where name = '{}'"
 ```
 
 The columns in the result set should be mapped to a supported type of metadata.
 The `metadata_columns` entry contains a list with the positional mapping.
 
 ```toml
-metadata_columns = ["description", "unit", "interpolation type", "data type", "dictionary name"]
+metadata_columns = [ "unit"]
 ```
 
 Built-in types of metadata are:
@@ -138,9 +139,9 @@ Example:
 
 ```toml
 [source.<name>]
-metadata_value_mapping = "adodb_lowercase"
+metadata_value_mapping = "crate_lowercase"
 
-[metadata_value_mapping.adodb_lowercase."data type"]
+[metadata_value_mapping.crate_lowercase."data type"]
 FLOAT64 = "float64"
 STRING = ["string", "text", "varchar"]
 DICTIONARY = "dictionary"
@@ -155,10 +156,6 @@ The `dictionary query` is a query that accepts one parameter: the name of the di
 
 The dictionary name for a series is returned by the `dictionary name` list or metadata column.
 
-```toml
-dictionary_query = "select value, label from [Dictionary$] where name = ?"
-```
-
 The query should return rows of two columns:
 
 - the numerical value that occurs in the data, in a type that can be converted to an integer
@@ -170,12 +167,12 @@ The dictionary query can be read from a file by using `dictionary_query_path` in
 
 The `data_query` is a query that accepts three parameters:
 
-- the name of the series (as `adBSTR`)
-- the start date of the time range to query data (as `adDBTimeStamp`)
-- the end date of the time range to query data (as `adDBTimeStamp`)
+- the name of the series (as text)
+- the start date of the time range to query data (as text)
+- the end date of the time range to query data (as text)
 
 ```toml
-data_query = "select timestamp, value from [Data$] where name = ? and timestamp between ? and ?"
+data_query = "select timestamp, value from Data where name = '{}' and timestamp >= '{}' and timestamp < '{}'"
 ```
 
 This query should return rows of two columns:
@@ -187,8 +184,8 @@ It will try to convert columns to the expected type.
 
 The data query can be read from a file by using `data_query_path` instead of `data_query`.
 
-If the provider or data source does not accept `adDBTimeStamp`, it can be formatted as a string.
-The `data_query_datetime_format` option accepts the https://docs.python.org/3/library/datetime.html#strftime-strptime-behavior[formatting options] supported by Python.
+The `data_query_datetime_format` option allows queries using a custom datetime format.
+It accepts the https://docs.python.org/3/library/datetime.html#strftime-strptime-behavior[formatting options] supported by Python.
 
 Example:
 
@@ -198,8 +195,9 @@ data_query_datetime_format = "%Y-%m-%dT%H:%M:%S%z"
 
 This converts timestamps to the ISO8601 format.
 
-If the driver doesn't accept timezoned timestamps you can specify the prefered timestamp for the input to convert the timestamp with the `data_query_timezone` option.
-The request will use the converted timestamps as naive timestamps for the queries to the driver.
+If timestamps without a time zone are used in the database,
+convert the timestamp with the `data_query_timezone` option.
+The request will use the converted timestamps as naive timestamps for all queries.
 
 Example:
 
@@ -207,7 +205,7 @@ Example:
 data_query_timezone = "UTC"
 ```
 
-If the query or driver returns dates without a time zone,
+If the query returns timestamps without a time zone,
 the time zone can be specified by the `data_timezone` option.
 
 Example:
@@ -231,10 +229,10 @@ There is a possibility to add a quality column.
 In this case the data query changes:
 
 ```toml
-data_query = "select timestamp, value, quality from [Data$] where name = ? and timestamp between ? and ?"
+data_query = "select timestamp, value, quality from Data where name = '{}' and timestamp >= '{}' and timestamp < '{}'"
 ```
 
-Where `quality` represents the column that contains the data point quality of the ADODB source.
+Where `quality` represents the column that contains the data point quality.
 
 Check the
 ifdef::sources[]
