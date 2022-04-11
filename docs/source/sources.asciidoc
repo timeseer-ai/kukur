@@ -23,6 +23,7 @@ When multiple sources with the same name are configured, the last configured one
 Valid values are:
 
 - `adodb`
+- `cratedb`
 - `csv`
 - `delta`
 - `feather`
@@ -39,6 +40,7 @@ Valid values are:
 Valid values are:
 
 - `adodb`
+- `cratedb`
 - `csv`
 - `kukur`
 - `oledb`
@@ -166,6 +168,7 @@ ifdef::sources[]
 - <<ADODB>> connections (including OLEDB)
 - <<Apache Feather>> files
 - <<Apache Parquet>> files
+- <<CrateDB>> databases
 - <<CSV>> files
 - <<Delta Lake>> tables
 - <<InfluxDB>> databases

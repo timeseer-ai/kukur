@@ -1,0 +1,27 @@
+[source.crate]
+type = "cratedb"
+connection_string = "cratedb:4200"
+list_query = "select distinct name from data"
+metadata_query = "select distinct unit from data where name = '{0}'"
+metadata_columns = ["unit"]
+data_query = "select date_format(timestamp), value from data where name = '{0}' and timestamp >= '{1}' and timestamp < '{2}' order by timestamp asc"
+query_string_parameters = true
+
+[source.crate-local]
+type = "cratedb"
+connection_string = "localhost:4200"
+list_query = "select distinct name from data"
+metadata_query = "select distinct unit from data where name = '{0}'"
+metadata_columns = ["unit"]
+data_query = "select date_format(timestamp), value from data where name = '{0}' and timestamp >= '{1}' and timestamp < '{2}' order by timestamp asc"
+query_string_parameters = true
+
+
+[source.crate-linux]
+type = "cratedb"
+connection_string = "localhost:4200"
+list_query = "select distinct name from data"
+metadata_query = "select distinct unit from data where name = '{0}'"
+metadata_columns = ["unit"]
+data_query = "select date_format(timestamp), value from data where name = '{0}' and timestamp >= '{1}' and timestamp < '{2}' order by timestamp asc"
+query_string_parameters = true
