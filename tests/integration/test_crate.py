@@ -2,6 +2,9 @@
 
 They use the client to request data."""
 
+# SPDX-FileCopyrightText: 2022 Timeseer.AI
+# SPDX-License-Identifier: Apache-2.0
+
 import os
 
 from datetime import datetime
@@ -12,6 +15,7 @@ import pytest
 from crate import client as crate_client
 
 from kukur import Client, SeriesSelector
+from kukur.metadata import fields
 
 
 @pytest.fixture
@@ -35,18 +39,19 @@ def insert_sample_data() -> Generator[None, None, None]:
         create table Data (
             timestamp timestamp with time zone,
             name text,
-            value double precision
+            value double precision,
+            unit text
         )
     """
     )
     cursor.executemany(
         """
-        insert into Data (timestamp, name, value) values (?, ?, ?)
+        insert into Data (timestamp, name, value, unit) values (?, ?, ?, ?)
     """,
         [
-            ("2022-01-01T00:00:00+00:00", "test-tag-1", 42),
-            ("2022-01-02T00:00:00+00:00", "test-tag-1", 43),
-            ("2022-01-03T00:00:00+00:00", "test-tag-1", 44),
+            ("2022-01-01T00:00:00+00:00", "test-tag-1", 42, "Pa"),
+            ("2022-01-02T00:00:00+00:00", "test-tag-1", 43, "Pa"),
+            ("2022-01-03T00:00:00+00:00", "test-tag-1", 44, "Pa"),
         ],
     )
     while True:  # wait for eventual consistency
@@ -68,6 +73,11 @@ def test_search(client: Client):
     many_series = list(client.search(SeriesSelector(suffix_source("crate"))))
     assert len(many_series) == 1
     assert many_series[0].name == "test-tag-1"
+
+
+def test_metadata(client: Client):
+    metadata = client.get_metadata(SeriesSelector(suffix_source("crate"), "test-tag-1"))
+    assert metadata.get_field(fields.Unit) == "Pa"
 
 
 def test_data(client: Client):
