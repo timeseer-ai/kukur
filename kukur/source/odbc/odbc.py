@@ -42,4 +42,6 @@ class ODBCSource(BaseSQLSource):
             raise MissingModuleException("pyodbc", "odbc")
 
     def connect(self):
-        return pyodbc.connect(self._config.connection_string)
+        connection = pyodbc.connect(self._config.connection_string)
+        connection.timeout = self._config.connection_timeout_seconds
+        return connection
