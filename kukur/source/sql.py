@@ -45,6 +45,7 @@ class SQLConfig:  # pylint: disable=too-many-instance-attributes
     data_timezone: Optional[tzinfo] = None
     data_query_timezone: Optional[tzinfo] = None
     enable_trace_logging: bool = False
+    connection_timeout_seconds: int = 0
 
     @classmethod
     def from_dict(cls, data):
@@ -86,6 +87,7 @@ class SQLConfig:  # pylint: disable=too-many-instance-attributes
             )
         if "enable_trace_logging" in data:
             config.enable_trace_logging = data.get("enable_trace_logging", False)
+        config.connection_timeout_seconds = data.get("connection_timeout_seconds", 0)
 
         return config
 

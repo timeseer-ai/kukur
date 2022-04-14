@@ -47,4 +47,7 @@ class ADODBSource(BaseSQLSource):
             raise MissingModuleException("pywin32", "adodb")
 
     def connect(self):
-        return adodbapi.connect(self._config.connection_string)
+        return adodbapi.connect(
+            self._config.connection_string,
+            {"timeout": self._config.connection_timeout_seconds},
+        )
