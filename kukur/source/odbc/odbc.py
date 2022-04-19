@@ -43,5 +43,5 @@ class ODBCSource(BaseSQLSource):
 
     def connect(self):
         connection = pyodbc.connect(self._config.connection_string)
-        connection.timeout = self._config.connection_timeout_seconds
+        connection.timeout = self._config.query_timeout_seconds
         return connection
