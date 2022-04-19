@@ -14,7 +14,7 @@ Inline configuration takes precedence over file-based configuration when both ar
 type = "odbc"
 connection_string = "<ODBC connection_string>"
 connection_string_path = "<path to connection string>"
-connection_timeout_seconds = 0
+query_timeout_seconds = 0
 query_string_parameters = false
 list_query = "<query to list all time series in a source>"
 list_query_path = "<path to list_query>"
@@ -82,7 +82,7 @@ In queries with multiple parameters, the order can be changed by using the argum
 Use a read-only connection with a minimal amount of privileges as https://owasp.org/www-community/attacks/SQL_Injection[SQL Injection] are possible in that case and cannot be prevented by Kukur.
 
 
-`connection_timeout_seconds` defines the timeout on a query. 
+`query_timeout_seconds` defines the timeout on a query. 
 Default is 0, 
 no timeout.
 
