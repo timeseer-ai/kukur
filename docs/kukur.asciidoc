@@ -447,7 +447,8 @@ three concepts need to be understood:
 ....
 class SeriesSelector {
     source : str
-    name : str
+    tags : Union[str, dict[str, str]]
+    field: str = "value"
 }
 ....
 

@@ -5,7 +5,7 @@
 import json
 
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Generator, List, Tuple, Union
+from typing import Any, Generator, Tuple, Union
 
 import pyarrow as pa
 import pyarrow.flight as fl
@@ -49,14 +49,14 @@ class Client:
             A generator that returns either ``Metadata`` or ``SeriesSelector``s.
             The return value depends on the search that is supported by the source.
         """
-        body = dict(source=selector.source, name=selector.name)
+        body = selector.to_data()
         results = list(
             self._get_client().do_action(("search", json.dumps(body).encode()))
         )
         for result in results:
             data = json.loads(result.body.to_pybytes())
             if "series" not in data:
-                yield SeriesSelector(data["source"], data["name"])
+                yield SeriesSelector(data["source"], data["tags"], data["field"])
             else:
                 yield _read_metadata(data)
 
@@ -69,7 +69,7 @@ class Client:
         Returns:
             The ``Metadata`` for the time series.
         """
-        body = dict(source=selector.source, name=selector.name)
+        body = selector.to_data()
         results = list(
             self._get_client().do_action(("get_metadata", json.dumps(body).encode()))
         )
@@ -101,17 +101,14 @@ class Client:
                 end_date = now
         query = {
             "query": "get_data",
-            "selector": {
-                "source": selector.source,
-                "name": selector.name,
-            },
+            "selector": selector.to_data(),
             "start_date": start_date.isoformat(),
             "end_date": end_date.isoformat(),
         }
         ticket = fl.Ticket(json.dumps(query))
         return self._get_client().do_get(ticket).read_all()
 
-    def list_sources(self) -> List[str]:
+    def list_sources(self) -> list[str]:
         """List all configured sources.
 
         Returns:
@@ -129,7 +126,7 @@ class Client:
         return self._client
 
 
-def _read_metadata(data: Dict[str, Any]) -> Metadata:
+def _read_metadata(data: dict[str, Any]) -> Metadata:
     return Metadata.from_data(data)
 
 

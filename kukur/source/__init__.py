@@ -7,7 +7,7 @@ import time
 
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union
+from typing import Any, Callable, Generator, Optional, Tuple, Union
 
 import pyarrow as pa
 import pyarrow.types
@@ -25,7 +25,7 @@ from kukur.source import (
     piwebapi_da,
 )
 
-from kukur import Metadata, SeriesSelector, Source as SourceProtocol
+from kukur import ComplexSeriesSelector, Metadata, Source as SourceProtocol
 from kukur.exceptions import InvalidSourceException
 from kukur.source.quality import QualityMapper
 
@@ -55,7 +55,7 @@ class MetadataSource:
     """A metadata source provides at least some metadata fields."""
 
     source: SourceProtocol
-    fields: List[str] = field(default_factory=list)
+    fields: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -94,13 +94,13 @@ class SourceWrapper:
     """
 
     __source: Source
-    __metadata: List[MetadataSource]
+    __metadata: list[MetadataSource]
     __query_retry_count: int
     __query_retry_delay: float
     __data_query_interval: Optional[timedelta] = None
 
     def __init__(
-        self, source: Source, metadata_sources: List[MetadataSource], common_options
+        self, source: Source, metadata_sources: list[MetadataSource], common_options
     ):
         self.__source = source
         self.__metadata = metadata_sources
@@ -112,8 +112,8 @@ class SourceWrapper:
             )
 
     def search(
-        self, selector: SeriesSelector
-    ) -> Generator[Union[SeriesSelector, Metadata], None, None]:
+        self, selector: ComplexSeriesSelector
+    ) -> Generator[Union[ComplexSeriesSelector, Metadata], None, None]:
         """Search for all time series matching the given selector.
 
         The result is either a sequence of selectors for each time series in the source or a sequence of metadata
@@ -134,26 +134,28 @@ class SourceWrapper:
         for result in results:
             if (
                 len(self.__metadata) == 0
-                or isinstance(result, SeriesSelector)
-                or result.series.name is None
+                or isinstance(result, ComplexSeriesSelector)
+                or "series name" not in result.series.tags
             ):
                 yield result
             else:
                 extra_metadata = self.get_metadata(
-                    SeriesSelector(result.series.source, result.series.name)
+                    ComplexSeriesSelector(
+                        result.series.source, result.series.tags, result.series.field
+                    )
                 )
                 for k, v in result.iter_names():
                     if v is not None and v != "":
                         extra_metadata.set_field_by_name(k, v)
                 yield extra_metadata
 
-    def get_metadata(self, selector: SeriesSelector) -> Metadata:
+    def get_metadata(self, selector: ComplexSeriesSelector) -> Metadata:
         """Return the metadata for the given series.
 
         The resulting metadata is the combination of the metadata in the source itself and any additional
         metadata sources. Metadata sources earlier in the list of sources take precendence over later ones."""
         metadata = Metadata(selector)
-        if selector.name is None:
+        if "series name" not in selector.tags:
             return metadata
         for metadata_source in list(reversed(self.__metadata)) + [
             MetadataSource(self.__source.metadata)
@@ -163,7 +165,7 @@ class SourceWrapper:
                 self.__query_retry_count,
                 self.__query_retry_delay,
                 query_fn,
-                f'Metadata query for "{selector.name}" ({selector.source}) failed',
+                f'Metadata query for "{selector.tags["series name"]}" ({selector.source}) failed',
             )
             if len(metadata_source.fields) == 0:
                 for k, v in received_metadata.iter_names():
@@ -177,10 +179,10 @@ class SourceWrapper:
         return metadata
 
     def get_data(
-        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
+        self, selector: ComplexSeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         """Return the data for the given series in the given time frame, taking into account the request policy."""
-        if start_date == end_date or selector.name is None:
+        if start_date == end_date or "series name" not in selector.tags:
             return pa.Table.from_pydict({"ts": [], "value": [], "quality": []})
         tables = [
             self._get_data_chunk(selector, start, end)
@@ -189,7 +191,7 @@ class SourceWrapper:
         return _concat_tables(tables)
 
     def _get_data_chunk(
-        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
+        self, selector: ComplexSeriesSelector, start_date: datetime, end_date: datetime
     ):
         query_fn = functools.partial(
             self.__source.data.get_data, selector, start_date, end_date
@@ -198,7 +200,7 @@ class SourceWrapper:
             self.__query_retry_count,
             self.__query_retry_delay,
             query_fn,
-            f'Data query for "{selector.name}" ({selector.source}) ({start_date} to {end_date}) failed',
+            f'Data query for "{selector.tags["series name"]}" ({selector.source}) ({start_date} to {end_date}) failed',
         )
 
     def __to_intervals(
@@ -218,8 +220,8 @@ class SourceWrapper:
 class SourceFactory:
     """Source factory to create Source objects"""
 
-    __config: Dict[str, Any]
-    __factory: Dict[str, Callable]
+    __config: dict[str, Any]
+    __factory: dict[str, Callable]
 
     def __init__(self, config):
         self.__config = config
@@ -231,7 +233,7 @@ class SourceFactory:
         """Register a new source type with the factory."""
         self.__factory[source_type_name] = source_factory
 
-    def get_source_names(self) -> List[str]:
+    def get_source_names(self) -> list[str]:
         """Get the data sources names as configured in the Kukur configuration."""
         sources = []
         for name, _ in self.__config.get("source", {}).items():
@@ -274,7 +276,7 @@ class SourceFactory:
                 )
         return None
 
-    def _get_extra_metadata_sources(self) -> Dict[str, MetadataSource]:
+    def _get_extra_metadata_sources(self) -> dict[str, MetadataSource]:
         metadata_sources = {}
         for name, options in self.__config.get("metadata", {}).items():
             if "type" not in options:
@@ -290,7 +292,7 @@ class SourceFactory:
         return metadata_sources
 
     def _make_source(
-        self, source_type: str, source_config: Dict[str, Any]
+        self, source_type: str, source_config: dict[str, Any]
     ) -> SourceProtocol:
         metadata_mapper = self._get_metadata_mapper(
             source_config.get("metadata_mapping")
@@ -302,7 +304,7 @@ class SourceFactory:
 
         factory_function: Any = self.__factory[source_type]
 
-        arguments: List[Any] = []
+        arguments: list[Any] = []
         for parameter in inspect.signature(factory_function).parameters.values():
             if parameter.annotation == MetadataMapper:
                 arguments.append(metadata_mapper)
@@ -336,7 +338,7 @@ class SourceFactory:
         return QualityMapper.from_config(self.__config["quality_mapping"][name])
 
 
-def _concat_tables(tables: List[pa.Table]) -> List[pa.Table]:
+def _concat_tables(tables: list[pa.Table]) -> list[pa.Table]:
     """Safely concatenate multiple pyarrow.Table's.
 
     If any of the given tables contains strings, the result will contain a
@@ -375,7 +377,7 @@ def _concat_tables(tables: List[pa.Table]) -> List[pa.Table]:
     return pa.concat_tables([table.cast(schema) for table in tables])
 
 
-def _has_any_string(tables: List[pa.Table]) -> bool:
+def _has_any_string(tables: list[pa.Table]) -> bool:
     string_tables = [
         table
         for table in tables
@@ -384,7 +386,7 @@ def _has_any_string(tables: List[pa.Table]) -> bool:
     return len(string_tables) > 0
 
 
-def _is_all_integer(tables: List[pa.Table]) -> bool:
+def _is_all_integer(tables: list[pa.Table]) -> bool:
     integer_tables = [
         table
         for table in tables
@@ -393,6 +395,6 @@ def _is_all_integer(tables: List[pa.Table]) -> bool:
     return len(integer_tables) == len(tables)
 
 
-def _has_quality_data_flag(tables: List[pa.Table]) -> bool:
+def _has_quality_data_flag(tables: list[pa.Table]) -> bool:
     quality_table = [table for table in tables if "quality" in table.column_names]
     return len(quality_table) > 0

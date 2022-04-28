@@ -3,9 +3,9 @@
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field as data_field
 from enum import Enum
-from typing import Dict, Optional
+from typing import Any, Union
 
 
 @dataclass
@@ -20,15 +20,43 @@ class Dictionary:
 
     In Python 3.8+, iteration over a dict keeps the insert ordering."""
 
-    mapping: Dict[int, str]
+    mapping: dict[int, str]
 
 
 @dataclass
-class SeriesSelector:
+class ComplexSeriesSelector:
     """SeriesSelector identifies a group of time series matching the given pattern."""
 
     source: str
-    name: Optional[str] = None
+    tags: dict[str, str] = data_field(default_factory=dict)
+    field: str = "value"
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]):
+        """Create a Series from a dictionary."""
+        tags = data.get("tags", {})
+        if "name" in data and "tags" not in data:
+            tags["series name"] = data["name"]
+        return cls(data["source"], tags, data["field"])
+
+    def to_data(self) -> dict[str, Any]:
+        """Convert to JSON object."""
+        return dict(source=self.source, tags=self.tags, field=self.field)
+
+
+@dataclass
+class SeriesSelector(ComplexSeriesSelector):
+    """SeriesSelector identifies a group of time series matching the given pattern."""
+
+    def __init__(
+        self, source: str, tags: Union[str, dict[str, str]] = None, field: str = "value"
+    ):
+        tags_dict = {}
+        if isinstance(tags, str):
+            tags_dict["series name"] = tags
+        if isinstance(tags, dict):
+            tags_dict = tags
+        super().__init__(source, tags_dict, field)
 
 
 class InterpolationType(Enum):

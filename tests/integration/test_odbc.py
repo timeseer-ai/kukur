@@ -35,7 +35,9 @@ def test_search(client: Client, suffix_source):
     many_series = list(client.search(SeriesSelector(suffix_source("sql-list"))))
     assert len(many_series) == 4
     dictionary_series = [
-        series for series in many_series if series.series.name == "test-tag-6"
+        series
+        for series in many_series
+        if series.series.tags["series name"] == "test-tag-6"
     ][0]
     assert isinstance(dictionary_series, Metadata)
     assert dictionary_series.get_field(fields.Description) == "A dictionary series"
@@ -54,7 +56,10 @@ def test_search(client: Client, suffix_source):
 def test_interpolation_type_mapping(client: Client, suffix_source):
     many_series = list(client.search(SeriesSelector(suffix_source("sql-list"))))
     interpolation_types = [
-        (metadata.series.name, metadata.get_field(fields.InterpolationType))
+        (
+            metadata.series.tags["series name"],
+            metadata.get_field(fields.InterpolationType),
+        )
         for metadata in many_series
     ]
     assert ("test-tag-1", InterpolationType.LINEAR) in interpolation_types
@@ -63,7 +68,7 @@ def test_interpolation_type_mapping(client: Client, suffix_source):
 
 def test_metadata(client: Client, suffix_source):
     dictionary_series = client.get_metadata(
-        SeriesSelector(suffix_source("sql"), "test-tag-6")
+        SeriesSelector(suffix_source("sql"), {"series name": "test-tag-6"})
     )
     assert dictionary_series.get_field(fields.Description) == "A dictionary series"
     assert (
@@ -82,7 +87,9 @@ def test_dictionary_data(client: Client, suffix_source):
     start_date = datetime.fromisoformat("2020-01-01T00:00:00+00:00")
     end_date = datetime.fromisoformat("2021-01-01T00:00:00+00:00")
     data = client.get_data(
-        SeriesSelector(suffix_source("sql-list"), "test-tag-6"), start_date, end_date
+        SeriesSelector(suffix_source("sql-list"), {"series name": "test-tag-6"}),
+        start_date,
+        end_date,
     )
     assert len(data) == 5
     assert data["ts"][0].as_py() == start_date
@@ -93,7 +100,7 @@ def test_dictionary_data(client: Client, suffix_source):
 
 def test_metadata_string_query(client: Client, suffix_source):
     dictionary_series = client.get_metadata(
-        SeriesSelector(suffix_source("sql-string"), "test-tag-6")
+        SeriesSelector(suffix_source("sql-string"), {"series name": "test-tag-6"})
     )
     assert dictionary_series.get_field(fields.Description) == "A dictionary series"
     assert (
@@ -112,7 +119,9 @@ def test_data_string_query(client: Client, suffix_source):
     start_date = datetime.fromisoformat("2020-01-01T00:00:00+00:00")
     end_date = datetime.fromisoformat("2021-01-01T00:00:00+00:00")
     data = client.get_data(
-        SeriesSelector(suffix_source("sql-string"), "test-tag-6"), start_date, end_date
+        SeriesSelector(suffix_source("sql-string"), {"series name": "test-tag-6"}),
+        start_date,
+        end_date,
     )
     assert len(data) == 5
     assert data["ts"][0].as_py() == start_date
@@ -123,7 +132,9 @@ def test_data_string_query(client: Client, suffix_source):
 
 def test_metadata_no_dictionary_query(client: Client, suffix_source):
     dictionary_series = client.get_metadata(
-        SeriesSelector(suffix_source("sql-no-dictionary-query"), "test-tag-6")
+        SeriesSelector(
+            suffix_source("sql-no-dictionary-query"), {"series name": "test-tag-6"}
+        )
     )
     assert dictionary_series.get_field(fields.Description) == "A dictionary series"
     assert (
@@ -138,7 +149,9 @@ def test_data_null(client: Client, suffix_source):
     start_date = datetime.fromisoformat("2020-01-01T00:00:00+00:00")
     end_date = datetime.fromisoformat("2021-01-01T00:00:00+00:00")
     data = client.get_data(
-        SeriesSelector(suffix_source("sql-list"), "test-tag-7"), start_date, end_date
+        SeriesSelector(suffix_source("sql-list"), {"series name": "test-tag-7"}),
+        start_date,
+        end_date,
     )
     assert len(data) == 2
     assert data["ts"][0].as_py() == start_date
@@ -151,7 +164,9 @@ def test_quality_data(client: Client, suffix_source):
     start_date = datetime.fromisoformat("2020-01-01T00:00:00+00:00")
     end_date = datetime.fromisoformat("2021-01-01T00:00:00+00:00")
     data = client.get_data(
-        SeriesSelector(suffix_source("sql-quality"), "test-tag-1"), start_date, end_date
+        SeriesSelector(suffix_source("sql-quality"), {"series name": "test-tag-1"}),
+        start_date,
+        end_date,
     )
     assert len(data) == 5
     assert data["ts"][0].as_py() == start_date
@@ -166,7 +181,7 @@ def test_string_quality_data(client: Client, suffix_source):
     start_date = datetime.fromisoformat("2020-01-01T00:00:00+00:00")
     end_date = datetime.fromisoformat("2021-01-01T00:00:00+00:00")
     data = client.get_data(
-        SeriesSelector(suffix_source("sql-quality-str"), "test-tag-1"),
+        SeriesSelector(suffix_source("sql-quality-str"), {"series name": "test-tag-1"}),
         start_date,
         end_date,
     )
@@ -177,3 +192,35 @@ def test_string_quality_data(client: Client, suffix_source):
     assert data["ts"][4].as_py() == datetime.fromisoformat("2020-05-01T00:00:00+00:00")
     assert data["value"][4].as_py() == 1.0
     assert data["quality"][4].as_py() == 0
+
+
+def test_metadata_backwards_compatibility(client: Client, suffix_source):
+    dictionary_series = client.get_metadata(
+        SeriesSelector(suffix_source("sql"), "test-tag-6")
+    )
+    assert dictionary_series.get_field(fields.Description) == "A dictionary series"
+    assert (
+        dictionary_series.get_field(fields.InterpolationType)
+        == InterpolationType.STEPPED
+    )
+    assert dictionary_series.get_field(fields.DictionaryName) == "Active"
+    dictionary = dictionary_series.get_field(fields.Dictionary)
+    assert dictionary is not None
+    assert len(dictionary.mapping) == 2
+    assert dictionary.mapping[0] == "OFF"
+    assert dictionary.mapping[1] == "ON"
+
+
+def test_dictionary_data_backwards_compatibility(client: Client, suffix_source):
+    start_date = datetime.fromisoformat("2020-01-01T00:00:00+00:00")
+    end_date = datetime.fromisoformat("2021-01-01T00:00:00+00:00")
+    data = client.get_data(
+        SeriesSelector(suffix_source("sql-list"), "test-tag-6"),
+        start_date,
+        end_date,
+    )
+    assert len(data) == 5
+    assert data["ts"][0].as_py() == start_date
+    assert data["value"][0].as_py() == 1.0
+    assert data["ts"][4].as_py() == datetime.fromisoformat("2020-05-01T00:00:00+00:00")
+    assert data["value"][4].as_py() == 1.0

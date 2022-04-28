@@ -6,32 +6,32 @@ from datetime import datetime, timedelta
 import pyarrow as pa
 import pytest
 
-from kukur import SeriesSelector, Metadata
+from kukur import ComplexSeriesSelector, Metadata
 from kukur.source import Source, SourceWrapper
 
 
-SELECTOR = SeriesSelector("fake", "test-tag-1")
+SELECTOR = ComplexSeriesSelector("fake", {"series name": "test-tag-1"})
 START_DATE = datetime.fromisoformat("2020-01-01T00:00:00+00:00")
 END_DATE = datetime.fromisoformat("2020-02-01T00:00:00+00:00")
 
 
 class FakeSource:
-    def get_metadata(self, selector: SeriesSelector) -> Metadata:
+    def get_metadata(self, selector: ComplexSeriesSelector) -> Metadata:
         return Metadata(selector)
 
     def get_data(
-        self, _: SeriesSelector, start_date: datetime, end_date: datetime
+        self, _: ComplexSeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         # end_date should not be part of the returned interval, but is here for easy comparison
         return pa.Table.from_pydict({"ts": [start_date, end_date], "value": [42, 24]})
 
 
 class EmptyOddHoursSource:
-    def get_metadata(self, selector: SeriesSelector) -> Metadata:
+    def get_metadata(self, selector: ComplexSeriesSelector) -> Metadata:
         return Metadata(selector)
 
     def get_data(
-        self, _: SeriesSelector, start_date: datetime, end_date: datetime
+        self, _: ComplexSeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         if start_date.hour % 2 == 0:
             return pa.Table.from_pydict(
@@ -41,21 +41,21 @@ class EmptyOddHoursSource:
 
 
 class EmptySource:
-    def get_metadata(self, selector: SeriesSelector) -> Metadata:
+    def get_metadata(self, selector: ComplexSeriesSelector) -> Metadata:
         return Metadata(selector)
 
     def get_data(
-        self, _: SeriesSelector, start_date: datetime, end_date: datetime
+        self, _: ComplexSeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         return pa.Table.from_pydict({"ts": [], "value": []})
 
 
 class DifferentNumericalTypesSource:
-    def get_metadata(self, selector: SeriesSelector) -> Metadata:
+    def get_metadata(self, selector: ComplexSeriesSelector) -> Metadata:
         return Metadata(selector)
 
     def get_data(
-        self, _: SeriesSelector, start_date: datetime, end_date: datetime
+        self, _: ComplexSeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         if start_date.hour % 2 == 0:
             return pa.Table.from_pydict({"ts": [start_date], "value": [1]})
@@ -63,11 +63,11 @@ class DifferentNumericalTypesSource:
 
 
 class OnlyIntegersSource:
-    def get_metadata(self, selector: SeriesSelector) -> Metadata:
+    def get_metadata(self, selector: ComplexSeriesSelector) -> Metadata:
         return Metadata(selector)
 
     def get_data(
-        self, _: SeriesSelector, start_date: datetime, end_date: datetime
+        self, _: ComplexSeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         if start_date.hour % 2 == 0:
             return pa.Table.from_pydict({"ts": [start_date], "value": [1]})
@@ -75,11 +75,11 @@ class OnlyIntegersSource:
 
 
 class SomeStringTypesSource:
-    def get_metadata(self, selector: SeriesSelector) -> Metadata:
+    def get_metadata(self, selector: ComplexSeriesSelector) -> Metadata:
         return Metadata(selector)
 
     def get_data(
-        self, _: SeriesSelector, start_date: datetime, end_date: datetime
+        self, _: ComplexSeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         if start_date.hour % 2 == 0:
             return pa.Table.from_pydict({"ts": [start_date], "value": ["ok"]})
@@ -93,21 +93,21 @@ class FailureSource:
     def __init__(self, *, failure_count=1) -> None:
         self.__failure_count = failure_count
 
-    def search(self, selector: SeriesSelector):
+    def search(self, selector: ComplexSeriesSelector):
         if self.__failure_count == 0:
             yield Metadata(selector)
         else:
             self.__failure_count = self.__failure_count - 1
             raise Exception("Search failure")
 
-    def get_metadata(self, selector: SeriesSelector) -> Metadata:
+    def get_metadata(self, selector: ComplexSeriesSelector) -> Metadata:
         if self.__failure_count == 0:
             return Metadata(selector)
         self.__failure_count = self.__failure_count - 1
         raise Exception("Metadata failure")
 
     def get_data(
-        self, _: SeriesSelector, start_date: datetime, end_date: datetime
+        self, _: ComplexSeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         if self.__failure_count == 0:
             return pa.Table.from_pydict({"ts": [start_date], "value": [2.5]})

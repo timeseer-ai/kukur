@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 from datetime import datetime
-from typing import Any, Dict, List, Generator, Tuple
+from typing import Any, Generator, Tuple
 
 import dateutil.parser
 import pyarrow as pa
@@ -16,7 +16,7 @@ try:
 except ImportError:
     HAS_INFLUX = False
 
-from kukur import Metadata, SeriesSelector
+from kukur import ComplexSeriesSelector, Metadata
 from kukur.exceptions import InvalidDataError, KukurException, MissingModuleException
 
 
@@ -27,7 +27,7 @@ class InvalidClientConnection(KukurException):
         KukurException.__init__(self, f"Connection error: {message}")
 
 
-def from_config(config: Dict[str, Any]):
+def from_config(config: dict[str, Any]):
     """Create a new Influx data source"""
     if not HAS_INFLUX:
         raise MissingModuleException("influxdb", "influxdb")
@@ -70,7 +70,9 @@ class InfluxSource:
         except InfluxDBClientError as err:
             raise InvalidClientConnection(err) from err
 
-    def search(self, selector: SeriesSelector) -> Generator[Metadata, None, None]:
+    def search(
+        self, selector: ComplexSeriesSelector
+    ) -> Generator[Metadata, None, None]:
         """Search for series matching the given selector."""
         many_series = self.__client.get_list_series()
         fields = self.__client.query("SHOW FIELD KEYS")
@@ -79,23 +81,26 @@ class InfluxSource:
             measurement = series_name.split(",")[0]
             for field in fields.get_points(measurement=measurement):
                 yield Metadata(
-                    SeriesSelector(
-                        selector.source, f'{series_name}::{field["fieldKey"]}'
+                    ComplexSeriesSelector(
+                        selector.source,
+                        {"series name": f'{series_name}::{field["fieldKey"]}'},
                     )
                 )
 
     # pylint: disable=no-self-use
-    def get_metadata(self, selector: SeriesSelector) -> Metadata:
+    def get_metadata(self, selector: ComplexSeriesSelector) -> Metadata:
         """Influx currently always returns empty metadata."""
         return Metadata(selector)
 
     def get_data(
-        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
+        self, selector: ComplexSeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         """Return data for the given time series in the given time period."""
-        if selector.name is None:
+        if "series name" not in selector.tags:
             raise InvalidDataError("No series name")
-        measurement, tags, field_key = _parse_influx_series(selector.name)
+        measurement, tags, field_key = _parse_influx_series(
+            selector.tags["series name"]
+        )
 
         query = f"""SELECT time, "{_escape(field_key)}"
                     FROM "{_escape(measurement)}"
@@ -121,7 +126,7 @@ class InfluxSource:
         return pa.Table.from_pydict({"ts": timestamps, "value": values})
 
 
-def _parse_influx_series(series: str) -> Tuple[str, List[List[str]], str]:
+def _parse_influx_series(series: str) -> Tuple[str, list[list[str]], str]:
     field_split = series.rsplit("::", 1)
     field_key = field_split[1]
 
