@@ -118,25 +118,27 @@ class KukurServerAuthHandler(fl.ServerAuthHandler):
         super().__init__()
         self._app = app
 
-    def authenticate(self, outgoing, incoming):
+    def authenticate(self, outgoing, incoming):  # pylint: disable=no-self-use
         """Check the authentication."""
         buf = incoming.read()
-        auth = fl.BasicAuth.deserialize(buf)
-        if auth.username is None:
-            raise fl.FlightUnauthenticatedError("invalid username")
-        if auth.password is None:
-            raise fl.FlightUnauthenticatedError("invalid password")
-        if not self._app.get_api_keys().is_valid(
-            auth.username.decode("UTF-8"), auth.password.decode("UTF-8")
-        ):
-            raise fl.FlightUnauthenticatedError("invalid token")
-        outgoing.write(auth.username)
+        outgoing.write(buf)
 
     def is_valid(self, token: bytes):
         """Check if the supplied token is valid."""
         if token == "" or token is None:
             raise fl.FlightUnauthenticatedError("invalid token")
-        if not self._app.get_api_keys().has_api_key(token.decode("UTF-8")):
+
+        auth = fl.BasicAuth.deserialize(token)
+        if auth.username is None:
+            raise fl.FlightUnauthenticatedError("invalid username")
+        if auth.password is None:
+            raise fl.FlightUnauthenticatedError("invalid password")
+
+        if not self._app.get_api_keys().has_api_key(auth.username.decode("UTF-8")):
+            raise fl.FlightUnauthenticatedError("invalid token")
+        if not self._app.get_api_keys().is_valid(
+            auth.username.decode("UTF-8"), auth.password.decode("UTF-8")
+        ):
             raise fl.FlightUnauthenticatedError("invalid token")
         return token
 
