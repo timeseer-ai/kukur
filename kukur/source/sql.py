@@ -134,7 +134,7 @@ class BaseSQLSource(ABC):
         cursor = connection.cursor()
 
         query = self._config.metadata_query
-        params = [selector.tags["series name"]]
+        params = [selector.get_series_name()]
         if self._config.query_string_parameters:
             query = query.format(*params)
             params = []
@@ -172,7 +172,7 @@ class BaseSQLSource(ABC):
 
         query = self._config.data_query
         params = [
-            selector.tags["series name"],
+            selector.get_series_name(),
             self.__format_date(start_date),
             self.__format_date(end_date),
         ]
@@ -190,7 +190,7 @@ class BaseSQLSource(ABC):
                 logger.info(
                     'Data from "%s (%s)" at %s has value %s with type %s',
                     selector.source,
-                    selector.tags["series name"],
+                    selector.get_series_name(),
                     row[0],
                     row[1],
                     type(row[1]),

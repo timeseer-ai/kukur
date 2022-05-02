@@ -165,7 +165,7 @@ class SourceWrapper:
                 self.__query_retry_count,
                 self.__query_retry_delay,
                 query_fn,
-                f'Metadata query for "{selector.tags["series name"]}" ({selector.source}) failed',
+                f'Metadata query for "{selector.get_series_name()}" ({selector.source}) failed',
             )
             if len(metadata_source.fields) == 0:
                 for k, v in received_metadata.iter_names():
@@ -200,7 +200,7 @@ class SourceWrapper:
             self.__query_retry_count,
             self.__query_retry_delay,
             query_fn,
-            f'Data query for "{selector.tags["series name"]}" ({selector.source}) ({start_date} to {end_date}) failed',
+            f'Data query for "{selector.get_series_name()}" ({selector.source}) ({start_date} to {end_date}) failed',
         )
 
     def __to_intervals(

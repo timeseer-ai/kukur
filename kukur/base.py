@@ -43,6 +43,20 @@ class ComplexSeriesSelector:
         """Convert to JSON object."""
         return dict(source=self.source, tags=self.tags, field=self.field)
 
+    def get_series_name(self) -> str:
+        """Get the series name with tags and fields included.
+
+        For sources that cannot handle tags and fiels yet."""
+        series_string = ""
+        for tag_key, tag_value in self.tags.items():
+            if tag_key == "series name":
+                series_string = series_string + tag_value
+                continue
+            series_string = series_string + "," + f"{tag_key}={tag_value}"
+        if self.field == "value":
+            return f"{series_string}"
+        return f"{series_string}::{self.field}"
+
 
 @dataclass
 class SeriesSelector(ComplexSeriesSelector):

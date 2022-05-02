@@ -85,9 +85,9 @@ class BaseArrowSource(ABC):
 
     def _read_pivot_data(self, selector: ComplexSeriesSelector) -> pa.Table:
         all_data = self.read_file(self.__loader.open())
-        if selector.tags["series name"] not in all_data.column_names:
-            raise InvalidDataError(f'column "{selector.tags["series name"]}" not found')
-        data = all_data.select([0, selector.tags["series name"]]).rename_columns(
+        if selector.get_series_name() not in all_data.column_names:
+            raise InvalidDataError(f'column "{selector.get_series_name()}" not found')
+        data = all_data.select([0, selector.get_series_name()]).rename_columns(
             ["ts", "value"]
         )
         schema = pa.schema(
@@ -120,7 +120,7 @@ class BaseArrowSource(ABC):
         # pylint: disable=no-member
         data = all_data.filter(
             pyarrow.compute.equal(
-                all_data["series name"], pa.scalar(selector.tags["series name"])
+                all_data["series name"], pa.scalar(selector.get_series_name())
             )
         ).drop(["series name"])
 
