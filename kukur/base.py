@@ -47,12 +47,13 @@ class ComplexSeriesSelector:
         """Get the series name with tags and fields included.
 
         For sources that cannot handle tags and fiels yet."""
-        series_string = ""
+        series_tags: list[str] = []
         for tag_key, tag_value in self.tags.items():
             if tag_key == "series name":
-                series_string = series_string + tag_value
+                series_tags.insert(0, tag_value)
                 continue
-            series_string = series_string + "," + f"{tag_key}={tag_value}"
+            series_tags.append(f"{tag_key}={tag_value}")
+        series_string = ",".join(series_tags)
         if self.field == "value":
             return f"{series_string}"
         return f"{series_string}::{self.field}"
