@@ -57,7 +57,7 @@ def insert_sample_data() -> Generator[None, None, None]:
     while True:  # wait for eventual consistency
         cursor.execute("select count(*) from Data")
         (count,) = cursor.fetchone()
-        if count > 0:
+        if count == 3:
             break
     yield
 
