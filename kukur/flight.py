@@ -4,13 +4,13 @@
 # SPDX-License-Identifier: Apache-2.0
 import json
 
-from typing import Any, Callable, Dict, Generator, List
+from typing import Any, Callable, Generator
 
 import pyarrow.flight as fl
 
 from dateutil.parser import parse as parse_date
 
-from kukur import Metadata, SeriesSelector, Source
+from kukur import Metadata, ComplexSeriesSelector, Source
 from kukur.app import Kukur
 
 __all__ = ["JSONFlightServer"]
@@ -24,10 +24,10 @@ class JSONFlightServer(fl.FlightServerBase):
     It supports registering custom actions and request handlers. Register a GET
     handler to return Arrow data. To return JSON, register an action handler."""
 
-    __get_handlers: Dict[str, Callable]
-    __action_handlers: Dict[str, Callable]
+    __get_handlers: dict[str, Callable]
+    __action_handlers: dict[str, Callable]
 
-    def __init__(self, config: Dict[str, Any], **kwargs):
+    def __init__(self, config: dict[str, Any], **kwargs):
         host = "0.0.0.0"
         port = 8081
         if "flight" in config:
@@ -77,32 +77,31 @@ class KukurFlightServer:
         This returns either a SeriesSelector or Metadata as JSON, depending on
         what is supported by the source."""
         request = json.loads(action.body.to_pybytes())
-        selector = SeriesSelector(request["source"], request["name"])
+        selector = ComplexSeriesSelector.from_data(request)
         for result in self.__source.search(selector):
             if isinstance(result, Metadata):
-                assert result.series.name is not None
+                assert "series name" in result.series.tags
                 metadata = result.to_data()
                 yield json.dumps(metadata).encode()
             else:
-                assert result.name is not None
+                assert "series name" in result.tags
                 series = {
                     "source": result.source,
-                    "name": result.name,
+                    "tags": result.tags,
+                    "field": result.field,
                 }
                 yield json.dumps(series).encode()
 
-    def get_metadata(self, _, action: fl.Action) -> List[bytes]:
+    def get_metadata(self, _, action: fl.Action) -> list[bytes]:
         """Return metadata for the given time series as JSON."""
         request = json.loads(action.body.to_pybytes())
-        selector = SeriesSelector(request["source"], request["name"])
+        selector = ComplexSeriesSelector.from_data(request)
         metadata = self.__source.get_metadata(selector).to_data()
         return [json.dumps(metadata).encode()]
 
     def get_data(self, _, request) -> Any:
         """Return time series data as Arrow data."""
-        selector = SeriesSelector(
-            request["selector"]["source"], request["selector"]["name"]
-        )
+        selector = ComplexSeriesSelector.from_data(request["selector"])
         start_date = parse_date(request["start_date"])
         end_date = parse_date(request["end_date"])
         data = self.__source.get_data(selector, start_date, end_date)

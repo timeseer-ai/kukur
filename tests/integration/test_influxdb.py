@@ -32,7 +32,8 @@ def test_search(client: Client):
     series = [
         series
         for series in many_series
-        if series.series.name == "h2o_feet,location=coyote_creek::water_level"
+        if series.series.tags["series name"]
+        == "h2o_feet,location=coyote_creek::water_level"
     ][0]
     assert isinstance(series, Metadata)
     assert series.get_field(fields.LimitLowFunctional) == 6
@@ -42,7 +43,8 @@ def test_search(client: Client):
 def test_metadata(client: Client):
     series = client.get_metadata(
         SeriesSelector(
-            suffix_source("noaa"), "h2o_feet,location=coyote_creek::water_level"
+            suffix_source("noaa"),
+            {"series name": "h2o_feet,location=coyote_creek::water_level"},
         )
     )
     assert series.get_field(fields.LimitLowFunctional) == 6
@@ -54,7 +56,37 @@ def test_data(client: Client):
     end_date = datetime.fromisoformat("2019-09-17T16:24:00+00:00")
     data = client.get_data(
         SeriesSelector(
-            suffix_source("noaa"), "h2o_feet,location=coyote_creek::water_level"
+            suffix_source("noaa"),
+            {"series name": "h2o_feet,location=coyote_creek::water_level"},
+        ),
+        start_date,
+        end_date,
+    )
+    assert len(data) == 165
+    assert data["ts"][0].as_py() == start_date
+    assert data["value"][0].as_py() == 8.412
+    assert data["ts"][164].as_py() == end_date
+    assert data["value"][164].as_py() == 3.235
+
+
+def test_metadata_backwards_compatibility(client: Client):
+    series = client.get_metadata(
+        SeriesSelector(
+            suffix_source("noaa"),
+            "h2o_feet,location=coyote_creek::water_level",
+        )
+    )
+    assert series.get_field(fields.LimitLowFunctional) == 6
+    assert series.get_field(fields.LimitHighFunctional) == 9
+
+
+def test_data_backwards_compatibility(client: Client):
+    start_date = datetime.fromisoformat("2019-09-17T00:00:00+00:00")
+    end_date = datetime.fromisoformat("2019-09-17T16:24:00+00:00")
+    data = client.get_data(
+        SeriesSelector(
+            suffix_source("noaa"),
+            "h2o_feet,location=coyote_creek::water_level",
         ),
         start_date,
         end_date,

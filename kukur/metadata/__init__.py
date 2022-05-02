@@ -9,7 +9,7 @@ They have been defined here. Users of Kukur can define their own metadata fields
 
 from typing import Any, Generator, Optional, TypeVar, Union
 
-from kukur import SeriesSelector
+from kukur.base import ComplexSeriesSelector
 
 from .fields import MetadataField, register_default_fields
 
@@ -132,7 +132,7 @@ class Metadata(MetadataFields):
     """Metadata fields for one time series."""
 
     _fields: list[MetadataField] = []
-    series: SeriesSelector
+    series: ComplexSeriesSelector
 
     @classmethod
     def register_field(
@@ -148,7 +148,7 @@ class Metadata(MetadataFields):
 
     @classmethod
     def from_data(
-        cls, data: dict[str, Any], series: Optional[SeriesSelector] = None
+        cls, data: dict[str, Any], series: Optional[ComplexSeriesSelector] = None
     ) -> "Metadata":
         """Create a new Metadata object from a dictionary produced by to_data().
 
@@ -156,7 +156,7 @@ class Metadata(MetadataFields):
         if series is None:
             if "series" not in data:
                 raise AttributeError()
-            series = SeriesSelector(data["series"]["source"], data["series"]["name"])
+            series = ComplexSeriesSelector.from_data(data["series"])
         metadata = cls(series)
         for k, v in data.items():
             if k == "series":
@@ -166,7 +166,7 @@ class Metadata(MetadataFields):
 
     def __init__(
         self,
-        series: SeriesSelector,
+        series: ComplexSeriesSelector,
         values: Optional[dict[MetadataField, Any]] = None,
     ):
         super().__init__(self._fields, values)
@@ -179,10 +179,7 @@ class Metadata(MetadataFields):
     def to_data(self) -> dict[str, Any]:
         """Convert the metadata to a Dictionary with camelcase keys as expected in JSON."""
         data = super().to_data()
-        data["series"] = {
-            "source": self.series.source,
-            "name": self.series.name,
-        }
+        data["series"] = self.series.to_data()
         return data
 
 

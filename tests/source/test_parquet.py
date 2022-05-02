@@ -7,7 +7,7 @@ from dateutil.parser import parse as parse_date
 
 import kukur.config
 
-from kukur import SeriesSelector, Source
+from kukur import ComplexSeriesSelector, Source
 from kukur.source import SourceFactory
 
 
@@ -23,8 +23,10 @@ def get_source(source_name: str) -> Source:
     return source
 
 
-def make_series(source: str, name: str = "test-tag-1") -> SeriesSelector:
-    return SeriesSelector(source, name)
+def make_series(
+    source: str, tags: dict[str, str] = {"series name": "test-tag-1"}
+) -> ComplexSeriesSelector:
+    return ComplexSeriesSelector(source, tags)
 
 
 def test_dir():
@@ -50,7 +52,7 @@ def test_dir_quality():
 
 def test_dir_string():
     table = get_source("dir-parquet").get_data(
-        make_series("dir-parquet", "test-tag-5"), START_DATE, END_DATE
+        make_series("dir-parquet", {"series name": "test-tag-5"}), START_DATE, END_DATE
     )
     assert len(table) == 7
     assert table.column_names == ["ts", "value"]
@@ -91,7 +93,9 @@ def test_pivot():
 
 def test_pivot_string():
     table = get_source("pivot-parquet").get_data(
-        make_series("pivot-parquet", "test-tag-5"), START_DATE, END_DATE
+        make_series("pivot-parquet", {"series name": "test-tag-5"}),
+        START_DATE,
+        END_DATE,
     )
     assert len(table) == 7
     assert table.column_names == ["ts", "value"]

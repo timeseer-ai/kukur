@@ -26,7 +26,13 @@ try:
 except ImportError:
     HAS_REQUESTS_KERBEROS = False
 
-from kukur import DataType, Dictionary, InterpolationType, Metadata, SeriesSelector
+from kukur import (
+    ComplexSeriesSelector,
+    DataType,
+    Dictionary,
+    InterpolationType,
+    Metadata,
+)
 from kukur.exceptions import (
     InvalidDataError,
     InvalidSourceException,
@@ -112,7 +118,9 @@ class PIWebAPIDataArchiveSource:
         if not self.__request_properties.verify_ssl:
             urllib3.disable_warnings()
 
-    def search(self, selector: SeriesSelector) -> Generator[Metadata, None, None]:
+    def search(
+        self, selector: ComplexSeriesSelector
+    ) -> Generator[Metadata, None, None]:
         """Return all tags in the Data Archive."""
         session = self._get_session()
 
@@ -148,14 +156,16 @@ class PIWebAPIDataArchiveSource:
             page = page + 1
             for point in points:
                 metadata = _get_metadata(
-                    SeriesSelector(selector.source, point["Name"]),
+                    ComplexSeriesSelector(
+                        selector.source, {"series name": point["Name"]}
+                    ),
                     point,
                     dictionary_lookup,
                 )
                 if metadata is not None:
                     yield metadata
 
-    def get_metadata(self, selector: SeriesSelector) -> Metadata:
+    def get_metadata(self, selector: ComplexSeriesSelector) -> Metadata:
         """Return metadata for one tag."""
         session = self._get_session()
         response = session.get(
@@ -169,7 +179,7 @@ class PIWebAPIDataArchiveSource:
         response = session.get(
             data_archive["Links"]["Points"],
             verify=self.__request_properties.verify_ssl,
-            params=dict(nameFilter=selector.name),
+            params=dict(nameFilter=selector.tags["series name"]),
         )
         response.raise_for_status()
 
@@ -185,7 +195,7 @@ class PIWebAPIDataArchiveSource:
         return metadata
 
     def get_data(
-        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
+        self, selector: ComplexSeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         """Return data for the given time series in the given time period."""
         session = self._get_session()
@@ -234,7 +244,7 @@ class PIWebAPIDataArchiveSource:
             session.auth = self.__basic_auth
         return session
 
-    def _get_data_url(self, session, selector: SeriesSelector) -> str:
+    def _get_data_url(self, session, selector: ComplexSeriesSelector) -> str:
         response = session.get(
             self.__data_archive_uri,
             verify=self.__request_properties.verify_ssl,
@@ -247,7 +257,8 @@ class PIWebAPIDataArchiveSource:
             data_archive["Links"]["Points"],
             verify=self.__request_properties.verify_ssl,
             params=dict(
-                nameFilter=selector.name, selectedFields="Items.Links.RecordedData"
+                nameFilter=selector.tags["series name"],
+                selectedFields="Items.Links.RecordedData",
             ),
         )
         response.raise_for_status()
@@ -256,9 +267,11 @@ class PIWebAPIDataArchiveSource:
 
 
 def _get_metadata(
-    selector: SeriesSelector, point: dict, dictionary_lookup: _DictionaryLookup
+    selector: ComplexSeriesSelector, point: dict, dictionary_lookup: _DictionaryLookup
 ) -> Optional[Metadata]:
-    metadata = Metadata(SeriesSelector(selector.source, point["Name"]))
+    metadata = Metadata(
+        ComplexSeriesSelector(selector.source, {"series name": point["Name"]})
+    )
     metadata.set_field(fields.Description, point["Descriptor"])
     metadata.set_field(fields.Unit, point["EngineeringUnits"])
 

@@ -72,15 +72,35 @@ def suffix_source(source_name: str) -> str:
 def test_search(client: Client):
     many_series = list(client.search(SeriesSelector(suffix_source("crate"))))
     assert len(many_series) == 1
-    assert many_series[0].name == "test-tag-1"
+    assert many_series[0].tags["series name"] == "test-tag-1"
 
 
 def test_metadata(client: Client):
-    metadata = client.get_metadata(SeriesSelector(suffix_source("crate"), "test-tag-1"))
+    metadata = client.get_metadata(
+        SeriesSelector(suffix_source("crate"), {"series name": "test-tag-1"})
+    )
     assert metadata.get_field(fields.Unit) == "Pa"
 
 
 def test_data(client: Client):
+    data = client.get_data(
+        SeriesSelector(suffix_source("crate"), {"series name": "test-tag-1"}),
+        datetime.fromisoformat("2022-01-01T00:00:00+00:00"),
+        datetime.fromisoformat("2022-01-03T00:00:00+00:00"),
+    )
+    assert len(data) == 2
+    assert data["ts"][0].as_py() == datetime.fromisoformat("2022-01-01T00:00:00+00:00")
+    assert data["value"][0].as_py() == 42
+    assert data["ts"][1].as_py() == datetime.fromisoformat("2022-01-02T00:00:00+00:00")
+    assert data["value"][1].as_py() == 43
+
+
+def test_metadata_backwards_compatibility(client: Client):
+    metadata = client.get_metadata(SeriesSelector(suffix_source("crate"), "test-tag-1"))
+    assert metadata.get_field(fields.Unit) == "Pa"
+
+
+def test_data_backwards_compatibility(client: Client):
     data = client.get_data(
         SeriesSelector(suffix_source("crate"), "test-tag-1"),
         datetime.fromisoformat("2022-01-01T00:00:00+00:00"),

@@ -8,26 +8,26 @@ This takes care to not persistently store metadata."""
 import logging
 
 from datetime import datetime, timezone
-from typing import Any, Generator, List
+from typing import Any, Generator
 
 from dateutil.tz import tzlocal
 
-from kukur import Metadata, SeriesSelector, Source
+from kukur import ComplexSeriesSelector, Metadata, Source
 
 
 logger = logging.getLogger(__name__)
 
 
-def search(source: Source, source_name: str) -> Generator[List[Any], None, None]:
+def search(source: Source, source_name: str) -> Generator[list[Any], None, None]:
     """Test listing all series (or metadata) in a source."""
     header_printed = False
     logger.info('Searching for time series in "%s"', source_name)
-    for result in source.search(SeriesSelector(source_name)):
-        if isinstance(result, SeriesSelector):
+    for result in source.search(ComplexSeriesSelector(source_name)):
+        if isinstance(result, ComplexSeriesSelector):
             if not header_printed:
                 yield ["series name"]
                 header_printed = True
-            yield [result.name]
+            yield [result.tags["series name"]]
         else:
             if not header_printed:
                 yield _get_metadata_header(result)
@@ -37,12 +37,14 @@ def search(source: Source, source_name: str) -> Generator[List[Any], None, None]
 
 def metadata(
     source: Source, source_name: str, series_name: str
-) -> Generator[List[Any], None, None]:
+) -> Generator[list[Any], None, None]:
     """Test fetching metadata from a source.
 
     This does not store the metadata."""
     logger.info('Requesting metadata for "%s (%s)"', series_name, source_name)
-    result = source.get_metadata(SeriesSelector(source_name, series_name))
+    result = source.get_metadata(
+        ComplexSeriesSelector(source_name, {"series name": series_name})
+    )
     yield _get_metadata_header(result)
     yield _get_metadata(result)
 
@@ -53,7 +55,7 @@ def data(
     series_name: str,
     start_date: datetime,
     end_date: datetime,
-) -> Generator[List[Any], None, None]:
+) -> Generator[list[Any], None, None]:
     """Test fetching data for a time series."""
     start_date = _make_aware(start_date)
     end_date = _make_aware(end_date)
@@ -66,7 +68,9 @@ def data(
     )
 
     table = source.get_data(
-        SeriesSelector(source_name, series_name), start_date, end_date
+        ComplexSeriesSelector(source_name, {"series name": series_name}),
+        start_date,
+        end_date,
     )
     if "quality" in table.column_names:
         for ts, value, quality in zip(table["ts"], table["value"], table["quality"]):
@@ -76,12 +80,14 @@ def data(
             yield [ts.as_py().isoformat(), value.as_py()]
 
 
-def _get_metadata_header(result: Metadata) -> List[str]:
+def _get_metadata_header(result: Metadata) -> list[str]:
     return ["series name"] + [k for k, _ in result.iter_serialized()]
 
 
-def _get_metadata(result: Metadata) -> List[Any]:
-    return [result.series.name] + [v for _, v in result.iter_serialized()]
+def _get_metadata(result: Metadata) -> list[Any]:
+    return [result.series.tags["series name"]] + [
+        v for _, v in result.iter_serialized()
+    ]
 
 
 def _make_aware(timestamp: datetime) -> datetime:
