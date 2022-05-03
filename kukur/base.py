@@ -46,7 +46,7 @@ class ComplexSeriesSelector:
     def get_series_name(self) -> str:
         """Get the series name with tags and fields included.
 
-        For sources that cannot handle tags and fiels yet."""
+        For sources that cannot handle tags and fields yet."""
         series_tags: list[str] = []
         for tag_key, tag_value in self.tags.items():
             if tag_key == "series name":
