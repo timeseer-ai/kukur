@@ -60,7 +60,8 @@ class SeriesSelector:
         """Convert to JSON object."""
         return dict(source=self.source, tags=self.tags, field=self.field)
 
-    def get_series_name(self) -> str:
+    @property
+    def name(self) -> str:
         """Get the series name with tags and fields included.
 
         For sources that cannot handle tags and fields yet."""

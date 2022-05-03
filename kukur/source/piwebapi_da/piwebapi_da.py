@@ -175,7 +175,7 @@ class PIWebAPIDataArchiveSource:
         response = session.get(
             data_archive["Links"]["Points"],
             verify=self.__request_properties.verify_ssl,
-            params=dict(nameFilter=selector.get_series_name()),
+            params=dict(nameFilter=selector.name),
         )
         response.raise_for_status()
 
@@ -253,7 +253,7 @@ class PIWebAPIDataArchiveSource:
             data_archive["Links"]["Points"],
             verify=self.__request_properties.verify_ssl,
             params=dict(
-                nameFilter=selector.get_series_name(),
+                nameFilter=selector.name,
                 selectedFields="Items.Links.RecordedData",
             ),
         )

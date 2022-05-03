@@ -109,7 +109,7 @@ class CSVSource:
                 series_name = row[self.__mappers.metadata.from_kukur("series name")]
                 metadata = None
                 if "series name" in selector.tags:
-                    if series_name == selector.get_series_name():
+                    if series_name == selector.name:
                         metadata = Metadata(
                             SeriesSelector.from_tags(
                                 selector.source, selector.tags, selector.field
@@ -160,7 +160,7 @@ class CSVSource:
                     raise InvalidMetadataError('column "series name" not found')
                 if (
                     row[self.__mappers.metadata.from_kukur("series name")]
-                    != selector.get_series_name()
+                    != selector.name
                 ):
                     continue
                 field_names = [field for field, _ in metadata.iter_names()]
@@ -240,9 +240,7 @@ class CSVSource:
 
         # pylint: disable=no-member
         data = all_data.filter(
-            pyarrow.compute.equal(
-                all_data["series name"], pa.scalar(selector.get_series_name())
-            )
+            pyarrow.compute.equal(all_data["series name"], pa.scalar(selector.name))
         )
         return data.drop(["series name"])
 
@@ -277,12 +275,8 @@ class CSVSource:
 
 def _read_pivot_data(loader: Loader, selector: SeriesSelector) -> pa.Table:
     all_data = pyarrow.csv.read_csv(loader.open())
-    if selector.get_series_name() not in all_data.column_names:
-        raise InvalidDataError(f'column "{selector.get_series_name()}" not found')
+    if selector.name not in all_data.column_names:
+        raise InvalidDataError(f'column "{selector.name}" not found')
     columns = ["ts", "value"]
     schema = pa.schema([("ts", pa.timestamp("us", "utc")), ("value", pa.float64())])
-    return (
-        all_data.select([0, selector.get_series_name()])
-        .rename_columns(columns)
-        .cast(schema)
-    )
+    return all_data.select([0, selector.name]).rename_columns(columns).cast(schema)
