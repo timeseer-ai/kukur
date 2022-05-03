@@ -7,7 +7,7 @@ from dateutil.parser import parse as parse_date
 
 import kukur.config
 
-from kukur import ComplexSeriesSelector, Source
+from kukur import SeriesSelector, Source
 from kukur.source import SourceFactory
 
 
@@ -25,8 +25,8 @@ def get_source(source_name: str) -> Source:
 
 def make_series(
     source: str, tags: dict[str, str] = {"series name": "test-tag-1"}
-) -> ComplexSeriesSelector:
-    return ComplexSeriesSelector(source, tags)
+) -> SeriesSelector:
+    return SeriesSelector.from_tags(source, tags)
 
 
 def test_dir():

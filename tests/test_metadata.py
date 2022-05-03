@@ -4,14 +4,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from kukur import (
-    ComplexSeriesSelector,
+    SeriesSelector,
     DataType,
     Dictionary,
     InterpolationType,
 )
 from kukur.metadata import Metadata, MetadataField, fields
 
-SERIES = ComplexSeriesSelector("test", {"series name": "test-tag-1"})
+SERIES = SeriesSelector("test", "test-tag-1")
 
 
 def test_series_json() -> None:
@@ -32,7 +32,7 @@ def test_repr() -> None:
     metadata.set_field_by_name("custom2", "value2")
 
     assert (
-        "ComplexSeriesSelector(source='test', tags={'series name': 'test-tag-1'}, field='value')"
+        "SeriesSelector(source='test', tags={'series name': 'test-tag-1'}, field='value')"
         in repr(metadata)
     )
     assert "'description': 'a test tag'" in repr(metadata)

@@ -76,15 +76,13 @@ def test_search(client: Client):
 
 
 def test_metadata(client: Client):
-    metadata = client.get_metadata(
-        SeriesSelector(suffix_source("crate"), {"series name": "test-tag-1"})
-    )
+    metadata = client.get_metadata(SeriesSelector(suffix_source("crate"), "test-tag-1"))
     assert metadata.get_field(fields.Unit) == "Pa"
 
 
 def test_data(client: Client):
     data = client.get_data(
-        SeriesSelector(suffix_source("crate"), {"series name": "test-tag-1"}),
+        SeriesSelector(suffix_source("crate"), "test-tag-1"),
         datetime.fromisoformat("2022-01-01T00:00:00+00:00"),
         datetime.fromisoformat("2022-01-03T00:00:00+00:00"),
     )

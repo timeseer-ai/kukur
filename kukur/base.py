@@ -24,12 +24,29 @@ class Dictionary:
 
 
 @dataclass
-class ComplexSeriesSelector:
+class SeriesSelector:
     """SeriesSelector identifies a group of time series matching the given pattern."""
 
     source: str
     tags: dict[str, str] = data_field(default_factory=dict)
     field: str = "value"
+
+    def __init__(
+        self, source: str, tags: Union[str, dict[str, str]] = None, field: str = "value"
+    ):
+        tags_dict = {}
+        if isinstance(tags, str):
+            tags_dict["series name"] = tags
+        if isinstance(tags, dict):
+            tags_dict = tags
+        self.source = source
+        self.tags = tags_dict
+        self.field = field
+
+    @classmethod
+    def from_tags(cls, source: str, tags: dict[str, str], field: str = "value"):
+        """Create the SeriesSelector from tags."""
+        return cls(source, tags, field)
 
     @classmethod
     def from_data(cls, data: dict[str, Any]):
@@ -43,7 +60,8 @@ class ComplexSeriesSelector:
         """Convert to JSON object."""
         return dict(source=self.source, tags=self.tags, field=self.field)
 
-    def get_series_name(self) -> str:
+    @property
+    def name(self) -> str:
         """Get the series name with tags and fields included.
 
         For sources that cannot handle tags and fields yet."""
@@ -57,21 +75,6 @@ class ComplexSeriesSelector:
         if self.field == "value":
             return f"{series_string}"
         return f"{series_string}::{self.field}"
-
-
-@dataclass
-class SeriesSelector(ComplexSeriesSelector):
-    """SeriesSelector identifies a group of time series matching the given pattern."""
-
-    def __init__(
-        self, source: str, tags: Union[str, dict[str, str]] = None, field: str = "value"
-    ):
-        tags_dict = {}
-        if isinstance(tags, str):
-            tags_dict["series name"] = tags
-        if isinstance(tags, dict):
-            tags_dict = tags
-        super().__init__(source, tags_dict, field)
 
 
 class InterpolationType(Enum):

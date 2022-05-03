@@ -13,7 +13,7 @@ from typing import Generator, Optional, Union
 import dateutil.parser
 import pyarrow as pa
 
-from kukur import ComplexSeriesSelector, Dictionary, Metadata
+from kukur import SeriesSelector, Dictionary, Metadata
 from kukur.exceptions import KukurException
 from kukur.metadata import fields
 from kukur.source.metadata import MetadataValueMapper
@@ -113,8 +113,8 @@ class BaseSQLSource(ABC):
         self._quality_mapper = quality_mapper
 
     def search(
-        self, selector: ComplexSeriesSelector
-    ) -> Generator[Union[ComplexSeriesSelector, Metadata], None, None]:
+        self, selector: SeriesSelector
+    ) -> Generator[Union[SeriesSelector, Metadata], None, None]:
         """Search for time series matching the given selector."""
         if self._config.list_query is None:
             return
@@ -125,7 +125,7 @@ class BaseSQLSource(ABC):
         for metadata in self.__search_metadata(selector):
             yield metadata
 
-    def get_metadata(self, selector: ComplexSeriesSelector) -> Metadata:
+    def get_metadata(self, selector: SeriesSelector) -> Metadata:
         """Read metadata from the DB-API connection."""
         metadata = Metadata(selector)
         if self._config.metadata_query is None:
@@ -134,7 +134,7 @@ class BaseSQLSource(ABC):
         cursor = connection.cursor()
 
         query = self._config.metadata_query
-        params = [selector.get_series_name()]
+        params = [selector.name]
         if self._config.query_string_parameters:
             query = query.format(*params)
             params = []
@@ -162,7 +162,7 @@ class BaseSQLSource(ABC):
         return metadata
 
     def get_data(
-        self, selector: ComplexSeriesSelector, start_date: datetime, end_date: datetime
+        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         """Return data using the specified DB-API query."""
         if self._config.data_query is None:
@@ -172,7 +172,7 @@ class BaseSQLSource(ABC):
 
         query = self._config.data_query
         params = [
-            selector.get_series_name(),
+            selector.name,
             self.__format_date(start_date),
             self.__format_date(end_date),
         ]
@@ -190,7 +190,7 @@ class BaseSQLSource(ABC):
                 logger.info(
                     'Data from "%s (%s)" at %s has value %s with type %s',
                     selector.source,
-                    selector.get_series_name(),
+                    selector.name,
                     row[0],
                     row[1],
                     type(row[1]),
@@ -221,17 +221,17 @@ class BaseSQLSource(ABC):
         return pa.Table.from_pydict({"ts": timestamps, "value": values})
 
     def __search_names(
-        self, selector: ComplexSeriesSelector
-    ) -> Generator[ComplexSeriesSelector, None, None]:
+        self, selector: SeriesSelector
+    ) -> Generator[SeriesSelector, None, None]:
         connection = self.connect()
         cursor = connection.cursor()
         cursor.execute(self._config.list_query)
 
         for (series_name,) in cursor:
-            yield ComplexSeriesSelector(selector.source, {"series name": series_name})
+            yield SeriesSelector(selector.source, series_name)
 
     def __search_metadata(
-        self, selector: ComplexSeriesSelector
+        self, selector: SeriesSelector
     ) -> Generator[Metadata, None, None]:
         connection = self.connect()
         cursor = connection.cursor()
@@ -247,9 +247,7 @@ class BaseSQLSource(ABC):
         if series_name_index is None:
             raise InvalidMetadataError('column "series name" not found')
         for row in cursor:
-            selector = ComplexSeriesSelector(
-                selector.source, {"series name": row[series_name_index]}
-            )
+            selector = SeriesSelector(selector.source, row[series_name_index])
             metadata = Metadata(selector)
             for i, name in enumerate(self._config.list_columns):
                 if i == series_name_index:

@@ -68,7 +68,7 @@ def test_interpolation_type_mapping(client: Client, suffix_source):
 
 def test_metadata(client: Client, suffix_source):
     dictionary_series = client.get_metadata(
-        SeriesSelector(suffix_source("sql"), {"series name": "test-tag-6"})
+        SeriesSelector(suffix_source("sql"), "test-tag-6")
     )
     assert dictionary_series.get_field(fields.Description) == "A dictionary series"
     assert (
@@ -87,7 +87,7 @@ def test_dictionary_data(client: Client, suffix_source):
     start_date = datetime.fromisoformat("2020-01-01T00:00:00+00:00")
     end_date = datetime.fromisoformat("2021-01-01T00:00:00+00:00")
     data = client.get_data(
-        SeriesSelector(suffix_source("sql-list"), {"series name": "test-tag-6"}),
+        SeriesSelector(suffix_source("sql-list"), "test-tag-6"),
         start_date,
         end_date,
     )
@@ -100,7 +100,7 @@ def test_dictionary_data(client: Client, suffix_source):
 
 def test_metadata_string_query(client: Client, suffix_source):
     dictionary_series = client.get_metadata(
-        SeriesSelector(suffix_source("sql-string"), {"series name": "test-tag-6"})
+        SeriesSelector(suffix_source("sql-string"), "test-tag-6")
     )
     assert dictionary_series.get_field(fields.Description) == "A dictionary series"
     assert (
@@ -119,7 +119,7 @@ def test_data_string_query(client: Client, suffix_source):
     start_date = datetime.fromisoformat("2020-01-01T00:00:00+00:00")
     end_date = datetime.fromisoformat("2021-01-01T00:00:00+00:00")
     data = client.get_data(
-        SeriesSelector(suffix_source("sql-string"), {"series name": "test-tag-6"}),
+        SeriesSelector(suffix_source("sql-string"), "test-tag-6"),
         start_date,
         end_date,
     )
@@ -132,9 +132,7 @@ def test_data_string_query(client: Client, suffix_source):
 
 def test_metadata_no_dictionary_query(client: Client, suffix_source):
     dictionary_series = client.get_metadata(
-        SeriesSelector(
-            suffix_source("sql-no-dictionary-query"), {"series name": "test-tag-6"}
-        )
+        SeriesSelector(suffix_source("sql-no-dictionary-query"), "test-tag-6")
     )
     assert dictionary_series.get_field(fields.Description) == "A dictionary series"
     assert (
@@ -149,7 +147,7 @@ def test_data_null(client: Client, suffix_source):
     start_date = datetime.fromisoformat("2020-01-01T00:00:00+00:00")
     end_date = datetime.fromisoformat("2021-01-01T00:00:00+00:00")
     data = client.get_data(
-        SeriesSelector(suffix_source("sql-list"), {"series name": "test-tag-7"}),
+        SeriesSelector(suffix_source("sql-list"), "test-tag-7"),
         start_date,
         end_date,
     )
@@ -164,7 +162,7 @@ def test_quality_data(client: Client, suffix_source):
     start_date = datetime.fromisoformat("2020-01-01T00:00:00+00:00")
     end_date = datetime.fromisoformat("2021-01-01T00:00:00+00:00")
     data = client.get_data(
-        SeriesSelector(suffix_source("sql-quality"), {"series name": "test-tag-1"}),
+        SeriesSelector(suffix_source("sql-quality"), "test-tag-1"),
         start_date,
         end_date,
     )
@@ -181,7 +179,7 @@ def test_string_quality_data(client: Client, suffix_source):
     start_date = datetime.fromisoformat("2020-01-01T00:00:00+00:00")
     end_date = datetime.fromisoformat("2021-01-01T00:00:00+00:00")
     data = client.get_data(
-        SeriesSelector(suffix_source("sql-quality-str"), {"series name": "test-tag-1"}),
+        SeriesSelector(suffix_source("sql-quality-str"), "test-tag-1"),
         start_date,
         end_date,
     )

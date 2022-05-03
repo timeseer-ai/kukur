@@ -16,7 +16,7 @@ try:
 except ImportError:
     HAS_INFLUX = False
 
-from kukur import ComplexSeriesSelector, Metadata
+from kukur import SeriesSelector, Metadata
 from kukur.exceptions import InvalidDataError, KukurException, MissingModuleException
 
 
@@ -70,9 +70,7 @@ class InfluxSource:
         except InfluxDBClientError as err:
             raise InvalidClientConnection(err) from err
 
-    def search(
-        self, selector: ComplexSeriesSelector
-    ) -> Generator[Metadata, None, None]:
+    def search(self, selector: SeriesSelector) -> Generator[Metadata, None, None]:
         """Search for series matching the given selector."""
         many_series = self.__client.get_list_series()
         fields = self.__client.query("SHOW FIELD KEYS")
@@ -80,7 +78,7 @@ class InfluxSource:
             measurement, tags = _parse_influx_series(series)
             for field in fields.get_points(measurement=measurement):
                 yield Metadata(
-                    ComplexSeriesSelector(
+                    SeriesSelector.from_tags(
                         selector.source,
                         tags,
                         field["fieldKey"],
@@ -88,12 +86,12 @@ class InfluxSource:
                 )
 
     # pylint: disable=no-self-use
-    def get_metadata(self, selector: ComplexSeriesSelector) -> Metadata:
+    def get_metadata(self, selector: SeriesSelector) -> Metadata:
         """Influx currently always returns empty metadata."""
         return Metadata(selector)
 
     def get_data(
-        self, selector: ComplexSeriesSelector, start_date: datetime, end_date: datetime
+        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         """Return data for the given time series in the given time period."""
         if "series name" not in selector.tags:

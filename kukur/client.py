@@ -56,7 +56,9 @@ class Client:
         for result in results:
             data = json.loads(result.body.to_pybytes())
             if "series" not in data:
-                yield SeriesSelector(data["source"], data["tags"], data["field"])
+                yield SeriesSelector.from_tags(
+                    data["source"], data["tags"], data["field"]
+                )
             else:
                 yield _read_metadata(data)
 

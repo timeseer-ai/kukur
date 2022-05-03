@@ -25,7 +25,7 @@ from kukur.source import (
     piwebapi_da,
 )
 
-from kukur import ComplexSeriesSelector, Metadata, Source as SourceProtocol
+from kukur import SeriesSelector, Metadata, Source as SourceProtocol
 from kukur.exceptions import InvalidSourceException
 from kukur.source.quality import QualityMapper
 
@@ -112,8 +112,8 @@ class SourceWrapper:
             )
 
     def search(
-        self, selector: ComplexSeriesSelector
-    ) -> Generator[Union[ComplexSeriesSelector, Metadata], None, None]:
+        self, selector: SeriesSelector
+    ) -> Generator[Union[SeriesSelector, Metadata], None, None]:
         """Search for all time series matching the given selector.
 
         The result is either a sequence of selectors for each time series in the source or a sequence of metadata
@@ -134,13 +134,13 @@ class SourceWrapper:
         for result in results:
             if (
                 len(self.__metadata) == 0
-                or isinstance(result, ComplexSeriesSelector)
+                or isinstance(result, SeriesSelector)
                 or "series name" not in result.series.tags
             ):
                 yield result
             else:
                 extra_metadata = self.get_metadata(
-                    ComplexSeriesSelector(
+                    SeriesSelector.from_tags(
                         result.series.source, result.series.tags, result.series.field
                     )
                 )
@@ -149,7 +149,7 @@ class SourceWrapper:
                         extra_metadata.set_field_by_name(k, v)
                 yield extra_metadata
 
-    def get_metadata(self, selector: ComplexSeriesSelector) -> Metadata:
+    def get_metadata(self, selector: SeriesSelector) -> Metadata:
         """Return the metadata for the given series.
 
         The resulting metadata is the combination of the metadata in the source itself and any additional
@@ -165,7 +165,7 @@ class SourceWrapper:
                 self.__query_retry_count,
                 self.__query_retry_delay,
                 query_fn,
-                f'Metadata query for "{selector.get_series_name()}" ({selector.source}) failed',
+                f'Metadata query for "{selector.name}" ({selector.source}) failed',
             )
             if len(metadata_source.fields) == 0:
                 for k, v in received_metadata.iter_names():
@@ -179,7 +179,7 @@ class SourceWrapper:
         return metadata
 
     def get_data(
-        self, selector: ComplexSeriesSelector, start_date: datetime, end_date: datetime
+        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         """Return the data for the given series in the given time frame, taking into account the request policy."""
         if start_date == end_date or "series name" not in selector.tags:
@@ -191,7 +191,7 @@ class SourceWrapper:
         return _concat_tables(tables)
 
     def _get_data_chunk(
-        self, selector: ComplexSeriesSelector, start_date: datetime, end_date: datetime
+        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ):
         query_fn = functools.partial(
             self.__source.data.get_data, selector, start_date, end_date
@@ -200,7 +200,7 @@ class SourceWrapper:
             self.__query_retry_count,
             self.__query_retry_delay,
             query_fn,
-            f'Data query for "{selector.get_series_name()}" ({selector.source}) ({start_date} to {end_date}) failed',
+            f'Data query for "{selector.name}" ({selector.source}) ({start_date} to {end_date}) failed',
         )
 
     def __to_intervals(

@@ -10,7 +10,7 @@ import pyarrow.flight as fl
 
 from dateutil.parser import parse as parse_date
 
-from kukur import Metadata, ComplexSeriesSelector, Source
+from kukur import Metadata, SeriesSelector, Source
 from kukur.app import Kukur
 
 __all__ = ["JSONFlightServer"]
@@ -77,7 +77,7 @@ class KukurFlightServer:
         This returns either a SeriesSelector or Metadata as JSON, depending on
         what is supported by the source."""
         request = json.loads(action.body.to_pybytes())
-        selector = ComplexSeriesSelector.from_data(request)
+        selector = SeriesSelector.from_data(request)
         for result in self.__source.search(selector):
             if isinstance(result, Metadata):
                 assert "series name" in result.series.tags
@@ -95,13 +95,13 @@ class KukurFlightServer:
     def get_metadata(self, _, action: fl.Action) -> list[bytes]:
         """Return metadata for the given time series as JSON."""
         request = json.loads(action.body.to_pybytes())
-        selector = ComplexSeriesSelector.from_data(request)
+        selector = SeriesSelector.from_data(request)
         metadata = self.__source.get_metadata(selector).to_data()
         return [json.dumps(metadata).encode()]
 
     def get_data(self, _, request) -> Any:
         """Return time series data as Arrow data."""
-        selector = ComplexSeriesSelector.from_data(request["selector"])
+        selector = SeriesSelector.from_data(request["selector"])
         start_date = parse_date(request["start_date"])
         end_date = parse_date(request["end_date"])
         data = self.__source.get_data(selector, start_date, end_date)
