@@ -10,7 +10,7 @@ from datetime import datetime
 
 from dateutil.parser import parse as parse_date
 
-from kukur import ComplexSeriesSelector, InterpolationType, Metadata
+from kukur import SeriesSelector, InterpolationType, Metadata
 from kukur.metadata import fields
 from kukur.source.metadata import MetadataValueMapper
 from kukur.source.quality import QualityMapper
@@ -96,7 +96,7 @@ def test_metadata_value():
     """
     )
     metadata = source.get_metadata(
-        ComplexSeriesSelector("dummy", {"series name": "random"})
+        SeriesSelector.from_tags("dummy", {"series name": "random"})
     )
     assert metadata.get_field(fields.DictionaryName) == "prisma"
 
@@ -119,7 +119,7 @@ def test_metadata_none_value_on_empty_return():
     """
     )
     metadata = source.get_metadata(
-        ComplexSeriesSelector("dummy", {"series name": "random"})
+        SeriesSelector.from_tags("dummy", {"series name": "random"})
     )
     assert metadata.get_field(fields.DictionaryName) is None
 
@@ -141,7 +141,7 @@ def test_list_none_value_on_empty_return():
         insert into Metadata (series_name, dictionary_name) values ('random', '');
     """
     )
-    for metadata in source.search(ComplexSeriesSelector("dummy")):
+    for metadata in source.search(SeriesSelector("dummy")):
         assert metadata.series.tags["series name"] == "random"
         assert metadata.get_field(fields.DictionaryName) is None
 
@@ -165,7 +165,7 @@ def test_custom_fields() -> None:
         """
     )
     metadata = source.get_metadata(
-        ComplexSeriesSelector("dummy", {"series name": "random"})
+        SeriesSelector.from_tags("dummy", {"series name": "random"})
     )
     assert metadata.get_field(fields.InterpolationType) == InterpolationType.LINEAR
     assert metadata.get_field_by_name("process type") == "batch"
@@ -189,7 +189,7 @@ def test_custom_fields_search() -> None:
         insert into Metadata (series_name, interpolation_type, process_type) values ('random', 'LINEAR', 'batch');
         """
     )
-    all_metadata = list(source.search(ComplexSeriesSelector("dummy")))
+    all_metadata = list(source.search(SeriesSelector("dummy")))
     assert len(all_metadata) == 1
     metadata = all_metadata[0]
     assert isinstance(metadata, Metadata)
@@ -221,7 +221,7 @@ def test_accuracy_percentage_metadata() -> None:
         """
     )
     metadata = source.get_metadata(
-        ComplexSeriesSelector("dummy", {"series name": "random"})
+        SeriesSelector.from_tags("dummy", {"series name": "random"})
     )
     assert metadata.get_field(fields.AccuracyPercentage) == 2
     assert metadata.get_field(fields.LimitLowPhysical) == 0
@@ -253,7 +253,7 @@ def test_accuracy_percentage_metadata_string() -> None:
         """
     )
     metadata = source.get_metadata(
-        ComplexSeriesSelector("dummy", {"series name": "random"})
+        SeriesSelector.from_tags("dummy", {"series name": "random"})
     )
     assert metadata.get_field(fields.AccuracyPercentage) is None
     assert metadata.get_field(fields.LimitLowPhysical) == 0
@@ -285,7 +285,7 @@ def test_accuracy_percentage_search() -> None:
         insert into Metadata (series_name, accuracy_percentage, limit_low, limit_high) values ('random', 2, 0, 10);
         """
     )
-    all_metadata = list(source.search(ComplexSeriesSelector("dummy")))
+    all_metadata = list(source.search(SeriesSelector("dummy")))
     assert len(all_metadata) == 1
     metadata = all_metadata[0]
     assert isinstance(metadata, Metadata)
@@ -319,7 +319,7 @@ def test_accuracy_percentage_search_with_wrong_string_value() -> None:
         insert into Metadata (series_name, accuracy_percentage, limit_low, limit_high) values ('random', '', 0, 10);
         """
     )
-    all_metadata = list(source.search(ComplexSeriesSelector("dummy")))
+    all_metadata = list(source.search(SeriesSelector("dummy")))
     assert len(all_metadata) == 1
     metadata = all_metadata[0]
     assert isinstance(metadata, Metadata)
@@ -362,7 +362,7 @@ def test_blob_values():
     )
 
     data = source.get_data(
-        ComplexSeriesSelector("dummy", {"series name": "blob-series"}),
+        SeriesSelector.from_tags("dummy", {"series name": "blob-series"}),
         datetime.fromisoformat("2021-01-01T00:00:00+00:00"),
         datetime.fromisoformat("2021-02-01T00:00:00+00:00"),
     )
@@ -396,7 +396,7 @@ def test_datetime_values():
     )
 
     data = source.get_data(
-        ComplexSeriesSelector("dummy", {"series name": "datetime-series"}),
+        SeriesSelector.from_tags("dummy", {"series name": "datetime-series"}),
         datetime.fromisoformat("2021-01-01T00:00:00+00:00"),
         datetime.fromisoformat("2021-02-01T00:00:00+00:00"),
     )
@@ -425,7 +425,7 @@ def test_timezone_on_queries():
 
     source = MockSQLSource(config, MetadataValueMapper(), QualityMapper(), execute_fn)
     source.get_data(
-        ComplexSeriesSelector("dummy", {"series name": "series"}),
+        SeriesSelector.from_tags("dummy", {"series name": "series"}),
         datetime.fromisoformat("2021-08-01T00:00:00+00:00"),
         datetime.fromisoformat("2021-08-02T00:00:00+00:00"),
     )
@@ -450,7 +450,7 @@ def test_string_in_timezone_on_queries():
 
     source = MockSQLSource(config, MetadataValueMapper(), QualityMapper(), execute_fn)
     source.get_data(
-        ComplexSeriesSelector("dummy", {"series name": "series"}),
+        SeriesSelector.from_tags("dummy", {"series name": "series"}),
         datetime.fromisoformat("2021-08-01T00:00:00+00:00"),
         datetime.fromisoformat("2021-08-02T00:00:00+00:00"),
     )
@@ -495,7 +495,7 @@ def test_quality_flag():
     )
 
     data = source.get_data(
-        ComplexSeriesSelector("dummy", {"series name": "quality-series"}),
+        SeriesSelector.from_tags("dummy", {"series name": "quality-series"}),
         datetime.fromisoformat("2021-01-01T00:00:00+00:00"),
         datetime.fromisoformat("2021-02-01T00:00:00+00:00"),
     )

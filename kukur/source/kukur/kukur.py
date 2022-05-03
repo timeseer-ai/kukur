@@ -7,7 +7,7 @@ from typing import Any, Generator, Tuple, Union
 
 import pyarrow as pa
 
-from kukur import ComplexSeriesSelector, Metadata, SeriesSelector
+from kukur import Metadata, SeriesSelector
 from kukur.client import Client
 from kukur.exceptions import InvalidDataError
 
@@ -35,24 +35,28 @@ class KukurSource:
         self.__source_name = source_name
 
     def search(
-        self, selector: ComplexSeriesSelector
-    ) -> Generator[Union[Metadata, ComplexSeriesSelector], None, None]:
+        self, selector: SeriesSelector
+    ) -> Generator[Union[Metadata, SeriesSelector], None, None]:
         """Search time series using the Flight service."""
-        query = SeriesSelector(self.__source_name, selector.tags, selector.field)
+        query = SeriesSelector.from_tags(
+            self.__source_name, selector.tags, selector.field
+        )
         for result in self.__client.search(query):
-            if isinstance(result, ComplexSeriesSelector):
-                yield ComplexSeriesSelector(selector.source, result.tags, result.field)
+            if isinstance(result, SeriesSelector):
+                yield SeriesSelector.from_tags(
+                    selector.source, result.tags, result.field
+                )
             else:
-                result.series = ComplexSeriesSelector(
+                result.series = SeriesSelector.from_tags(
                     selector.source, result.series.tags, result.series.field
                 )
                 yield result
 
-    def get_metadata(self, selector: ComplexSeriesSelector) -> Metadata:
+    def get_metadata(self, selector: SeriesSelector) -> Metadata:
         """Get metadata from the Flight service."""
         if "series name" not in selector.tags:
             raise InvalidDataError("No series name")
-        remote_selector = SeriesSelector(
+        remote_selector = SeriesSelector.from_tags(
             self.__source_name, selector.tags, selector.field
         )
         metadata = self.__client.get_metadata(remote_selector)
@@ -60,10 +64,10 @@ class KukurSource:
         return metadata
 
     def get_data(
-        self, selector: ComplexSeriesSelector, start_date: datetime, end_date: datetime
+        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         """Get data from the Flight service."""
-        remote_selector = SeriesSelector(
+        remote_selector = SeriesSelector.from_tags(
             self.__source_name, selector.tags, selector.field
         )
         return self.__client.get_data(remote_selector, start_date, end_date)

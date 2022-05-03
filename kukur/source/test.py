@@ -12,7 +12,7 @@ from typing import Any, Generator
 
 from dateutil.tz import tzlocal
 
-from kukur import ComplexSeriesSelector, Metadata, Source
+from kukur import SeriesSelector, Metadata, Source
 
 
 logger = logging.getLogger(__name__)
@@ -22,8 +22,8 @@ def search(source: Source, source_name: str) -> Generator[list[Any], None, None]
     """Test listing all series (or metadata) in a source."""
     header_printed = False
     logger.info('Searching for time series in "%s"', source_name)
-    for result in source.search(ComplexSeriesSelector(source_name)):
-        if isinstance(result, ComplexSeriesSelector):
+    for result in source.search(SeriesSelector(source_name)):
+        if isinstance(result, SeriesSelector):
             if not header_printed:
                 yield ["series name"]
                 header_printed = True
@@ -42,9 +42,7 @@ def metadata(
 
     This does not store the metadata."""
     logger.info('Requesting metadata for "%s (%s)"', series_name, source_name)
-    result = source.get_metadata(
-        ComplexSeriesSelector(source_name, {"series name": series_name})
-    )
+    result = source.get_metadata(SeriesSelector(source_name, series_name))
     yield _get_metadata_header(result)
     yield _get_metadata(result)
 
@@ -68,7 +66,7 @@ def data(
     )
 
     table = source.get_data(
-        ComplexSeriesSelector(source_name, {"series name": series_name}),
+        SeriesSelector(source_name, series_name),
         start_date,
         end_date,
     )

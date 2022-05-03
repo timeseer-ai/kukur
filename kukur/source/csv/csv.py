@@ -20,7 +20,7 @@ import pyarrow as pa
 import pyarrow.csv
 import pyarrow.compute
 
-from kukur import ComplexSeriesSelector, Dictionary, Metadata
+from kukur import SeriesSelector, Dictionary, Metadata
 
 from kukur.loader import Loader, from_config as loader_from_config
 from kukur.exceptions import InvalidDataError, InvalidSourceException, KukurException
@@ -97,9 +97,7 @@ class CSVSource:
         self.__data_format = data_format
         self.__mappers = mappers
 
-    def search(
-        self, selector: ComplexSeriesSelector
-    ) -> Generator[Metadata, None, None]:
+    def search(self, selector: SeriesSelector) -> Generator[Metadata, None, None]:
         """Search for series matching the given selector."""
         if self.__loaders.metadata is None:
             return
@@ -113,7 +111,7 @@ class CSVSource:
                 if "series name" in selector.tags:
                     if series_name == selector.get_series_name():
                         metadata = Metadata(
-                            ComplexSeriesSelector(
+                            SeriesSelector.from_tags(
                                 selector.source, selector.tags, selector.field
                             )
                         )
@@ -121,7 +119,7 @@ class CSVSource:
                     selector_tags = selector.tags.copy()
                     selector_tags["series name"] = series_name
                     metadata = Metadata(
-                        ComplexSeriesSelector(
+                        SeriesSelector.from_tags(
                             selector.source, selector_tags, selector.field
                         )
                     )
@@ -149,7 +147,7 @@ class CSVSource:
                         )
                     yield metadata
 
-    def get_metadata(self, selector: ComplexSeriesSelector) -> Metadata:
+    def get_metadata(self, selector: SeriesSelector) -> Metadata:
         """Read metadata, taking any configured metadata mapping into account."""
         metadata = Metadata(selector)
         if self.__loaders.metadata is None:
@@ -200,7 +198,7 @@ class CSVSource:
             return Dictionary(mapping)
 
     def get_data(
-        self, selector: ComplexSeriesSelector, start_date: datetime, end_date: datetime
+        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         """Read data in one of the predefined formats.
 
@@ -212,7 +210,7 @@ class CSVSource:
         before = pyarrow.compute.less(data["ts"], pa.scalar(end_date))
         return data.filter(pyarrow.compute.and_(on_or_after, before))
 
-    def __read_all_data(self, selector: ComplexSeriesSelector) -> pa.Table:
+    def __read_all_data(self, selector: SeriesSelector) -> pa.Table:
         if self.__loaders.data is None:
             raise InvalidSourceException("No data path configured.")
         if self.__data_format == "pivot":
@@ -223,9 +221,7 @@ class CSVSource:
 
         return self._read_row_data(self.__loaders.data, selector)
 
-    def _read_row_data(
-        self, loader: Loader, selector: ComplexSeriesSelector
-    ) -> pa.Table:
+    def _read_row_data(self, loader: Loader, selector: SeriesSelector) -> pa.Table:
         columns = ["series name", "ts", "value"]
         if self.__mappers.quality.is_present():
             columns.append("quality")
@@ -251,7 +247,7 @@ class CSVSource:
         return data.drop(["series name"])
 
     def _read_directory_data(
-        self, loader: Loader, selector: ComplexSeriesSelector
+        self, loader: Loader, selector: SeriesSelector
     ) -> pa.Table:
         columns = ["ts", "value"]
         if self.__mappers.quality.is_present():
@@ -279,7 +275,7 @@ class CSVSource:
         ]
 
 
-def _read_pivot_data(loader: Loader, selector: ComplexSeriesSelector) -> pa.Table:
+def _read_pivot_data(loader: Loader, selector: SeriesSelector) -> pa.Table:
     all_data = pyarrow.csv.read_csv(loader.open())
     if selector.get_series_name() not in all_data.column_names:
         raise InvalidDataError(f'column "{selector.get_series_name()}" not found')

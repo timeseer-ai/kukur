@@ -47,7 +47,7 @@ def test_metadata(client: Client):
         "location": "coyote_creek",
     }
     series = client.get_metadata(
-        SeriesSelector(suffix_source("noaa"), tags, "water_level")
+        SeriesSelector.from_tags(suffix_source("noaa"), tags, "water_level")
     )
     assert series.get_field(fields.LimitLowFunctional) == 6
     assert series.get_field(fields.LimitHighFunctional) == 9
@@ -61,7 +61,7 @@ def test_data(client: Client):
     start_date = datetime.fromisoformat("2019-09-17T00:00:00+00:00")
     end_date = datetime.fromisoformat("2019-09-17T16:24:00+00:00")
     data = client.get_data(
-        SeriesSelector(suffix_source("noaa"), tags, "water_level"),
+        SeriesSelector.from_tags(suffix_source("noaa"), tags, "water_level"),
         start_date,
         end_date,
     )

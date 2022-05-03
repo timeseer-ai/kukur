@@ -7,7 +7,7 @@ from dateutil.parser import parse as parse_date
 
 import kukur.config
 
-from kukur import ComplexSeriesSelector, DataType, Dictionary, InterpolationType, Source
+from kukur import SeriesSelector, DataType, Dictionary, InterpolationType, Source
 from kukur.metadata import fields
 from kukur.source import SourceFactory
 
@@ -22,8 +22,8 @@ def get_source(source_name: str) -> Source:
 
 def make_series(
     source: str, tags: dict[str, str] = {"series name": "test-tag-1"}
-) -> ComplexSeriesSelector:
-    return ComplexSeriesSelector(source, tags)
+) -> SeriesSelector:
+    return SeriesSelector.from_tags(source, tags)
 
 
 START_DATE = parse_date("2020-01-01T00:00:00Z")
@@ -92,9 +92,9 @@ def test_row_metadata() -> None:
 
 def test_row_metadata_dictionary() -> None:
     metadata = get_source("row").get_metadata(
-        ComplexSeriesSelector("row", {"series name": "test-tag-6"})
+        SeriesSelector.from_tags("row", {"series name": "test-tag-6"})
     )
-    assert metadata.series == ComplexSeriesSelector(
+    assert metadata.series == SeriesSelector.from_tags(
         "row", {"series name": "test-tag-6"}
     )
     assert metadata.get_field(fields.DataType) == DataType.DICTIONARY
@@ -104,7 +104,7 @@ def test_row_metadata_dictionary() -> None:
 
 def test_metadata_mapping() -> None:
     metadata = get_source("mapping").get_metadata(make_series("mapping"))
-    assert metadata.series == ComplexSeriesSelector(
+    assert metadata.series == SeriesSelector.from_tags(
         "mapping", {"series name": "test-tag-1"}
     )
     assert metadata.get_field(fields.Unit) == "kg"
@@ -123,9 +123,7 @@ def test_metadata_mapping_multiple() -> None:
 
 def test_custom_fields_search() -> None:
     all_metadata = list(
-        get_source("custom-fields-simple").search(
-            ComplexSeriesSelector("custom-fields")
-        )
+        get_source("custom-fields-simple").search(SeriesSelector("custom-fields"))
     )
     assert len(all_metadata) == 1
     metadata = all_metadata[0]
@@ -137,7 +135,7 @@ def test_custom_fields_search() -> None:
 
 def test_custom_fields_metadata() -> None:
     metadata = get_source("custom-fields-simple").get_metadata(
-        ComplexSeriesSelector("custom-fields", {"series name": "test-tag-custom"})
+        SeriesSelector.from_tags("custom-fields", {"series name": "test-tag-custom"})
     )
     assert isinstance(metadata, kukur.Metadata)
     assert metadata.get_field(fields.Description) == "Test for custom metadata fields"
@@ -157,7 +155,7 @@ def test_custom_fields_extra_metadata() -> None:
 
 def test_custom_fields_search_extra_metadata() -> None:
     all_metadata = list(
-        get_source("custom-fields").search(ComplexSeriesSelector("custom-fields"))
+        get_source("custom-fields").search(SeriesSelector("custom-fields"))
     )
     assert len(all_metadata) == 1
     metadata = all_metadata[0]
@@ -170,7 +168,7 @@ def test_custom_fields_search_extra_metadata() -> None:
 
 def test_metadata_accuracy_percentage() -> None:
     metadata = get_source("row").get_metadata(
-        ComplexSeriesSelector("row", {"series name": "test-tag-1"})
+        SeriesSelector.from_tags("row", {"series name": "test-tag-1"})
     )
     assert metadata.get_field(fields.AccuracyPercentage) == 2
     assert metadata.get_field(fields.LimitLowPhysical) == 0
@@ -179,7 +177,7 @@ def test_metadata_accuracy_percentage() -> None:
 
 
 def test_search_metadata_accuracy_percentage() -> None:
-    all_metadata = list(get_source("row").search(ComplexSeriesSelector("row")))
+    all_metadata = list(get_source("row").search(SeriesSelector("row")))
     metadata = all_metadata[0]
     assert isinstance(metadata, kukur.Metadata)
     assert metadata.get_field(fields.AccuracyPercentage) == 2
