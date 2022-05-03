@@ -77,13 +77,13 @@ class InfluxSource:
         many_series = self.__client.get_list_series()
         fields = self.__client.query("SHOW FIELD KEYS")
         for series in many_series:
-            series_name = series.replace("\\", "")
-            measurement = series_name.split(",")[0]
+            measurement, tags = _parse_influx_series(series)
             for field in fields.get_points(measurement=measurement):
                 yield Metadata(
                     ComplexSeriesSelector(
                         selector.source,
-                        {"series name": f'{series_name}::{field["fieldKey"]}'},
+                        tags,
+                        field["fieldKey"],
                     )
                 )
 
@@ -98,42 +98,44 @@ class InfluxSource:
         """Return data for the given time series in the given time period."""
         if "series name" not in selector.tags:
             raise InvalidDataError("No series name")
-        measurement, tags, field_key = _parse_influx_series(
-            selector.tags["series name"]
-        )
 
-        query = f"""SELECT time, "{_escape(field_key)}"
-                    FROM "{_escape(measurement)}"
+        query = f"""SELECT time, "{_escape(selector.field)}"
+                    FROM "{_escape(selector.tags["series name"])}"
                     WHERE time >= $start_date and time <= $end_date"""
 
         bind_params = {
             "start_date": start_date.strftime("%Y-%m-%dT%H:%M:%SZ"),
             "end_date": end_date.strftime("%Y-%m-%dT%H:%M:%SZ"),
         }
-
-        for i, (tag_key, tag_value) in enumerate(tags):
+        for i, (tag_key, tag_value) in enumerate(selector.tags.items()):
+            if tag_key == "series name":
+                continue
             bind_params[str(i)] = tag_value
             query = query + f' and "{_escape(tag_key)}" = ${str(i)}'
 
         timestamps = []
         values = []
+
         for item in self.__client.query(
             query=query, bind_params=bind_params
         ).get_points():
             timestamps.append(dateutil.parser.parse(item["time"]))
-            values.append(item[field_key])
+            values.append(item[selector.field])
 
         return pa.Table.from_pydict({"ts": timestamps, "value": values})
 
 
-def _parse_influx_series(series: str) -> Tuple[str, list[list[str]], str]:
-    field_split = series.rsplit("::", 1)
-    field_key = field_split[1]
-
-    measurement_split = field_split[0].split(",")
-    measurement = measurement_split[0]
-    tags = [tag.split("=") for tag in measurement_split[1:]]
-    return measurement, tags, field_key
+def _parse_influx_series(series: str) -> Tuple[str, dict[str, str]]:
+    series_name = series.replace("\\", "")
+    measurement = series_name.split(",")[0]
+    tags = {}
+    for tag in series_name.split(","):
+        split_tag = tag.split("=")
+        if len(split_tag) == 1:
+            tags["series name"] = split_tag[0]
+        else:
+            tags[split_tag[0]] = split_tag[1]
+    return measurement, tags
 
 
 def _escape(context: str) -> str:
