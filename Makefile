@@ -4,6 +4,14 @@
 
 SHELL=/bin/bash
 
+.PHONY: run
+run: ## Start Kukur
+	python -m kukur.cli
+
+.PHONY: clean
+clean: ## Remove build artifacts
+	rm -rf build/ dist/
+
 .PHONY: docs
 docs: ## Generate a documentation Docker container
 	docker run --rm \
@@ -46,6 +54,11 @@ dev-deps: ## Install development dependencies
 .PHONY: format
 format: ## Format the kukur code
 	black kukur/ tests/
+
+.PHONY: wheel
+wheel: ## Build a Python wheel in dist/
+	python setup.py bdist_wheel
+
 
 .PHONY: build-docker
 build-docker: ## Build a Docker container
