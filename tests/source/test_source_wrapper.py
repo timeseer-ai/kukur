@@ -2,11 +2,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from datetime import datetime, timedelta
+from typing import Generator, Optional, Union
 
 import pyarrow as pa
 import pytest
 
 from kukur import SeriesSelector, Metadata
+from kukur.base import SourceStructure
 from kukur.source import Source, SourceWrapper
 
 
@@ -24,6 +26,29 @@ class FakeSource:
     ) -> pa.Table:
         # end_date should not be part of the returned interval, but is here for easy comparison
         return pa.Table.from_pydict({"ts": [start_date, end_date], "value": [42, 24]})
+
+
+class FakeTagSource:
+    def search(
+        self, selector: SeriesSelector
+    ) -> Generator[Union[SeriesSelector, Metadata], None, None]:
+        yield selector
+
+    def get_metadata(self, selector: SeriesSelector) -> Metadata:
+        return Metadata(selector)
+
+    def get_data(
+        self, _: SeriesSelector, start_date: datetime, end_date: datetime
+    ) -> pa.Table:
+        # end_date should not be part of the returned interval, but is here for easy comparison
+        return pa.Table.from_pydict({"ts": [start_date, end_date], "value": [42, 24]})
+
+    def get_source_structure(self, _: SeriesSelector) -> Optional[SourceStructure]:
+        return SourceStructure(
+            ["fake_field"],
+            ["fake_tag_key"],
+            [{"key": "fake_tag_key", "value": "fake_tag_value"}],
+        )
 
 
 class EmptyOddHoursSource:
@@ -284,6 +309,28 @@ def test_exception_after_too_many_retries():
     )
     with pytest.raises(Exception):
         wrapper.get_data(SELECTOR, START_DATE, END_DATE)
+
+
+def test_get_source_structure():
+    source = FakeTagSource()
+
+    wrapper = SourceWrapper(
+        Source(source, source), [], {"data_query_interval_seconds": 60 * 60}
+    )
+
+    result = wrapper.get_source_structure(SELECTOR)
+    assert result is not None
+
+
+def test_get_source_structure_not_implemented():
+    source = FakeSource()
+
+    wrapper = SourceWrapper(
+        Source(source, source), [], {"data_query_interval_seconds": 60 * 60}
+    )
+
+    result = wrapper.get_source_structure(SELECTOR)
+    assert result is None
 
 
 def _make_source():

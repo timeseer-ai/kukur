@@ -25,7 +25,13 @@ from kukur.source import (
     piwebapi_da,
 )
 
-from kukur import SeriesSelector, Metadata, Source as SourceProtocol
+from kukur import (
+    SeriesSelector,
+    Metadata,
+    Source as SourceProtocol,
+    SourceStructure,
+    TagSource,
+)
 from kukur.exceptions import InvalidSourceException
 from kukur.source.quality import QualityMapper
 
@@ -64,7 +70,7 @@ class Source:
 
     Source keeps them together."""
 
-    metadata: SourceProtocol
+    metadata: Union[SourceProtocol, TagSource]
     data: SourceProtocol
 
 
@@ -100,7 +106,10 @@ class SourceWrapper:
     __data_query_interval: Optional[timedelta] = None
 
     def __init__(
-        self, source: Source, metadata_sources: list[MetadataSource], common_options
+        self,
+        source: Source,
+        metadata_sources: list[MetadataSource],
+        common_options,
     ):
         self.__source = source
         self.__metadata = metadata_sources
@@ -189,6 +198,22 @@ class SourceWrapper:
             for start, end in self.__to_intervals(start_date, end_date)
         ]
         return _concat_tables(tables)
+
+    def get_source_structure(
+        self, selector: SeriesSelector
+    ) -> Optional[SourceStructure]:
+        """Return the structure of the source for the given series."""
+        if not isinstance(self.__source.metadata, TagSource):
+            return None
+        query_fn = functools.partial(
+            self.__source.metadata.get_source_structure, selector
+        )
+        return _retry(
+            self.__query_retry_count,
+            self.__query_retry_delay,
+            query_fn,
+            f"Source structre query for {selector.source} failed",
+        )
 
     def _get_data_chunk(
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
@@ -293,7 +318,7 @@ class SourceFactory:
 
     def _make_source(
         self, source_type: str, source_config: dict[str, Any]
-    ) -> SourceProtocol:
+    ) -> Union[SourceProtocol, TagSource]:
         metadata_mapper = self._get_metadata_mapper(
             source_config.get("metadata_mapping")
         )

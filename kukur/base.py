@@ -99,3 +99,23 @@ class DataType(Enum):
     STRING = "STRING"
     DICTIONARY = "DICTIONARY"
     CATEGORICAL = "CATEGORICAL"
+
+
+@dataclass
+class SourceStructure:
+    """The SourceStructure defines the fields and tags that are present in the source."""
+
+    fields: list[str]
+    tag_keys: list[str]
+    tag_values: list[dict]
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> "SourceStructure":
+        """Create a SourceStructure from a dictionary."""
+        return cls(data["fields"], data["tag_keys"], data["tag_values"])
+
+    def to_data(self):
+        """Convert to JSON object."""
+        return dict(
+            fields=self.fields, tag_keys=self.tag_keys, tag_values=self.tag_values
+        )
