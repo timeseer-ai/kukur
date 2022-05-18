@@ -3,11 +3,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 from datetime import datetime
-from typing import Any, Generator, Tuple, Union
+from typing import Any, Generator, Optional, Tuple, Union
 
 import pyarrow as pa
 
 from kukur import Metadata, SeriesSelector
+from kukur.base import SourceStructure
 from kukur.client import Client
 from kukur.exceptions import InvalidDataError
 
@@ -71,3 +72,12 @@ class KukurSource:
             self.__source_name, selector.tags, selector.field
         )
         return self.__client.get_data(remote_selector, start_date, end_date)
+
+    def get_source_structure(
+        self, selector: SeriesSelector
+    ) -> Optional[SourceStructure]:
+        """Return the source structure using the Flight service."""
+        remote_selector = SeriesSelector.from_tags(
+            self.__source_name, selector.tags, selector.field
+        )
+        return self.__client.get_source_structure(remote_selector)

@@ -112,10 +112,10 @@ class SourceStructure:
     @classmethod
     def from_data(cls, data: dict[str, Any]) -> "SourceStructure":
         """Create a SourceStructure from a dictionary."""
-        return cls(data["fields"], data["tag_keys"], data["tag_values"])
+        return cls(data["fields"], data["tagKeys"], data["tagValues"])
 
     def to_data(self):
         """Convert to JSON object."""
         return dict(
-            fields=self.fields, tag_keys=self.tag_keys, tag_values=self.tag_values
+            fields=self.fields, tagKeys=self.tag_keys, tagValues=self.tag_values
         )
