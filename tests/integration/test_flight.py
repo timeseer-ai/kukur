@@ -2,6 +2,8 @@
 
 They use the client to request data."""
 
+import os
+
 from datetime import datetime
 
 import pytest
@@ -15,6 +17,13 @@ def client() -> Client:
     kukur_client = Client()
     kukur_client._get_client().wait_for_available(timeout=10)
     return kukur_client
+
+
+def suffix_source(source_name: str) -> str:
+    if "KUKUR_INTEGRATION_TARGET" in os.environ:
+        target = os.environ["KUKUR_INTEGRATION_TARGET"]
+        return f"{source_name}-{target}"
+    return source_name  # works in docker container
 
 
 def test_search(client: Client):
@@ -119,3 +128,15 @@ def test_data(client: Client):
     assert data["value"][0].as_py() == 1.0
     assert data["ts"][6].as_py() == datetime.fromisoformat("2020-07-01T00:00:00+00:00")
     assert data["value"][6].as_py() == 1.0
+
+
+def test_get_source_structure(client: Client):
+    source_structure = client.get_source_structure(
+        SeriesSelector(suffix_source("noaa")),
+    )
+    assert len(source_structure.tag_keys) == 2
+    assert "location" in source_structure.tag_keys
+    assert len(source_structure.tag_values) == 5
+    assert {"key": "location", "value": "coyote_creek"} in source_structure.tag_values
+    assert len(source_structure.fields) == 6
+    assert "degrees" in source_structure.fields

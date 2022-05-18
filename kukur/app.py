@@ -3,15 +3,15 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 from datetime import datetime
-from typing import Any, Dict, Generator, List, Union
+from typing import Any, Generator, Optional, Union
 from pathlib import Path
 
 import json
 import pyarrow as pa
 
-from kukur import SeriesSelector, Metadata, Source
+from kukur import SeriesSelector, Metadata, SourceStructure
 from kukur.exceptions import UnknownSourceException
-from kukur.source import SourceFactory
+from kukur.source import SourceFactory, SourceWrapper
 from kukur.api_key.app import ApiKeys
 
 from kukur.repository import MigrationRunner, RepositoryRegistry
@@ -24,7 +24,7 @@ class Kukur:
 
     __repository: RepositoryRegistry
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         self.__source_factory = SourceFactory(config)
         self.__repository = RepositoryRegistry(
             data_dir=Path(config.get("data_dir", "."))
@@ -51,16 +51,22 @@ class Kukur:
             selector, start_date, end_date
         )
 
+    def get_source_structure(
+        self, selector: SeriesSelector
+    ) -> Optional[SourceStructure]:
+        """Return the structure of a source."""
+        return self._get_source(selector.source).get_source_structure(selector)
+
     def get_api_keys(self) -> ApiKeys:
         """Return the api keys."""
         return ApiKeys(self.__repository)
 
-    def list_sources(self, *_) -> List[bytes]:
+    def list_sources(self, *_) -> list[bytes]:
         """Return all the configured sources."""
         sources = self.__source_factory.get_source_names()
         return [json.dumps(sources).encode()]
 
-    def _get_source(self, source_name: str) -> Source:
+    def _get_source(self, source_name: str) -> SourceWrapper:
         source = self.__source_factory.get_source(source_name)
         if source is None:
             raise UnknownSourceException(source_name)

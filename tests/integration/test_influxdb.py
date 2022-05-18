@@ -70,3 +70,15 @@ def test_data(client: Client):
     assert data["value"][0].as_py() == 8.412
     assert data["ts"][164].as_py() == end_date
     assert data["value"][164].as_py() == 3.235
+
+
+def test_get_source_structure(client: Client):
+    source_structure = client.get_source_structure(
+        SeriesSelector(suffix_source("noaa")),
+    )
+    assert len(source_structure.tag_keys) == 2
+    assert "location" in source_structure.tag_keys
+    assert len(source_structure.tag_values) == 5
+    assert {"key": "location", "value": "coyote_creek"} in source_structure.tag_values
+    assert len(source_structure.fields) == 6
+    assert "degrees" in source_structure.fields

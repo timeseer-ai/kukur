@@ -5,12 +5,12 @@
 import json
 
 from datetime import datetime, timedelta, timezone
-from typing import Any, Generator, Tuple, Union
+from typing import Any, Generator, Optional, Tuple, Union
 
 import pyarrow as pa
 import pyarrow.flight as fl
 
-from kukur import Metadata, SeriesSelector
+from kukur import Metadata, SeriesSelector, SourceStructure
 
 
 class Client:
@@ -119,6 +119,25 @@ class Client:
         results = list(self._get_client().do_action(("list_sources")))
         data = json.loads(results[0].body.to_pybytes())
         return data
+
+    def get_source_structure(
+        self, selector: SeriesSelector
+    ) -> Optional[SourceStructure]:
+        """List all tags and fields from a source.
+
+        Returns:
+            A list of tag keys, tag values and fields that are configured in the source.
+        """
+        body = selector.to_data()
+        results = list(
+            self._get_client().do_action(
+                ("get_source_structure", json.dumps(body).encode())
+            )
+        )
+        data = json.loads(results[0].body.to_pybytes())
+        if data is None:
+            return None
+        return SourceStructure.from_data(data)
 
     def _get_client(self):
         if self._client is None:

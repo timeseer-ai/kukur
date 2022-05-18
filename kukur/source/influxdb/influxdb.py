@@ -2,8 +2,11 @@
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
 #
 # SPDX-License-Identifier: Apache-2.0
+
+import json
+
 from datetime import datetime
-from typing import Any, Generator, Tuple
+from typing import Any, Generator, Optional, Tuple
 
 import dateutil.parser
 import pyarrow as pa
@@ -16,7 +19,7 @@ try:
 except ImportError:
     HAS_INFLUX = False
 
-from kukur import SeriesSelector, Metadata
+from kukur import Metadata, SeriesSelector, SourceStructure
 from kukur.exceptions import InvalidDataError, KukurException, MissingModuleException
 
 
@@ -121,6 +124,29 @@ class InfluxSource:
             values.append(item[selector.field])
 
         return pa.Table.from_pydict({"ts": timestamps, "value": values})
+
+    def get_source_structure(self, _: SeriesSelector) -> Optional[SourceStructure]:
+        """Return the available tag keys, tag value and tag fields."""
+        query_tag_keys = "SHOW TAG KEYS"
+        tag_keys = []
+        for results in self.__client.query(query=query_tag_keys).get_points():
+            tag_keys.extend(list(results.values()))
+        tag_keys = list(set(tag_keys))
+
+        query_fields = "SHOW FIELD KEYS"
+        fields = []
+        for results in self.__client.query(query=query_fields).get_points():
+            for key, value in results.items():
+                if key == "fieldKey":
+                    fields.append(value)
+
+        tag_key_placeholder = json.dumps(tag_keys)
+        query_tag_values = f'SHOW TAG VALUES WITH KEY IN {tag_key_placeholder.replace("[", "(").replace("]", ")")}'
+        tag_values = []
+        for result in self.__client.query(query=query_tag_values).get_points():
+            if result not in tag_values:
+                tag_values.append(result)
+        return SourceStructure(fields, tag_keys, tag_values)
 
 
 def _parse_influx_series(series: str) -> Tuple[str, dict[str, str]]:
