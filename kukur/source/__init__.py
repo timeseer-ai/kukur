@@ -26,8 +26,9 @@ from kukur.source import (
 )
 
 from kukur import (
-    SeriesSelector,
     Metadata,
+    SeriesSelector,
+    SeriesSelectorResponse,
     Source as SourceProtocol,
     SourceStructure,
     TagSource,
@@ -122,7 +123,7 @@ class SourceWrapper:
 
     def search(
         self, selector: SeriesSelector
-    ) -> Generator[Union[SeriesSelector, Metadata], None, None]:
+    ) -> Generator[Union[SeriesSelectorResponse, Metadata], None, None]:
         """Search for all time series matching the given selector.
 
         The result is either a sequence of selectors for each time series in the source or a sequence of metadata
@@ -143,13 +144,13 @@ class SourceWrapper:
         for result in results:
             if (
                 len(self.__metadata) == 0
-                or isinstance(result, SeriesSelector)
+                or isinstance(result, SeriesSelectorResponse)
                 or "series name" not in result.series.tags
             ):
                 yield result
             else:
                 extra_metadata = self.get_metadata(
-                    SeriesSelector.from_tags(
+                    SeriesSelectorResponse.from_tags(
                         result.series.source, result.series.tags, result.series.field
                     )
                 )

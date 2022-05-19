@@ -5,7 +5,7 @@
 
 from dataclasses import dataclass, field as data_field
 from enum import Enum
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 
 @dataclass
@@ -29,10 +29,13 @@ class SeriesSelector:
 
     source: str
     tags: dict[str, str] = data_field(default_factory=dict)
-    field: str = "value"
+    field: Optional[str] = None
 
     def __init__(
-        self, source: str, tags: Union[str, dict[str, str]] = None, field: str = "value"
+        self,
+        source: str,
+        tags: Union[str, dict[str, str]] = None,
+        field: Optional[str] = None,
     ):
         tags_dict = {}
         if isinstance(tags, str):
@@ -44,7 +47,7 @@ class SeriesSelector:
         self.field = field
 
     @classmethod
-    def from_tags(cls, source: str, tags: dict[str, str], field: str = "value"):
+    def from_tags(cls, source: str, tags: dict[str, str], field: Optional[str] = None):
         """Create the SeriesSelector from tags."""
         return cls(source, tags, field)
 
@@ -54,11 +57,45 @@ class SeriesSelector:
         tags = data.get("tags", {})
         if "name" in data and "tags" not in data:
             tags["series name"] = data["name"]
-        return cls(data["source"], tags, data.get("field", "value"))
+        return cls(data["source"], tags, data.get("field", None))
 
     def to_data(self) -> dict[str, Any]:
         """Convert to JSON object."""
         return dict(source=self.source, tags=self.tags, field=self.field)
+
+    @property
+    def name(self) -> str:
+        """Get the series name with tags and fields included.
+
+        For sources that cannot handle tags and fields yet."""
+        series_tags: list[str] = []
+        for tag_key, tag_value in self.tags.items():
+            if tag_key == "series name":
+                series_tags.insert(0, tag_value)
+                continue
+            series_tags.append(f"{tag_key}={tag_value}")
+        series_string = ",".join(series_tags)
+        if self.field is None:
+            return f"{series_string}"
+        return f"{series_string}::{self.field}"
+
+
+@dataclass
+class SeriesSelectorResponse(SeriesSelector):
+    """SeriesSelectorResponse is the series selector used in the return of methods."""
+
+    field: str = "value"
+
+    def __init__(
+        self,
+        source: str,
+        tags: Union[str, dict[str, str]] = None,
+        field: Optional[str] = None,
+    ):
+        super().__init__(source, tags)
+        if field is None:
+            field = "value"
+        self.field = field
 
     @property
     def name(self) -> str:

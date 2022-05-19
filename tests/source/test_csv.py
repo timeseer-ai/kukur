@@ -7,7 +7,14 @@ from dateutil.parser import parse as parse_date
 
 import kukur.config
 
-from kukur import SeriesSelector, DataType, Dictionary, InterpolationType, Source
+from kukur import (
+    DataType,
+    Dictionary,
+    InterpolationType,
+    SeriesSelector,
+    SeriesSelectorResponse,
+    Source,
+)
 from kukur.metadata import fields
 from kukur.source import SourceFactory
 
@@ -82,7 +89,9 @@ def test_pivot() -> None:
 def test_row_metadata() -> None:
     series = make_series("row")
     metadata = get_source("row").get_metadata(series)
-    assert metadata.series == series
+    assert metadata.series == SeriesSelectorResponse(
+        series.source, series.tags, series.field
+    )
     assert isinstance(metadata.get_field(fields.Description), str)
     assert isinstance(metadata.get_field(fields.Unit), str)
     assert isinstance(metadata.get_field(fields.LimitLowFunctional), float)
@@ -94,7 +103,7 @@ def test_row_metadata_dictionary() -> None:
     metadata = get_source("row").get_metadata(
         SeriesSelector.from_tags("row", {"series name": "test-tag-6"})
     )
-    assert metadata.series == SeriesSelector.from_tags(
+    assert metadata.series == SeriesSelectorResponse.from_tags(
         "row", {"series name": "test-tag-6"}
     )
     assert metadata.get_field(fields.DataType) == DataType.DICTIONARY
@@ -104,7 +113,7 @@ def test_row_metadata_dictionary() -> None:
 
 def test_metadata_mapping() -> None:
     metadata = get_source("mapping").get_metadata(make_series("mapping"))
-    assert metadata.series == SeriesSelector.from_tags(
+    assert metadata.series == SeriesSelectorResponse.from_tags(
         "mapping", {"series name": "test-tag-1"}
     )
     assert metadata.get_field(fields.Unit) == "kg"

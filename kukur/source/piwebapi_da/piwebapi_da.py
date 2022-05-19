@@ -27,11 +27,12 @@ except ImportError:
     HAS_REQUESTS_KERBEROS = False
 
 from kukur import (
-    SeriesSelector,
     DataType,
     Dictionary,
     InterpolationType,
     Metadata,
+    SeriesSelector,
+    SeriesSelectorResponse,
 )
 from kukur.exceptions import (
     InvalidDataError,
@@ -154,7 +155,7 @@ class PIWebAPIDataArchiveSource:
             page = page + 1
             for point in points:
                 metadata = _get_metadata(
-                    SeriesSelector(selector.source, point["Name"]),
+                    SeriesSelectorResponse(selector.source, point["Name"]),
                     point,
                     dictionary_lookup,
                 )
@@ -265,7 +266,7 @@ class PIWebAPIDataArchiveSource:
 def _get_metadata(
     selector: SeriesSelector, point: dict, dictionary_lookup: _DictionaryLookup
 ) -> Optional[Metadata]:
-    metadata = Metadata(SeriesSelector(selector.source, point["Name"]))
+    metadata = Metadata(SeriesSelectorResponse(selector.source, point["Name"]))
     metadata.set_field(fields.Description, point["Descriptor"])
     metadata.set_field(fields.Unit, point["EngineeringUnits"])
 

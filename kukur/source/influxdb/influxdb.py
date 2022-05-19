@@ -19,7 +19,7 @@ try:
 except ImportError:
     HAS_INFLUX = False
 
-from kukur import Metadata, SeriesSelector, SourceStructure
+from kukur import Metadata, SeriesSelector, SeriesSelectorResponse, SourceStructure
 from kukur.exceptions import InvalidDataError, KukurException, MissingModuleException
 
 
@@ -81,7 +81,7 @@ class InfluxSource:
             measurement, tags = _parse_influx_series(series)
             for field in fields.get_points(measurement=measurement):
                 yield Metadata(
-                    SeriesSelector.from_tags(
+                    SeriesSelectorResponse.from_tags(
                         selector.source,
                         tags,
                         field["fieldKey"],
@@ -162,7 +162,9 @@ def _parse_influx_series(series: str) -> Tuple[str, dict[str, str]]:
     return measurement, tags
 
 
-def _escape(context: str) -> str:
+def _escape(context: Optional[str]) -> str:
+    if context is None:
+        context = "value"
     if '"' in context:
         context = context.replace('"', "")
     if ";" in context:

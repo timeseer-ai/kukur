@@ -20,7 +20,7 @@ import pyarrow as pa
 import pyarrow.csv
 import pyarrow.compute
 
-from kukur import SeriesSelector, Dictionary, Metadata
+from kukur import Dictionary, Metadata, SeriesSelector
 
 from kukur.loader import Loader, from_config as loader_from_config
 from kukur.exceptions import InvalidDataError, InvalidSourceException, KukurException
@@ -110,11 +110,7 @@ class CSVSource:
                 metadata = None
                 if "series name" in selector.tags:
                     if series_name == selector.name:
-                        metadata = Metadata(
-                            SeriesSelector.from_tags(
-                                selector.source, selector.tags, selector.field
-                            )
-                        )
+                        metadata = Metadata(selector)
                 else:
                     selector_tags = selector.tags.copy()
                     selector_tags["series name"] = series_name

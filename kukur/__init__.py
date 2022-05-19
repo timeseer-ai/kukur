@@ -14,6 +14,7 @@ from .base import (
     Dictionary,
     InterpolationType,
     SeriesSelector,
+    SeriesSelectorResponse,
     SourceStructure,
 )
 from .exceptions import KukurException  # noqa
@@ -27,7 +28,7 @@ class Source(Protocol):
 
     def search(
         self, selector: SeriesSelector
-    ) -> Generator[Union[SeriesSelector, Metadata], None, None]:
+    ) -> Generator[Union[SeriesSelectorResponse, Metadata], None, None]:
         """Return all time series or even the metadata of them in this source matching the selector."""
         ...
 
