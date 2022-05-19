@@ -27,11 +27,12 @@ except ImportError:
     HAS_REQUESTS_KERBEROS = False
 
 from kukur import (
-    SeriesSelector,
     DataType,
     Dictionary,
     InterpolationType,
     Metadata,
+    SeriesSearch,
+    SeriesSelector,
 )
 from kukur.exceptions import (
     InvalidDataError,
@@ -118,7 +119,7 @@ class PIWebAPIDataArchiveSource:
         if not self.__request_properties.verify_ssl:
             urllib3.disable_warnings()
 
-    def search(self, selector: SeriesSelector) -> Generator[Metadata, None, None]:
+    def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
         """Return all tags in the Data Archive."""
         session = self._get_session()
 

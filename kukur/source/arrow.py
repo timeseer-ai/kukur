@@ -12,6 +12,7 @@ import pyarrow.compute
 import pyarrow.types
 
 from kukur import Metadata, SeriesSelector
+from kukur.base import SeriesSearch
 from kukur.exceptions import InvalidDataError
 from kukur.loader import Loader
 from kukur.source.quality import QualityMapper
@@ -49,7 +50,7 @@ class BaseArrowSource(ABC):
         """Return the file extension for the supported pyarrow format."""
         ...
 
-    def search(self, selector: SeriesSelector) -> Generator[Metadata, None, None]:
+    def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
         """ArrowSource does not support searching for time series."""
 
     # pylint: disable=no-self-use

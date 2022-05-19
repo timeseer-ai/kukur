@@ -5,7 +5,7 @@
 
 from dataclasses import dataclass, field as data_field
 from enum import Enum
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 
 @dataclass
@@ -24,15 +24,21 @@ class Dictionary:
 
 
 @dataclass
-class SeriesSelector:
-    """SeriesSelector identifies a group of time series matching the given pattern."""
+class SeriesSearch:
+    """SeriesSearch is the series selector to search series.
+
+    The field can be optional to allow searching for anything.
+    """
 
     source: str
     tags: dict[str, str] = data_field(default_factory=dict)
-    field: str = "value"
+    field: Optional[str] = None
 
     def __init__(
-        self, source: str, tags: Union[str, dict[str, str]] = None, field: str = "value"
+        self,
+        source: str,
+        tags: Union[str, dict[str, str]] = None,
+        field: Optional[str] = None,
     ):
         tags_dict = {}
         if isinstance(tags, str):
@@ -43,9 +49,47 @@ class SeriesSelector:
         self.tags = tags_dict
         self.field = field
 
+    @property
+    def name(self) -> str:
+        """Get the series name with tags and fields included.
+
+        For sources that cannot handle tags and fields yet."""
+        series_tags: list[str] = []
+        for tag_key, tag_value in self.tags.items():
+            if tag_key == "series name":
+                series_tags.insert(0, tag_value)
+                continue
+            series_tags.append(f"{tag_key}={tag_value}")
+        series_string = ",".join(series_tags)
+        if self.field is None:
+            return f"{series_string}"
+        return f"{series_string}::{self.field}"
+
+    def to_data(self) -> dict[str, Any]:
+        """Convert to JSON object."""
+        return dict(source=self.source, tags=self.tags, field=self.field)
+
+
+@dataclass
+class SeriesSelector(SeriesSearch):
+    """SeriesSelector identifies a group of time series matching the given pattern."""
+
+    field: str = "value"
+
+    def __init__(
+        self,
+        source: str,
+        tags: Union[str, dict[str, str]] = None,
+        field: str = "value",
+    ):
+        super().__init__(source, tags)
+        self.field = field
+
     @classmethod
-    def from_tags(cls, source: str, tags: dict[str, str], field: str = "value"):
+    def from_tags(cls, source: str, tags: dict[str, str], field: Optional[str] = None):
         """Create the SeriesSelector from tags."""
+        if field is None:
+            field = "value"
         return cls(source, tags, field)
 
     @classmethod
@@ -54,7 +98,7 @@ class SeriesSelector:
         tags = data.get("tags", {})
         if "name" in data and "tags" not in data:
             tags["series name"] = data["name"]
-        return cls(data["source"], tags, data.get("field", "value"))
+        return cls(data["source"], tags, data.get("field", None))
 
     def to_data(self) -> dict[str, Any]:
         """Convert to JSON object."""

@@ -7,7 +7,13 @@ from dateutil.parser import parse as parse_date
 
 import kukur.config
 
-from kukur import SeriesSelector, DataType, Dictionary, InterpolationType, Source
+from kukur import (
+    DataType,
+    Dictionary,
+    InterpolationType,
+    SeriesSelector,
+    Source,
+)
 from kukur.metadata import fields
 from kukur.source import SourceFactory
 
@@ -82,7 +88,7 @@ def test_pivot() -> None:
 def test_row_metadata() -> None:
     series = make_series("row")
     metadata = get_source("row").get_metadata(series)
-    assert metadata.series == series
+    assert metadata.series == SeriesSelector(series.source, series.tags, series.field)
     assert isinstance(metadata.get_field(fields.Description), str)
     assert isinstance(metadata.get_field(fields.Unit), str)
     assert isinstance(metadata.get_field(fields.LimitLowFunctional), float)

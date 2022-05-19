@@ -26,8 +26,9 @@ from kukur.source import (
 )
 
 from kukur import (
-    SeriesSelector,
     Metadata,
+    SeriesSearch,
+    SeriesSelector,
     Source as SourceProtocol,
     SourceStructure,
     TagSource,
@@ -121,7 +122,7 @@ class SourceWrapper:
             )
 
     def search(
-        self, selector: SeriesSelector
+        self, selector: SeriesSearch
     ) -> Generator[Union[SeriesSelector, Metadata], None, None]:
         """Search for all time series matching the given selector.
 

@@ -13,6 +13,7 @@ from .base import (
     DataType,
     Dictionary,
     InterpolationType,
+    SeriesSearch,
     SeriesSelector,
     SourceStructure,
 )
@@ -26,7 +27,7 @@ class Source(Protocol):
     """Source is the interface that Kukur data sources need to implement."""
 
     def search(
-        self, selector: SeriesSelector
+        self, selector: SeriesSearch
     ) -> Generator[Union[SeriesSelector, Metadata], None, None]:
         """Return all time series or even the metadata of them in this source matching the selector."""
         ...

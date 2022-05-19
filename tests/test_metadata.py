@@ -4,10 +4,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from kukur import (
-    SeriesSelector,
     DataType,
     Dictionary,
     InterpolationType,
+    SeriesSelector,
 )
 from kukur.metadata import Metadata, MetadataField, fields
 
@@ -21,7 +21,9 @@ def test_series_json() -> None:
     assert data["series"]["tags"]["series name"] == "test-tag-1"
 
     new_metadata = Metadata.from_data(data)
-    assert new_metadata.series == SERIES
+    assert new_metadata.series == SeriesSelector(
+        SERIES.source, SERIES.tags, SERIES.field
+    )
 
 
 def test_repr() -> None:
