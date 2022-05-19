@@ -41,6 +41,41 @@ def test_search(client: Client):
     assert series.get_field(fields.LimitHighFunctional) == 9
 
 
+def test_search_with_tags(client: Client):
+    many_series = list(
+        client.search(
+            SeriesSelector(
+                suffix_source("noaa"),
+                {"series name": "h2o_feet", "location": "coyote_creek"},
+            )
+        )
+    )
+    assert len(many_series) == 2
+    series = [series for series in many_series if series.series.field == "water_level"][
+        0
+    ]
+    assert isinstance(series, Metadata)
+    assert series.get_field(fields.LimitLowFunctional) == 6
+    assert series.get_field(fields.LimitHighFunctional) == 9
+
+
+def test_search_with_fields(client: Client):
+    many_series = list(
+        client.search(
+            SeriesSelector(
+                suffix_source("noaa"),
+                {"series name": "h2o_feet", "location": "coyote_creek"},
+                "water_level",
+            )
+        )
+    )
+    assert len(many_series) == 1
+    series = many_series[0]
+    assert isinstance(series, Metadata)
+    assert series.get_field(fields.LimitLowFunctional) == 6
+    assert series.get_field(fields.LimitHighFunctional) == 9
+
+
 def test_metadata(client: Client):
     tags = {
         "series name": "h2o_feet",
