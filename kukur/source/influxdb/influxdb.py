@@ -19,7 +19,7 @@ try:
 except ImportError:
     HAS_INFLUX = False
 
-from kukur import Metadata, SeriesSelector, SeriesSelectorResponse, SourceStructure
+from kukur import Metadata, SeriesSearch, SeriesSelector, SourceStructure
 from kukur.exceptions import InvalidDataError, KukurException, MissingModuleException
 
 
@@ -73,7 +73,7 @@ class InfluxSource:
         except InfluxDBClientError as err:
             raise InvalidClientConnection(err) from err
 
-    def search(self, selector: SeriesSelector) -> Generator[Metadata, None, None]:
+    def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
         """Search for series matching the given selector."""
         many_series = self.__client.get_list_series()
         fields = self.__client.query("SHOW FIELD KEYS")
@@ -81,7 +81,7 @@ class InfluxSource:
             measurement, tags = _parse_influx_series(series)
             for field in fields.get_points(measurement=measurement):
                 yield Metadata(
-                    SeriesSelectorResponse.from_tags(
+                    SeriesSelector.from_tags(
                         selector.source,
                         tags,
                         field["fieldKey"],

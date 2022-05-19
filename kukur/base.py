@@ -24,8 +24,11 @@ class Dictionary:
 
 
 @dataclass
-class SeriesSelector:
-    """SeriesSelector identifies a group of time series matching the given pattern."""
+class SeriesSearch:
+    """SeriesSearch is the series selector to search series.
+
+    The field can be optional to allow searching for anything.
+    """
 
     source: str
     tags: dict[str, str] = data_field(default_factory=dict)
@@ -46,23 +49,6 @@ class SeriesSelector:
         self.tags = tags_dict
         self.field = field
 
-    @classmethod
-    def from_tags(cls, source: str, tags: dict[str, str], field: Optional[str] = None):
-        """Create the SeriesSelector from tags."""
-        return cls(source, tags, field)
-
-    @classmethod
-    def from_data(cls, data: dict[str, Any]):
-        """Create a Series from a dictionary."""
-        tags = data.get("tags", {})
-        if "name" in data and "tags" not in data:
-            tags["series name"] = data["name"]
-        return cls(data["source"], tags, data.get("field", None))
-
-    def to_data(self) -> dict[str, Any]:
-        """Convert to JSON object."""
-        return dict(source=self.source, tags=self.tags, field=self.field)
-
     @property
     def name(self) -> str:
         """Get the series name with tags and fields included.
@@ -79,10 +65,14 @@ class SeriesSelector:
             return f"{series_string}"
         return f"{series_string}::{self.field}"
 
+    def to_data(self) -> dict[str, Any]:
+        """Convert to JSON object."""
+        return dict(source=self.source, tags=self.tags, field=self.field)
+
 
 @dataclass
-class SeriesSelectorResponse(SeriesSelector):
-    """SeriesSelectorResponse is the series selector used in the return of methods."""
+class SeriesSelector(SeriesSearch):
+    """SeriesSelector identifies a group of time series matching the given pattern."""
 
     field: str = "value"
 
@@ -90,12 +80,29 @@ class SeriesSelectorResponse(SeriesSelector):
         self,
         source: str,
         tags: Union[str, dict[str, str]] = None,
-        field: Optional[str] = None,
+        field: str = "value",
     ):
         super().__init__(source, tags)
+        self.field = field
+
+    @classmethod
+    def from_tags(cls, source: str, tags: dict[str, str], field: Optional[str] = None):
+        """Create the SeriesSelector from tags."""
         if field is None:
             field = "value"
-        self.field = field
+        return cls(source, tags, field)
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]):
+        """Create a Series from a dictionary."""
+        tags = data.get("tags", {})
+        if "name" in data and "tags" not in data:
+            tags["series name"] = data["name"]
+        return cls(data["source"], tags, data.get("field", None))
+
+    def to_data(self) -> dict[str, Any]:
+        """Convert to JSON object."""
+        return dict(source=self.source, tags=self.tags, field=self.field)
 
     @property
     def name(self) -> str:

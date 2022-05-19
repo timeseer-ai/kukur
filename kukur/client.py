@@ -10,7 +10,7 @@ from typing import Any, Generator, Optional, Tuple, Union
 import pyarrow as pa
 import pyarrow.flight as fl
 
-from kukur import Metadata, SeriesSelector, SeriesSelectorResponse, SourceStructure
+from kukur import Metadata, SeriesSearch, SeriesSelector, SourceStructure
 
 
 class Client:
@@ -37,8 +37,8 @@ class Client:
         self._api_key = api_key
 
     def search(
-        self, selector: SeriesSelector
-    ) -> Generator[Union[Metadata, SeriesSelectorResponse], None, None]:
+        self, selector: SeriesSearch
+    ) -> Generator[Union[Metadata, SeriesSelector], None, None]:
         """Search Kukur for time series matching the given ``SeriesSelector``.
 
         Args:
@@ -56,7 +56,7 @@ class Client:
         for result in results:
             data = json.loads(result.body.to_pybytes())
             if "series" not in data:
-                yield SeriesSelectorResponse.from_data(data)
+                yield SeriesSelector.from_data(data)
             else:
                 yield _read_metadata(data)
 

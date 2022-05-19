@@ -31,8 +31,8 @@ from kukur import (
     Dictionary,
     InterpolationType,
     Metadata,
+    SeriesSearch,
     SeriesSelector,
-    SeriesSelectorResponse,
 )
 from kukur.exceptions import (
     InvalidDataError,
@@ -119,7 +119,7 @@ class PIWebAPIDataArchiveSource:
         if not self.__request_properties.verify_ssl:
             urllib3.disable_warnings()
 
-    def search(self, selector: SeriesSelector) -> Generator[Metadata, None, None]:
+    def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
         """Return all tags in the Data Archive."""
         session = self._get_session()
 
@@ -155,7 +155,7 @@ class PIWebAPIDataArchiveSource:
             page = page + 1
             for point in points:
                 metadata = _get_metadata(
-                    SeriesSelectorResponse(selector.source, point["Name"]),
+                    SeriesSelector(selector.source, point["Name"]),
                     point,
                     dictionary_lookup,
                 )
@@ -266,7 +266,7 @@ class PIWebAPIDataArchiveSource:
 def _get_metadata(
     selector: SeriesSelector, point: dict, dictionary_lookup: _DictionaryLookup
 ) -> Optional[Metadata]:
-    metadata = Metadata(SeriesSelectorResponse(selector.source, point["Name"]))
+    metadata = Metadata(SeriesSelector(selector.source, point["Name"]))
     metadata.set_field(fields.Description, point["Descriptor"])
     metadata.set_field(fields.Unit, point["EngineeringUnits"])
 

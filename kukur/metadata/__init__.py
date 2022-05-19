@@ -9,7 +9,7 @@ They have been defined here. Users of Kukur can define their own metadata fields
 
 from typing import Any, Generator, Optional, TypeVar, Union
 
-from kukur.base import SeriesSelector, SeriesSelectorResponse
+from kukur.base import SeriesSelector
 
 from .fields import MetadataField, register_default_fields
 
@@ -132,7 +132,7 @@ class Metadata(MetadataFields):
     """Metadata fields for one time series."""
 
     _fields: list[MetadataField] = []
-    series: SeriesSelectorResponse
+    series: SeriesSelector
 
     @classmethod
     def register_field(
@@ -156,7 +156,7 @@ class Metadata(MetadataFields):
         if series is None:
             if "series" not in data:
                 raise AttributeError()
-            series = SeriesSelectorResponse.from_data(data["series"])
+            series = SeriesSelector.from_data(data["series"])
         metadata = cls(series)
         for k, v in data.items():
             if k == "series":
@@ -170,7 +170,7 @@ class Metadata(MetadataFields):
         values: Optional[dict[MetadataField, Any]] = None,
     ):
         super().__init__(self._fields, values)
-        self.series = SeriesSelectorResponse(series.source, series.tags, series.field)
+        self.series = series
 
     def __repr__(self) -> str:
         data = dict(self.iter_names())

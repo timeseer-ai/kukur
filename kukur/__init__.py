@@ -13,8 +13,8 @@ from .base import (
     DataType,
     Dictionary,
     InterpolationType,
+    SeriesSearch,
     SeriesSelector,
-    SeriesSelectorResponse,
     SourceStructure,
 )
 from .exceptions import KukurException  # noqa
@@ -27,8 +27,8 @@ class Source(Protocol):
     """Source is the interface that Kukur data sources need to implement."""
 
     def search(
-        self, selector: SeriesSelector
-    ) -> Generator[Union[SeriesSelectorResponse, Metadata], None, None]:
+        self, selector: SeriesSearch
+    ) -> Generator[Union[SeriesSelector, Metadata], None, None]:
         """Return all time series or even the metadata of them in this source matching the selector."""
         ...
 

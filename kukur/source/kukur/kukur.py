@@ -7,7 +7,7 @@ from typing import Any, Generator, Optional, Tuple, Union
 
 import pyarrow as pa
 
-from kukur import Metadata, SeriesSelector, SeriesSelectorResponse, SourceStructure
+from kukur import Metadata, SeriesSearch, SeriesSelector, SourceStructure
 from kukur.client import Client
 from kukur.exceptions import InvalidDataError
 
@@ -35,19 +35,17 @@ class KukurSource:
         self.__source_name = source_name
 
     def search(
-        self, selector: SeriesSelector
-    ) -> Generator[Union[Metadata, SeriesSelectorResponse], None, None]:
+        self, selector: SeriesSearch
+    ) -> Generator[Union[Metadata, SeriesSelector], None, None]:
         """Search time series using the Flight service."""
-        query = SeriesSelector.from_tags(
-            self.__source_name, selector.tags, selector.field
-        )
+        query = SeriesSearch(self.__source_name, selector.tags, selector.field)
         for result in self.__client.search(query):
-            if isinstance(result, SeriesSelectorResponse):
-                yield SeriesSelectorResponse.from_tags(
+            if isinstance(result, SeriesSelector):
+                yield SeriesSelector.from_tags(
                     selector.source, result.tags, result.field
                 )
             else:
-                result.series = SeriesSelectorResponse.from_tags(
+                result.series = SeriesSelector.from_tags(
                     selector.source, result.series.tags, result.series.field
                 )
                 yield result
@@ -60,9 +58,7 @@ class KukurSource:
             self.__source_name, selector.tags, selector.field
         )
         metadata = self.__client.get_metadata(remote_selector)
-        metadata.series = SeriesSelectorResponse(
-            selector.source, selector.tags, selector.field
-        )
+        metadata.series = SeriesSelector(selector.source, selector.tags, selector.field)
         return metadata
 
     def get_data(

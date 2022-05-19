@@ -20,7 +20,7 @@ import pyarrow as pa
 import pyarrow.csv
 import pyarrow.compute
 
-from kukur import Dictionary, Metadata, SeriesSelector
+from kukur import Dictionary, Metadata, SeriesSearch, SeriesSelector
 
 from kukur.loader import Loader, from_config as loader_from_config
 from kukur.exceptions import InvalidDataError, InvalidSourceException, KukurException
@@ -97,7 +97,7 @@ class CSVSource:
         self.__data_format = data_format
         self.__mappers = mappers
 
-    def search(self, selector: SeriesSelector) -> Generator[Metadata, None, None]:
+    def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
         """Search for series matching the given selector."""
         if self.__loaders.metadata is None:
             return
@@ -110,7 +110,11 @@ class CSVSource:
                 metadata = None
                 if "series name" in selector.tags:
                     if series_name == selector.name:
-                        metadata = Metadata(selector)
+                        metadata = Metadata(
+                            SeriesSelector.from_tags(
+                                selector.source, selector.tags, selector.field
+                            )
+                        )
                 else:
                     selector_tags = selector.tags.copy()
                     selector_tags["series name"] = series_name

@@ -9,7 +9,7 @@ from pathlib import Path
 import json
 import pyarrow as pa
 
-from kukur import Metadata, SeriesSelector, SeriesSelectorResponse, SourceStructure
+from kukur import Metadata, SeriesSearch, SeriesSelector, SourceStructure
 from kukur.exceptions import UnknownSourceException
 from kukur.source import SourceFactory, SourceWrapper
 from kukur.api_key.app import ApiKeys
@@ -34,8 +34,8 @@ class Kukur:
         migration_runner.migrate()
 
     def search(
-        self, selector: SeriesSelector
-    ) -> Generator[Union[SeriesSelectorResponse, Metadata], None, None]:
+        self, selector: SeriesSearch
+    ) -> Generator[Union[SeriesSelector, Metadata], None, None]:
         """Return all time series or even the metadata of them in this source matching the selector."""
         return self._get_source(selector.source).search(selector)
 

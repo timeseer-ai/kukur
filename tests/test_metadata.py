@@ -8,7 +8,6 @@ from kukur import (
     Dictionary,
     InterpolationType,
     SeriesSelector,
-    SeriesSelectorResponse,
 )
 from kukur.metadata import Metadata, MetadataField, fields
 
@@ -22,7 +21,7 @@ def test_series_json() -> None:
     assert data["series"]["tags"]["series name"] == "test-tag-1"
 
     new_metadata = Metadata.from_data(data)
-    assert new_metadata.series == SeriesSelectorResponse(
+    assert new_metadata.series == SeriesSelector(
         SERIES.source, SERIES.tags, SERIES.field
     )
 
@@ -35,7 +34,7 @@ def test_repr() -> None:
     metadata.set_field_by_name("custom2", "value2")
 
     assert (
-        "SeriesSelectorResponse(source='test', tags={'series name': 'test-tag-1'}, field='value')"
+        "SeriesSelector(source='test', tags={'series name': 'test-tag-1'}, field='value')"
         in repr(metadata)
     )
     assert "'description': 'a test tag'" in repr(metadata)

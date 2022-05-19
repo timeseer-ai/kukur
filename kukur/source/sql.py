@@ -13,7 +13,7 @@ from typing import Generator, Optional, Union
 import dateutil.parser
 import pyarrow as pa
 
-from kukur import Dictionary, Metadata, SeriesSelector, SeriesSelectorResponse
+from kukur import Dictionary, Metadata, SeriesSearch, SeriesSelector
 from kukur.exceptions import KukurException
 from kukur.metadata import fields
 from kukur.source.metadata import MetadataValueMapper
@@ -113,8 +113,8 @@ class BaseSQLSource(ABC):
         self._quality_mapper = quality_mapper
 
     def search(
-        self, selector: SeriesSelector
-    ) -> Generator[Union[SeriesSelectorResponse, Metadata], None, None]:
+        self, selector: SeriesSearch
+    ) -> Generator[Union[SeriesSelector, Metadata], None, None]:
         """Search for time series matching the given selector."""
         if self._config.list_query is None:
             return
@@ -221,17 +221,17 @@ class BaseSQLSource(ABC):
         return pa.Table.from_pydict({"ts": timestamps, "value": values})
 
     def __search_names(
-        self, selector: SeriesSelector
-    ) -> Generator[SeriesSelectorResponse, None, None]:
+        self, selector: SeriesSearch
+    ) -> Generator[SeriesSelector, None, None]:
         connection = self.connect()
         cursor = connection.cursor()
         cursor.execute(self._config.list_query)
 
         for (series_name,) in cursor:
-            yield SeriesSelectorResponse(selector.source, series_name)
+            yield SeriesSelector(selector.source, series_name)
 
     def __search_metadata(
-        self, selector: SeriesSelector
+        self, selector: SeriesSearch
     ) -> Generator[Metadata, None, None]:
         connection = self.connect()
         cursor = connection.cursor()
@@ -247,8 +247,8 @@ class BaseSQLSource(ABC):
         if series_name_index is None:
             raise InvalidMetadataError('column "series name" not found')
         for row in cursor:
-            selector = SeriesSelectorResponse(selector.source, row[series_name_index])
-            metadata = Metadata(selector)
+            series_selector = SeriesSelector(selector.source, row[series_name_index])
+            metadata = Metadata(series_selector)
             for i, name in enumerate(self._config.list_columns):
                 if i == series_name_index:
                     continue
