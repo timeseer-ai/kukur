@@ -75,18 +75,25 @@ class InfluxSource:
 
     def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
         """Search for series matching the given selector."""
-        many_series = self.__client.get_list_series()
+        measurement = None
+        if "series name" in selector.tags:
+            measurement = selector.tags["series name"]
+            del selector.tags["series name"]
+        many_series = self.__client.get_list_series(
+            measurement=measurement, tags=selector.tags
+        )
         fields = self.__client.query("SHOW FIELD KEYS")
         for series in many_series:
             measurement, tags = _parse_influx_series(series)
             for field in fields.get_points(measurement=measurement):
-                yield Metadata(
-                    SeriesSelector.from_tags(
-                        selector.source,
-                        tags,
-                        field["fieldKey"],
+                if selector.field in ["value", field["fieldKey"]]:
+                    yield Metadata(
+                        SeriesSelector.from_tags(
+                            selector.source,
+                            tags,
+                            field["fieldKey"],
+                        )
                     )
-                )
 
     # pylint: disable=no-self-use
     def get_metadata(self, selector: SeriesSelector) -> Metadata:
