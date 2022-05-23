@@ -60,5 +60,6 @@ __all__ = [
     "Dictionary",
     "InterpolationType",
     "Metadata",
+    "SeriesSearch",
     "SeriesSelector",
 ]
