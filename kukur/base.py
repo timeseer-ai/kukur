@@ -98,7 +98,7 @@ class SeriesSelector(SeriesSearch):
         tags = data.get("tags", {})
         if "name" in data and "tags" not in data:
             tags["series name"] = data["name"]
-        return cls(data["source"], tags, data.get("field", None))
+        return cls(data["source"], tags, data.get("field", "value"))
 
     def to_data(self) -> dict[str, Any]:
         """Convert to JSON object."""
