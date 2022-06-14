@@ -7,7 +7,7 @@ They have been defined here. Users of Kukur can define their own metadata fields
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Generator, Optional, TypeVar, Union
+from typing import Any, Dict, Generator, List, Optional, Tuple, TypeVar, Union
 
 from kukur.base import SeriesSelector
 
@@ -23,13 +23,13 @@ class MetadataFields:
     Alternatively, untyped methods that accept fields by name are also available.
     """
 
-    _fields: list[MetadataField] = []
-    __values: dict[Union[str, MetadataField], Any]
+    _fields: List[MetadataField] = []
+    __values: Dict[Union[str, MetadataField], Any]
 
     def __init__(
         self,
-        fields: list[MetadataField],
-        values: Optional[dict[MetadataField, Any]] = None,
+        fields: List[MetadataField],
+        values: Optional[Dict[MetadataField, Any]] = None,
     ):
         self._fields = fields
         self.__values = {k: k.default() for k in self._fields}
@@ -37,12 +37,12 @@ class MetadataFields:
             for field, value in values.items():
                 self.__values[field] = value
 
-    def iter_fields(self) -> Generator[tuple[MetadataField, Any], None, None]:
+    def iter_fields(self) -> Generator[Tuple[MetadataField, Any], None, None]:
         """Iterate over all typed metadata fields and their values."""
         for field in self._fields:
             yield (field, field.calculated_value(self, self.__values.get(field)))
 
-    def iter_names(self) -> Generator[tuple[str, Any], None, None]:
+    def iter_names(self) -> Generator[Tuple[str, Any], None, None]:
         """Iterate over all metadata fields (typed and untyped) and return their names and values."""
         for field, value in self.__values.items():
             if isinstance(field, MetadataField):
@@ -50,7 +50,7 @@ class MetadataFields:
             else:
                 yield (field, value)
 
-    def iter_serialized(self) -> Generator[tuple[str, Any], None, None]:
+    def iter_serialized(self) -> Generator[Tuple[str, Any], None, None]:
         """Iterate over all metadata fields, but use the human readable names and serialized values."""
         for field, value in self.__values.items():
             if isinstance(field, MetadataField):
@@ -111,7 +111,7 @@ class MetadataFields:
             return self.__values[field_name]
         return self.get_field(field)
 
-    def to_data(self) -> dict[str, Any]:
+    def to_data(self) -> Dict[str, Any]:
         """Convert the metadata to a Dictionary with camelcase keys as expected in JSON."""
         data = {}
         for field, value in self.__values.items():
@@ -131,7 +131,7 @@ class MetadataFields:
 class Metadata(MetadataFields):
     """Metadata fields for one time series."""
 
-    _fields: list[MetadataField] = []
+    _fields: List[MetadataField] = []
     series: SeriesSelector
 
     @classmethod
@@ -148,7 +148,7 @@ class Metadata(MetadataFields):
 
     @classmethod
     def from_data(
-        cls, data: dict[str, Any], series: Optional[SeriesSelector] = None
+        cls, data: Dict[str, Any], series: Optional[SeriesSelector] = None
     ) -> "Metadata":
         """Create a new Metadata object from a dictionary produced by to_data().
 
@@ -167,7 +167,7 @@ class Metadata(MetadataFields):
     def __init__(
         self,
         series: SeriesSelector,
-        values: Optional[dict[MetadataField, Any]] = None,
+        values: Optional[Dict[MetadataField, Any]] = None,
     ):
         super().__init__(self._fields, values)
         self.series = series
@@ -176,7 +176,7 @@ class Metadata(MetadataFields):
         data = dict(self.iter_names())
         return f"Metadata({self.series}, {data})"
 
-    def to_data(self) -> dict[str, Any]:
+    def to_data(self) -> Dict[str, Any]:
         """Convert the metadata to a Dictionary with camelcase keys as expected in JSON."""
         data = super().to_data()
         data["series"] = self.series.to_data()

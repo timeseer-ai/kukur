@@ -8,7 +8,7 @@ This takes care to not persistently store metadata."""
 import logging
 
 from datetime import datetime, timezone
-from typing import Any, Generator
+from typing import Any, Generator, List
 
 from dateutil.tz import tzlocal
 
@@ -18,7 +18,7 @@ from kukur import Metadata, SeriesSearch, SeriesSelector, Source
 logger = logging.getLogger(__name__)
 
 
-def search(source: Source, source_name: str) -> Generator[list[Any], None, None]:
+def search(source: Source, source_name: str) -> Generator[List[Any], None, None]:
     """Test listing all series (or metadata) in a source."""
     header_printed = False
     logger.info('Searching for time series in "%s"', source_name)
@@ -37,7 +37,7 @@ def search(source: Source, source_name: str) -> Generator[list[Any], None, None]
 
 def metadata(
     source: Source, source_name: str, series_name: str
-) -> Generator[list[Any], None, None]:
+) -> Generator[List[Any], None, None]:
     """Test fetching metadata from a source.
 
     This does not store the metadata."""
@@ -53,7 +53,7 @@ def data(
     series_name: str,
     start_date: datetime,
     end_date: datetime,
-) -> Generator[list[Any], None, None]:
+) -> Generator[List[Any], None, None]:
     """Test fetching data for a time series."""
     start_date = _make_aware(start_date)
     end_date = _make_aware(end_date)
@@ -78,11 +78,11 @@ def data(
             yield [ts.as_py().isoformat(), value.as_py()]
 
 
-def _get_metadata_header(result: Metadata) -> list[str]:
+def _get_metadata_header(result: Metadata) -> List[str]:
     return ["series name"] + [k for k, _ in result.iter_serialized()]
 
 
-def _get_metadata(result: Metadata) -> list[Any]:
+def _get_metadata(result: Metadata) -> List[Any]:
     return [result.series.tags["series name"]] + [
         v for _, v in result.iter_serialized()
     ]

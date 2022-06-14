@@ -3,7 +3,7 @@
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Callable, Generic, Optional, TypeVar
+from typing import Any, Callable, Generic, List, Optional, Tuple, TypeVar
 
 from kukur.base import (
     DataType as KukurDataType,
@@ -220,14 +220,14 @@ DictionaryName = MetadataField[Optional[str]](
 
 def _dictionary_to_json(
     dictionary: Optional[KukurDictionary],
-) -> Optional[list[tuple[int, str]]]:
+) -> Optional[List[Tuple[int, str]]]:
     if dictionary is None:
         return None
     return list(dictionary.mapping.items())
 
 
 def _dictionary_from_json(
-    dictionary: Optional[list[tuple[int, str]]]
+    dictionary: Optional[List[Tuple[int, str]]]
 ) -> Optional[KukurDictionary]:
     if dictionary is None:
         return None

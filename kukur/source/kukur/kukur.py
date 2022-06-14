@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 from datetime import datetime
-from typing import Any, Generator, Optional, Tuple, Union
+from typing import Any, Dict, Generator, Optional, Tuple, Union
 
 import pyarrow as pa
 
@@ -12,7 +12,7 @@ from kukur.client import Client
 from kukur.exceptions import InvalidDataError
 
 
-def from_config(config: dict[str, Any]):
+def from_config(config: Dict[str, Any]):
     """Create a new Kukur source"""
     source_name = config["source"]
     host = config.get("host", "localhost")

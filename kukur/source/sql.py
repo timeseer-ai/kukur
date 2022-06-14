@@ -8,7 +8,7 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, tzinfo
-from typing import Generator, Optional, Union
+from typing import Dict, Generator, List, Optional, Union
 
 import dateutil.parser
 import pyarrow as pa
@@ -36,9 +36,9 @@ class SQLConfig:  # pylint: disable=too-many-instance-attributes
     connection_string: str
     query_string_parameters: bool = False
     list_query: Optional[str] = None
-    list_columns: list[str] = field(default_factory=list)
+    list_columns: List[str] = field(default_factory=list)
     metadata_query: Optional[str] = None
-    metadata_columns: list[str] = field(default_factory=list)
+    metadata_columns: List[str] = field(default_factory=list)
     dictionary_query: Optional[str] = None
     data_query: Optional[str] = None
     data_query_datetime_format: Optional[str] = None
@@ -274,7 +274,7 @@ class BaseSQLSource(ABC):
     def __query_dictionary(self, cursor, dictionary_name: str) -> Optional[Dictionary]:
         if self._config.dictionary_query is None:
             return None
-        mapping: dict[int, str] = {}
+        mapping: Dict[int, str] = {}
 
         query = self._config.dictionary_query
         params = [dictionary_name]

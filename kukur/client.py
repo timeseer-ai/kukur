@@ -5,7 +5,7 @@
 import json
 
 from datetime import datetime, timedelta, timezone
-from typing import Any, Generator, Optional, Tuple, Union
+from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 import pyarrow as pa
 import pyarrow.flight as fl
@@ -108,7 +108,7 @@ class Client:
         ticket = fl.Ticket(json.dumps(query))
         return self._get_client().do_get(ticket).read_all()
 
-    def list_sources(self) -> list[str]:
+    def list_sources(self) -> List[str]:
         """List all configured sources.
 
         Returns:
@@ -145,7 +145,7 @@ class Client:
         return self._client
 
 
-def _read_metadata(data: dict[str, Any]) -> Metadata:
+def _read_metadata(data: Dict[str, Any]) -> Metadata:
     return Metadata.from_data(data)
 
 

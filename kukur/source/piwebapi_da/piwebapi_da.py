@@ -5,7 +5,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Generator, Optional
+from typing import Dict, Generator, Optional
 
 import pyarrow as pa
 
@@ -59,8 +59,8 @@ class _DictionaryLookup:  # pylint: disable=too-few-public-methods
         self.__session = session
         self.__request_properties = request_properties
         self.__data_archive = data_archive
-        self.__digital_set_links: Optional[dict[str, str]] = None
-        self.__dictionaries: dict[str, Dictionary] = {}
+        self.__digital_set_links: Optional[Dict[str, str]] = None
+        self.__dictionaries: Dict[str, Dictionary] = {}
 
     def get(self, name: str) -> Dictionary:
         """Return a dictionary with the given name.
@@ -86,7 +86,7 @@ class _DictionaryLookup:  # pylint: disable=too-few-public-methods
             }
         )
 
-    def _get_digital_set_links(self) -> dict[str, str]:
+    def _get_digital_set_links(self) -> Dict[str, str]:
         response = self.__session.get(
             self.__data_archive["Links"]["EnumerationSets"],
             verify=self.__request_properties.verify_ssl,

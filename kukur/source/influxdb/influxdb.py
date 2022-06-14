@@ -6,7 +6,7 @@
 import json
 
 from datetime import datetime
-from typing import Any, Generator, Optional, Tuple
+from typing import Any, Dict, Generator, Optional, Tuple
 
 import dateutil.parser
 import pyarrow as pa
@@ -30,7 +30,7 @@ class InvalidClientConnection(KukurException):
         KukurException.__init__(self, f"Connection error: {message}")
 
 
-def from_config(config: dict[str, Any]):
+def from_config(config: Dict[str, Any]):
     """Create a new Influx data source"""
     if not HAS_INFLUX:
         raise MissingModuleException("influxdb", "influxdb")
@@ -156,7 +156,7 @@ class InfluxSource:
         return SourceStructure(fields, tag_keys, tag_values)
 
 
-def _parse_influx_series(series: str) -> Tuple[str, dict[str, str]]:
+def _parse_influx_series(series: str) -> Tuple[str, Dict[str, str]]:
     series_name = series.replace("\\", "")
     measurement = series_name.split(",")[0]
     tags = {}

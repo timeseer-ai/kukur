@@ -36,7 +36,7 @@ setuptools.setup(
         "odbc": ["pyodbc"],
         "piwebapi": ["requests", "requests-kerberos"],
     },
-    python_requires='>=3.9',
+    python_requires='>=3.8',
     package_data={
         'kukur': ['py.typed'],
     },
