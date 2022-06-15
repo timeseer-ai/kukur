@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 from datetime import datetime
-from typing import Any, Generator, Optional, Union
+from typing import Any, Dict, Generator, List, Optional, Union
 from pathlib import Path
 
 import json
@@ -24,7 +24,7 @@ class Kukur:
 
     __repository: RepositoryRegistry
 
-    def __init__(self, config: dict[str, Any]):
+    def __init__(self, config: Dict[str, Any]):
         self.__source_factory = SourceFactory(config)
         self.__repository = RepositoryRegistry(
             data_dir=Path(config.get("data_dir", "."))
@@ -61,7 +61,7 @@ class Kukur:
         """Return the api keys."""
         return ApiKeys(self.__repository)
 
-    def list_sources(self, *_) -> list[bytes]:
+    def list_sources(self, *_) -> List[bytes]:
         """Return all the configured sources."""
         sources = self.__source_factory.get_source_names()
         return [json.dumps(sources).encode()]

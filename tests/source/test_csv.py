@@ -3,6 +3,8 @@
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
+from typing import Dict
+
 from dateutil.parser import parse as parse_date
 
 import kukur.config
@@ -27,7 +29,7 @@ def get_source(source_name: str) -> Source:
 
 
 def make_series(
-    source: str, tags: dict[str, str] = {"series name": "test-tag-1"}
+    source: str, tags: Dict[str, str] = {"series name": "test-tag-1"}
 ) -> SeriesSelector:
     return SeriesSelector.from_tags(source, tags)
 

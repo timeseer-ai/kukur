@@ -7,7 +7,7 @@ import time
 
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any, Callable, Generator, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union
 
 import pyarrow as pa
 import pyarrow.types
@@ -62,7 +62,7 @@ class MetadataSource:
     """A metadata source provides at least some metadata fields."""
 
     source: SourceProtocol
-    fields: list[str] = field(default_factory=list)
+    fields: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -101,7 +101,7 @@ class SourceWrapper:
     """
 
     __source: Source
-    __metadata: list[MetadataSource]
+    __metadata: List[MetadataSource]
     __query_retry_count: int
     __query_retry_delay: float
     __data_query_interval: Optional[timedelta] = None
@@ -109,7 +109,7 @@ class SourceWrapper:
     def __init__(
         self,
         source: Source,
-        metadata_sources: list[MetadataSource],
+        metadata_sources: List[MetadataSource],
         common_options,
     ):
         self.__source = source
@@ -246,8 +246,8 @@ class SourceWrapper:
 class SourceFactory:
     """Source factory to create Source objects"""
 
-    __config: dict[str, Any]
-    __factory: dict[str, Callable]
+    __config: Dict[str, Any]
+    __factory: Dict[str, Callable]
 
     def __init__(self, config):
         self.__config = config
@@ -259,7 +259,7 @@ class SourceFactory:
         """Register a new source type with the factory."""
         self.__factory[source_type_name] = source_factory
 
-    def get_source_names(self) -> list[str]:
+    def get_source_names(self) -> List[str]:
         """Get the data sources names as configured in the Kukur configuration."""
         sources = []
         for name, _ in self.__config.get("source", {}).items():
@@ -302,7 +302,7 @@ class SourceFactory:
                 )
         return None
 
-    def _get_extra_metadata_sources(self) -> dict[str, MetadataSource]:
+    def _get_extra_metadata_sources(self) -> Dict[str, MetadataSource]:
         metadata_sources = {}
         for name, options in self.__config.get("metadata", {}).items():
             if "type" not in options:
@@ -318,7 +318,7 @@ class SourceFactory:
         return metadata_sources
 
     def _make_source(
-        self, source_type: str, source_config: dict[str, Any]
+        self, source_type: str, source_config: Dict[str, Any]
     ) -> Union[SourceProtocol, TagSource]:
         metadata_mapper = self._get_metadata_mapper(
             source_config.get("metadata_mapping")
@@ -330,7 +330,7 @@ class SourceFactory:
 
         factory_function: Any = self.__factory[source_type]
 
-        arguments: list[Any] = []
+        arguments: List[Any] = []
         for parameter in inspect.signature(factory_function).parameters.values():
             if parameter.annotation == MetadataMapper:
                 arguments.append(metadata_mapper)
@@ -364,7 +364,7 @@ class SourceFactory:
         return QualityMapper.from_config(self.__config["quality_mapping"][name])
 
 
-def _concat_tables(tables: list[pa.Table]) -> list[pa.Table]:
+def _concat_tables(tables: List[pa.Table]) -> List[pa.Table]:
     """Safely concatenate multiple pyarrow.Table's.
 
     If any of the given tables contains strings, the result will contain a
@@ -403,7 +403,7 @@ def _concat_tables(tables: list[pa.Table]) -> list[pa.Table]:
     return pa.concat_tables([table.cast(schema) for table in tables])
 
 
-def _has_any_string(tables: list[pa.Table]) -> bool:
+def _has_any_string(tables: List[pa.Table]) -> bool:
     string_tables = [
         table
         for table in tables
@@ -412,7 +412,7 @@ def _has_any_string(tables: list[pa.Table]) -> bool:
     return len(string_tables) > 0
 
 
-def _is_all_integer(tables: list[pa.Table]) -> bool:
+def _is_all_integer(tables: List[pa.Table]) -> bool:
     integer_tables = [
         table
         for table in tables
@@ -421,6 +421,6 @@ def _is_all_integer(tables: list[pa.Table]) -> bool:
     return len(integer_tables) == len(tables)
 
 
-def _has_quality_data_flag(tables: list[pa.Table]) -> bool:
+def _has_quality_data_flag(tables: List[pa.Table]) -> bool:
     quality_table = [table for table in tables if "quality" in table.column_names]
     return len(quality_table) > 0

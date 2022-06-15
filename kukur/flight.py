@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import json
 
-from typing import Any, Callable, Generator
+from typing import Any, Callable, Dict, Generator, List
 
 import pyarrow.flight as fl
 
@@ -24,10 +24,10 @@ class JSONFlightServer(fl.FlightServerBase):
     It supports registering custom actions and request handlers. Register a GET
     handler to return Arrow data. To return JSON, register an action handler."""
 
-    __get_handlers: dict[str, Callable]
-    __action_handlers: dict[str, Callable]
+    __get_handlers: Dict[str, Callable]
+    __action_handlers: Dict[str, Callable]
 
-    def __init__(self, config: dict[str, Any], **kwargs):
+    def __init__(self, config: Dict[str, Any], **kwargs):
         host = "0.0.0.0"
         port = 8081
         if "flight" in config:
@@ -92,7 +92,7 @@ class KukurFlightServer:
                 }
                 yield json.dumps(series).encode()
 
-    def get_metadata(self, _, action: fl.Action) -> list[bytes]:
+    def get_metadata(self, _, action: fl.Action) -> List[bytes]:
         """Return metadata for the given time series as JSON."""
         request = json.loads(action.body.to_pybytes())
         selector = SeriesSelector.from_data(request)
@@ -107,7 +107,7 @@ class KukurFlightServer:
         data = self.__source.get_data(selector, start_date, end_date)
         return fl.RecordBatchStream(data)
 
-    def get_source_structure(self, _, action: fl.Action) -> list[bytes]:
+    def get_source_structure(self, _, action: fl.Action) -> List[bytes]:
         """Return the structure of a source for the given time series as JSON."""
         request = json.loads(action.body.to_pybytes())
         selector = SeriesSelector.from_data(request)

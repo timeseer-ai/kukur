@@ -14,7 +14,7 @@ import csv
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Generator, Optional
+from typing import Any, Dict, Generator, List, Optional
 
 import pyarrow as pa
 import pyarrow.csv
@@ -37,7 +37,7 @@ class InvalidMetadataError(KukurException):
 
 
 def from_config(
-    config: dict[str, Any],
+    config: Dict[str, Any],
     metadata_mapper: MetadataMapper,
     metadata_value_mapper: MetadataValueMapper,
     quality_mapper: QualityMapper,
@@ -51,7 +51,7 @@ def from_config(
     if "dictionary_dir" in config:
         loaders.dictionary = loader_from_config(config, "dictionary_dir", "r")
     data_format = config.get("format", "row")
-    metadata_fields: list[str] = config.get("metadata_fields", [])
+    metadata_fields: List[str] = config.get("metadata_fields", [])
     if len(metadata_fields) == 0:
         metadata_fields = config.get("fields", [])
     mappers = CSVMappers(metadata_mapper, metadata_value_mapper, quality_mapper)
@@ -81,13 +81,13 @@ class CSVSource:
 
     __loaders: CSVLoaders
     __data_format: str
-    __metadata_fields: list[str]
+    __metadata_fields: List[str]
     __mappers: CSVMappers
 
     def __init__(
         self,
         data_format: str,
-        metadata_fields: list[str],
+        metadata_fields: List[str],
         loaders: CSVLoaders,
         mappers: CSVMappers,
     ):

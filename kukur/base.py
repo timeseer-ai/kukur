@@ -5,7 +5,7 @@
 
 from dataclasses import dataclass, field as data_field
 from enum import Enum
-from typing import Any, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 
 @dataclass
@@ -20,7 +20,7 @@ class Dictionary:
 
     In Python 3.8+, iteration over a dict keeps the insert ordering."""
 
-    mapping: dict[int, str]
+    mapping: Dict[int, str]
 
 
 @dataclass
@@ -31,13 +31,13 @@ class SeriesSearch:
     """
 
     source: str
-    tags: dict[str, str] = data_field(default_factory=dict)
+    tags: Dict[str, str] = data_field(default_factory=dict)
     field: Optional[str] = None
 
     def __init__(
         self,
         source: str,
-        tags: Union[str, dict[str, str]] = None,
+        tags: Union[str, Dict[str, str]] = None,
         field: Optional[str] = None,
     ):
         tags_dict = {}
@@ -54,7 +54,7 @@ class SeriesSearch:
         """Get the series name with tags and fields included.
 
         For sources that cannot handle tags and fields yet."""
-        series_tags: list[str] = []
+        series_tags: List[str] = []
         for tag_key, tag_value in self.tags.items():
             if tag_key == "series name":
                 series_tags.insert(0, tag_value)
@@ -65,7 +65,7 @@ class SeriesSearch:
             return f"{series_string}"
         return f"{series_string}::{self.field}"
 
-    def to_data(self) -> dict[str, Any]:
+    def to_data(self) -> Dict[str, Any]:
         """Convert to JSON object."""
         return dict(source=self.source, tags=self.tags, field=self.field)
 
@@ -79,28 +79,28 @@ class SeriesSelector(SeriesSearch):
     def __init__(
         self,
         source: str,
-        tags: Union[str, dict[str, str]] = None,
+        tags: Union[str, Dict[str, str]] = None,
         field: str = "value",
     ):
         super().__init__(source, tags)
         self.field = field
 
     @classmethod
-    def from_tags(cls, source: str, tags: dict[str, str], field: Optional[str] = None):
+    def from_tags(cls, source: str, tags: Dict[str, str], field: Optional[str] = None):
         """Create the SeriesSelector from tags."""
         if field is None:
             field = "value"
         return cls(source, tags, field)
 
     @classmethod
-    def from_data(cls, data: dict[str, Any]):
+    def from_data(cls, data: Dict[str, Any]):
         """Create a Series from a dictionary."""
         tags = data.get("tags", {})
         if "name" in data and "tags" not in data:
             tags["series name"] = data["name"]
         return cls(data["source"], tags, data.get("field", "value"))
 
-    def to_data(self) -> dict[str, Any]:
+    def to_data(self) -> Dict[str, Any]:
         """Convert to JSON object."""
         return dict(source=self.source, tags=self.tags, field=self.field)
 
@@ -109,7 +109,7 @@ class SeriesSelector(SeriesSearch):
         """Get the series name with tags and fields included.
 
         For sources that cannot handle tags and fields yet."""
-        series_tags: list[str] = []
+        series_tags: List[str] = []
         for tag_key, tag_value in self.tags.items():
             if tag_key == "series name":
                 series_tags.insert(0, tag_value)
@@ -149,12 +149,12 @@ class DataType(Enum):
 class SourceStructure:
     """The SourceStructure defines the fields and tags that are present in the source."""
 
-    fields: list[str]
-    tag_keys: list[str]
-    tag_values: list[dict]
+    fields: List[str]
+    tag_keys: List[str]
+    tag_values: List[dict]
 
     @classmethod
-    def from_data(cls, data: dict[str, Any]) -> "SourceStructure":
+    def from_data(cls, data: Dict[str, Any]) -> "SourceStructure":
         """Create a SourceStructure from a dictionary."""
         return cls(data["fields"], data["tagKeys"], data["tagValues"])
 
