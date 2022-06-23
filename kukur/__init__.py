@@ -54,6 +54,21 @@ class TagSource(Source, Protocol):
         ...
 
 
+@typing.runtime_checkable
+class PlotSource(Source, Protocol):
+    """PlotSource is the interface that Kukur data sources that support getting plot data need to implement."""
+
+    def get_plot_data(
+        self,
+        selector: SeriesSelector,
+        start_date: datetime,
+        end_date: datetime,
+        interval_count: int,
+    ) -> pa.Table:
+        """Return plotting data for the given time series in the given time period."""
+        ...
+
+
 __all__ = [
     "Client",
     "DataType",

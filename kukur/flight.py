@@ -10,8 +10,9 @@ import pyarrow.flight as fl
 
 from dateutil.parser import parse as parse_date
 
-from kukur import Metadata, SeriesSelector, TagSource
+from kukur import Metadata, PlotSource, SeriesSelector, Source, TagSource
 from kukur.app import Kukur
+from kukur.exceptions import InvalidSourceException
 
 __all__ = ["JSONFlightServer"]
 
@@ -68,7 +69,7 @@ class JSONFlightServer(fl.FlightServerBase):
 class KukurFlightServer:
     """KukurFlightServer exposes the data sources provided by a SourceFactory over Arrow Flight."""
 
-    def __init__(self, source: TagSource):
+    def __init__(self, source: Source):
         self.__source = source
 
     def search(self, _, action: fl.Action) -> Generator[bytes, None, None]:
@@ -107,10 +108,25 @@ class KukurFlightServer:
         data = self.__source.get_data(selector, start_date, end_date)
         return fl.RecordBatchStream(data)
 
+    def get_plot_data(self, _, request) -> Any:
+        """Return plot data as Arrow."""
+        selector = SeriesSelector.from_data(request["selector"])
+        start_date = parse_date(request["start_date"])
+        end_date = parse_date(request["end_date"])
+        interval_count: int = request["interval_count"]
+        if not isinstance(self.__source, PlotSource):
+            raise InvalidSourceException("get_plot_data not supported by source")
+        data = self.__source.get_plot_data(
+            selector, start_date, end_date, interval_count
+        )
+        return fl.RecordBatchStream(data)
+
     def get_source_structure(self, _, action: fl.Action) -> List[bytes]:
         """Return the structure of a source for the given time series as JSON."""
         request = json.loads(action.body.to_pybytes())
         selector = SeriesSelector.from_data(request)
+        if not isinstance(self.__source, TagSource):
+            raise InvalidSourceException("get_source_structure not supported by source")
         source_structure = self.__source.get_source_structure(selector)
         if source_structure is None:
             return [json.dumps(source_structure).encode()]

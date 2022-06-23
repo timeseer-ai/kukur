@@ -27,6 +27,7 @@ from kukur.source import (
 
 from kukur import (
     Metadata,
+    PlotSource,
     SeriesSearch,
     SeriesSelector,
     Source as SourceProtocol,
@@ -200,6 +201,36 @@ class SourceWrapper:
         ]
         return _concat_tables(tables)
 
+    def get_plot_data(
+        self,
+        selector: SeriesSelector,
+        start_date: datetime,
+        end_date: datetime,
+        interval_count: int,
+    ) -> pa.Table:
+        """Return the plotting data for the given series in the given time frame
+
+        Plot data calls are not subject to request splitting, but do obsever other settings.
+
+        Returns normal data when plot data is not supported."""
+        if start_date == end_date or "series name" not in selector.tags:
+            return pa.Table.from_pydict({"ts": [], "value": [], "quality": []})
+        if not isinstance(self.__source.data, PlotSource):
+            return self.get_data(selector, start_date, end_date)
+        query_fn = functools.partial(
+            self.__source.data.get_plot_data,
+            selector,
+            start_date,
+            end_date,
+            interval_count,
+        )
+        return _retry(
+            self.__query_retry_count,
+            self.__query_retry_delay,
+            query_fn,
+            f'Plot data query for "{selector.name}" ({selector.source}) ({start_date} to {end_date}) failed',
+        )
+
     def get_source_structure(
         self, selector: SeriesSelector
     ) -> Optional[SourceStructure]:
@@ -213,7 +244,7 @@ class SourceWrapper:
             self.__query_retry_count,
             self.__query_retry_delay,
             query_fn,
-            f"Source structre query for {selector.source} failed",
+            f"Source structure query for {selector.source} failed",
         )
 
     def _get_data_chunk(

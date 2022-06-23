@@ -100,6 +100,19 @@ def test_data_with_quality(client: Client):
     assert data["quality"][2].as_py() == 0
 
 
+def test_plot_data_fallback(client: Client):
+    start_date = datetime.fromisoformat("2020-01-01T00:00:00+00:00")
+    end_date = datetime.fromisoformat("2021-01-01T00:00:00+00:00")
+    data = client.get_plot_data(
+        SeriesSelector("row", "test-tag-6"), start_date, end_date, 200
+    )
+    assert len(data) == 7
+    assert data["ts"][0].as_py() == start_date
+    assert data["value"][0].as_py() == 1.0
+    assert data["ts"][6].as_py() == datetime.fromisoformat("2020-07-01T00:00:00+00:00")
+    assert data["value"][6].as_py() == 1.0
+
+
 def test_sources(client: Client):
     data = client.list_sources()
     assert len(data) == 46
@@ -117,17 +130,6 @@ def test_metadata_backwards_compatibility(client: Client):
     assert len(dictionary.mapping) == 2
     assert dictionary.mapping[0] == "OFF"
     assert dictionary.mapping[1] == "ON"
-
-
-def test_data(client: Client):
-    start_date = datetime.fromisoformat("2020-01-01T00:00:00+00:00")
-    end_date = datetime.fromisoformat("2021-01-01T00:00:00+00:00")
-    data = client.get_data(SeriesSelector("row", "test-tag-6"), start_date, end_date)
-    assert len(data) == 7
-    assert data["ts"][0].as_py() == start_date
-    assert data["value"][0].as_py() == 1.0
-    assert data["ts"][6].as_py() == datetime.fromisoformat("2020-07-01T00:00:00+00:00")
-    assert data["value"][6].as_py() == 1.0
 
 
 def test_get_source_structure(client: Client):

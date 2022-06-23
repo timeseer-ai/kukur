@@ -51,6 +51,9 @@ def parse_args():
     data_parser = test_subparsers.add_parser(
         "data", help="Display data for one time series"
     )
+    plot_parser = test_subparsers.add_parser(
+        "plot", help="Display plot data for one time series"
+    )
 
     search_parser.add_argument(
         "--source",
@@ -94,6 +97,37 @@ def parse_args():
         metavar="END DATE",
         help="The end date of the time period to query",
     )
+    plot_parser.add_argument(
+        "--source",
+        required=True,
+        metavar="SOURCE NAME",
+        help="The name of the data source to test",
+    )
+    plot_parser.add_argument(
+        "--name",
+        required=True,
+        metavar="SERIES NAME",
+        help="The name of the series to query",
+    )
+    plot_parser.add_argument(
+        "--start",
+        required=True,
+        metavar="START DATE",
+        help="The start date of the time period to query",
+    )
+    plot_parser.add_argument(
+        "--end",
+        required=True,
+        metavar="END DATE",
+        help="The end date of the time period to query",
+    )
+    plot_parser.add_argument(
+        "--interval-count",
+        type=int,
+        default=200,
+        metavar="INTERVAL COUNT",
+        help="The number of intervals to divide the plot into.",
+    )
 
     api_key_subparser = api_key_parser.add_subparsers(
         dest="api_key_action", help="Select the action for api keys"
@@ -125,13 +159,14 @@ def _serve(kukur_app: Kukur, server_config):
     server.register_action_handler("search", service.search)
     server.register_action_handler("get_metadata", service.get_metadata)
     server.register_get_handler("get_data", service.get_data)
+    server.register_get_handler("get_plot_data", service.get_plot_data)
     server.register_action_handler("list_sources", kukur_app.list_sources)
     server.register_action_handler("get_source_structure", service.get_source_structure)
     server.serve()
 
 
 def _test_source(kukur_app: Kukur, args):
-    if args.test_action not in ["search", "metadata", "data"]:
+    if args.test_action not in ["search", "metadata", "data", "plot"]:
         return
 
     writer = csv.writer(sys.stdout)
@@ -152,6 +187,19 @@ def _test_source(kukur_app: Kukur, args):
         end_date = parse_date(args.end)
         for row in test_source.data(
             kukur_app, source_name, series_name, start_date, end_date
+        ):
+            writer.writerow(row)
+    elif args.test_action == "plot":
+        series_name = args.name
+        start_date = parse_date(args.start)
+        end_date = parse_date(args.end)
+        for row in test_source.plot(
+            kukur_app,
+            source_name,
+            series_name,
+            start_date,
+            end_date,
+            args.interval_count,
         ):
             writer.writerow(row)
 

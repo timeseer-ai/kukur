@@ -80,8 +80,8 @@ class Client:
     def get_data(
         self,
         selector: SeriesSelector,
-        start_date: datetime = None,
-        end_date: datetime = None,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
     ) -> pa.Table:
         """Get raw data for the time series selected by the SeriesSelector.
 
@@ -93,17 +93,41 @@ class Client:
         Returns:
             A pyarrow Table with two columns: 'ts' and 'value'.
         """
-        if start_date is None or end_date is None:
-            now = datetime.utcnow().replace(tzinfo=timezone(timedelta(0)))
-            if start_date is None:
-                start_date = now.replace(year=now.year - 1)
-            if end_date is None:
-                end_date = now
+        start_date, end_date = _apply_default_range(start_date, end_date)
         query = {
             "query": "get_data",
             "selector": selector.to_data(),
             "start_date": start_date.isoformat(),
             "end_date": end_date.isoformat(),
+        }
+        ticket = fl.Ticket(json.dumps(query))
+        return self._get_client().do_get(ticket).read_all()
+
+    def get_plot_data(
+        self,
+        selector: SeriesSelector,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        interval_count: int = 200,
+    ) -> pa.Table:
+        """Get plot data for the time series selected by the SeriesSelector.
+
+        Args:
+            selector: return data for the time series selected by this selector.
+            start_date: the start date of the time range of data to return. Defaults to one year ago.
+            end_date: the end date of the time range of data to return. Defaults to now.
+            interval_count: the number of intervals included in the plot. Defaults to 200.
+
+        Returns:
+            A pyarrow Table with two columns: 'ts' and 'value'.
+        """
+        start_date, end_date = _apply_default_range(start_date, end_date)
+        query = {
+            "query": "get_plot_data",
+            "selector": selector.to_data(),
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+            "interval_count": interval_count,
         }
         ticket = fl.Ticket(json.dumps(query))
         return self._get_client().do_get(ticket).read_all()
@@ -147,6 +171,18 @@ class Client:
 
 def _read_metadata(data: Dict[str, Any]) -> Metadata:
     return Metadata.from_data(data)
+
+
+def _apply_default_range(
+    start_date: Optional[datetime], end_date: Optional[datetime]
+) -> Tuple[datetime, datetime]:
+    if start_date is None or end_date is None:
+        now = datetime.utcnow().replace(tzinfo=timezone(timedelta(0)))
+        if start_date is None:
+            start_date = now.replace(year=now.year - 1)
+        if end_date is None:
+            end_date = now
+    return start_date, end_date
 
 
 class ClientAuthenticationHandler(fl.ClientAuthHandler):

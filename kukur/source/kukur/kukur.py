@@ -70,6 +70,21 @@ class KukurSource:
         )
         return self.__client.get_data(remote_selector, start_date, end_date)
 
+    def get_plot_data(
+        self,
+        selector: SeriesSelector,
+        start_date: datetime,
+        end_date: datetime,
+        interval_count: int,
+    ) -> pa.Table:
+        """Get plot data from the Flight service."""
+        remote_selector = SeriesSelector.from_tags(
+            self.__source_name, selector.tags, selector.field
+        )
+        return self.__client.get_plot_data(
+            remote_selector, start_date, end_date, interval_count
+        )
+
     def get_source_structure(
         self, selector: SeriesSelector
     ) -> Optional[SourceStructure]:
