@@ -11,8 +11,9 @@ from datetime import datetime, timezone
 from typing import Any, Generator, List
 
 from dateutil.tz import tzlocal
+from pyarrow import Table
 
-from kukur import Metadata, SeriesSearch, SeriesSelector, Source
+from kukur import Metadata, PlotSource, SeriesSearch, SeriesSelector, Source
 
 
 logger = logging.getLogger(__name__)
@@ -70,12 +71,35 @@ def data(
         start_date,
         end_date,
     )
-    if "quality" in table.column_names:
-        for ts, value, quality in zip(table["ts"], table["value"], table["quality"]):
-            yield [ts.as_py().isoformat(), value.as_py(), quality.as_py()]
-    else:
-        for ts, value in zip(table["ts"], table["value"]):
-            yield [ts.as_py().isoformat(), value.as_py()]
+    return _yield_table(table)
+
+
+def plot(  # pylint: disable=too-many-arguments
+    source: Source,
+    source_name: str,
+    series_name: str,
+    start_date: datetime,
+    end_date: datetime,
+    interval_count: int,
+) -> Generator[List[Any], None, None]:
+    """Test fetching plot data for a time series."""
+    if not isinstance(source, PlotSource):
+        logger.warning("Plot data not supported by source %s", source_name)
+        return
+    start_date = _make_aware(start_date)
+    end_date = _make_aware(end_date)
+    logger.info(
+        'Requesting plot data for "%s (%s)" from %s to %s',
+        series_name,
+        source_name,
+        start_date,
+        end_date,
+    )
+
+    table = source.get_plot_data(
+        SeriesSelector(source_name, series_name), start_date, end_date, interval_count
+    )
+    yield from _yield_table(table)
 
 
 def _get_metadata_header(result: Metadata) -> List[str]:
@@ -92,3 +116,12 @@ def _make_aware(timestamp: datetime) -> datetime:
     if timestamp.tzinfo is None:
         return timestamp.replace(tzinfo=tzlocal()).astimezone(timezone.utc)
     return timestamp
+
+
+def _yield_table(table: Table) -> Generator[List[Any], None, None]:
+    if "quality" in table.column_names:
+        for ts, value, quality in zip(table["ts"], table["value"], table["quality"]):
+            yield [ts.as_py().isoformat(), value.as_py(), quality.as_py()]
+    else:
+        for ts, value in zip(table["ts"], table["value"]):
+            yield [ts.as_py().isoformat(), value.as_py()]

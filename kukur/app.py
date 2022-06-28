@@ -51,6 +51,20 @@ class Kukur:
             selector, start_date, end_date
         )
 
+    def get_plot_data(
+        self,
+        selector: SeriesSelector,
+        start_date: datetime,
+        end_date: datetime,
+        interval_count: int,
+    ) -> pa.Table:
+        """Return plot data for the given time series in the given time period.
+
+        Normal data is returned for sources that do not support plot data."""
+        return self._get_source(selector.source).get_plot_data(
+            selector, start_date, end_date, interval_count
+        )
+
     def get_source_structure(
         self, selector: SeriesSelector
     ) -> Optional[SourceStructure]:
