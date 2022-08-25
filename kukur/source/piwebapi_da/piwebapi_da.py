@@ -186,9 +186,7 @@ class PIWebAPIDataArchiveSource:
 
         items = response.json()["Items"]
         if len(items) == 0:
-            raise InvalidDataError(
-                "No metadata found for the providade series selector"
-            )
+            raise InvalidDataError("Series not found")
 
         metadata = _get_metadata(selector, items[0], dictionary_lookup)
         if metadata is None:
@@ -266,7 +264,7 @@ class PIWebAPIDataArchiveSource:
 
         data_points = response.json()["Items"]
         if len(data_points) == 0:
-            raise InvalidDataError("No data found for the providade series selector")
+            raise InvalidDataError("Series not found")
 
         return response.json()["Items"][0]["Links"]["RecordedData"]
 
