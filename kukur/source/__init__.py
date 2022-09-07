@@ -199,7 +199,7 @@ class SourceWrapper:
             self._get_data_chunk(selector, start, end)
             for start, end in self.__to_intervals(start_date, end_date)
         ]
-        return _concat_tables(tables)
+        return concat_tables(tables)
 
     def get_plot_data(
         self,
@@ -395,7 +395,7 @@ class SourceFactory:
         return QualityMapper.from_config(self.__config["quality_mapping"][name])
 
 
-def _concat_tables(tables: List[pa.Table]) -> List[pa.Table]:
+def concat_tables(tables: List[pa.Table]) -> List[pa.Table]:
     """Safely concatenate multiple pyarrow.Table's.
 
     If any of the given tables contains strings, the result will contain a
