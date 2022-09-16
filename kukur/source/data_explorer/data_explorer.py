@@ -46,12 +46,7 @@ class DataExplorerSource:
     if HAS_KUSTO:
         __client: KustoClient
 
-    def __init__(
-        self,
-        cluster: str,
-        database: str,
-        table: str
-    ):
+    def __init__(self, cluster: str, database: str, table: str):
         if not HAS_KUSTO:
             raise MissingModuleException("data_explorer", "azure-kusto-data")
         self.__database = database
@@ -74,7 +69,10 @@ class DataExplorerSource:
     ) -> pa.Table:
         """Return data for the given time series in the given time period."""
 
-        query = f"""['{self.__table}']"""
+        query = f"""['{self.__table}']
+            | where ts >= todatetime('{start_date}')
+            | where ts <= todatetime('{end_date}')
+        """
 
         for (tag_key, tag_value) in selector.tags.items():
             query += f" | where {tag_key}=='{tag_value}'"
@@ -87,7 +85,7 @@ class DataExplorerSource:
             for row in result.primary_results[0]:
                 timestamps.append(row["ts"])
                 values.append(row["value"])
-            
+
         return pa.Table.from_pydict({"ts": timestamps, "value": values})
 
     def get_source_structure(self, _: SeriesSelector) -> Optional[SourceStructure]:
