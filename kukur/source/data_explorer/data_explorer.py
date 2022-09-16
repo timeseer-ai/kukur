@@ -90,4 +90,19 @@ class DataExplorerSource:
 
     def get_source_structure(self, _: SeriesSelector) -> Optional[SourceStructure]:
         """Return the available tag keys, tag value and tag fields."""
-        raise NotImplementedError()
+        query_tag_keys = ".show database schema"
+        result = self.__client.execute(self.__database, query_tag_keys)
+        tag_keys = [
+            row["ColumnName"]
+            for row in result.primary_results[0]
+            if row["ColumnName"] is not None
+            and row["ColumnName"] != "ts"
+            and row["ColumnName"] != "value"
+        ]
+
+        tag_values: list[dict] = []
+        for key in tag_keys:
+            query_tag_values = f"['{self.__table}'] | project {key} | distinct {key}"
+            result = self.__client.execute(self.__database, query_tag_values)
+            tag_values.append({key: [row[key] for row in result.primary_results[0]]})
+        return SourceStructure([], tag_keys, tag_values)
