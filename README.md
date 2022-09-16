@@ -30,6 +30,7 @@ Multiple types of time series sources are supported:
 - ADODB connections (including OLEDB)
 - Apache Feather files
 - Apache Parquet files
+- Azure data explorer
 - CSV files
 - InfluxDB databases
 - Other Kukur or Timeseer instances
