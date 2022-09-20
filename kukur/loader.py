@@ -53,11 +53,13 @@ class FileLoader:
     __path: Path
     __mode: str
     __files_as_path: bool
+    __encoding: str
 
-    def __init__(self, path: Path, mode: str, files_as_path: bool):
+    def __init__(self, path: Path, mode: str, files_as_path: bool, encoding: str):
         self.__path = path
         self.__mode = mode
         self.__files_as_path = files_as_path
+        self.__encoding = encoding
 
     def open(self):
         """Open the file at path for reading.
@@ -67,7 +69,7 @@ class FileLoader:
             raise InvalidDataError(f"'{self.__path}' does not exist")
         if self.__files_as_path:
             return self.__path
-        return self.__path.open(mode=self.__mode)
+        return self.__path.open(mode=self.__mode, encoding=self.__encoding)
 
     def has_child(self, name: str) -> bool:
         """Test if the file <name> is in the directory pointed to by <path>."""
@@ -87,7 +89,7 @@ class FileLoader:
             raise InvalidDataError(f"'{path}' does not exist")
         if self.__files_as_path:
             return path
-        return path.open(mode=self.__mode)
+        return path.open(mode=self.__mode, encoding=self.__encoding)
 
 
 @dataclass
@@ -183,7 +185,9 @@ def from_config(
     """
     loader_type = config.get("loader", "file")
     if loader_type == "file":
-        return FileLoader(Path(config[key]), mode, files_as_path)
+        return FileLoader(
+            Path(config[key]), mode, files_as_path, config.get("file_encoding", "UTF-8")
+        )
     if loader_type == "azure-blob":
         if not HAS_AZURE_IDENTITY:
             raise MissingModuleException("azure-identity")

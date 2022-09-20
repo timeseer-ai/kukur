@@ -50,6 +50,13 @@ metadata_fields = ["description", "unit", "functional lower limit", "functional 
 metadata_mapping = "custom"
 metadata_sources = ["custom-fields-extra"]
 
+[source.cp1252-encoding]
+type = "csv"
+path = "tests/test_data/csv/cp1252-encoding/row.csv"
+metadata = "tests/test_data/csv/cp1252-encoding/row-metadata.csv"
+dictionary_dir = "tests/test_data/csv/cp1252-encoding/dictionary"
+file_encoding = "cp1252"
+
 [metadata.custom-fields-extra]
 fields = ["process type"]
 type = "csv"

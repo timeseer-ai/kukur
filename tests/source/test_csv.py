@@ -192,3 +192,12 @@ def test_search_metadata_accuracy_percentage() -> None:
     assert metadata.get_field(fields.LimitLowPhysical) == 0
     assert metadata.get_field(fields.LimitHighPhysical) == 10
     assert metadata.get_field(fields.Accuracy) == 0.2
+
+
+def test_metadata_with_different_encoding() -> None:
+    metadata = get_source("cp1252-encoding").get_metadata(
+        SeriesSelector.from_tags("cp1252-encoding", {"series name": "test-tag-3"})
+    )
+    assert metadata.get_field(fields.Unit) == "°C"
+    assert metadata.get_field(fields.LimitLowFunctional) == 0
+    assert metadata.get_field(fields.InterpolationType) == InterpolationType.LINEAR

@@ -16,10 +16,14 @@ metadata_value_mapping ="<name>"
 format = "row|pivot|dir"
 dictionary_dir = "<path>"
 quality_mapping = "<name>"
+file_encoding = "<codec>"
 ```
 
 `path` is required for time series sources.
 It is optional when used as a metadata source.
+
+`file_encoding` is optional and defaults to `UTF-8`.
+A list of all supported codecs can be found https://docs.python.org/3/library/codecs.html#standard-encodings[here].
 
 Three CSV data models are supported:
 - row based (series name, timestamp, value, quality (optional))
