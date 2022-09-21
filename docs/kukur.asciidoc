@@ -665,6 +665,8 @@ include::./source/cratedb.asciidoc[leveloffset=+1]
 
 include::./source/csv.asciidoc[leveloffset=+1]
 
+include::./source/data_explorer.asciidoc[leveloffset=+1]
+
 include::./source/delta.asciidoc[leveloffset=+1]
 
 include::./source/influxdb.asciidoc[leveloffset=+1]

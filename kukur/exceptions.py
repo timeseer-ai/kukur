@@ -45,3 +45,10 @@ class UnknownSourceException(KukurException):
 
     def __init__(self, source_name: str):
         KukurException.__init__(self, f"source does not exist: {source_name}")
+
+
+class MissingEnvironmentParameterException(KukurException):
+    """Raised when a required environment parameter is missing."""
+
+    def __init__(self, parameter: str) -> None:
+        super().__init__(self, f'Missing environment parameter: "{parameter}"')

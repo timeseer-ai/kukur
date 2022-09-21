@@ -3,9 +3,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import os
 
 from datetime import datetime
-from typing import Any, Dict, Generator, Optional
+from typing import Any, Dict, Generator, List, Optional, Tuple
 
 import pyarrow as pa
 
@@ -17,7 +18,11 @@ except ImportError:
     HAS_KUSTO = False
 
 from kukur import Metadata, SeriesSearch, SeriesSelector, SourceStructure
-from kukur.exceptions import KukurException, MissingModuleException
+from kukur.exceptions import (
+    KukurException,
+    MissingEnvironmentParameterException,
+    MissingModuleException,
+)
 
 
 class InvalidClientConnection(KukurException):
@@ -31,10 +36,10 @@ def from_config(config: Dict[str, Any]):
     """Create a new Influx data source"""
     if not HAS_KUSTO:
         raise MissingModuleException("data_explorer", "azure-kusto-data")
-    cluster = config["cluster"]
+    connection_string = config["connection_string"]
     database = config["database"]
     table = config["table"]
-    return DataExplorerSource(cluster, database, table)
+    return DataExplorerSource(connection_string, database, table)
 
 
 class DataExplorerSource:
@@ -46,13 +51,16 @@ class DataExplorerSource:
     if HAS_KUSTO:
         __client: KustoClient
 
-    def __init__(self, cluster: str, database: str, table: str):
+    def __init__(self, connection_string: str, database: str, table: str):
         if not HAS_KUSTO:
             raise MissingModuleException("data_explorer", "azure-kusto-data")
         self.__database = database
         self.__table = table
 
-        kcsb = KustoConnectionStringBuilder.with_az_cli_authentication(cluster)
+        app_id, app_key, authority_id = _get_auth_params_from_environment()
+        kcsb = KustoConnectionStringBuilder.with_aad_application_key_authentication(
+            connection_string, app_id, app_key, authority_id
+        )
         self.__client = KustoClient(kcsb)
 
     def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
@@ -75,7 +83,7 @@ class DataExplorerSource:
         """
 
         for (tag_key, tag_value) in selector.tags.items():
-            query += f" | where {tag_key}=='{tag_value}'"
+            query += f" | where {_escape(tag_key)}=='{_escape(tag_value)}'"
 
         result = self.__client.execute(self.__database, query)
         timestamps = []
@@ -100,9 +108,40 @@ class DataExplorerSource:
             and row["ColumnName"] != "value"
         ]
 
-        tag_values: list[dict] = []
+        tag_values: List[dict] = []
         for key in tag_keys:
             query_tag_values = f"['{self.__table}'] | project {key} | distinct {key}"
             result = self.__client.execute(self.__database, query_tag_values)
             tag_values.append({key: [row[key] for row in result.primary_results[0]]})
         return SourceStructure([], tag_keys, tag_values)
+
+
+def _get_auth_params_from_environment() -> Tuple:
+    if "AAD_APP_ID" not in os.environ:
+        raise MissingEnvironmentParameterException("AAD_APP_ID")
+
+    if "AAD_APP_KEY" not in os.environ:
+        raise MissingEnvironmentParameterException("AAD_APP_KEY")
+
+    if "AAD_AUTHORITY_ID" not in os.environ:
+        raise MissingEnvironmentParameterException("AAD_AUTHORITY_ID")
+
+    return (
+        os.environ["AAD_APP_ID"],
+        os.environ["AAD_APP_KEY"],
+        os.environ["AAD_AUTHORITY_ID"],
+    )
+
+
+def _escape(context: Optional[str]) -> str:
+    if context is None:
+        context = "value"
+    if "'" in context:
+        context = context.replace("'", "")
+    if '"' in context:
+        context = context.replace('"', "")
+    if "|" in context:
+        context = context.replace("|", "")
+    if ";" in context:
+        context = context.replace(";", "")
+    return context

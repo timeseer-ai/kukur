@@ -25,6 +25,7 @@ Valid values are:
 - `adodb`
 - `cratedb`
 - `csv`
+- `data_explorer`
 - `delta`
 - `feather`
 - `influxdb`
