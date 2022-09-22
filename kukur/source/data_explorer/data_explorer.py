@@ -11,16 +11,23 @@ from typing import Any, Dict, Generator, List, Optional, Tuple
 import pyarrow as pa
 
 try:
+    from azure.identity import DefaultAzureCredential
+
+    HAS_AZURE_IDENTITY = True
+except ImportError:
+    HAS_AZURE_IDENTITY = False
+
+try:
     from azure.kusto.data import KustoClient, KustoConnectionStringBuilder
 
     HAS_KUSTO = True
 except ImportError:
     HAS_KUSTO = False
 
+
 from kukur import Metadata, SeriesSearch, SeriesSelector, SourceStructure
 from kukur.exceptions import (
     KukurException,
-    MissingEnvironmentParameterException,
     MissingModuleException,
 )
 
@@ -34,8 +41,6 @@ class InvalidClientConnection(KukurException):
 
 def from_config(config: Dict[str, Any]):
     """Create a new Influx data source"""
-    if not HAS_KUSTO:
-        raise MissingModuleException("data_explorer", "azure-kusto-data")
     connection_string = config["connection_string"]
     database = config["database"]
     table = config["table"]
@@ -47,19 +52,26 @@ class DataExplorerSource:
 
     __database: str
     __table: str
+    __connection_string: str
+    __azure_credential: DefaultAzureCredential
 
     if HAS_KUSTO:
         __client: KustoClient
 
     def __init__(self, connection_string: str, database: str, table: str):
+        if not HAS_AZURE_IDENTITY:
+            raise MissingModuleException("azure-identity")
+
         if not HAS_KUSTO:
             raise MissingModuleException("data_explorer", "azure-kusto-data")
+
         self.__database = database
         self.__table = table
+        self.__connection_string = connection_string
+        self.__azure_credential = DefaultAzureCredential()
 
-        app_id, app_key, authority_id = _get_auth_params_from_environment()
-        kcsb = KustoConnectionStringBuilder.with_aad_application_key_authentication(
-            connection_string, app_id, app_key, authority_id
+        kcsb = KustoConnectionStringBuilder.with_token_provider(
+            connection_string, self._get_auth_token
         )
         self.__client = KustoClient(kcsb)
 
@@ -115,22 +127,9 @@ class DataExplorerSource:
             tag_values.append({key: [row[key] for row in result.primary_results[0]]})
         return SourceStructure([], tag_keys, tag_values)
 
-
-def _get_auth_params_from_environment() -> Tuple:
-    if "AAD_APP_ID" not in os.environ:
-        raise MissingEnvironmentParameterException("AAD_APP_ID")
-
-    if "AAD_APP_KEY" not in os.environ:
-        raise MissingEnvironmentParameterException("AAD_APP_KEY")
-
-    if "AAD_AUTHORITY_ID" not in os.environ:
-        raise MissingEnvironmentParameterException("AAD_AUTHORITY_ID")
-
-    return (
-        os.environ["AAD_APP_ID"],
-        os.environ["AAD_APP_KEY"],
-        os.environ["AAD_AUTHORITY_ID"],
-    )
+    def _get_auth_token(self) -> str:
+        """Uses azure default authentication to get an auth token for the configured cluster."""
+        return self.__azure_credential.get_token(self.__connection_string + '//.default')[0]
 
 
 def _escape(context: Optional[str]) -> str:
