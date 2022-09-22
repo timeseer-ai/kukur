@@ -42,8 +42,8 @@ def from_config(config: Dict[str, Any]):
     connection_string = config["connection_string"]
     database = config["database"]
     table = config["table"]
-    timestamp_column = config.get("timestamp_column", "ts")
-    return DataExplorerSource(connection_string, database, table, timestamp_column)
+    timestamps_column = config.get("timestamps_column", "ts")
+    return DataExplorerSource(connection_string, database, table, timestamps_column)
 
 
 class DataExplorerSource:
@@ -60,7 +60,7 @@ class DataExplorerSource:
         __client: KustoClient
 
     def __init__(
-        self, connection_string: str, database: str, table: str, timestamp_column: str
+        self, connection_string: str, database: str, table: str, timestamps_column: str
     ):
         if not HAS_AZURE_IDENTITY:
             raise MissingModuleException("azure-identity")
@@ -70,7 +70,7 @@ class DataExplorerSource:
 
         self.__database = _escape(database)
         self.__table = _escape(table)
-        self.__timestamp_column = _escape(timestamp_column)
+        self.__timestamps_column = _escape(timestamps_column)
         self.__connection_string = connection_string
         self.__azure_credential = DefaultAzureCredential()
 
@@ -94,8 +94,8 @@ class DataExplorerSource:
         """Return data for the given time series in the given time period."""
 
         query = f"""['{self.__table}']
-            | where {self.__timestamp_column} >= todatetime('{start_date}')
-            | where {self.__timestamp_column} <= todatetime('{end_date}')
+            | where {self.__timestamps_column} >= todatetime('{start_date}')
+            | where {self.__timestamps_column} <= todatetime('{end_date}')
         """
 
         for (tag_key, tag_value) in selector.tags.items():
@@ -107,7 +107,7 @@ class DataExplorerSource:
 
         if result is not None and len(result.primary_results) > 0:
             for row in result.primary_results[0]:
-                timestamps.append(row[self.__timestamp_column])
+                timestamps.append(row[self.__timestamps_column])
                 values.append(row[selector.field])
 
         return pa.Table.from_pydict({"ts": timestamps, "value": values})

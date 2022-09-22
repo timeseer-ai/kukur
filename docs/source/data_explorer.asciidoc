@@ -3,9 +3,8 @@
 
 == Azure Data Explorer
 
-Sources with `type = "data_explorer"` configure https://azure.microsoft.com/products/data-explorer/[Delta Lake] sources.
+Sources with `type = "data_explorer"` configure https://azure.microsoft.com/products/data-explorer/[Data Explorer] sources.
 
-Delta Lake supports the `row` and `pivot` formats:
 
 ```toml
 [source.<name>]
@@ -13,11 +12,15 @@ type = "data_explorer"
 connection_string = "<connection_string>"
 database = "<database>"
 table = "<table>"
+timestamps_column = "<timestamps_column>"
 ```
 
-`database`, `table` and `connection_string` are required.
+`database`, `table` and `connection_string` are required. 
 
 See https://learn.microsoft.com/en-us/azure/data-explorer/kusto/api/connection-strings/kusto[here] to learn more about connection strings.
+
+`timestamp_column` is an optional parameter used to define the name
+of the database column that contains timestamps for the series. Defaults to 'ts'.
 
 Metadata in Data explorer is not supported.
 Use a different `metadata_type` to connect to metadata.
@@ -30,21 +33,16 @@ metadata_type = "csv"
 
 === Connecting to Azure Data Explorer
 
-The https://github.com/Azure/azure-kusto-python[azure-kusto-data] library used by Kukur has limited support for https://github.com/Azure/azure-kusto-python#authentication-methods[azure authentication methods].
-The method used by kukur is `AAD application` and the authentication parameters must be provided through environment variables, this means one instance of Kukur is able to connect to only one azure active directory application at a time.
+The https://github.com/Azure/azure-kusto-python[azure-kusto-data] is required.
+The https://github.com/Azure/azure-sdk-for-python/tree/main/sdk/identity/azure-identity#defaultazurecredential[default azure authentication]
+from the https://pypi.org/project/azure-identity/[azure-identity] library is used for authentication.
 
-The required environment variables are:
-
-* AAD_APP_ID: Active directory application (client) ID
-* AAD_APP_KEY: Active directory application (client) secret
-* AAD_AUTHORITY_ID: Active directory (tenant) ID
-
-For example:
+Example data explorer source definition:
 
 ```toml
 [source."Data explorer example"]
 type = "data_explorer"
-connection_string = "https://help.kusto.windows.net/Samples; Fed=true; Accept=true"
+connection_string = "https://help.kusto.windows.net/Samples"
 database = "tsai-antewerp"
 table = "sensor-data"
 ```
