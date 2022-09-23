@@ -16,6 +16,7 @@ table = "<table>"
 timestamp_column = "ts"
 tag_columns = []
 metadata_columns = []
+ignored_columns = []
 metadata_mapping = ""
 metadata_value_mapping = ""
 ```
@@ -52,6 +53,17 @@ For example:
 ```toml
 metadata_columns = [
     "unit",
+]
+```
+
+Columns that should not appear in either tags, fields or metadata can be ignored.
+They can be defined as a list in the `ignored_columns` parameter.
+
+For example:
+
+```toml
+ignored_columns = [
+    "unknown",
 ]
 ```
 

@@ -51,6 +51,7 @@ class DataExplorerConfiguration:
     timestamp_column: str
     tags: List[str]
     metadata_columns: List[str]
+    ignored_columns: List[str]
 
 
 def from_config(
@@ -65,6 +66,7 @@ def from_config(
     timestamp_column = config.get("timestamp_column", "ts")
     tags = config.get("tag_columns", [])
     metadata_columns = config.get("metadata_columns", [])
+    ignored_columns = config.get("ignored_columns", [])
     return DataExplorerSource(
         DataExplorerConfiguration(
             connection_string,
@@ -73,6 +75,7 @@ def from_config(
             timestamp_column,
             tags,
             metadata_columns,
+            ignored_columns,
         ),
         metadata_mapper,
         metadata_value_mapper,
@@ -87,6 +90,7 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
     __timestamp_column: str
     __tags: List[str]
     __metadata_columns: List[str]
+    __ignored_columns: List[str]
     __metadata_mapper: MetadataMapper
     __metadata_value_mapper: MetadataValueMapper
 
@@ -114,6 +118,9 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
         self.__metadata_columns = [
             _escape(metadata_column) for metadata_column in config.metadata_columns
         ]
+        self.__ignored_columns = [
+            _escape(ignored_column) for ignored_column in config.ignored_columns
+        ]
 
         azure_credential = DefaultAzureCredential()
 
@@ -140,6 +147,7 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
             - set([self.__timestamp_column])
             - set(self.__tags)
             - set(self.__metadata_columns)
+            - set(self.__ignored_columns)
         )
 
         if len(self.__metadata_columns) == 0:
