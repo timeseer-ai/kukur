@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import json
 
 from datetime import datetime
-from typing import Any, Dict, Generator, List, Optional
+from typing import Any, Dict, Generator, List, Optional, Union
 
 import pyarrow as pa
 
@@ -31,6 +31,7 @@ from kukur.exceptions import (
     KukurException,
     MissingModuleException,
 )
+from kukur.source.metadata import MetadataMapper, MetadataValueMapper
 
 
 class InvalidClientConnection(KukurException):
@@ -49,15 +50,21 @@ class DataExplorerConfiguration:
     table: str
     timestamp_column: str
     tags: List[str]
+    metadata_columns: List[str]
 
 
-def from_config(config: Dict[str, Any]):
+def from_config(
+    config: Dict[str, Any],
+    metadata_mapper: MetadataMapper,
+    metadata_value_mapper: MetadataValueMapper,
+):
     """Create a new Azure Data Explorer data source"""
     connection_string = config["connection_string"]
     database = config["database"]
     table = config["table"]
     timestamp_column = config.get("timestamp_column", "ts")
     tags = config.get("tag_columns", [])
+    metadata_columns = config.get("metadata_columns", [])
     return DataExplorerSource(
         DataExplorerConfiguration(
             connection_string,
@@ -65,17 +72,23 @@ def from_config(config: Dict[str, Any]):
             table,
             timestamp_column,
             tags,
-        )
+            metadata_columns,
+        ),
+        metadata_mapper,
+        metadata_value_mapper,
     )
 
 
-class DataExplorerSource:
+class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
     """An Azure Data Explorer data source."""
 
     __database: str
     __table: str
     __timestamp_column: str
     __tags: List[str]
+    __metadata_columns: List[str]
+    __metadata_mapper: MetadataMapper
+    __metadata_value_mapper: MetadataValueMapper
 
     if HAS_KUSTO:
         __client: KustoClient
@@ -83,6 +96,8 @@ class DataExplorerSource:
     def __init__(
         self,
         config: DataExplorerConfiguration,
+        metadata_mapper: MetadataMapper,
+        metadata_value_mapper: MetadataValueMapper,
     ):
         if not HAS_AZURE_IDENTITY:
             raise MissingModuleException("azure-identity")
@@ -90,10 +105,15 @@ class DataExplorerSource:
         if not HAS_KUSTO:
             raise MissingModuleException("azure-kusto-data", "data_explorer")
 
+        self.__metadata_mapper = metadata_mapper
+        self.__metadata_value_mapper = metadata_value_mapper
         self.__database = _escape(config.database)
         self.__table = _escape(config.table)
         self.__timestamp_column = _escape(config.timestamp_column)
         self.__tags = [_escape(tag) for tag in config.tags]
+        self.__metadata_columns = [
+            _escape(metadata_column) for metadata_column in config.metadata_columns
+        ]
 
         azure_credential = DefaultAzureCredential()
 
@@ -107,25 +127,64 @@ class DataExplorerSource:
         )
         self.__client = KustoClient(kcsb)
 
-    def search(self, selector: SeriesSearch) -> Generator[SeriesSelector, None, None]:
+    def search(
+        self, selector: SeriesSearch
+    ) -> Generator[Union[Metadata, SeriesSelector], None, None]:
         """Search for series matching the given selector."""
         if len(self.__tags) == 0:
             raise KukurException("Define tags to support listing time series")
 
         all_columns = {_escape(column) for column in self._get_table_columns()}
-        fields = all_columns - set([self.__timestamp_column]) - set(self.__tags)
+        fields = (
+            all_columns
+            - set([self.__timestamp_column])
+            - set(self.__tags)
+            - set(self.__metadata_columns)
+        )
 
-        query = f"['{self.__table}'] | distinct {', '.join(self.__tags)}"
-        result = self.__client.execute(self.__database, query)
-        if result is None or len(result.primary_results) == 0:
-            return
+        if len(self.__metadata_columns) == 0:
+            query = f"['{self.__table}'] | distinct {', '.join(self.__tags)}"
+            result = self.__client.execute(self.__database, query)
+            if result is None or len(result.primary_results) == 0:
+                return
 
-        for row in result.primary_results[0]:
-            tags = {}
-            for tag in self.__tags:
-                tags[tag] = row[tag]
-            for field in fields:
-                yield SeriesSelector(selector.source, tags, field)
+            for row in result.primary_results[0]:
+                tags = {}
+                for tag in self.__tags:
+                    tags[tag] = row[tag]
+                for field in fields:
+                    yield SeriesSelector(selector.source, tags, field)
+        else:
+            summaries = [
+                f"{name}=arg_max({self.__timestamp_column}, {name})"
+                for name in self.__metadata_columns
+            ]
+            renames = [f"{name}={name}1" for name in self.__metadata_columns]
+            query = f"""['{self.__table}']
+                | summarize {', '.join(summaries)} by {', '.join(self.__tags)}
+                | project-away {', '.join(self.__metadata_columns)}
+                | project-rename {', '.join(renames)}
+            """
+            result = self.__client.execute(self.__database, query)
+            if result is None or len(result.primary_results) == 0:
+                return
+
+            for row in result.primary_results[0]:
+                tags = {}
+                for tag in self.__tags:
+                    tags[tag] = row[tag]
+                for field in fields:
+                    series_selector = SeriesSelector(selector.source, tags, field)
+                    metadata = Metadata(series_selector)
+                    for column_name in self.__metadata_columns:
+                        metadata.coerce_field(
+                            self.__metadata_mapper.from_source(column_name),
+                            self.__metadata_value_mapper.from_source(
+                                self.__metadata_mapper.from_source(column_name),
+                                row[column_name],
+                            ),
+                        )
+                    yield metadata
 
     # pylint: disable=no-self-use
     def get_metadata(self, selector: SeriesSelector) -> Metadata:
