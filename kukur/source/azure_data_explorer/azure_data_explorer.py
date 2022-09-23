@@ -164,13 +164,13 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
                     yield SeriesSelector(selector.source, tags, field)
         else:
             summaries = [
-                f"{name}=arg_max({self.__timestamp_column}, {name})"
+                f"['{name}']=arg_max(['{self.__timestamp_column}'], ['{name}'])"
                 for name in self.__metadata_columns
             ]
-            renames = [f"{name}={name}1" for name in self.__metadata_columns]
+            renames = [f"['{name}']=['{name}1']" for name in self.__metadata_columns]
             query = f"""['{self.__table}']
-                | summarize {', '.join(summaries)} by {', '.join(self.__tags)}
-                | project-away {', '.join(self.__metadata_columns)}
+                | summarize {', '.join(summaries)} by {', '.join(_add_square_brackets(self.__tags))}
+                | project-away {', '.join(_add_square_brackets(self.__metadata_columns))}
                 | project-rename {', '.join(renames)}
             """
             result = self.__client.execute(self.__database, query)
@@ -205,14 +205,14 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
         """Return data for the given time series in the given time period."""
 
         query = f"""['{self.__table}']
-            | where {self.__timestamp_column} >= todatetime('{start_date}')
-            | where {self.__timestamp_column} <= todatetime('{end_date}')
+            | where ['{self.__timestamp_column}'] >= todatetime('{start_date}')
+            | where ['{self.__timestamp_column}'] <= todatetime('{end_date}')
         """
 
         for (tag_key, tag_value) in selector.tags.items():
-            query += f" | where {_escape(tag_key)}=='{_escape(tag_value)}'"
+            query += f" | where ['{_escape(tag_key)}']=='{_escape(tag_value)}'"
 
-        query = f"{query} | sort by {self.__timestamp_column} asc"
+        query = f"{query} | sort by ['{self.__timestamp_column}'] asc"
 
         result = self.__client.execute(self.__database, query)
         timestamps = []
@@ -238,6 +238,10 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
             schema = json.loads(row["Schema"])
             return [column["Name"] for column in schema.get("OrderedColumns", [])]
         raise KukurException("Table schema is empty")
+
+
+def _add_square_brackets(columns: List[str]) -> List[str]:
+    return [f"['{column}']" for column in columns]
 
 
 def _escape(context: Optional[str]) -> str:
