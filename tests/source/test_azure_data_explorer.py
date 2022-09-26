@@ -1,21 +1,23 @@
 from datetime import datetime, timedelta
 from random import random
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
+from kukur.metadata import Metadata
 
 from kukur.source.azure_data_explorer import from_config
 from kukur import SeriesSelector
+from kukur.source.metadata import MetadataMapper, MetadataValueMapper
 
 from unittest.mock import patch
 
 
 class MockKustoResponse:
-    primary_results: List[List[Dict[str, Any]]]
+    primary_results: List[List[Union[Dict[str, Any], List[str]]]]
 
-    def __init__(self, results_list: List[Dict[str, Any]]):
+    def __init__(self, results_list: List[Union[Dict[str, Any], List[str]]]):
         self.primary_results = [results_list]
 
 
-def source_structure_queries(_database, query) -> MockKustoResponse:
+def source_structure_queries(_, query) -> MockKustoResponse:
     if query == f".show table ['telemetry-data'] schema as json":
         return MockKustoResponse(
             [
@@ -26,11 +28,43 @@ def source_structure_queries(_database, query) -> MockKustoResponse:
                         {\"Name\": \"plant\"},
                         {\"Name\": \"temperature\"},
                         {\"Name\": \"pressure\"},
+                        {\"Name\": \"location\"},
                         {\"Name\": \"sensorModel\"},
                         {\"Name\": \"pressureUnit\"},
                         {\"Name\": \"temperatureUnit\"}
                     ]}"""
                 }
+            ]
+        )
+    if query == "['telemetry-data'] | distinct deviceId, plant, location":
+        return MockKustoResponse(
+            [
+                {"deviceId": "sim000001", "plant": "Plant01", "location": "Antwerp"},
+                {"deviceId": "sim000002", "plant": "Plant02", "location": "Antwerp"},
+                {"deviceId": "sim000003", "plant": "Plant03", "location": "Curitiba"},
+            ]
+        )
+    if "summarize" in query:
+        return MockKustoResponse(
+            [
+                {
+                    "deviceId": "sim000001",
+                    "plant": "Plant01",
+                    "sensorModel": "AST20PT",
+                    "location": "Antwerp",
+                },
+                {
+                    "deviceId": "sim000002",
+                    "plant": "Plant02",
+                    "sensorModel": "AST20PT",
+                    "location": "Antwerp",
+                },
+                {
+                    "deviceId": "sim000003",
+                    "plant": "Plant03",
+                    "sensorModel": "AST20PT",
+                    "location": "Curitiba",
+                },
             ]
         )
     if "deviceId" in query and "distinct" in query:
@@ -119,3 +153,45 @@ def test_get_data(kusto_client) -> None:
     assert f"['ts'] >= todatetime('{initial_date}')" in args[1]
     assert f"['ts'] <= todatetime('{final_date}')" in args[1]
     assert len(data) == 4
+
+
+@patch("azure.kusto.data.KustoClient.execute", side_effect=source_structure_queries)
+def test_search_with_metadata(_kusto_client) -> None:
+    mm = MetadataMapper.from_config({})
+    mvp = MetadataValueMapper.from_config({})
+    source = from_config(
+        {
+            "connection_string": "https://test_cluster.net",
+            "database": "telemetry",
+            "table": "telemetry-data",
+            "tag_columns": ["deviceId", "plant", "location"],
+            "metadata_columns": ["sensorModel"],
+            "ignored_columns": ["pressureUnit", "temperatureUnit"],
+        },
+        mm,
+        mvp,
+    )
+    selector = SeriesSelector("my_source", {}, "pressure")
+    metadata_list = list(source.search(selector))
+    assert len(metadata_list) == 6
+    for metadata in metadata_list:
+        assert isinstance(metadata, Metadata)
+        assert metadata.get_field_by_name("sensorModel") == "AST20PT"
+
+
+@patch("azure.kusto.data.KustoClient.execute", side_effect=source_structure_queries)
+def test_search_without_metadata(_kusto_client) -> None:
+    source = from_config(
+        {
+            "connection_string": "https://test_cluster.net",
+            "database": "telemetry",
+            "table": "telemetry-data",
+            "tag_columns": ["deviceId", "plant", "location"],
+            "ignored_columns": ["pressureUnit", "temperatureUnit", "sensorModel"],
+        },
+        None,
+        None,
+    )
+    selector = SeriesSelector("my_source", {}, "pressure")
+    series = list(source.search(selector))
+    assert len(series) == 6
