@@ -23,6 +23,7 @@ When multiple sources with the same name are configured, the last configured one
 Valid values are:
 
 - `adodb`
+- `azure-data-explorer`
 - `cratedb`
 - `csv`
 - `delta`
@@ -154,6 +155,7 @@ ifndef::sources[]
 - link:adodb.asciidoc[ADODB] connections (including OLEDB)
 - link:feather.asciidoc[Apache Feather] files
 - link:parquet.asciidoc[Apache Parquet] files
+- link:azure_data_explorer.asciidoc[Azure Data Explorer] tables
 - link:csv.asciidoc[CSV] files
 - link:delta.asciidoc[Delta Lake] tables
 - link:influxdb.asciidoc[InfluxDB] data sources
@@ -168,6 +170,7 @@ ifdef::sources[]
 - <<ADODB>> connections (including OLEDB)
 - <<Apache Feather>> files
 - <<Apache Parquet>> files
+- <<Azure Data Explorer>> tables
 - <<CrateDB>> databases
 - <<CSV>> files
 - <<Delta Lake>> tables

@@ -89,6 +89,7 @@ Use these to install requirements for the given source.
 - `[cratedb]` for connections to CrateDB
 - `[delta]` for connections to Delta Lakes
 - `[influxdb]` for connections to InfluxDB
+- `[kusto]` for connections to Azure Data Explorer
 - `[odbc]` for connections to ODBC data sources
 - `[piwebapi]` for connections to PI Web API
 
@@ -664,6 +665,8 @@ include::./source/parquet.asciidoc[leveloffset=+1]
 include::./source/cratedb.asciidoc[leveloffset=+1]
 
 include::./source/csv.asciidoc[leveloffset=+1]
+
+include::./source/azure_data_explorer.asciidoc[leveloffset=+1]
 
 include::./source/delta.asciidoc[leveloffset=+1]
 

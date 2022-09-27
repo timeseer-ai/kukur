@@ -16,6 +16,7 @@ from kukur.source import (
     adodb,
     cratedb,
     csv,
+    azure_data_explorer,
     delta,
     feather,
     influxdb,
@@ -48,6 +49,7 @@ _FACTORY = {
     "adodb": adodb.from_config,
     "cratedb": cratedb.from_config,
     "csv": csv.from_config,
+    "azure-data-explorer": azure_data_explorer.from_config,
     "delta": delta.from_config,
     "feather": feather.from_config,
     "influxdb": influxdb.from_config,
@@ -193,7 +195,7 @@ class SourceWrapper:
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         """Return the data for the given series in the given time frame, taking into account the request policy."""
-        if start_date == end_date or "series name" not in selector.tags:
+        if start_date == end_date:
             return pa.Table.from_pydict({"ts": [], "value": [], "quality": []})
         tables = [
             self._get_data_chunk(selector, start, end)
@@ -213,7 +215,7 @@ class SourceWrapper:
         Plot data calls are not subject to request splitting, but do obsever other settings.
 
         Returns normal data when plot data is not supported."""
-        if start_date == end_date or "series name" not in selector.tags:
+        if start_date == end_date:
             return pa.Table.from_pydict({"ts": [], "value": [], "quality": []})
         if not isinstance(self.__source.data, PlotSource):
             return self.get_data(selector, start_date, end_date)

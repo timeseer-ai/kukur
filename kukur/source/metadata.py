@@ -29,6 +29,13 @@ class MetadataMapper:
         Returns the field name as is when no mapping is defined."""
         return self.__mapping.get(kukur_field_name, kukur_field_name)
 
+    def from_source(self, external_field_name: str) -> str:
+        """Return the field name mapping from source.
+
+        Returns the field name as is when no mapping is defined."""
+        reverse_mapping = {v: k for k, v in self.__mapping.items()}
+        return reverse_mapping.get(external_field_name, external_field_name)
+
 
 class MetadataValueMapper:
     """MetadataFieldMapper maps values for a metadata field to values known by Kukur."""

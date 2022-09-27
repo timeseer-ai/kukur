@@ -33,6 +33,7 @@ setuptools.setup(
         "cratedb": ["crate"],
         "delta": ["deltalake"],
         "influxdb": ["influxdb"],
+        "kusto": ["azure-identity", "azure-kusto-data"],
         "odbc": ["pyodbc"],
         "piwebapi": ["requests", "requests-kerberos"],
     },

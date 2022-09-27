@@ -1,0 +1,114 @@
+// SPDX-FileCopyrightText: 2022 Timeseer.AI
+// SPDX-License-Identifier: Apache-2.0
+
+== Azure Data Explorer
+
+Sources with `type = "azure-data-explorer"` configure https://azure.microsoft.com/products/data-explorer/[Azure Data Explorer] sources.
+
+The https://github.com/Azure/azure-kusto-python[azure-kusto-data] Python package is required.
+
+```toml
+[source.<name>]
+type = "azure-data-explorer"
+connection_string = "<connection_string>"
+database = "<database>"
+table = "<table>"
+timestamp_column = "ts"
+tag_columns = []
+metadata_columns = []
+ignored_columns = []
+metadata_mapping = ""
+metadata_value_mapping = ""
+```
+
+`database`, `table` and `connection_string` are required.
+
+See https://learn.microsoft.com/en-us/azure/data-explorer/kusto/api/connection-strings/kusto[here] to learn more about connection strings.
+
+The https://github.com/Azure/azure-sdk-for-python/tree/main/sdk/identity/azure-identity#defaultazurecredential[DefaultAzureCredential]
+from the https://pypi.org/project/azure-identity/[azure-identity] package is used for authentication.
+
+`timestamp_column` is an optional parameter used to define the name
+of the database column that contains timestamps for the series.
+Defaults to `"ts"`.
+
+Listing time series in an Azure Data Explorer table is supported only when the `tag_columns` parameter is specified.
+Each value in the parameter is a column in the table that will be part of the set of tags of the series.
+Other columns are assumed to be fields.
+
+For example:
+
+```toml
+tag_columns = [
+    "deviceId",
+    "plant",
+    "location",
+]
+```
+
+Metadata columns can be defined as a list in the `metadata_columns` parameter.
+
+For example:
+
+```toml
+metadata_columns = [
+    "unit",
+]
+```
+
+Columns that should not appear in either tags, fields or metadata can be ignored.
+They can be defined as a list in the `ignored_columns` parameter.
+
+For example:
+
+```toml
+ignored_columns = [
+    "unknown",
+]
+```
+
+Columns in a metadata often do not match the names of metadata fields in Kukur.
+An optional `metadata_mapping` maps Kukur field names to column names.
+
+Example:
+
+```toml
+[source.<name>]
+metadata_mapping = "example_metadata_mapping"
+
+[metadata_mapping.example_metadata_mapping]
+description = "DESCRIPTION"
+unit = "ENG_UNITS"
+```
+
+Fields that are not included in the mapping,
+such as `functional lower limit` in the example,
+translate to the corresponding metadata field or are skipped altogether.
+
+Metadata mappings can be shared between sources.
+
+Values in a metadata column can also be different.
+The optional `metadata_value_mapping` maps Kukur metadata field values to values as they appear in a source.
+
+Example:
+
+```toml
+[source.<name>]
+metadata_value_mapping = "example_value_mapping"
+
+[metadata_value_mapping.example_value_mapping."interpolation type"]
+LINEAR = "linear"
+STEPPED = "stepped"
+
+[metadata_value_mapping.example_value_mapping."data type"]
+FLOAT64 = ["int16", "int32"]
+```
+
+In this example,
+when the `interpolation type` column contains the value `linear`,
+Kukur will interpret it as the expected uppercase `LINEAR`.
+When the `data type` column contains either `int16` or `int32`,
+Kukur will interpret it as `FLOAT64`.
+
+`metadata_mapping` and `metadata_value_mapping` can be used together
+to map wildly different metadata formats to a format supported by Kukur.

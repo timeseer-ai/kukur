@@ -28,7 +28,7 @@ def search(source: Source, source_name: str) -> Generator[List[Any], None, None]
             if not header_printed:
                 yield ["series name"]
                 header_printed = True
-            yield [result.tags["series name"]]
+            yield [result.name]
         else:
             if not header_printed:
                 yield _get_metadata_header(result)
