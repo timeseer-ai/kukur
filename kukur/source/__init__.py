@@ -24,7 +24,7 @@ from kukur.source import (
     odbc,
     parquet,
     piwebapi_da,
-    simulator
+    simulator,
 )
 
 from kukur import (
@@ -58,7 +58,7 @@ _FACTORY = {
     "odbc": odbc.from_config,
     "parquet": parquet.from_config,
     "piwebapi-da": piwebapi_da.from_config,
-    "simulator": simulator.from_config
+    "simulator": simulator.from_config,
 }
 
 
