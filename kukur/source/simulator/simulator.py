@@ -11,6 +11,7 @@ from typing import Any, Dict, Generator, List, Optional, Protocol, Union
 
 import itertools
 import random
+import numpy
 import yaml
 
 from schema import Optional as OptionalKey, Or, Schema
@@ -27,7 +28,7 @@ values_schema = Schema(
         OptionalKey("amplitude"): Or(int, [int]),
         OptionalKey("phase"): Or(int, [int]),
         OptionalKey("shift"): Or(int, [int]),
-        OptionalKey("sd"): [int],
+        OptionalKey("standardDeviation"): [int],
         OptionalKey("mean"): [int],
         OptionalKey("minValue"): int,
         OptionalKey("maxValue"): int,
@@ -87,7 +88,7 @@ class SignalGenerator(Protocol):
     def generate(
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
-        """Generates data in steps based on a selector start and end date."""
+        """Generates data based on a selector, start date and end date."""
         ...
 
     def list_series(
@@ -102,8 +103,8 @@ class SignalGeneratorConfig:
     """Base signal configuration."""
 
     name_prefix: str
-    min_interval: List[int]
-    max_interval: List[int]
+    min_interval: int
+    max_interval: int
     random_seed: List[int]
 
 
@@ -115,6 +116,14 @@ class StepSignalGeneratorConfig(SignalGeneratorConfig):
     max_value: List[int]
     min_step: List[int]
     max_step: List[int]
+
+
+@dataclass
+class WhiteNoiseSignalGeneratorConfig(SignalGeneratorConfig):
+    """Configuration for the step signal."""
+
+    mean: List[int]
+    standard_deviation: List[int]
 
 
 class StepSignalGenerator(SignalGenerator):
@@ -159,7 +168,7 @@ class StepSignalGenerator(SignalGenerator):
             ts.append(current_time)
 
             time_increment = random.randint(
-                int(tags["min_interval"]), int(tags["max_interval"])
+                self.__config.min_interval, self.__config.max_interval
             )
             new_time = current_time + timedelta(seconds=time_increment)
 
@@ -175,12 +184,6 @@ class StepSignalGenerator(SignalGenerator):
     ) -> Generator[Union[Metadata, SeriesSelector], None, None]:
         """Yields all possible metadata combinations using the signal configuration and the provided selector."""
         arg_list = []
-        arg_list.append(
-            _extract_from_tag(selector.tags, "min_interval", self.__config.min_interval)
-        )
-        arg_list.append(
-            _extract_from_tag(selector.tags, "max_interval", self.__config.max_interval)
-        )
         arg_list.append(
             _extract_from_tag(selector.tags, "min_value", self.__config.min_value)
         )
@@ -203,13 +206,86 @@ class StepSignalGenerator(SignalGenerator):
                     selector.source,
                     {
                         "series name": self.__config.name_prefix,
-                        "min_interval": str(entry[0]),
-                        "max_interval": str(entry[1]),
-                        "min_value": str(entry[2]),
-                        "max_value": str(entry[3]),
-                        "min_step": str(entry[4]),
-                        "max_step": str(entry[5]),
-                        "random_seed": str(entry[6]),
+                        "min_value": str(entry[0]),
+                        "max_value": str(entry[1]),
+                        "min_step": str(entry[2]),
+                        "max_step": str(entry[3]),
+                        "random_seed": str(entry[4]),
+                    },
+                )
+            )
+
+
+class WhiteNoiseSignalGenerator(SignalGenerator):
+    """White noise signal generator."""
+
+    __config: WhiteNoiseSignalGeneratorConfig
+
+    def __init__(self, config: dict):
+        super().__init__()
+        self.__config = WhiteNoiseSignalGeneratorConfig(
+            config["namePrefix"],
+            config["samplingInterval"]["minInterval"],
+            config["samplingInterval"]["maxInterval"],
+            config["randomSeed"],
+            config["values"]["mean"],
+            config["values"]["standardDeviation"],
+        )
+
+    def generate(
+        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
+    ) -> pa.Table:
+        """Generates white noise based on a selector start and end date."""
+        current_time = start_date
+        tags = selector.tags
+        ts = []
+        value = []
+        random_seed = int(tags["random_seed"])
+        random.seed(start_date.timestamp() * random_seed)
+
+        while current_time <= end_date:
+            generated_value = numpy.random.normal(
+                float(tags["mean"]), float(tags["standard_deviation"]), 1
+            )[0]
+            value.append(generated_value)
+            ts.append(current_time)
+
+            time_increment = random.randint(
+                self.__config.min_interval, self.__config.max_interval
+            )
+            new_time = current_time + timedelta(seconds=time_increment)
+
+            if new_time.date() != current_time.date():
+                random.seed(new_time.timestamp() * random_seed)
+
+            current_time = new_time
+
+        return pa.Table.from_pydict({"ts": ts, "value": value})
+
+    def list_series(
+        self, selector: SeriesSearch
+    ) -> Generator[Union[Metadata, SeriesSelector], None, None]:
+        """Yields all possible metadata combinations using the signal configuration and the provided selector."""
+        arg_list = []
+        arg_list.append(_extract_from_tag(selector.tags, "mean", self.__config.mean))
+        arg_list.append(
+            _extract_from_tag(
+                selector.tags, "standard_deviation", self.__config.standard_deviation
+            )
+        )
+        arg_list.append(
+            _extract_from_tag(selector.tags, "random_seed", self.__config.random_seed)
+        )
+
+        for entry in itertools.product(*arg_list):
+            yield (
+                SeriesSelector(
+                    selector.source,
+                    {
+                        "series name": self.__config.name_prefix,
+                        "mean": str(entry[0]),
+                        "standard_deviation": str(entry[1]),
+                        "random_seed": str(entry[2]),
                     },
                 )
             )
@@ -226,7 +302,13 @@ class SimulatorSource:
     def __init__(self, config: SimulatorConfiguration):
         self.__signal_type = config.signal_type
         self.__yaml_path = Path(config.path)
-        self.__signal_generator = StepSignalGenerator(self.__load_yaml_config())
+
+        if self.__signal_type == "step":
+            self.__signal_generator = StepSignalGenerator(self.__load_yaml_config())
+        else:
+            self.__signal_generator = WhiteNoiseSignalGenerator(
+                self.__load_yaml_config()
+            )
 
     def __load_yaml_config(self) -> dict:
         with self.__yaml_path.open(encoding="utf-8") as file:
