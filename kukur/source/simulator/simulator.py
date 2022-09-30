@@ -3,15 +3,16 @@
 # SPDX-FileCopyrightText: 2022 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-import yaml
-import random
-import itertools
-
 from pathlib import Path
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Dict, Generator, List, Optional, Protocol, Union
+
+import itertools
+import random
+import yaml
+
 from schema import Optional as OptionalKey, Or, Schema
 
 import pyarrow as pa
@@ -71,30 +72,35 @@ class SimulatorConfiguration:
 
 def from_config(
     config: Dict[str, Any],
-    metadata_mapper: MetadataMapper,
-    metadata_value_mapper: MetadataValueMapper,
+    _metadata_mapper: MetadataMapper,
+    _metadata_value_mapper: MetadataValueMapper,
 ):
+    """Create a new Simulator data source from the given configuration dictionary."""
     return SimulatorSource(
-        SimulatorConfiguration(config["signal_type"], config["path"]),
-        metadata_mapper,
-        metadata_value_mapper,
+        SimulatorConfiguration(config["signal_type"], config["path"])
     )
 
 
 class SignalGenerator(Protocol):
+    """Protocol for generating signals."""
+
     def generate(
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
+        """Generates data in steps based on a selector start and end date."""
         ...
 
     def list_series(
         self, selector: SeriesSearch
     ) -> Generator[Union[Metadata, SeriesSelector], None, None]:
+        """Yields all possible metadata combinations using the signal configuration and the provided selector."""
         ...
 
 
 @dataclass
 class SignalGeneratorConfig:
+    """Base signal configuration."""
+
     name_prefix: str
     min_interval: List[int]
     max_interval: List[int]
@@ -103,6 +109,8 @@ class SignalGeneratorConfig:
 
 @dataclass
 class StepSignalGeneratorConfig(SignalGeneratorConfig):
+    """Configuration for the step signal."""
+
     min_value: List[int]
     max_value: List[int]
     min_step: List[int]
@@ -110,9 +118,12 @@ class StepSignalGeneratorConfig(SignalGeneratorConfig):
 
 
 class StepSignalGenerator(SignalGenerator):
+    """Step signal generator."""
+
     __config: StepSignalGeneratorConfig
 
     def __init__(self, config: dict):
+        super().__init__()
         self.__config = StepSignalGeneratorConfig(
             config["namePrefix"],
             config["samplingInterval"]["minInterval"],
@@ -127,20 +138,23 @@ class StepSignalGenerator(SignalGenerator):
     def generate(
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
+        """Generates data in steps based on a selector start and end date."""
         current_time = start_date
         tags = selector.tags
         ts = []
         value = []
         random_seed = int(tags["random_seed"])
         random.seed(start_date.timestamp() * random_seed)
+        current_value = (float(tags["max_value"]) + float(tags["min_value"])) / 2
         while current_time <= end_date:
             generated_step = random.uniform(
                 float(tags["min_step"]), float(tags["max_step"])
             )
+            generated_step += current_value
             clamped_step = max(
                 min(generated_step, float(tags["max_value"])), float(tags["min_value"])
             )
-
+            current_value = clamped_step
             value.append(clamped_step)
             ts.append(current_time)
 
@@ -159,6 +173,7 @@ class StepSignalGenerator(SignalGenerator):
     def list_series(
         self, selector: SeriesSearch
     ) -> Generator[Union[Metadata, SeriesSelector], None, None]:
+        """Yields all possible metadata combinations using the signal configuration and the provided selector."""
         arg_list = []
         arg_list.append(
             _extract_from_tag(selector.tags, "min_interval", self.__config.min_interval)
@@ -201,36 +216,30 @@ class StepSignalGenerator(SignalGenerator):
 
 
 class SimulatorSource:
+    """A simulator data source."""
+
     __signal_type: str
     __signal_generator: SignalGenerator
 
     __yaml_path: Path
 
-    __metadata_mapper: MetadataMapper
-    __metadata_value_mapper: MetadataValueMapper
-
-    def __init__(
-        self,
-        config: SimulatorConfiguration,
-        metadata_mapper: MetadataMapper,
-        metadata_value_mapper: MetadataValueMapper,
-    ):
+    def __init__(self, config: SimulatorConfiguration):
         self.__signal_type = config.signal_type
         self.__yaml_path = Path(config.path)
-        self.__metadata_mapper = metadata_mapper
-        self.__metadata_value_mapper = metadata_value_mapper
         self.__signal_generator = StepSignalGenerator(self.__load_yaml_config())
 
     def __load_yaml_config(self) -> dict:
-        with self.__yaml_path.open() as file:
+        with self.__yaml_path.open(encoding="utf-8") as file:
             yaml_data = yaml.safe_load(file)
             return yaml_data["signals"][self.__signal_type]
 
     def search(
         self, selector: SeriesSearch
     ) -> Generator[Union[Metadata, SeriesSelector], None, None]:
+        """Yields all possible metadata combinations using the signal configuration and the provided selector."""
         return self.__signal_generator.list_series(selector)
 
+    # pylint: disable=no-self-use
     def get_metadata(self, selector: SeriesSelector) -> Metadata:
         """Data explorer currently always returns empty metadata."""
         return Metadata(selector)
@@ -238,10 +247,11 @@ class SimulatorSource:
     def get_data(
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
+        """Generates data in steps based on a selector start and end date."""
         return self.__signal_generator.generate(selector, start_date, end_date)
 
     def get_source_structure(self, _: SeriesSelector) -> Optional[SourceStructure]:
-        pass
+        """Return the structure of a source."""
 
 
 def _extract_from_tag(tags: Dict[str, str], key: str, fallback: list) -> list[str]:
