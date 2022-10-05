@@ -174,12 +174,21 @@ class SourceWrapper:
             MetadataSource(self.__source.metadata)
         ]:
             query_fn = functools.partial(metadata_source.source.get_metadata, selector)
-            received_metadata = _retry(
-                self.__query_retry_count,
-                self.__query_retry_delay,
-                query_fn,
-                f'Metadata query for "{selector.name}" ({selector.source}) failed',
-            )
+            try:
+                received_metadata = _retry(
+                    self.__query_retry_count,
+                    self.__query_retry_delay,
+                    query_fn,
+                    f'Metadata query for "{selector.name}" ({selector.source}) failed',
+                )
+            except Exception:  # pylint: disable=broad-except
+                logger.error(
+                    """Metadata query for "%s" (%s) failed all attempts, returning empty metadata.""",
+                    selector.name,
+                    selector.source,
+                )
+                received_metadata = Metadata(selector)
+
             if len(metadata_source.fields) == 0:
                 for k, v in received_metadata.iter_names():
                     if v is not None and v != "":
