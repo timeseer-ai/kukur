@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from collections import defaultdict
+from curses import meta
 from hashlib import sha1
 from pathlib import Path
 
@@ -67,6 +68,7 @@ class SignalGeneratorConfig:
     signal_type: str
     min_interval: Union[List[int], int]
     max_interval: Union[List[int], int]
+    metadata: dict[str, str]
 
 
 @dataclass
@@ -119,11 +121,13 @@ class StepSignalGenerator(SignalGenerator):
     def __init__(self, config: Optional[Dict] = None):
         super().__init__()
         if config is not None:
+            print(config["metadata"])
             self.__default_config = StepSignalGeneratorConfig(
                 config["seriesName"],
                 config["type"],
                 config["samplingInterval"]["minInterval"],
                 config["samplingInterval"]["maxInterval"],
+                config.get("metadata", {}),
                 config["values"]["minValue"],
                 config["values"]["maxValue"],
                 config["values"]["minStep"],
@@ -227,21 +231,32 @@ class StepSignalGenerator(SignalGenerator):
         )
 
         for entry in itertools.product(*arg_list):
-            yield (
-                SeriesSelector(
-                    selector.source,
-                    {
-                        "series name": self.__default_config.series_name,
-                        "signal_type": self.__default_config.signal_type,
-                        "min_interval": entry[0],
-                        "max_interval": entry[1],
-                        "min_value": entry[2],
-                        "max_value": entry[3],
-                        "min_step": entry[4],
-                        "max_step": entry[5],
-                    },
-                )
-            )
+            yield (self._build_search_result(entry, selector.source))
+
+    def _build_search_result(
+        self, entry: tuple, source_name: str
+    ) -> Union[SeriesSelector, Metadata]:
+        """Builds a series selector or metadata from a combination of configuration parameters."""
+        series_selector = SeriesSelector(
+            source_name,
+            {
+                "series name": self.__default_config.series_name,
+                "signal_type": self.__default_config.signal_type,
+                "min_interval": entry[0],
+                "max_interval": entry[1],
+                "min_value": entry[2],
+                "max_value": entry[3],
+                "min_step": entry[4],
+                "max_step": entry[5],
+            },
+        )
+        if len(self.__default_config.metadata) > 0:
+            metadata = Metadata(series_selector)
+            for field_name, field_value in self.__default_config.metadata.items():
+                metadata.coerce_field(field_name, field_value)
+            return metadata
+        else:
+            return series_selector
 
     def _get_configuration(self, selector: SeriesSelector) -> StepSignalGeneratorConfig:
         return StepSignalGeneratorConfig(
@@ -249,6 +264,7 @@ class StepSignalGenerator(SignalGenerator):
             selector.tags["signal_type"],
             int(selector.tags["min_interval"]),
             int(selector.tags["max_interval"]),
+            {},
             int(selector.tags["min_value"]),
             int(selector.tags["max_value"]),
             int(selector.tags["min_step"]),
@@ -276,6 +292,7 @@ class WhiteNoiseSignalGenerator(SignalGenerator):
                 config["type"],
                 config["samplingInterval"]["minInterval"],
                 config["samplingInterval"]["maxInterval"],
+                config.get("metadata", {}),
                 config["values"]["mean"],
                 config["values"]["standardDeviation"],
             )
@@ -356,19 +373,31 @@ class WhiteNoiseSignalGenerator(SignalGenerator):
         )
 
         for entry in itertools.product(*arg_list):
-            yield (
-                SeriesSelector(
-                    selector.source,
-                    {
-                        "series name": self.__default_config.series_name,
-                        "signal_type": self.__default_config.signal_type,
-                        "min_interval": entry[0],
-                        "max_interval": entry[1],
-                        "mean": str(entry[2]),
-                        "standard_deviation": str(entry[3]),
-                    },
-                )
-            )
+            yield (self._build_search_result(entry, selector.source))
+
+    def _build_search_result(
+        self, entry: tuple, source_name: str
+    ) -> Union[SeriesSelector, Metadata]:
+        """Builds a series selector or metadata from a combination of configuration parameters."""
+        series_selector = SeriesSelector(
+            source_name,
+            {
+                "series name": self.__default_config.series_name,
+                "signal_type": self.__default_config.signal_type,
+                "min_interval": entry[0],
+                "max_interval": entry[1],
+                "mean": str(entry[2]),
+                "standard_deviation": str(entry[3]),
+            },
+        )
+        print(self.__default_config.metadata)
+        if len(self.__default_config.metadata) > 0:
+            metadata = Metadata(series_selector)
+            for field_name, field_value in self.__default_config.metadata.items():
+                metadata.coerce_field(field_name, field_value)
+            return metadata
+        else:
+            return series_selector
 
     def _get_configuration(
         self, selector: SeriesSelector
@@ -378,6 +407,7 @@ class WhiteNoiseSignalGenerator(SignalGenerator):
             selector.tags["signal_type"],
             int(selector.tags["min_interval"]),
             int(selector.tags["max_interval"]),
+            {},
             int(selector.tags["mean"]),
             int(selector.tags["standard_deviation"]),
         )
