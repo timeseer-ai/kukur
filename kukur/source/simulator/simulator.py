@@ -443,13 +443,8 @@ class SineSignalGenerator(SignalGenerator):
         ts = []
         value = []
 
-        random.seed(
-            sha1(
-                configuration.to_bytes()
-                + bytes(current_time.date().isoformat(), "UTF-8")
-            ).hexdigest()
-        )
-        print(configuration)
+        random.seed(_get_hex_digest(current_time, configuration.to_bytes()))
+
         assert isinstance(configuration.period, int)
         assert isinstance(configuration.amplitude, int)
         assert isinstance(configuration.phase, int)
@@ -477,12 +472,7 @@ class SineSignalGenerator(SignalGenerator):
             if new_time.date() != current_time.date():
                 new_time = _get_start_of_day(new_time)
 
-                random.seed(
-                    sha1(
-                        configuration.to_bytes()
-                        + bytes(new_time.date().isoformat(), "UTF-8")
-                    ).hexdigest()
-                )
+                random.seed(_get_hex_digest(new_time, configuration.to_bytes()))
 
             current_time = new_time
 
@@ -524,12 +514,13 @@ class SineSignalGenerator(SignalGenerator):
         )
 
         for entry in itertools.product(*arg_list):
-            yield (self._build_search_result(entry, selector.source))
+            yield self._build_search_result(entry, selector.source)
 
     def _build_search_result(
         self, entry: tuple, source_name: str
     ) -> Union[SeriesSelector, Metadata]:
         """Builds a series selector or metadata from a combination of configuration parameters."""
+        assert self.__default_config is not None
         series_selector = SeriesSelector(
             source_name,
             {
@@ -548,8 +539,7 @@ class SineSignalGenerator(SignalGenerator):
             for field_name, field_value in self.__default_config.metadata.items():
                 metadata.coerce_field(field_name, field_value)
             return metadata
-        else:
-            return series_selector
+        return series_selector
 
     def _get_configuration(self, selector: SeriesSelector) -> SineSignalGeneratorConfig:
         return SineSignalGeneratorConfig(
