@@ -4,7 +4,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from collections import defaultdict
-from curses import meta
 from hashlib import sha1
 from pathlib import Path
 
@@ -121,7 +120,6 @@ class StepSignalGenerator(SignalGenerator):
     def __init__(self, config: Optional[Dict] = None):
         super().__init__()
         if config is not None:
-            print(config["metadata"])
             self.__default_config = StepSignalGeneratorConfig(
                 config["seriesName"],
                 config["type"],
@@ -231,12 +229,13 @@ class StepSignalGenerator(SignalGenerator):
         )
 
         for entry in itertools.product(*arg_list):
-            yield (self._build_search_result(entry, selector.source))
+            yield self._build_search_result(entry, selector.source)
 
     def _build_search_result(
         self, entry: tuple, source_name: str
     ) -> Union[SeriesSelector, Metadata]:
         """Builds a series selector or metadata from a combination of configuration parameters."""
+        assert self.__default_config is not None
         series_selector = SeriesSelector(
             source_name,
             {
@@ -255,8 +254,7 @@ class StepSignalGenerator(SignalGenerator):
             for field_name, field_value in self.__default_config.metadata.items():
                 metadata.coerce_field(field_name, field_value)
             return metadata
-        else:
-            return series_selector
+        return series_selector
 
     def _get_configuration(self, selector: SeriesSelector) -> StepSignalGeneratorConfig:
         return StepSignalGeneratorConfig(
@@ -373,12 +371,13 @@ class WhiteNoiseSignalGenerator(SignalGenerator):
         )
 
         for entry in itertools.product(*arg_list):
-            yield (self._build_search_result(entry, selector.source))
+            yield self._build_search_result(entry, selector.source)
 
     def _build_search_result(
         self, entry: tuple, source_name: str
     ) -> Union[SeriesSelector, Metadata]:
         """Builds a series selector or metadata from a combination of configuration parameters."""
+        assert self.__default_config is not None
         series_selector = SeriesSelector(
             source_name,
             {
@@ -390,14 +389,12 @@ class WhiteNoiseSignalGenerator(SignalGenerator):
                 "standard_deviation": str(entry[3]),
             },
         )
-        print(self.__default_config.metadata)
         if len(self.__default_config.metadata) > 0:
             metadata = Metadata(series_selector)
             for field_name, field_value in self.__default_config.metadata.items():
                 metadata.coerce_field(field_name, field_value)
             return metadata
-        else:
-            return series_selector
+        return series_selector
 
     def _get_configuration(
         self, selector: SeriesSelector
