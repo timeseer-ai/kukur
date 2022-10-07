@@ -65,18 +65,18 @@ class SignalGeneratorConfig:
 
     series_name: str
     signal_type: str
-    min_interval: List[int]
-    max_interval: List[int]
+    min_interval: Union[List[int], int]
+    max_interval: Union[List[int], int]
 
 
 @dataclass
 class StepSignalGeneratorConfig(SignalGeneratorConfig):
     """Configuration for the step signal."""
 
-    min_value: List[int]
-    max_value: List[int]
-    min_step: List[int]
-    max_step: List[int]
+    min_value: Union[List[int], int]
+    max_value: Union[List[int], int]
+    min_step: Union[List[int], int]
+    max_step: Union[List[int], int]
 
     def to_bytes(self):
         """To bytes"""
@@ -96,8 +96,8 @@ class StepSignalGeneratorConfig(SignalGeneratorConfig):
 class WhiteNoiseSignalGeneratorConfig(SignalGeneratorConfig):
     """Configuration for the step signal."""
 
-    mean: List[int]
-    standard_deviation: List[int]
+    mean: Union[List[int], int]
+    standard_deviation: Union[List[int], int]
 
     def to_bytes(self):
         """To bytes"""
@@ -144,6 +144,14 @@ class StepSignalGenerator(SignalGenerator):
                 + bytes(current_time.date().isoformat(), "UTF-8")
             ).hexdigest()
         )
+
+        assert isinstance(configuration.min_step, int)
+        assert isinstance(configuration.max_step, int)
+        assert isinstance(configuration.min_value, int)
+        assert isinstance(configuration.max_value, int)
+        assert isinstance(configuration.min_interval, int)
+        assert isinstance(configuration.max_interval, int)
+
         current_value = random.uniform(
             float(configuration.min_step), float(configuration.max_step)
         )
@@ -190,6 +198,7 @@ class StepSignalGenerator(SignalGenerator):
     ) -> Generator[Union[Metadata, SeriesSelector], None, None]:
         """Yields all possible metadata combinations using the signal configuration and the provided selector."""
         arg_list = []
+        assert self.__default_config is not None
         arg_list.append(
             _extract_from_tag(
                 selector.tags, "min_interval", self.__default_config.min_interval
@@ -238,12 +247,12 @@ class StepSignalGenerator(SignalGenerator):
         return StepSignalGeneratorConfig(
             selector.tags["series name"],
             selector.tags["signal_type"],
-            selector.tags["min_interval"],
-            selector.tags["max_interval"],
-            selector.tags["min_value"],
-            selector.tags["max_value"],
-            selector.tags["min_step"],
-            selector.tags["max_step"],
+            int(selector.tags["min_interval"]),
+            int(selector.tags["max_interval"]),
+            int(selector.tags["min_value"]),
+            int(selector.tags["max_value"]),
+            int(selector.tags["min_step"]),
+            int(selector.tags["max_step"]),
         )
 
 
@@ -287,6 +296,10 @@ class WhiteNoiseSignalGenerator(SignalGenerator):
             ).hexdigest()
         )
 
+        assert isinstance(configuration.mean, int)
+        assert isinstance(configuration.standard_deviation, int)
+        assert isinstance(configuration.min_interval, int)
+        assert isinstance(configuration.max_interval, int)
         while current_time <= end_date:
             generated_value = numpy.random.normal(
                 float(configuration.mean), float(configuration.standard_deviation), 1
@@ -320,6 +333,7 @@ class WhiteNoiseSignalGenerator(SignalGenerator):
     ) -> Generator[Union[Metadata, SeriesSelector], None, None]:
         """Yields all possible metadata combinations using the signal configuration and the provided selector."""
         arg_list = []
+        assert self.__default_config is not None
         arg_list.append(
             _extract_from_tag(
                 selector.tags, "min_interval", self.__default_config.min_interval
@@ -362,10 +376,10 @@ class WhiteNoiseSignalGenerator(SignalGenerator):
         return WhiteNoiseSignalGeneratorConfig(
             selector.tags["series name"],
             selector.tags["signal_type"],
-            selector.tags["min_interval"],
-            selector.tags["max_interval"],
-            selector.tags["mean"],
-            selector.tags["standard_deviation"],
+            int(selector.tags["min_interval"]),
+            int(selector.tags["max_interval"]),
+            int(selector.tags["mean"]),
+            int(selector.tags["standard_deviation"]),
         )
 
 
@@ -383,7 +397,8 @@ class SimulatorSource:
             self.__yaml_path = Path(config.path)
 
         if self.__yaml_path is None:
-            self.register_generator(StepSignalGenerator())
+            self.__signal_generators["step"].append(StepSignalGenerator())
+            self.__signal_generators["whitenoise"].append(WhiteNoiseSignalGenerator())
         else:
             yaml_config = self.__load_yaml_config()
             for signal_config in yaml_config:
@@ -400,6 +415,7 @@ class SimulatorSource:
             )
 
     def __load_yaml_config(self) -> dict:
+        assert self.__yaml_path is not None
         with self.__yaml_path.open(encoding="utf-8") as file:
             yaml_data = yaml.safe_load(file)
             return yaml_data["signals"]
@@ -417,7 +433,8 @@ class SimulatorSource:
                 for generator in generators:
                     all_series.append(generator.list_series(selector))
 
-        return itertools.chain(*all_series)
+        for series in all_series:
+            yield from series
 
     # pylint: disable=no-self-use
     def get_metadata(self, selector: SeriesSelector) -> Metadata:
@@ -437,9 +454,13 @@ class SimulatorSource:
         """Return the structure of a source."""
 
 
-def _extract_from_tag(tags: Dict[str, str], key: str, fallback: List) -> List[str]:
+def _extract_from_tag(
+    tags: Dict[str, str], key: str, fallback: Union[List[Any], Any]
+) -> List[Any]:
     if key in tags:
         return [tags[key]]
+    if not isinstance(fallback, List):
+        return [fallback]
     return fallback
 
 

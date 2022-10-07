@@ -30,7 +30,6 @@ def search(source: Source, source_name: str) -> Generator[List[Any], None, None]
                 header_printed = True
             yield [result.name]
         else:
-            print(list(result))
             if not header_printed:
                 yield _get_metadata_header(result)
                 header_printed = True
