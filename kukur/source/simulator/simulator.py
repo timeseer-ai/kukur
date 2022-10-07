@@ -99,6 +99,17 @@ class WhiteNoiseSignalGeneratorConfig(SignalGeneratorConfig):
     mean: List[int]
     standard_deviation: List[int]
 
+    def to_bytes(self):
+        """To bytes"""
+        return bytes(
+            self.series_name
+            + str(self.mean)
+            + str(self.standard_deviation)
+            + str(self.min_interval)
+            + str(self.max_interval),
+            "UTF-8",
+        )
+
 
 class StepSignalGenerator(SignalGenerator):
     """Step signal generator."""
@@ -246,13 +257,14 @@ def _get_start_of_day(ts: datetime) -> datetime:
 class WhiteNoiseSignalGenerator(SignalGenerator):
     """White noise signal generator."""
 
-    __config: Optional[WhiteNoiseSignalGeneratorConfig] = None
+    __default_config: Optional[WhiteNoiseSignalGeneratorConfig] = None
 
     def __init__(self, config: Optional[Dict] = None):
         super().__init__()
         if config is not None:
-            self.__config = WhiteNoiseSignalGeneratorConfig(
-                config["namePrefix"],
+            self.__default_config = WhiteNoiseSignalGeneratorConfig(
+                config["seriesName"],
+                config["type"],
                 config["samplingInterval"]["minInterval"],
                 config["samplingInterval"]["maxInterval"],
                 config["values"]["mean"],
@@ -264,40 +276,68 @@ class WhiteNoiseSignalGenerator(SignalGenerator):
     ) -> pa.Table:
         """Generates white noise based on a selector start and end date."""
         current_time = start_date
-        tags = selector.tags
+        configuration = self._get_configuration(selector)
         ts = []
         value = []
-        random_seed = int(tags["random_seed"])
-        random.seed(start_date.timestamp() * random_seed)
+
+        random.seed(
+            sha1(
+                configuration.to_bytes()
+                + bytes(current_time.date().isoformat(), "UTF-8")
+            ).hexdigest()
+        )
 
         while current_time <= end_date:
             generated_value = numpy.random.normal(
-                float(tags["mean"]), float(tags["standard_deviation"]), 1
+                float(configuration.mean), float(configuration.standard_deviation), 1
             )[0]
             value.append(generated_value)
             ts.append(current_time)
 
             time_increment = random.randint(
-                self.__config.min_interval, self.__config.max_interval
+                configuration.min_interval, configuration.max_interval
             )
             new_time = current_time + timedelta(seconds=time_increment)
 
             if new_time.date() != current_time.date():
-                random.seed(new_time.timestamp() * random_seed)
+                new_time = _get_start_of_day(new_time)
+
+                random.seed(
+                    sha1(
+                        configuration.to_bytes()
+                        + bytes(new_time.date().isoformat(), "UTF-8")
+                    ).hexdigest()
+                )
 
             current_time = new_time
 
-        return pa.Table.from_pydict({"ts": ts, "value": value})
+        return _drop_data_before(
+            pa.Table.from_pydict({"ts": ts, "value": value}), start_date
+        )
 
     def list_series(
         self, selector: SeriesSearch
     ) -> Generator[Union[Metadata, SeriesSelector], None, None]:
         """Yields all possible metadata combinations using the signal configuration and the provided selector."""
         arg_list = []
-        arg_list.append(_extract_from_tag(selector.tags, "mean", self.__config.mean))
         arg_list.append(
             _extract_from_tag(
-                selector.tags, "standard_deviation", self.__config.standard_deviation
+                selector.tags, "min_interval", self.__default_config.min_interval
+            )
+        )
+        arg_list.append(
+            _extract_from_tag(
+                selector.tags, "max_interval", self.__default_config.max_interval
+            )
+        )
+        arg_list.append(
+            _extract_from_tag(selector.tags, "mean", self.__default_config.mean)
+        )
+        arg_list.append(
+            _extract_from_tag(
+                selector.tags,
+                "standard_deviation",
+                self.__default_config.standard_deviation,
             )
         )
 
@@ -306,19 +346,33 @@ class WhiteNoiseSignalGenerator(SignalGenerator):
                 SeriesSelector(
                     selector.source,
                     {
-                        "series name": self.__config.series_name,
-                        "mean": str(entry[0]),
-                        "standard_deviation": str(entry[1]),
-                        "random_seed": str(entry[2]),
+                        "series name": self.__default_config.series_name,
+                        "signal_type": self.__default_config.signal_type,
+                        "min_interval": entry[0],
+                        "max_interval": entry[1],
+                        "mean": str(entry[2]),
+                        "standard_deviation": str(entry[3]),
                     },
                 )
             )
+
+    def _get_configuration(
+        self, selector: SeriesSelector
+    ) -> WhiteNoiseSignalGeneratorConfig:
+        return WhiteNoiseSignalGeneratorConfig(
+            selector.tags["series name"],
+            selector.tags["signal_type"],
+            selector.tags["min_interval"],
+            selector.tags["max_interval"],
+            selector.tags["mean"],
+            selector.tags["standard_deviation"],
+        )
 
 
 class SimulatorSource:
     """A simulator data source."""
 
-    __signal_generator: Dict[str, List[SignalGenerator]] = defaultdict(list)
+    __signal_generators: Dict[str, List[SignalGenerator]] = defaultdict(list)
 
     __yaml_path: Optional[Path] = None
 
@@ -332,14 +386,18 @@ class SimulatorSource:
             self.register_generator(StepSignalGenerator())
         else:
             yaml_config = self.__load_yaml_config()
-            for config in yaml_config:
-                self.register_generator(config)
+            for signal_config in yaml_config:
+                self.register_generator(signal_config)
 
     def register_generator(self, config: dict):
         """Register a generator."""
         signal_type = config["type"]
         if signal_type == "step":
-            self.__signal_generator[signal_type].append(StepSignalGenerator(config))
+            self.__signal_generators[signal_type].append(StepSignalGenerator(config))
+        if signal_type == "whitenoise":
+            self.__signal_generators[signal_type].append(
+                WhiteNoiseSignalGenerator(config)
+            )
 
     def __load_yaml_config(self) -> dict:
         with self.__yaml_path.open(encoding="utf-8") as file:
@@ -352,10 +410,10 @@ class SimulatorSource:
         """Yields all possible metadata combinations using the signal configuration and the provided selector."""
         all_series = []
         if "signal_type" in selector.tags:
-            for generator in self.__signal_generator[selector.tags["signal_type"]]:
+            for generator in self.__signal_generators[selector.tags["signal_type"]]:
                 all_series.append(generator.list_series(selector))
         else:
-            for generators in self.__signal_generator.values():
+            for generators in self.__signal_generators.values():
                 for generator in generators:
                     all_series.append(generator.list_series(selector))
 
@@ -372,7 +430,7 @@ class SimulatorSource:
         """Generates data in steps based on a selector start and end date."""
         if "signal_type" not in selector.tags:
             return pa.Table.from_pydict({"ts": [], "value": []})
-        for generator in self.__signal_generator["step"]:
+        for generator in self.__signal_generators[selector.tags["signal_type"]]:
             return generator.generate(selector, start_date, end_date)
 
     def get_source_structure(self, _: SeriesSelector) -> Optional[SourceStructure]:
