@@ -3,64 +3,43 @@
 # SPDX-FileCopyrightText: 2022 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
+from hashlib import sha1
 from pathlib import Path
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
-from typing import Any, Dict, Generator, List, Optional, Protocol, Union
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, Generator, List, Optional, Union
 
 import itertools
+import operator
 import random
-import numpy
-import yaml
 
-from schema import Optional as OptionalKey, Or, Schema
+import numpy
 
 import pyarrow as pa
 
-from kukur import Metadata, SeriesSearch, SeriesSelector, SourceStructure
+try:
+    import yaml
+
+    HAS_YAML = True
+except ImportError:
+    HAS_YAML = False
+
+from kukur import (
+    Metadata,
+    SeriesSearch,
+    SeriesSelector,
+    SignalGenerator,
+    SourceStructure,
+)
+from kukur.exceptions import MissingModuleException
 from kukur.source.metadata import MetadataMapper, MetadataValueMapper
 
 
-values_schema = Schema(
-    {
-        OptionalKey("period"): Or(int, [int]),
-        OptionalKey("amplitude"): Or(int, [int]),
-        OptionalKey("phase"): Or(int, [int]),
-        OptionalKey("shift"): Or(int, [int]),
-        OptionalKey("standardDeviation"): [int],
-        OptionalKey("mean"): [int],
-        OptionalKey("minValue"): int,
-        OptionalKey("maxValue"): int,
-        OptionalKey("minStep"): int,
-        OptionalKey("maxStep"): int,
-    }
-)
-
-sampling_interval_schema = Schema({"minInterval": int, "maxInterval": int})
-
-block_schema = Schema(
-    {
-        "namePrefix": str,
-        "values": values_schema,
-        "samplingInterval": sampling_interval_schema,
-        OptionalKey("randomSeed"): Or(int, [int]),
-    }
-)
-
-signal_schema = Schema(
-    {
-        OptionalKey("sine"): block_schema,
-        OptionalKey("whitenoise"): block_schema,
-        OptionalKey("step"): block_schema,
-    }
-)
-
-signals_schema = Schema(
-    {
-        "signals": [signal_schema],
-    }
-)
+operator_functions = {
+    "+": operator.add,
+    "-": operator.sub,
+}
 
 
 @dataclass
@@ -82,22 +61,6 @@ def from_config(
     )
 
 
-class SignalGenerator(Protocol):
-    """Protocol for generating signals."""
-
-    def generate(
-        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
-    ) -> pa.Table:
-        """Generates data based on a selector, start date and end date."""
-        ...
-
-    def list_series(
-        self, selector: SeriesSearch
-    ) -> Generator[Union[Metadata, SeriesSelector], None, None]:
-        """Yields all possible metadata combinations using the signal configuration and the provided selector."""
-        ...
-
-
 @dataclass
 class SignalGeneratorConfig:
     """Base signal configuration."""
@@ -105,7 +68,6 @@ class SignalGeneratorConfig:
     name_prefix: str
     min_interval: int
     max_interval: int
-    random_seed: List[int]
 
 
 @dataclass
@@ -116,6 +78,19 @@ class StepSignalGeneratorConfig(SignalGeneratorConfig):
     max_value: List[int]
     min_step: List[int]
     max_step: List[int]
+
+    def to_bytes(self):
+        """To bytes"""
+        return bytes(
+            self.name_prefix
+            + str(self.min_value)
+            + str(self.max_value)
+            + str(self.min_step)
+            + str(self.max_step)
+            + str(self.min_interval)
+            + str(self.max_interval),
+            "UTF-8",
+        )
 
 
 @dataclass
@@ -137,7 +112,6 @@ class StepSignalGenerator(SignalGenerator):
             config["namePrefix"],
             config["samplingInterval"]["minInterval"],
             config["samplingInterval"]["maxInterval"],
-            config["randomSeed"],
             config["values"]["minValue"],
             config["values"]["maxValue"],
             config["values"]["minStep"],
@@ -148,18 +122,26 @@ class StepSignalGenerator(SignalGenerator):
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         """Generates data in steps based on a selector start and end date."""
-        current_time = start_date
+        current_time = _get_start_of_day(start_date)
         tags = selector.tags
         ts = []
         value = []
-        random_seed = int(tags["random_seed"])
-        random.seed(start_date.timestamp() * random_seed)
-        current_value = (float(tags["max_value"]) + float(tags["min_value"])) / 2
+        random.seed(
+            sha1(
+                self.__config.to_bytes()
+                + bytes(current_time.date().isoformat(), "UTF-8")
+            ).hexdigest()
+        )
+        current_value = random.uniform(float(tags["min_step"]), float(tags["max_step"]))
         while current_time <= end_date:
             generated_step = random.uniform(
                 float(tags["min_step"]), float(tags["max_step"])
             )
-            generated_step += current_value
+            random_operator = random.choice(["+", "-"])
+            generated_step = operator_functions[random_operator](
+                current_value, generated_step
+            )
+
             clamped_step = max(
                 min(generated_step, float(tags["max_value"])), float(tags["min_value"])
             )
@@ -173,11 +155,20 @@ class StepSignalGenerator(SignalGenerator):
             new_time = current_time + timedelta(seconds=time_increment)
 
             if new_time.date() != current_time.date():
-                random.seed(new_time.timestamp() * random_seed)
+                new_time = _get_start_of_day(new_time)
+
+                random.seed(
+                    sha1(
+                        self.__config.to_bytes()
+                        + bytes(new_time.date().isoformat(), "UTF-8")
+                    ).hexdigest()
+                )
 
             current_time = new_time
 
-        return pa.Table.from_pydict({"ts": ts, "value": value})
+        return _drop_data_before(
+            pa.Table.from_pydict({"ts": ts, "value": value}), start_date
+        )
 
     def list_series(
         self, selector: SeriesSearch
@@ -196,9 +187,6 @@ class StepSignalGenerator(SignalGenerator):
         arg_list.append(
             _extract_from_tag(selector.tags, "max_step", self.__config.max_step)
         )
-        arg_list.append(
-            _extract_from_tag(selector.tags, "random_seed", self.__config.random_seed)
-        )
 
         for entry in itertools.product(*arg_list):
             yield (
@@ -210,10 +198,16 @@ class StepSignalGenerator(SignalGenerator):
                         "max_value": str(entry[1]),
                         "min_step": str(entry[2]),
                         "max_step": str(entry[3]),
-                        "random_seed": str(entry[4]),
                     },
                 )
             )
+
+
+def _get_start_of_day(ts: datetime) -> datetime:
+    current_day = ts.date()
+    return datetime(
+        current_day.year, current_day.month, current_day.day, tzinfo=timezone.utc
+    )
 
 
 class WhiteNoiseSignalGenerator(SignalGenerator):
@@ -227,7 +221,6 @@ class WhiteNoiseSignalGenerator(SignalGenerator):
             config["namePrefix"],
             config["samplingInterval"]["minInterval"],
             config["samplingInterval"]["maxInterval"],
-            config["randomSeed"],
             config["values"]["mean"],
             config["values"]["standardDeviation"],
         )
@@ -273,9 +266,6 @@ class WhiteNoiseSignalGenerator(SignalGenerator):
                 selector.tags, "standard_deviation", self.__config.standard_deviation
             )
         )
-        arg_list.append(
-            _extract_from_tag(selector.tags, "random_seed", self.__config.random_seed)
-        )
 
         for entry in itertools.product(*arg_list):
             yield (
@@ -302,7 +292,8 @@ class SimulatorSource:
     def __init__(self, config: SimulatorConfiguration):
         self.__signal_type = config.signal_type
         self.__yaml_path = Path(config.path)
-
+        if not HAS_YAML:
+            raise MissingModuleException("PyYAML")
         if self.__signal_type == "step":
             self.__signal_generator = StepSignalGenerator(self.__load_yaml_config())
         else:
@@ -313,7 +304,10 @@ class SimulatorSource:
     def __load_yaml_config(self) -> dict:
         with self.__yaml_path.open(encoding="utf-8") as file:
             yaml_data = yaml.safe_load(file)
-            return yaml_data["signals"][self.__signal_type]
+            for signal in yaml_data["signals"]:
+                if self.__signal_type in signal:
+                    return signal[self.__signal_type]
+            return {}
 
     def search(
         self, selector: SeriesSearch
@@ -340,3 +334,9 @@ def _extract_from_tag(tags: Dict[str, str], key: str, fallback: list) -> list[st
     if key in tags:
         return [tags[key]]
     return fallback
+
+
+def _drop_data_before(table: pa.Table, ts: datetime) -> pa.Table:
+    # pylint: disable=no-member
+    keep_after = pa.compute.greater_equal(table["ts"], pa.scalar(ts))
+    return table.filter(keep_after)
