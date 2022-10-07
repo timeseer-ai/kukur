@@ -386,11 +386,13 @@ class WhiteNoiseSignalGenerator(SignalGenerator):
 class SimulatorSource:
     """A simulator data source."""
 
-    __signal_generators: Dict[str, List[SignalGenerator]] = defaultdict(list)
+    __signal_generators: Dict[str, List[SignalGenerator]]
 
     __yaml_path: Optional[Path] = None
 
     def __init__(self, config: SimulatorConfiguration):
+        self.__signal_generators = defaultdict(list)
+
         if config.path is not None:
             if not HAS_YAML:
                 raise MissingModuleException("PyYAML")
