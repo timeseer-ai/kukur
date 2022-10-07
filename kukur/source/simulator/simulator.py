@@ -163,12 +163,7 @@ class StepSignalGenerator(SignalGenerator):
         configuration = self._get_configuration(selector)
         ts = []
         value = []
-        random.seed(
-            sha1(
-                configuration.to_bytes()
-                + bytes(current_time.date().isoformat(), "UTF-8")
-            ).hexdigest()
-        )
+        random.seed(_get_hex_digest(current_time, configuration.to_bytes()))
 
         assert isinstance(configuration.min_step, int)
         assert isinstance(configuration.max_step, int)
@@ -177,10 +172,10 @@ class StepSignalGenerator(SignalGenerator):
         assert isinstance(configuration.min_interval, int)
         assert isinstance(configuration.max_interval, int)
 
-        current_value = random.uniform(
-            float(configuration.min_step), float(configuration.max_step)
-        )
         while current_time <= end_date:
+            current_value = random.uniform(
+                float(configuration.min_step), float(configuration.max_step)
+            )
             generated_step = random.uniform(
                 float(configuration.min_step), float(configuration.max_step)
             )
@@ -204,13 +199,7 @@ class StepSignalGenerator(SignalGenerator):
 
             if new_time.date() != current_time.date():
                 new_time = _get_start_of_day(new_time)
-
-                random.seed(
-                    sha1(
-                        configuration.to_bytes()
-                        + bytes(new_time.date().isoformat(), "UTF-8")
-                    ).hexdigest()
-                )
+                random.seed(_get_hex_digest(new_time, configuration.to_bytes()))
 
             current_time = new_time
 
@@ -327,12 +316,9 @@ class WhiteNoiseSignalGenerator(SignalGenerator):
         ts = []
         value = []
 
-        random.seed(
-            sha1(
-                configuration.to_bytes()
-                + bytes(current_time.date().isoformat(), "UTF-8")
-            ).hexdigest()
-        )
+        random.seed(_get_hex_digest(current_time, configuration.to_bytes()))
+
+        numpy.random.seed(_get_int_digest(current_time, configuration.to_bytes()))
 
         assert isinstance(configuration.mean, int)
         assert isinstance(configuration.standard_deviation, int)
@@ -352,13 +338,8 @@ class WhiteNoiseSignalGenerator(SignalGenerator):
 
             if new_time.date() != current_time.date():
                 new_time = _get_start_of_day(new_time)
-
-                random.seed(
-                    sha1(
-                        configuration.to_bytes()
-                        + bytes(new_time.date().isoformat(), "UTF-8")
-                    ).hexdigest()
-                )
+                random.seed(_get_hex_digest(new_time, configuration.to_bytes()))
+                numpy.random.seed(_get_int_digest(new_time, configuration.to_bytes()))
 
             current_time = new_time
 
@@ -675,3 +656,15 @@ def _drop_data_before(table: pa.Table, ts: datetime) -> pa.Table:
     # pylint: disable=no-member
     keep_after = pa.compute.greater_equal(table["ts"], pa.scalar(ts))
     return table.filter(keep_after)
+
+
+def _get_hex_digest(ts: datetime, extra_bytes: bytes) -> str:
+    return _get_hash(ts, extra_bytes).hexdigest()
+
+
+def _get_int_digest(ts: datetime, extra_bytes) -> int:
+    return int.from_bytes(_get_hash(ts, extra_bytes).digest()[:4], "little")
+
+
+def _get_hash(ts: datetime, extra_bytes: bytes):
+    return sha1(extra_bytes + bytes(ts.isoformat(), "UTF-8"))
