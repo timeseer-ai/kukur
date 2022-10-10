@@ -10,7 +10,7 @@ import pyarrow.flight as fl
 
 from dateutil.parser import parse as parse_date
 
-from kukur import Metadata, PlotSource, SeriesSelector, Source, TagSource
+from kukur import PlotSource, SeriesSelector, Source, TagSource
 from kukur.app import Kukur
 from kukur.exceptions import InvalidSourceException
 
@@ -80,18 +80,7 @@ class KukurFlightServer:
         request = json.loads(action.body.to_pybytes())
         selector = SeriesSelector.from_data(request)
         for result in self.__source.search(selector):
-            if isinstance(result, Metadata):
-                assert "series name" in result.series.tags
-                metadata = result.to_data()
-                yield json.dumps(metadata).encode()
-            else:
-                assert "series name" in result.tags
-                series = {
-                    "source": result.source,
-                    "tags": result.tags,
-                    "field": result.field,
-                }
-                yield json.dumps(series).encode()
+            yield json.dumps(result.to_data()).encode()
 
     def get_metadata(self, _, action: fl.Action) -> List[bytes]:
         """Return metadata for the given time series as JSON."""

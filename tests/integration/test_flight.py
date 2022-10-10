@@ -9,6 +9,7 @@ from datetime import datetime
 import pytest
 
 from kukur import Client, Metadata, SeriesSelector
+from kukur.base import SeriesSearch
 from kukur.metadata import fields
 
 
@@ -115,7 +116,7 @@ def test_plot_data_fallback(client: Client):
 
 def test_sources(client: Client):
     data = client.list_sources()
-    assert len(data) == 47
+    assert len(data) == 48
     assert "sql" in data
     assert "row" in data
     assert "noaa" in data
@@ -142,3 +143,15 @@ def test_get_source_structure(client: Client):
     assert {"key": "location", "value": "coyote_creek"} in source_structure.tag_values
     assert len(source_structure.fields) == 6
     assert "degrees" in source_structure.fields
+
+
+def test_series_without_series_name(client: Client):
+    series = list(client.search(SeriesSearch("integration-test")))
+    assert len(series) == 2
+    assert isinstance(series[0], SeriesSelector)
+    assert series[0].tags == {"tag1": "value1", "tag2": "value2"}
+    assert series[0].field == "pressure"
+    assert isinstance(series[1], Metadata)
+    assert series[1].series.tags == {"tag1": "value1a", "tag2": "value2a"}
+    assert series[1].series.field == "temperature"
+    assert series[1].get_field_by_name("description") == "integration test"
