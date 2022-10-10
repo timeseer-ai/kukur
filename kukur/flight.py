@@ -81,11 +81,9 @@ class KukurFlightServer:
         selector = SeriesSelector.from_data(request)
         for result in self.__source.search(selector):
             if isinstance(result, Metadata):
-                assert "series name" in result.series.tags
                 metadata = result.to_data()
                 yield json.dumps(metadata).encode()
             else:
-                assert "series name" in result.tags
                 series = {
                     "source": result.source,
                     "tags": result.tags,
