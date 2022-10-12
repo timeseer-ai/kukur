@@ -3,11 +3,11 @@
 # SPDX-FileCopyrightText: 2022 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-from dataclasses import dataclass
 import json
 
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, Generator, List, Optional, Union
+from typing import Any, Dict, Generator, List, Optional
 
 import pyarrow as pa
 
@@ -134,9 +134,7 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
         )
         self.__client = KustoClient(kcsb)
 
-    def search(
-        self, selector: SeriesSearch
-    ) -> Generator[Union[Metadata, SeriesSelector], None, None]:
+    def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
         """Search for series matching the given selector."""
         if len(self.__tags) == 0:
             raise KukurException("Define tags to support listing time series")
@@ -161,7 +159,7 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
                 for tag in self.__tags:
                     tags[tag] = row[tag]
                 for field in fields:
-                    yield SeriesSelector(selector.source, tags, field)
+                    yield Metadata(SeriesSelector(selector.source, tags, field))
         else:
             summaries = [
                 f"['{name}']=arg_max(['{self.__timestamp_column}'], ['{name}'])"

@@ -1,13 +1,16 @@
+# SPDX-FileCopyrightText: 2022 Timeseer.AI
+# SPDX-License-Identifier: Apache-2.0
+
 from datetime import datetime, timedelta
 from random import random
 from typing import Any, Dict, List, Union
-from kukur.metadata import Metadata
-
-from kukur.source.azure_data_explorer import from_config
-from kukur import SeriesSelector
-from kukur.source.metadata import MetadataMapper, MetadataValueMapper
 
 from unittest.mock import patch
+
+from kukur import SeriesSelector
+from kukur.metadata import Metadata
+from kukur.source.azure_data_explorer import from_config
+from kukur.source.metadata import MetadataMapper, MetadataValueMapper
 
 
 class MockKustoResponse:
@@ -193,5 +196,10 @@ def test_search_without_metadata(_kusto_client) -> None:
         None,
     )
     selector = SeriesSelector("my_source", {}, "pressure")
-    series = list(source.search(selector))
-    assert len(series) == 6
+    metadata_list = list(source.search(selector))
+    assert len(metadata_list) == 6
+    for metadata in metadata_list:
+        assert isinstance(metadata, Metadata)
+        assert "deviceId" in metadata.series.tags
+        assert "plant" in metadata.series.tags
+        assert "location" in metadata.series.tags
