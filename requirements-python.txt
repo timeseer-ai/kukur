@@ -5,3 +5,4 @@ influxdb==5.3.1
 pyodbc==4.0.30
 requests==2.27.1
 requests-kerberos==0.14.0
+PyYAML==6.0

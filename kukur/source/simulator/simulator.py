@@ -1,0 +1,660 @@
+"""Simulate a data source by generating data for Timeseer."""
+
+# SPDX-FileCopyrightText: 2022 Timeseer.AI
+# SPDX-License-Identifier: Apache-2.0
+
+import itertools
+import operator
+
+from collections import defaultdict
+from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
+from hashlib import sha1
+from pathlib import Path
+from random import Random
+from typing import Any, Dict, Generator, List, Optional, Union
+
+import numpy
+
+import pyarrow as pa
+
+try:
+    import yaml
+
+    HAS_YAML = True
+except ImportError:
+    HAS_YAML = False
+
+from kukur import (
+    Metadata,
+    SeriesSearch,
+    SeriesSelector,
+    SignalGenerator,
+    SourceStructure,
+)
+from kukur.exceptions import MissingModuleException
+
+
+operator_functions = {
+    "+": operator.add,
+    "-": operator.sub,
+}
+
+
+@dataclass
+class SimulatorConfiguration:
+    """Simulator source configuration."""
+
+    path: Optional[str]
+
+
+def from_config(
+    config: Dict[str, Any],
+):
+    """Create a new Simulator data source from the given configuration dictionary."""
+    return SimulatorSource(SimulatorConfiguration(config.get("path")))
+
+
+@dataclass
+class SignalGeneratorConfig:
+    """Base signal generator configuration."""
+
+    series_name: str
+    signal_type: str
+    min_interval_seconds: Union[List[float], float]
+    max_interval_seconds: Union[List[float], float]
+    metadata: Dict[str, str]
+
+
+@dataclass
+class SignalConfig:
+    """Base signal configuration."""
+
+    series_name: str
+    signal_type: str
+    min_interval_seconds: int
+    max_interval_seconds: int
+
+    def to_bytes(self) -> bytes:
+        """Convert to a unique bytes representation."""
+        return bytes(str(self), "UTF-8")
+
+
+@dataclass
+class StepSignalGeneratorConfig(SignalGeneratorConfig):
+    """Configuration for the step signal generator."""
+
+    min_value: Union[List[float], float]
+    max_value: Union[List[float], float]
+    number_of_steps: Union[List[int], int]
+
+
+@dataclass
+class StepSignalConfig(SignalConfig):
+    """Configuration for the step signal."""
+
+    min_value: float
+    max_value: float
+    number_of_steps: int
+
+
+@dataclass
+class WhiteNoiseSignalGeneratorConfig(SignalGeneratorConfig):
+    """Configuration for the white noise signal generator."""
+
+    mean: Union[List[float], float]
+    standard_deviation: Union[List[float], float]
+
+
+@dataclass
+class WhiteNoiseSignalConfig(SignalConfig):
+    """Configuration for the white noise signal."""
+
+    mean: float
+    standard_deviation: float
+
+
+@dataclass
+class SineSignalGeneratorConfig(SignalGeneratorConfig):
+    """Configuration for the sine signal generator."""
+
+    period_seconds: Union[List[float], float]
+    phase_seconds: Union[List[float], float]
+    amplitude: Union[List[float], float]
+    shift: Union[List[float], float]
+
+
+@dataclass
+class SineSignalConfig(SignalConfig):
+    """Configuration for one sine signal."""
+
+    period_seconds: float
+    phase_seconds: float
+    amplitude: float
+    shift: float
+
+
+class StepSignalGenerator:
+    """Step signal generator."""
+
+    __config: Optional[StepSignalGeneratorConfig] = None
+
+    def __init__(self, config: Optional[Dict] = None):
+        if config is not None:
+            self.__config = StepSignalGeneratorConfig(
+                config["seriesName"],
+                config["type"],
+                config["samplingInterval"]["minIntervalSeconds"],
+                config["samplingInterval"]["maxIntervalSeconds"],
+                config.get("metadata", {}),
+                config["values"]["minValue"],
+                config["values"]["maxValue"],
+                config["values"]["numberOfSteps"],
+            )
+
+    def generate(  # pylint: disable=no-self-use, too-many-locals
+        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
+    ) -> pa.Table:
+        """Generates data in steps based on a selector start and end date."""
+        current_time = _get_start_of_day(start_date)
+        configuration = _get_step_configuration(selector)
+        ts = []
+        value = []
+        rng = Random(_get_hex_digest(current_time, configuration.to_bytes()))
+
+        step_size = (
+            configuration.max_value - configuration.min_value
+        ) / configuration.number_of_steps
+        current_value = (
+            configuration.min_value
+            + rng.randint(0, configuration.number_of_steps) * step_size
+        )
+        while current_time <= end_date:
+            generated_step = (
+                rng.randint(0, int(configuration.number_of_steps / 2)) * step_size
+            )
+            random_operator = rng.choice(["+", "-"])
+            new_value = operator_functions[random_operator](
+                current_value, generated_step
+            )
+            if (
+                new_value > configuration.max_value
+                or new_value < configuration.min_value
+            ):
+                random_operator = "+" if random_operator == "-" else "-"
+                new_value = operator_functions[random_operator](
+                    current_value, generated_step
+                )
+
+            value.append(new_value)
+            ts.append(current_time)
+            current_value = new_value
+
+            time_increment = rng.randint(
+                configuration.min_interval_seconds, configuration.max_interval_seconds
+            )
+            new_time = current_time + timedelta(seconds=time_increment)
+
+            if new_time.date() != current_time.date():
+                new_time = _get_start_of_day(new_time)
+                rng.seed(_get_hex_digest(new_time, configuration.to_bytes()))
+                current_value = (
+                    configuration.min_value
+                    + rng.randint(0, configuration.number_of_steps) * step_size
+                )
+
+            current_time = new_time
+
+        return _drop_data_before(
+            pa.Table.from_pydict({"ts": ts, "value": value}), start_date
+        )
+
+    def list_series(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
+        """Yields all possible metadata combinations using the signal configuration and the provided selector."""
+        arg_list = []
+        if self.__config is None:
+            return
+
+        arg_list.append(
+            _extract_from_tag(
+                selector.tags,
+                "min_interval_seconds",
+                self.__config.min_interval_seconds,
+            )
+        )
+        arg_list.append(
+            _extract_from_tag(
+                selector.tags,
+                "max_interval_seconds",
+                self.__config.max_interval_seconds,
+            )
+        )
+        arg_list.append(
+            _extract_from_tag(selector.tags, "min_value", self.__config.min_value)
+        )
+        arg_list.append(
+            _extract_from_tag(selector.tags, "max_value", self.__config.max_value)
+        )
+        arg_list.append(
+            _extract_from_tag(
+                selector.tags, "number_of_steps", self.__config.number_of_steps
+            )
+        )
+
+        for entry in itertools.product(*arg_list):
+            yield _build_step_search_result(self.__config, entry, selector.source)
+
+
+def _build_step_search_result(
+    config: StepSignalGeneratorConfig, entry: tuple, source_name: str
+) -> Metadata:
+    series_selector = SeriesSelector(
+        source_name,
+        {
+            "series name": config.series_name,
+            "signal_type": config.signal_type,
+            "min_interval_seconds": str(entry[0]),
+            "max_interval_seconds": str(entry[1]),
+            "min_value": str(entry[2]),
+            "max_value": str(entry[3]),
+            "number_of_steps": str(entry[4]),
+        },
+    )
+    metadata = Metadata(series_selector)
+    for field_name, field_value in config.metadata.items():
+        metadata.coerce_field(field_name, field_value)
+    return metadata
+
+
+def _get_step_configuration(selector: SeriesSelector) -> StepSignalConfig:
+    return StepSignalConfig(
+        selector.tags["series name"],
+        selector.tags["signal_type"],
+        int(selector.tags["min_interval_seconds"]),
+        int(selector.tags["max_interval_seconds"]),
+        float(selector.tags["min_value"]),
+        float(selector.tags["max_value"]),
+        int(selector.tags["number_of_steps"]),
+    )
+
+
+def _get_start_of_day(ts: datetime) -> datetime:
+    current_day = ts.date()
+    return datetime(
+        current_day.year, current_day.month, current_day.day, tzinfo=timezone.utc
+    )
+
+
+class WhiteNoiseSignalGenerator:
+    """White noise signal generator."""
+
+    __config: Optional[WhiteNoiseSignalGeneratorConfig] = None
+
+    def __init__(self, config: Optional[Dict] = None):
+        if config is not None:
+            self.__config = WhiteNoiseSignalGeneratorConfig(
+                config["seriesName"],
+                config["type"],
+                config["samplingInterval"]["minIntervalSeconds"],
+                config["samplingInterval"]["maxIntervalSeconds"],
+                config.get("metadata", {}),
+                config["values"]["mean"],
+                config["values"]["standardDeviation"],
+            )
+
+    def generate(  # pylint: disable=no-self-use
+        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
+    ) -> pa.Table:
+        """Generates white noise based on a selector start and end date."""
+        current_time = _get_start_of_day(start_date)
+        configuration = _get_white_noise_configuration(selector)
+        ts = []
+        value = []
+
+        rng = Random(_get_hex_digest(current_time, configuration.to_bytes()))
+
+        numpy_rng = numpy.random.default_rng(
+            _get_int_digest(current_time, configuration.to_bytes())
+        )
+
+        while current_time <= end_date:
+            generated_value = numpy_rng.normal(
+                configuration.mean, configuration.standard_deviation, 1
+            )[0]
+            value.append(generated_value)
+            ts.append(current_time)
+
+            time_increment = rng.randint(
+                configuration.min_interval_seconds, configuration.max_interval_seconds
+            )
+            new_time = current_time + timedelta(seconds=time_increment)
+
+            if new_time.date() != current_time.date():
+                new_time = _get_start_of_day(new_time)
+                rng.seed(_get_hex_digest(new_time, configuration.to_bytes()))
+                numpy_rng = numpy.random.default_rng(
+                    _get_int_digest(new_time, configuration.to_bytes())
+                )
+
+            current_time = new_time
+
+        return _drop_data_before(
+            pa.Table.from_pydict({"ts": ts, "value": value}), start_date
+        )
+
+    def list_series(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
+        """Yields all possible metadata combinations using the signal configuration and the provided selector."""
+        arg_list = []
+        if self.__config is None:
+            return
+        arg_list.append(
+            _extract_from_tag(
+                selector.tags,
+                "min_interval_seconds",
+                self.__config.min_interval_seconds,
+            )
+        )
+        arg_list.append(
+            _extract_from_tag(
+                selector.tags,
+                "max_interval_seconds",
+                self.__config.max_interval_seconds,
+            )
+        )
+        arg_list.append(_extract_from_tag(selector.tags, "mean", self.__config.mean))
+        arg_list.append(
+            _extract_from_tag(
+                selector.tags,
+                "standard_deviation",
+                self.__config.standard_deviation,
+            )
+        )
+
+        for entry in itertools.product(*arg_list):
+            yield _build_white_noise_search_result(
+                self.__config, entry, selector.source
+            )
+
+
+def _build_white_noise_search_result(
+    config: WhiteNoiseSignalGeneratorConfig, entry: tuple, source_name: str
+) -> Metadata:
+    series_selector = SeriesSelector(
+        source_name,
+        {
+            "series name": config.series_name,
+            "signal_type": config.signal_type,
+            "min_interval_seconds": str(entry[0]),
+            "max_interval_seconds": str(entry[1]),
+            "mean": str(entry[2]),
+            "standard_deviation": str(entry[3]),
+        },
+    )
+    metadata = Metadata(series_selector)
+    for field_name, field_value in config.metadata.items():
+        metadata.coerce_field(field_name, field_value)
+    return metadata
+
+
+def _get_white_noise_configuration(
+    selector: SeriesSelector,
+) -> WhiteNoiseSignalConfig:
+    return WhiteNoiseSignalConfig(
+        selector.tags["series name"],
+        selector.tags["signal_type"],
+        int(selector.tags["min_interval_seconds"]),
+        int(selector.tags["max_interval_seconds"]),
+        float(selector.tags["mean"]),
+        float(selector.tags["standard_deviation"]),
+    )
+
+
+class SineSignalGenerator:
+    """Sine signal generator."""
+
+    __config: Optional[SineSignalGeneratorConfig] = None
+
+    def __init__(self, config: Optional[Dict] = None):
+        if config is not None:
+            self.__config = SineSignalGeneratorConfig(
+                config["seriesName"],
+                config["type"],
+                config["samplingInterval"]["minIntervalSeconds"],
+                config["samplingInterval"]["maxIntervalSeconds"],
+                config.get("metadata", {}),
+                config["values"]["periodSeconds"],
+                config["values"]["phaseSeconds"],
+                config["values"]["amplitude"],
+                config["values"]["shift"],
+            )
+
+    def generate(  # pylint: disable=no-self-use
+        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
+    ) -> pa.Table:
+        """Generates a sine function based on a selector start and end date."""
+        current_time = _get_start_of_day(start_date)
+        configuration = _get_sine_configuration(selector)
+        ts = []
+        value = []
+
+        rng = Random(_get_hex_digest(current_time, configuration.to_bytes()))
+
+        while current_time <= end_date:
+            value.append(
+                calculate_sine(
+                    current_time,
+                    period_seconds=configuration.period_seconds,
+                    phase_seconds=configuration.phase_seconds,
+                    amplitude=configuration.amplitude,
+                    shift=configuration.shift,
+                )
+            )
+            ts.append(current_time)
+
+            time_increment = rng.randint(
+                configuration.min_interval_seconds, configuration.max_interval_seconds
+            )
+            new_time = current_time + timedelta(seconds=time_increment)
+
+            if new_time.date() != current_time.date():
+                new_time = _get_start_of_day(new_time)
+
+                rng.seed(_get_hex_digest(new_time, configuration.to_bytes()))
+
+            current_time = new_time
+
+        return _drop_data_before(
+            pa.Table.from_pydict({"ts": ts, "value": value}), start_date
+        )
+
+    def list_series(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
+        """Yields all possible metadata combinations using the signal configuration and the provided selector."""
+        if self.__config is None:
+            return
+
+        arg_list = []
+        arg_list.append(
+            _extract_from_tag(
+                selector.tags,
+                "min_interval_seconds",
+                self.__config.min_interval_seconds,
+            )
+        )
+        arg_list.append(
+            _extract_from_tag(
+                selector.tags,
+                "max_interval_seconds",
+                self.__config.max_interval_seconds,
+            )
+        )
+        arg_list.append(
+            _extract_from_tag(
+                selector.tags, "period_seconds", self.__config.period_seconds
+            )
+        )
+        arg_list.append(
+            _extract_from_tag(
+                selector.tags,
+                "amplitude",
+                self.__config.amplitude,
+            )
+        )
+        arg_list.append(
+            _extract_from_tag(
+                selector.tags, "phase_seconds", self.__config.phase_seconds
+            )
+        )
+        arg_list.append(_extract_from_tag(selector.tags, "shift", self.__config.shift))
+
+        for entry in itertools.product(*arg_list):
+            yield _build_sine_search_result(self.__config, entry, selector.source)
+
+
+def _build_sine_search_result(
+    config: SineSignalGeneratorConfig, entry: tuple, source_name: str
+) -> Metadata:
+    series_selector = SeriesSelector(
+        source_name,
+        {
+            "series name": config.series_name,
+            "signal_type": config.signal_type,
+            "min_interval_seconds": str(entry[0]),
+            "max_interval_seconds": str(entry[1]),
+            "period_seconds": str(entry[2]),
+            "amplitude": str(entry[3]),
+            "phase_seconds": str(entry[4]),
+            "shift": str(entry[5]),
+        },
+    )
+    metadata = Metadata(series_selector)
+    for field_name, field_value in config.metadata.items():
+        metadata.coerce_field(field_name, field_value)
+    return metadata
+
+
+def _get_sine_configuration(selector: SeriesSelector) -> SineSignalConfig:
+    return SineSignalConfig(
+        selector.tags["series name"],
+        selector.tags["signal_type"],
+        int(selector.tags["min_interval_seconds"]),
+        int(selector.tags["max_interval_seconds"]),
+        float(selector.tags["period_seconds"]),
+        float(selector.tags["phase_seconds"]),
+        float(selector.tags["amplitude"]),
+        float(selector.tags["shift"]),
+    )
+
+
+def calculate_sine(
+    ts: datetime,
+    *,
+    period_seconds: float,
+    phase_seconds: float = 0,
+    amplitude: float = 1,
+    shift: float = 0,
+) -> float:
+    """Calculate the sine function at unix timestamp ts."""
+    return (
+        amplitude
+        * numpy.sin(2 * numpy.pi * (ts.timestamp() + phase_seconds) / period_seconds)
+        + shift
+    )
+
+
+class SimulatorSource:
+    """A simulator data source."""
+
+    __signal_generators: Dict[str, List[SignalGenerator]]
+
+    __yaml_path: Optional[Path] = None
+
+    def __init__(self, config: SimulatorConfiguration):
+        self.__signal_generators = defaultdict(list)
+
+        if config.path is not None:
+            if not HAS_YAML:
+                raise MissingModuleException("PyYAML")
+            self.__yaml_path = Path(config.path)
+
+        if self.__yaml_path is None:
+            self.__signal_generators["step"].append(StepSignalGenerator())
+            self.__signal_generators["white noise"].append(WhiteNoiseSignalGenerator())
+            self.__signal_generators["sine"].append(SineSignalGenerator())
+        else:
+            with self.__yaml_path.open(encoding="utf-8") as file:
+                yaml_data = yaml.safe_load(file)
+                for signal_config in yaml_data.get("signals", []):
+                    self._register_generator(signal_config)
+
+    def search(
+        self, selector: SeriesSearch
+    ) -> Generator[Union[Metadata, SeriesSelector], None, None]:
+        """Yields all possible metadata combinations using the signal configuration and the provided selector."""
+        all_series = []
+        if "signal_type" in selector.tags:
+            for generator in self.__signal_generators[selector.tags["signal_type"]]:
+                all_series.append(generator.list_series(selector))
+        else:
+            for generators in self.__signal_generators.values():
+                for generator in generators:
+                    all_series.append(generator.list_series(selector))
+
+        for series in all_series:
+            yield from series
+
+    # pylint: disable=no-self-use
+    def get_metadata(self, selector: SeriesSelector) -> Metadata:
+        """Data explorer currently always returns empty metadata."""
+        return Metadata(selector)
+
+    def get_data(
+        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
+    ) -> pa.Table:
+        """Generates data in steps based on a selector start and end date."""
+        if "signal_type" not in selector.tags:
+            return pa.Table.from_pydict({"ts": [], "value": []})
+        for generator in self.__signal_generators[selector.tags["signal_type"]]:
+            return generator.generate(selector, start_date, end_date)
+
+    def get_source_structure(self, _: SeriesSelector) -> Optional[SourceStructure]:
+        """Return the structure of a source."""
+
+    def _register_generator(self, config: Dict):
+        """Register a generator."""
+        signal_type = config["type"]
+        if signal_type == "step":
+            self.__signal_generators[signal_type].append(StepSignalGenerator(config))
+        if signal_type == "white noise":
+            self.__signal_generators[signal_type].append(
+                WhiteNoiseSignalGenerator(config)
+            )
+        if signal_type == "sine":
+            self.__signal_generators[signal_type].append(SineSignalGenerator(config))
+
+
+def _extract_from_tag(
+    tags: Dict[str, str], key: str, fallback: Union[List[Any], Any]
+) -> List[Any]:
+    if key in tags:
+        return [tags[key]]
+    if not isinstance(fallback, List):
+        return [fallback]
+    return fallback
+
+
+def _drop_data_before(table: pa.Table, ts: datetime) -> pa.Table:
+    # pylint: disable=no-member
+    keep_after = pa.compute.greater_equal(table["ts"], pa.scalar(ts))
+    return table.filter(keep_after)
+
+
+def _get_hex_digest(ts: datetime, extra_bytes: bytes) -> str:
+    return _get_hash(ts, extra_bytes).hexdigest()
+
+
+def _get_int_digest(ts: datetime, extra_bytes) -> int:
+    return int.from_bytes(_get_hash(ts, extra_bytes).digest()[:4], "little")
+
+
+def _get_hash(ts: datetime, extra_bytes: bytes):
+    return sha1(extra_bytes + bytes(ts.isoformat(), "UTF-8"))

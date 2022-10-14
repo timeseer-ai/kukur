@@ -16,7 +16,7 @@ jobs:
         python-version: '3.8'
 
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Set version in environment
       run: echo "KUKUR_VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV

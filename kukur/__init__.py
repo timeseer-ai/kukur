@@ -69,6 +69,21 @@ class PlotSource(Source, Protocol):
         ...
 
 
+@typing.runtime_checkable
+class SignalGenerator(Protocol):
+    """Protocol for generating signals."""
+
+    def generate(
+        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
+    ) -> pa.Table:
+        """Generates data based on a selector, start date and end date."""
+        ...
+
+    def list_series(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
+        """Yields all possible metadata combinations using the signal configuration and the provided selector."""
+        ...
+
+
 __all__ = [
     "Client",
     "DataType",
