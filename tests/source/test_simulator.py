@@ -3,22 +3,25 @@
 # SPDX-FileCopyrightText: 2022 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
+
 from datetime import datetime, timedelta
-from pytest import fixture
+
+import numpy
 import pyarrow as pa
 
 from dateutil.parser import parse as parse_date
-from kukur.base import SeriesSelector
+from pytest import approx, fixture
 
+from kukur.base import SeriesSearch, SeriesSelector
 from kukur.source.simulator.simulator import (
     SineSignalGenerator,
     StepSignalGenerator,
     WhiteNoiseSignalGenerator,
-    WhiteNoiseSignalGeneratorConfig,
+    calculate_sine,
 )
 
 
-START_DATE = parse_date("2020-01-01T00:00:00Z")
+START_DATE = parse_date("2020-01-01T01:00:00Z")
 END_DATE = parse_date("2020-11-01T00:00:00Z")
 
 
@@ -44,8 +47,8 @@ def step_signal_selector() -> SeriesSelector:
         {
             "series name": "step-signal-test",
             "signal_type": "step",
-            "min_interval": "600",
-            "max_interval": "3600",
+            "min_interval_seconds": "600",
+            "max_interval_seconds": "3600",
             "min_value": "0",
             "max_value": "100",
             "min_step": "0",
@@ -61,8 +64,8 @@ def whitenoise_signal_selector() -> SeriesSelector:
         {
             "series name": "whitenoise-signal-test",
             "signal_type": "whitenoise",
-            "min_interval": "600",
-            "max_interval": "3600",
+            "min_interval_seconds": "600",
+            "max_interval_seconds": "3600",
             "mean": "10",
             "standard_deviation": "10",
         },
@@ -74,13 +77,13 @@ def sine_signal_selector() -> SeriesSelector:
     return SeriesSelector(
         "",
         {
-            "series name": "whitenoise-signal-test",
-            "signal_type": "whitenoise",
-            "min_interval": "600",
-            "max_interval": "3600",
-            "period": "2",
+            "series name": "sine-signal-test",
+            "signal_type": "sine",
+            "min_interval_seconds": "600",
+            "max_interval_seconds": "3600",
+            "period_seconds": "2",
             "amplitude": "10",
-            "phase": "10",
+            "phase_seconds": "10",
             "shift": "0",
         },
     )
@@ -116,6 +119,73 @@ def test_step_signal_generator_consistency(
     )
 
 
+def test_step_signal_generator_series() -> None:
+    search = SeriesSearch("")
+    assert len(list(StepSignalGenerator().list_series(search))) == 0
+    generator = StepSignalGenerator(
+        {
+            "seriesName": "step",
+            "type": "step",
+            "samplingInterval": {
+                "minIntervalSeconds": 1,
+                "maxIntervalSeconds": 2,
+            },
+            "metadata": {"description": "step function"},
+            "values": {
+                "minValue": 0,
+                "maxValue": 10,
+                "minStep": 1,
+                "maxStep": 2,
+            },
+        }
+    )
+    one_series = list(generator.list_series(search))
+    assert len(one_series) == 1
+    assert one_series[0].get_field_by_name("description") == "step function"
+    assert one_series[0].series.tags == {
+        "series name": "step",
+        "signal_type": "step",
+        "min_interval_seconds": "1",
+        "max_interval_seconds": "2",
+        "min_value": "0",
+        "max_value": "10",
+        "min_step": "1",
+        "max_step": "2",
+    }
+    generator = StepSignalGenerator(
+        {
+            "seriesName": "step",
+            "type": "step",
+            "samplingInterval": {
+                "minIntervalSeconds": 1,
+                "maxIntervalSeconds": 2,
+            },
+            "metadata": {"description": "step function"},
+            "values": {
+                "minValue": 0,
+                "maxValue": 10,
+                "minStep": 1,
+                "maxStep": [2, 4],
+            },
+        }
+    )
+    two_series = list(generator.list_series(search))
+    assert len(two_series) == 2
+    assert [metadata.series.tags["max_step"] for metadata in two_series] == ["2", "4"]
+    for metadata in two_series:
+        assert metadata.get_field_by_name("description") == "step function"
+        del metadata.series.tags["max_step"]
+        assert metadata.series.tags == {
+            "series name": "step",
+            "signal_type": "step",
+            "min_interval_seconds": "1",
+            "max_interval_seconds": "2",
+            "min_value": "0",
+            "max_value": "10",
+            "min_step": "1",
+        }
+
+
 def test_whitenoise_signal_generator_produces_same_data(
     whitenoise_signal_generator: WhiteNoiseSignalGenerator,
     whitenoise_signal_selector: SeriesSelector,
@@ -133,15 +203,148 @@ def test_whitenoise_signal_generator_consistency(
     whitenoise_signal_generator: WhiteNoiseSignalGenerator,
     whitenoise_signal_selector: SeriesSelector,
 ):
-    first_run = whitenoise_signal_generator.generate(
+    bigger_data = whitenoise_signal_generator.generate(
         whitenoise_signal_selector, START_DATE, END_DATE
     )
 
-    second_run = whitenoise_signal_generator.generate(
-        whitenoise_signal_selector, START_DATE, END_DATE
+    smaller_start_date = START_DATE + timedelta(weeks=4)
+    smaller_end_date = END_DATE - timedelta(weeks=4)
+    smaller_data = whitenoise_signal_generator.generate(
+        whitenoise_signal_selector, smaller_start_date, smaller_end_date
+    )
+    assert (
+        drop_data_after_and_before(bigger_data, smaller_start_date, smaller_end_date)
+        == smaller_data
     )
 
-    assert first_run == second_run
+
+def test_white_noise_signal_generator_series() -> None:
+    search = SeriesSearch("")
+    assert len(list(WhiteNoiseSignalGenerator().list_series(search))) == 0
+    generator = WhiteNoiseSignalGenerator(
+        {
+            "seriesName": "white noise",
+            "type": "white noise",
+            "samplingInterval": {
+                "minIntervalSeconds": 1,
+                "maxIntervalSeconds": 2,
+            },
+            "metadata": {"description": "white noise"},
+            "values": {
+                "mean": 10,
+                "standardDeviation": 1,
+            },
+        }
+    )
+    one_series = list(generator.list_series(search))
+    assert len(one_series) == 1
+    assert one_series[0].get_field_by_name("description") == "white noise"
+    assert one_series[0].series.tags == {
+        "series name": "white noise",
+        "signal_type": "white noise",
+        "min_interval_seconds": "1",
+        "max_interval_seconds": "2",
+        "mean": "10",
+        "standard_deviation": "1",
+    }
+    generator = WhiteNoiseSignalGenerator(
+        {
+            "seriesName": "white noise",
+            "type": "white noise",
+            "samplingInterval": {
+                "minIntervalSeconds": 1,
+                "maxIntervalSeconds": 2,
+            },
+            "metadata": {"description": "white noise"},
+            "values": {
+                "mean": 10,
+                "standardDeviation": [1, 2],
+            },
+        }
+    )
+    two_series = list(generator.list_series(search))
+    assert len(two_series) == 2
+    assert [metadata.series.tags["standard_deviation"] for metadata in two_series] == [
+        "1",
+        "2",
+    ]
+    for metadata in two_series:
+        assert metadata.get_field_by_name("description") == "white noise"
+        del metadata.series.tags["standard_deviation"]
+        assert metadata.series.tags == {
+            "series name": "white noise",
+            "signal_type": "white noise",
+            "min_interval_seconds": "1",
+            "max_interval_seconds": "2",
+            "mean": "10",
+        }
+
+
+def test_sine_signal_generator_series() -> None:
+    search = SeriesSearch("")
+    assert len(list(SineSignalGenerator().list_series(search))) == 0
+    generator = SineSignalGenerator(
+        {
+            "seriesName": "sine",
+            "type": "sine",
+            "samplingInterval": {
+                "minIntervalSeconds": 1,
+                "maxIntervalSeconds": 2,
+            },
+            "metadata": {"description": "sine wave"},
+            "values": {
+                "periodSeconds": 3600,
+                "phaseSeconds": 0,
+                "amplitude": 2,
+                "shift": 1,
+            },
+        }
+    )
+    one_series = list(generator.list_series(search))
+    assert len(one_series) == 1
+    assert one_series[0].get_field_by_name("description") == "sine wave"
+    assert one_series[0].series.tags == {
+        "series name": "sine",
+        "signal_type": "sine",
+        "min_interval_seconds": "1",
+        "max_interval_seconds": "2",
+        "period_seconds": "3600",
+        "phase_seconds": "0",
+        "amplitude": "2",
+        "shift": "1",
+    }
+    generator = SineSignalGenerator(
+        {
+            "seriesName": "sine",
+            "type": "sine",
+            "samplingInterval": {
+                "minIntervalSeconds": 1,
+                "maxIntervalSeconds": 2,
+            },
+            "metadata": {"description": "sine wave"},
+            "values": {
+                "periodSeconds": 3600,
+                "phaseSeconds": 0,
+                "amplitude": 2,
+                "shift": [1, 2],
+            },
+        }
+    )
+    two_series = list(generator.list_series(search))
+    assert len(two_series) == 2
+    assert [metadata.series.tags["shift"] for metadata in two_series] == ["1", "2"]
+    for metadata in two_series:
+        assert metadata.get_field_by_name("description") == "sine wave"
+        del metadata.series.tags["shift"]
+        assert metadata.series.tags == {
+            "series name": "sine",
+            "signal_type": "sine",
+            "min_interval_seconds": "1",
+            "max_interval_seconds": "2",
+            "period_seconds": "3600",
+            "phase_seconds": "0",
+            "amplitude": "2",
+        }
 
 
 def test_sine_signal_generator_produces_same_data(
@@ -186,3 +389,101 @@ def drop_data_after_and_before(
     keep_after = pa.compute.greater_equal(table["ts"], pa.scalar(start_date))
     keep_before = pa.compute.less_equal(table["ts"], pa.scalar(end_date))
     return table.filter(pa.compute.and_(keep_before, keep_after))
+
+
+def test_sine_zero() -> None:
+    t1 = datetime.fromtimestamp(0)
+
+    v0 = calculate_sine(t1, period_seconds=3600)
+    v1 = calculate_sine(t1 + timedelta(minutes=15), period_seconds=3600)
+    v2 = calculate_sine(t1 + timedelta(minutes=30), period_seconds=3600)
+    v3 = calculate_sine(t1 + timedelta(minutes=45), period_seconds=3600)
+    v4 = calculate_sine(t1 + timedelta(minutes=60), period_seconds=3600)
+
+    assert v0 == approx(0)
+    assert v1 == approx(1)
+    assert v2 == approx(0)
+    assert v3 == approx(-1)
+    assert v4 == approx(0)
+
+
+def test_sine_phase() -> None:
+    t1 = datetime.fromtimestamp(0)
+
+    v0 = calculate_sine(t1, period_seconds=3600, phase_seconds=900)
+    v1 = calculate_sine(
+        t1 + timedelta(minutes=15), period_seconds=3600, phase_seconds=900
+    )
+    v2 = calculate_sine(
+        t1 + timedelta(minutes=30), period_seconds=3600, phase_seconds=900
+    )
+    v3 = calculate_sine(
+        t1 + timedelta(minutes=45), period_seconds=3600, phase_seconds=900
+    )
+    v4 = calculate_sine(
+        t1 + timedelta(minutes=60), period_seconds=3600, phase_seconds=900
+    )
+
+    assert v0 == approx(1)
+    assert v1 == approx(0)
+    assert v2 == approx(-1)
+    assert v3 == approx(0)
+    assert v4 == approx(1)
+
+
+def test_sine_phase_half() -> None:
+    t1 = datetime.fromtimestamp(0)
+
+    v0 = calculate_sine(
+        t1 + timedelta(seconds=7 * 60 + 30), period_seconds=3600, phase_seconds=450
+    )
+    v1 = calculate_sine(
+        t1 + timedelta(seconds=22 * 60 + 30), period_seconds=3600, phase_seconds=450
+    )
+    v2 = calculate_sine(
+        t1 + timedelta(seconds=37 * 60 + 30), period_seconds=3600, phase_seconds=450
+    )
+    v3 = calculate_sine(
+        t1 + timedelta(seconds=52 * 60 + 30), period_seconds=3600, phase_seconds=450
+    )
+    v4 = calculate_sine(
+        t1 + timedelta(seconds=67 * 60 + 30), period_seconds=3600, phase_seconds=450
+    )
+
+    assert v0 == approx(1)
+    assert v1 == approx(0)
+    assert v2 == approx(-1)
+    assert v3 == approx(0)
+    assert v4 == approx(1)
+
+
+def test_sine_shift() -> None:
+    t1 = datetime.fromtimestamp(0)
+
+    v0 = calculate_sine(t1, period_seconds=3600, shift=1)
+    v1 = calculate_sine(t1 + timedelta(minutes=15), period_seconds=3600, shift=1)
+    v2 = calculate_sine(t1 + timedelta(minutes=30), period_seconds=3600, shift=1)
+    v3 = calculate_sine(t1 + timedelta(minutes=45), period_seconds=3600, shift=1)
+    v4 = calculate_sine(t1 + timedelta(minutes=60), period_seconds=3600, shift=1)
+
+    assert v0 == approx(1)
+    assert v1 == approx(2)
+    assert v2 == approx(1)
+    assert v3 == approx(0)
+    assert v4 == approx(1)
+
+
+def test_sine_amplitude() -> None:
+    t1 = datetime.fromtimestamp(0)
+
+    v0 = calculate_sine(t1, period_seconds=3600, amplitude=2)
+    v1 = calculate_sine(t1 + timedelta(minutes=15), period_seconds=3600, amplitude=2)
+    v2 = calculate_sine(t1 + timedelta(minutes=30), period_seconds=3600, amplitude=2)
+    v3 = calculate_sine(t1 + timedelta(minutes=45), period_seconds=3600, amplitude=2)
+    v4 = calculate_sine(t1 + timedelta(minutes=60), period_seconds=3600, amplitude=2)
+
+    assert v0 == approx(0)
+    assert v1 == approx(2)
+    assert v2 == approx(0)
+    assert v3 == approx(-2)
+    assert v4 == approx(0)

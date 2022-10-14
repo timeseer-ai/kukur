@@ -79,9 +79,7 @@ class SignalGenerator(Protocol):
         """Generates data based on a selector, start date and end date."""
         ...
 
-    def list_series(
-        self, selector: SeriesSearch
-    ) -> Generator[Union[Metadata, SeriesSelector], None, None]:
+    def list_series(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
         """Yields all possible metadata combinations using the signal configuration and the provided selector."""
         ...
 
