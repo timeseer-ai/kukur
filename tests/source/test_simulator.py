@@ -47,8 +47,9 @@ def step_signal_selector() -> SeriesSelector:
         {
             "series name": "step-signal-test",
             "signal_type": "step",
-            "min_interval_seconds": "600",
-            "max_interval_seconds": "3600",
+            "seed": "0",
+            "interval_seconds_min": "600",
+            "interval_seconds_max": "3600",
             "min_value": "0",
             "max_value": "100",
             "number_of_steps": "10",
@@ -63,8 +64,9 @@ def whitenoise_signal_selector() -> SeriesSelector:
         {
             "series name": "whitenoise-signal-test",
             "signal_type": "whitenoise",
-            "min_interval_seconds": "600",
-            "max_interval_seconds": "3600",
+            "seed": "0",
+            "interval_seconds_min": "600",
+            "interval_seconds_max": "3600",
             "mean": "10",
             "standard_deviation": "10",
         },
@@ -78,8 +80,9 @@ def sine_signal_selector() -> SeriesSelector:
         {
             "series name": "sine-signal-test",
             "signal_type": "sine",
-            "min_interval_seconds": "600",
-            "max_interval_seconds": "3600",
+            "seed": "0",
+            "interval_seconds_min": "600",
+            "interval_seconds_max": "3600",
             "period_seconds": "2",
             "amplitude": "10",
             "phase_seconds": "10",
@@ -134,8 +137,8 @@ def test_step_signal_generator_series() -> None:
             "seriesName": "step",
             "type": "step",
             "samplingInterval": {
-                "minIntervalSeconds": 1,
-                "maxIntervalSeconds": 2,
+                "intervalSecondsMin": 1,
+                "intervalSecondsMax": 2,
             },
             "metadata": {"description": "step function"},
             "values": {
@@ -151,8 +154,9 @@ def test_step_signal_generator_series() -> None:
     assert one_series[0].series.tags == {
         "series name": "step",
         "signal_type": "step",
-        "min_interval_seconds": "1",
-        "max_interval_seconds": "2",
+        "seed": "7106521602475165645",
+        "interval_seconds_min": "1",
+        "interval_seconds_max": "2",
         "min_value": "0",
         "max_value": "10",
         "number_of_steps": "10",
@@ -162,8 +166,8 @@ def test_step_signal_generator_series() -> None:
             "seriesName": "step",
             "type": "step",
             "samplingInterval": {
-                "minIntervalSeconds": 1,
-                "maxIntervalSeconds": 2,
+                "intervalSecondsMin": 1,
+                "intervalSecondsMax": 2,
             },
             "metadata": {"description": "step function"},
             "values": {
@@ -182,11 +186,12 @@ def test_step_signal_generator_series() -> None:
     for metadata in two_series:
         assert metadata.get_field_by_name("description") == "step function"
         del metadata.series.tags["number_of_steps"]
+        del metadata.series.tags["seed"]
         assert metadata.series.tags == {
             "series name": "step",
             "signal_type": "step",
-            "min_interval_seconds": "1",
-            "max_interval_seconds": "2",
+            "interval_seconds_min": "1",
+            "interval_seconds_max": "2",
             "min_value": "0",
             "max_value": "10",
         }
@@ -232,8 +237,8 @@ def test_white_noise_signal_generator_series() -> None:
             "seriesName": "white noise",
             "type": "white noise",
             "samplingInterval": {
-                "minIntervalSeconds": 1,
-                "maxIntervalSeconds": 2,
+                "intervalSecondsMin": 1,
+                "intervalSecondsMax": 2,
             },
             "metadata": {"description": "white noise"},
             "values": {
@@ -248,8 +253,9 @@ def test_white_noise_signal_generator_series() -> None:
     assert one_series[0].series.tags == {
         "series name": "white noise",
         "signal_type": "white noise",
-        "min_interval_seconds": "1",
-        "max_interval_seconds": "2",
+        "seed": "7106521602475165645",
+        "interval_seconds_min": "1",
+        "interval_seconds_max": "2",
         "mean": "10",
         "standard_deviation": "1",
     }
@@ -258,8 +264,8 @@ def test_white_noise_signal_generator_series() -> None:
             "seriesName": "white noise",
             "type": "white noise",
             "samplingInterval": {
-                "minIntervalSeconds": 1,
-                "maxIntervalSeconds": 2,
+                "intervalSecondsMin": 1,
+                "intervalSecondsMax": 2,
             },
             "metadata": {"description": "white noise"},
             "values": {
@@ -277,11 +283,12 @@ def test_white_noise_signal_generator_series() -> None:
     for metadata in two_series:
         assert metadata.get_field_by_name("description") == "white noise"
         del metadata.series.tags["standard_deviation"]
+        del metadata.series.tags["seed"]
         assert metadata.series.tags == {
             "series name": "white noise",
             "signal_type": "white noise",
-            "min_interval_seconds": "1",
-            "max_interval_seconds": "2",
+            "interval_seconds_min": "1",
+            "interval_seconds_max": "2",
             "mean": "10",
         }
 
@@ -294,8 +301,8 @@ def test_sine_signal_generator_series() -> None:
             "seriesName": "sine",
             "type": "sine",
             "samplingInterval": {
-                "minIntervalSeconds": 1,
-                "maxIntervalSeconds": 2,
+                "intervalSecondsMin": 1,
+                "intervalSecondsMax": 2,
             },
             "metadata": {"description": "sine wave"},
             "values": {
@@ -312,8 +319,9 @@ def test_sine_signal_generator_series() -> None:
     assert one_series[0].series.tags == {
         "series name": "sine",
         "signal_type": "sine",
-        "min_interval_seconds": "1",
-        "max_interval_seconds": "2",
+        "seed": "7106521602475165645",
+        "interval_seconds_min": "1",
+        "interval_seconds_max": "2",
         "period_seconds": "3600",
         "phase_seconds": "0",
         "amplitude": "2",
@@ -324,8 +332,8 @@ def test_sine_signal_generator_series() -> None:
             "seriesName": "sine",
             "type": "sine",
             "samplingInterval": {
-                "minIntervalSeconds": 1,
-                "maxIntervalSeconds": 2,
+                "intervalSecondsMin": 1,
+                "intervalSecondsMax": 2,
             },
             "metadata": {"description": "sine wave"},
             "values": {
@@ -342,11 +350,12 @@ def test_sine_signal_generator_series() -> None:
     for metadata in two_series:
         assert metadata.get_field_by_name("description") == "sine wave"
         del metadata.series.tags["shift"]
+        del metadata.series.tags["seed"]
         assert metadata.series.tags == {
             "series name": "sine",
             "signal_type": "sine",
-            "min_interval_seconds": "1",
-            "max_interval_seconds": "2",
+            "interval_seconds_min": "1",
+            "interval_seconds_max": "2",
             "period_seconds": "3600",
             "phase_seconds": "0",
             "amplitude": "2",
