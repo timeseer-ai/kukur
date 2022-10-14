@@ -86,8 +86,7 @@ class StepSignalGeneratorConfig(SignalGeneratorConfig):
 
     min_value: Union[List[float], float]
     max_value: Union[List[float], float]
-    min_step: Union[List[float], float]
-    max_step: Union[List[float], float]
+    number_of_steps: Union[List[int], int]
 
 
 @dataclass
@@ -96,8 +95,7 @@ class StepSignalConfig(SignalConfig):
 
     min_value: float
     max_value: float
-    min_step: float
-    max_step: float
+    number_of_steps: int
 
 
 @dataclass
@@ -151,11 +149,10 @@ class StepSignalGenerator:
                 config.get("metadata", {}),
                 config["values"]["minValue"],
                 config["values"]["maxValue"],
-                config["values"]["minStep"],
-                config["values"]["maxStep"],
+                config["values"]["numberOfSteps"],
             )
 
-    def generate(  # pylint: disable=no-self-use
+    def generate(  # pylint: disable=no-self-use, too-many-locals
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         """Generates data in steps based on a selector start and end date."""
@@ -165,25 +162,33 @@ class StepSignalGenerator:
         value = []
         rng = Random(_get_hex_digest(current_time, configuration.to_bytes()))
 
+        step_size = (
+            configuration.max_value - configuration.min_value
+        ) / configuration.number_of_steps
+        current_value = (
+            configuration.min_value
+            + rng.randint(0, configuration.number_of_steps) * step_size
+        )
         while current_time <= end_date:
-            current_value = rng.uniform(
-                float(configuration.min_step), float(configuration.max_step)
-            )
-            generated_step = rng.uniform(
-                float(configuration.min_step), float(configuration.max_step)
+            generated_step = (
+                rng.randint(0, int(configuration.number_of_steps / 2)) * step_size
             )
             random_operator = rng.choice(["+", "-"])
-            generated_step = operator_functions[random_operator](
+            new_value = operator_functions[random_operator](
                 current_value, generated_step
             )
+            if (
+                new_value > configuration.max_value
+                or new_value < configuration.min_value
+            ):
+                random_operator = "+" if random_operator == "-" else "-"
+                new_value = operator_functions[random_operator](
+                    current_value, generated_step
+                )
 
-            clamped_step = max(
-                min(generated_step, float(configuration.max_value)),
-                float(configuration.min_value),
-            )
-            current_value = clamped_step
-            value.append(clamped_step)
+            value.append(new_value)
             ts.append(current_time)
+            current_value = new_value
 
             time_increment = rng.randint(
                 configuration.min_interval_seconds, configuration.max_interval_seconds
@@ -193,6 +198,10 @@ class StepSignalGenerator:
             if new_time.date() != current_time.date():
                 new_time = _get_start_of_day(new_time)
                 rng.seed(_get_hex_digest(new_time, configuration.to_bytes()))
+                current_value = (
+                    configuration.min_value
+                    + rng.randint(0, configuration.number_of_steps) * step_size
+                )
 
             current_time = new_time
 
@@ -227,10 +236,9 @@ class StepSignalGenerator:
             _extract_from_tag(selector.tags, "max_value", self.__config.max_value)
         )
         arg_list.append(
-            _extract_from_tag(selector.tags, "min_step", self.__config.min_step)
-        )
-        arg_list.append(
-            _extract_from_tag(selector.tags, "max_step", self.__config.max_step)
+            _extract_from_tag(
+                selector.tags, "number_of_steps", self.__config.number_of_steps
+            )
         )
 
         for entry in itertools.product(*arg_list):
@@ -251,8 +259,7 @@ def _build_step_search_result(
             "max_interval_seconds": str(entry[1]),
             "min_value": str(entry[2]),
             "max_value": str(entry[3]),
-            "min_step": str(entry[4]),
-            "max_step": str(entry[5]),
+            "number_of_steps": str(entry[4]),
         },
     )
     metadata = Metadata(series_selector)
@@ -269,8 +276,7 @@ def _get_step_configuration(selector: SeriesSelector) -> StepSignalConfig:
         int(selector.tags["max_interval_seconds"]),
         float(selector.tags["min_value"]),
         float(selector.tags["max_value"]),
-        float(selector.tags["min_step"]),
-        float(selector.tags["max_step"]),
+        int(selector.tags["number_of_steps"]),
     )
 
 

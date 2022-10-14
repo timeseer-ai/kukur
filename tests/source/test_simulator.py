@@ -51,8 +51,7 @@ def step_signal_selector() -> SeriesSelector:
             "max_interval_seconds": "3600",
             "min_value": "0",
             "max_value": "100",
-            "min_step": "0",
-            "max_step": "10",
+            "number_of_steps": "10",
         },
     )
 
@@ -119,6 +118,14 @@ def test_step_signal_generator_consistency(
     )
 
 
+def test_step_signal_generator_data(
+    step_signal_generator: StepSignalGenerator, step_signal_selector: SeriesSelector
+):
+    data = step_signal_generator.generate(step_signal_selector, START_DATE, END_DATE)
+    for value in data["value"]:
+        assert value.as_py() in list(range(0, 101, 10))
+
+
 def test_step_signal_generator_series() -> None:
     search = SeriesSearch("")
     assert len(list(StepSignalGenerator().list_series(search))) == 0
@@ -134,8 +141,7 @@ def test_step_signal_generator_series() -> None:
             "values": {
                 "minValue": 0,
                 "maxValue": 10,
-                "minStep": 1,
-                "maxStep": 2,
+                "numberOfSteps": 10,
             },
         }
     )
@@ -149,8 +155,7 @@ def test_step_signal_generator_series() -> None:
         "max_interval_seconds": "2",
         "min_value": "0",
         "max_value": "10",
-        "min_step": "1",
-        "max_step": "2",
+        "number_of_steps": "10",
     }
     generator = StepSignalGenerator(
         {
@@ -164,17 +169,19 @@ def test_step_signal_generator_series() -> None:
             "values": {
                 "minValue": 0,
                 "maxValue": 10,
-                "minStep": 1,
-                "maxStep": [2, 4],
+                "numberOfSteps": [5, 10],
             },
         }
     )
     two_series = list(generator.list_series(search))
     assert len(two_series) == 2
-    assert [metadata.series.tags["max_step"] for metadata in two_series] == ["2", "4"]
+    assert [metadata.series.tags["number_of_steps"] for metadata in two_series] == [
+        "5",
+        "10",
+    ]
     for metadata in two_series:
         assert metadata.get_field_by_name("description") == "step function"
-        del metadata.series.tags["max_step"]
+        del metadata.series.tags["number_of_steps"]
         assert metadata.series.tags == {
             "series name": "step",
             "signal_type": "step",
@@ -182,7 +189,6 @@ def test_step_signal_generator_series() -> None:
             "max_interval_seconds": "2",
             "min_value": "0",
             "max_value": "10",
-            "min_step": "1",
         }
 
 
