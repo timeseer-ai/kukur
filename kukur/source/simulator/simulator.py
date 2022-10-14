@@ -5,6 +5,7 @@
 
 import itertools
 import operator
+import sys
 
 from collections import defaultdict
 from dataclasses import dataclass
@@ -61,6 +62,8 @@ class SignalGeneratorConfig:
 
     series_name: str
     signal_type: str
+    initial_seed: int
+    number_of_seeds: int
     min_interval_seconds: Union[List[float], float]
     max_interval_seconds: Union[List[float], float]
     metadata: Dict[str, str]
@@ -72,6 +75,7 @@ class SignalConfig:
 
     series_name: str
     signal_type: str
+    seed: int
     min_interval_seconds: int
     max_interval_seconds: int
 
@@ -144,6 +148,8 @@ class StepSignalGenerator:
             self.__config = StepSignalGeneratorConfig(
                 config["seriesName"],
                 config["type"],
+                config.get("initialSeed", 0),
+                config.get("numberOfSeeds", 1),
                 config["samplingInterval"]["minIntervalSeconds"],
                 config["samplingInterval"]["maxIntervalSeconds"],
                 config.get("metadata", {}),
@@ -215,6 +221,17 @@ class StepSignalGenerator:
         if self.__config is None:
             return
 
+        rng = Random(self.__config.initial_seed)
+        arg_list.append(
+            _extract_from_tag(
+                selector.tags,
+                "seed",
+                [
+                    rng.randint(0, sys.maxsize)
+                    for _ in range(self.__config.number_of_seeds)
+                ],
+            )
+        )
         arg_list.append(
             _extract_from_tag(
                 selector.tags,
@@ -253,11 +270,12 @@ def _build_step_search_result(
         {
             "series name": config.series_name,
             "signal_type": config.signal_type,
-            "min_interval_seconds": str(entry[0]),
-            "max_interval_seconds": str(entry[1]),
-            "min_value": str(entry[2]),
-            "max_value": str(entry[3]),
-            "number_of_steps": str(entry[4]),
+            "seed": str(entry[0]),
+            "min_interval_seconds": str(entry[1]),
+            "max_interval_seconds": str(entry[2]),
+            "min_value": str(entry[3]),
+            "max_value": str(entry[4]),
+            "number_of_steps": str(entry[5]),
         },
     )
     metadata = Metadata(series_selector)
@@ -270,6 +288,7 @@ def _get_step_configuration(selector: SeriesSelector) -> StepSignalConfig:
     return StepSignalConfig(
         selector.tags["series name"],
         selector.tags["signal_type"],
+        int(selector.tags["seed"]),
         int(selector.tags["min_interval_seconds"]),
         int(selector.tags["max_interval_seconds"]),
         float(selector.tags["min_value"]),
@@ -295,6 +314,8 @@ class WhiteNoiseSignalGenerator:
             self.__config = WhiteNoiseSignalGeneratorConfig(
                 config["seriesName"],
                 config["type"],
+                config.get("initialSeed", 0),
+                config.get("numberOfSeeds", 1),
                 config["samplingInterval"]["minIntervalSeconds"],
                 config["samplingInterval"]["maxIntervalSeconds"],
                 config.get("metadata", {}),
@@ -347,6 +368,18 @@ class WhiteNoiseSignalGenerator:
         arg_list = []
         if self.__config is None:
             return
+
+        rng = Random(self.__config.initial_seed)
+        arg_list.append(
+            _extract_from_tag(
+                selector.tags,
+                "seed",
+                [
+                    rng.randint(0, sys.maxsize)
+                    for _ in range(self.__config.number_of_seeds)
+                ],
+            )
+        )
         arg_list.append(
             _extract_from_tag(
                 selector.tags,
@@ -384,10 +417,11 @@ def _build_white_noise_search_result(
         {
             "series name": config.series_name,
             "signal_type": config.signal_type,
-            "min_interval_seconds": str(entry[0]),
-            "max_interval_seconds": str(entry[1]),
-            "mean": str(entry[2]),
-            "standard_deviation": str(entry[3]),
+            "seed": str(entry[0]),
+            "min_interval_seconds": str(entry[1]),
+            "max_interval_seconds": str(entry[2]),
+            "mean": str(entry[3]),
+            "standard_deviation": str(entry[4]),
         },
     )
     metadata = Metadata(series_selector)
@@ -402,6 +436,7 @@ def _get_white_noise_configuration(
     return WhiteNoiseSignalConfig(
         selector.tags["series name"],
         selector.tags["signal_type"],
+        int(selector.tags["seed"]),
         int(selector.tags["min_interval_seconds"]),
         int(selector.tags["max_interval_seconds"]),
         float(selector.tags["mean"]),
@@ -419,6 +454,8 @@ class SineSignalGenerator:
             self.__config = SineSignalGeneratorConfig(
                 config["seriesName"],
                 config["type"],
+                config.get("initialSeed", 0),
+                config.get("numberOfSeeds", 1),
                 config["samplingInterval"]["minIntervalSeconds"],
                 config["samplingInterval"]["maxIntervalSeconds"],
                 config.get("metadata", {}),
@@ -473,6 +510,17 @@ class SineSignalGenerator:
             return
 
         arg_list = []
+        rng = Random(self.__config.initial_seed)
+        arg_list.append(
+            _extract_from_tag(
+                selector.tags,
+                "seed",
+                [
+                    rng.randint(0, sys.maxsize)
+                    for _ in range(self.__config.number_of_seeds)
+                ],
+            )
+        )
         arg_list.append(
             _extract_from_tag(
                 selector.tags,
@@ -518,12 +566,13 @@ def _build_sine_search_result(
         {
             "series name": config.series_name,
             "signal_type": config.signal_type,
-            "min_interval_seconds": str(entry[0]),
-            "max_interval_seconds": str(entry[1]),
-            "period_seconds": str(entry[2]),
-            "amplitude": str(entry[3]),
-            "phase_seconds": str(entry[4]),
-            "shift": str(entry[5]),
+            "seed": str(entry[0]),
+            "min_interval_seconds": str(entry[1]),
+            "max_interval_seconds": str(entry[2]),
+            "period_seconds": str(entry[3]),
+            "amplitude": str(entry[4]),
+            "phase_seconds": str(entry[5]),
+            "shift": str(entry[6]),
         },
     )
     metadata = Metadata(series_selector)
@@ -536,6 +585,7 @@ def _get_sine_configuration(selector: SeriesSelector) -> SineSignalConfig:
     return SineSignalConfig(
         selector.tags["series name"],
         selector.tags["signal_type"],
+        int(selector.tags["seed"]),
         int(selector.tags["min_interval_seconds"]),
         int(selector.tags["max_interval_seconds"]),
         float(selector.tags["period_seconds"]),
