@@ -57,7 +57,7 @@ def from_config(
 
 @dataclass
 class SignalGeneratorConfig:
-    """Base signal configuration."""
+    """Base signal generator configuration."""
 
     series_name: str
     signal_type: str
@@ -248,8 +248,6 @@ class StepSignalGenerator:
 def _build_step_search_result(
     config: StepSignalGeneratorConfig, entry: tuple, source_name: str
 ) -> Metadata:
-    """Builds a series selector or metadata from a combination of configuration parameters."""
-
     series_selector = SeriesSelector(
         source_name,
         {
@@ -381,7 +379,6 @@ class WhiteNoiseSignalGenerator:
 def _build_white_noise_search_result(
     config: WhiteNoiseSignalGeneratorConfig, entry: tuple, source_name: str
 ) -> Metadata:
-    """Builds a series selector or metadata from a combination of configuration parameters."""
     series_selector = SeriesSelector(
         source_name,
         {
@@ -516,7 +513,6 @@ class SineSignalGenerator:
 def _build_sine_search_result(
     config: SineSignalGeneratorConfig, entry: tuple, source_name: str
 ) -> Metadata:
-    """Builds a series selector or metadata from a combination of configuration parameters."""
     series_selector = SeriesSelector(
         source_name,
         {
