@@ -85,12 +85,19 @@ class SignalConfig:
 
 
 @dataclass
+class StepSignalGeneratorConfigValue:
+    """One possible step configuration."""
+
+    min: float
+    max: float
+    number_of_steps: List[int]
+
+
+@dataclass
 class StepSignalGeneratorConfig(SignalGeneratorConfig):
     """Configuration for the step signal generator."""
 
-    min_value: Union[List[float], float]
-    max_value: Union[List[float], float]
-    number_of_steps: Union[List[int], int]
+    values: List[StepSignalGeneratorConfigValue]
 
 
 @dataclass
@@ -153,9 +160,12 @@ class StepSignalGenerator:
                 config["samplingInterval"]["intervalSecondsMin"],
                 config["samplingInterval"]["intervalSecondsMax"],
                 config.get("metadata", {}),
-                config["values"]["minValue"],
-                config["values"]["maxValue"],
-                config["values"]["numberOfSteps"],
+                [
+                    StepSignalGeneratorConfigValue(
+                        value["min"], value["max"], _ensure_list(value["numberOfSteps"])
+                    )
+                    for value in config["values"]
+                ],
             )
 
     def generate(  # pylint: disable=no-self-use, too-many-locals
@@ -247,19 +257,21 @@ class StepSignalGenerator:
             )
         )
         arg_list.append(
-            _extract_from_tag(selector.tags, "min_value", self.__config.min_value)
-        )
-        arg_list.append(
-            _extract_from_tag(selector.tags, "max_value", self.__config.max_value)
-        )
-        arg_list.append(
-            _extract_from_tag(
-                selector.tags, "number_of_steps", self.__config.number_of_steps
-            )
+            [
+                dict(min=value.min, max=value.max, number_of_steps=number_of_steps)
+                for value in self.__config.values
+                for number_of_steps in value.number_of_steps
+            ]
         )
 
         for entry in itertools.product(*arg_list):
             yield _build_step_search_result(self.__config, entry, selector.source)
+
+
+def _ensure_list(value) -> List:
+    if isinstance(value, List):
+        return value
+    return [value]
 
 
 def _build_step_search_result(
@@ -273,9 +285,9 @@ def _build_step_search_result(
             "seed": str(entry[0]),
             "interval_seconds_min": str(entry[1]),
             "interval_seconds_max": str(entry[2]),
-            "min_value": str(entry[3]),
-            "max_value": str(entry[4]),
-            "number_of_steps": str(entry[5]),
+            "min_value": str(entry[3]["min"]),
+            "max_value": str(entry[3]["max"]),
+            "number_of_steps": str(entry[3]["number_of_steps"]),
         },
     )
     metadata = Metadata(series_selector)
