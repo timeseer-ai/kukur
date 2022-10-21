@@ -6,7 +6,6 @@
 
 from datetime import datetime, timedelta
 
-import numpy
 import pyarrow as pa
 
 from dateutil.parser import parse as parse_date
@@ -141,11 +140,13 @@ def test_step_signal_generator_series() -> None:
                 "intervalSecondsMax": 2,
             },
             "metadata": {"description": "step function"},
-            "values": {
-                "minValue": 0,
-                "maxValue": 10,
-                "numberOfSteps": 10,
-            },
+            "values": [
+                {
+                    "min": 0,
+                    "max": 10,
+                    "numberOfSteps": 10,
+                },
+            ],
         }
     )
     one_series = list(generator.list_series(search))
@@ -161,6 +162,7 @@ def test_step_signal_generator_series() -> None:
         "max_value": "10",
         "number_of_steps": "10",
     }
+
     generator = StepSignalGenerator(
         {
             "seriesName": "step",
@@ -170,11 +172,13 @@ def test_step_signal_generator_series() -> None:
                 "intervalSecondsMax": 2,
             },
             "metadata": {"description": "step function"},
-            "values": {
-                "minValue": 0,
-                "maxValue": 10,
-                "numberOfSteps": [5, 10],
-            },
+            "values": [
+                {
+                    "min": 0,
+                    "max": 10,
+                    "numberOfSteps": [5, 10],
+                },
+            ],
         }
     )
     two_series = list(generator.list_series(search))
@@ -194,6 +198,58 @@ def test_step_signal_generator_series() -> None:
             "interval_seconds_max": "2",
             "min_value": "0",
             "max_value": "10",
+        }
+
+    generator = StepSignalGenerator(
+        {
+            "seriesName": "step",
+            "type": "step",
+            "samplingInterval": {
+                "intervalSecondsMin": 1,
+                "intervalSecondsMax": 2,
+            },
+            "metadata": {"description": "step function"},
+            "values": [
+                {
+                    "min": 0,
+                    "max": 10,
+                    "numberOfSteps": [5, 10],
+                },
+                {
+                    "min": 20,
+                    "max": 50,
+                    "numberOfSteps": [5, 10],
+                },
+            ],
+        }
+    )
+    four_series = list(generator.list_series(search))
+    assert len(four_series) == 4
+    assert {metadata.series.tags["number_of_steps"] for metadata in four_series} == set(
+        [
+            "5",
+            "10",
+        ]
+    )
+    for metadata in four_series:
+        assert metadata.get_field_by_name("description") == "step function"
+        del metadata.series.tags["number_of_steps"]
+        del metadata.series.tags["seed"]
+        assert (
+            metadata.series.tags["min_value"] == "0"
+            and metadata.series.tags["max_value"] == "10"
+        ) or (
+            metadata.series.tags["min_value"] == "20"
+            and metadata.series.tags["max_value"] == "50"
+        )
+
+        del metadata.series.tags["min_value"]
+        del metadata.series.tags["max_value"]
+        assert metadata.series.tags == {
+            "series name": "step",
+            "signal_type": "step",
+            "interval_seconds_min": "1",
+            "interval_seconds_max": "2",
         }
 
 
