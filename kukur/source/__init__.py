@@ -149,11 +149,7 @@ class SourceWrapper:
         if results is None:
             return
         for result in results:
-            if (
-                len(self.__metadata) == 0
-                or isinstance(result, SeriesSelector)
-                or "series name" not in result.series.tags
-            ):
+            if len(self.__metadata) == 0 or isinstance(result, SeriesSelector):
                 yield result
             else:
                 extra_metadata = self.get_metadata(

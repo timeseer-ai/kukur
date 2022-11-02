@@ -110,7 +110,7 @@ def test_plot_data_fallback(client: Client):
 
 def test_sources(client: Client):
     data = client.list_sources()
-    assert len(data) == 49
+    assert len(data) == 50
     assert "sql" in data
     assert "row" in data
     assert "noaa" in data
@@ -137,6 +137,15 @@ def test_search_series_without_series_name(client: Client):
     assert series[1].series.tags == {"tag1": "value1a", "tag2": "value2a"}
     assert series[1].series.field == "temperature"
     assert series[1].get_field_by_name("description") == "integration test temperature"
+
+
+def test_series_search_without_series_name_and_extra_metadata(client: Client):
+    series = list(client.search(SeriesSearch("integration-test-extra-metadata")))
+    assert len(series) == 2
+    assert isinstance(series[1], Metadata)
+    assert series[1].series.tags == {"tag1": "value1a", "tag2": "value2a"}
+    assert series[1].series.field == "temperature"
+    assert series[1].get_field_by_name("unit") == "c"
 
 
 def test_series_metadata_without_series_name(client: Client):
