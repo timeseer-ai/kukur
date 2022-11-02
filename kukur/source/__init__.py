@@ -172,8 +172,6 @@ class SourceWrapper:
         The resulting metadata is the combination of the metadata in the source itself and any additional
         metadata sources. Metadata sources earlier in the list of sources take precendence over later ones."""
         metadata = Metadata(selector)
-        if "series name" not in selector.tags:
-            return metadata
         for metadata_source in list(reversed(self.__metadata)) + [
             MetadataSource(self.__source.metadata)
         ]:

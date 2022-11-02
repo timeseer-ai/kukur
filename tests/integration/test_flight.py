@@ -133,19 +133,7 @@ def test_metadata_backwards_compatibility(client: Client):
     assert dictionary.mapping[1] == "ON"
 
 
-def test_get_source_structure(client: Client):
-    source_structure = client.get_source_structure(
-        SeriesSelector(suffix_source("noaa")),
-    )
-    assert len(source_structure.tag_keys) == 2
-    assert "location" in source_structure.tag_keys
-    assert len(source_structure.tag_values) == 5
-    assert {"key": "location", "value": "coyote_creek"} in source_structure.tag_values
-    assert len(source_structure.fields) == 6
-    assert "degrees" in source_structure.fields
-
-
-def test_series_without_series_name(client: Client):
+def test_search_series_without_series_name(client: Client):
     series = list(client.search(SeriesSearch("integration-test")))
     assert len(series) == 2
     assert isinstance(series[0], SeriesSelector)
@@ -154,4 +142,13 @@ def test_series_without_series_name(client: Client):
     assert isinstance(series[1], Metadata)
     assert series[1].series.tags == {"tag1": "value1a", "tag2": "value2a"}
     assert series[1].series.field == "temperature"
-    assert series[1].get_field_by_name("description") == "integration test"
+    assert series[1].get_field_by_name("description") == "integration test temperature"
+
+
+def test_series_metadata_without_series_name(client: Client):
+    metadata = client.get_metadata(
+        SeriesSelector(
+            "integration-test", {"tag1": "value1", "tag2": "value2"}, "pressure"
+        )
+    )
+    assert metadata.get_field_by_name("description") == "integration test pressure"
