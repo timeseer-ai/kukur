@@ -2,6 +2,9 @@
 
 They use the client to request data."""
 
+# SPDX-FileCopyrightText: 2022 Timeseer.AI
+# SPDX-License-Identifier: Apache-2.0
+
 import math
 import os
 

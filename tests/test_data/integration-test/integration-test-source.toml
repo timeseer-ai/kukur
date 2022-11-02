@@ -1,2 +1,9 @@
 [source.integration-test]
 type = "integration-test"
+
+[source.integration-test-extra-metadata]
+type = "integration-test"
+metadata_sources = ["integration-test"]
+
+[metadata.integration-test]
+type = "integration-test"

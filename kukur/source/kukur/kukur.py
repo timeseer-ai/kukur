@@ -1,7 +1,8 @@
 """Connect to another Kukur instance using Arrow Flight."""
+
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
-#
 # SPDX-License-Identifier: Apache-2.0
+
 from datetime import datetime
 from typing import Any, Dict, Generator, Optional, Tuple, Union
 
@@ -9,7 +10,6 @@ import pyarrow as pa
 
 from kukur import Metadata, SeriesSearch, SeriesSelector, SourceStructure
 from kukur.client import Client
-from kukur.exceptions import InvalidDataError
 
 
 def from_config(config: Dict[str, Any]):
@@ -52,8 +52,6 @@ class KukurSource:
 
     def get_metadata(self, selector: SeriesSelector) -> Metadata:
         """Get metadata from the Flight service."""
-        if "series name" not in selector.tags:
-            raise InvalidDataError("No series name")
         remote_selector = SeriesSelector.from_tags(
             self.__source_name, selector.tags, selector.field
         )

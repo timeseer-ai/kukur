@@ -9,7 +9,7 @@ from typing import Generator, Union
 from pyarrow import Table
 
 from kukur import Metadata, SeriesSearch, SeriesSelector
-from kukur.metadata.fields import Description
+from kukur.metadata.fields import Description, Unit
 
 
 class IntegrationTestSource:
@@ -37,6 +37,10 @@ class IntegrationTestSource:
             selector.source, {"tag1": "value1", "tag2": "value2"}, "pressure"
         ):
             return Metadata(selector, {Description: "integration test pressure"})
+        if selector == SeriesSelector(
+            selector.source, {"tag1": "value1a", "tag2": "value2a"}, "temperature"
+        ):
+            return Metadata(selector, {Unit: "c"})
         return Metadata(selector)
 
     def get_data(

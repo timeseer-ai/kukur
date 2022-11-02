@@ -2,7 +2,8 @@
 
 They use the client to request data."""
 
-import os
+# SPDX-FileCopyrightText: 2022 Timeseer.AI
+# SPDX-License-Identifier: Apache-2.0
 
 from datetime import datetime
 
@@ -18,13 +19,6 @@ def client() -> Client:
     kukur_client = Client()
     kukur_client._get_client().wait_for_available(timeout=10)
     return kukur_client
-
-
-def suffix_source(source_name: str) -> str:
-    if "KUKUR_INTEGRATION_TARGET" in os.environ:
-        target = os.environ["KUKUR_INTEGRATION_TARGET"]
-        return f"{source_name}-{target}"
-    return source_name  # works in docker container
 
 
 def test_search(client: Client):
@@ -116,7 +110,7 @@ def test_plot_data_fallback(client: Client):
 
 def test_sources(client: Client):
     data = client.list_sources()
-    assert len(data) == 48
+    assert len(data) == 50
     assert "sql" in data
     assert "row" in data
     assert "noaa" in data
@@ -143,6 +137,15 @@ def test_search_series_without_series_name(client: Client):
     assert series[1].series.tags == {"tag1": "value1a", "tag2": "value2a"}
     assert series[1].series.field == "temperature"
     assert series[1].get_field_by_name("description") == "integration test temperature"
+
+
+def test_series_search_without_series_name_and_extra_metadata(client: Client):
+    series = list(client.search(SeriesSearch("integration-test-extra-metadata")))
+    assert len(series) == 2
+    assert isinstance(series[1], Metadata)
+    assert series[1].series.tags == {"tag1": "value1a", "tag2": "value2a"}
+    assert series[1].series.field == "temperature"
+    assert series[1].get_field_by_name("unit") == "c"
 
 
 def test_series_metadata_without_series_name(client: Client):
