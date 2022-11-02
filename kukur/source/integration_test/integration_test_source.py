@@ -26,11 +26,18 @@ class IntegrationTestSource:
             SeriesSelector(
                 selector.source, {"tag1": "value1a", "tag2": "value2a"}, "temperature"
             ),
-            {Description: "integration test"},
+            {Description: "integration test temperature"},
         )
 
-    def get_metadata(self, selector: SeriesSelector) -> Metadata:
+    def get_metadata(  # pylint: disable=no-self-use
+        self, selector: SeriesSelector
+    ) -> Metadata:
         """Get metadata from the Flight service."""
+        if selector == SeriesSelector(
+            selector.source, {"tag1": "value1", "tag2": "value2"}, "pressure"
+        ):
+            return Metadata(selector, {Description: "integration test pressure"})
+        return Metadata(selector)
 
     def get_data(
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
