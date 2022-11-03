@@ -26,6 +26,7 @@ from kukur.source import (
     parquet,
     piwebapi_da,
     simulator,
+    sqlite,
 )
 
 from kukur import (
@@ -61,6 +62,7 @@ _FACTORY = {
     "parquet": parquet.from_config,
     "piwebapi-da": piwebapi_da.from_config,
     "simulator": simulator.from_config,
+    "sqlite": sqlite.from_config,
 }
 
 
