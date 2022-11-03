@@ -33,6 +33,7 @@ Valid values are:
 - `oledb`
 - `parquet`
 - `piwebapi-da`
+- `sqlite`
 
 `type` is required.
 
@@ -46,6 +47,7 @@ Valid values are:
 - `kukur`
 - `oledb`
 - `piwebapi-da`
+- `sqlite`
 
 `metadata_type` is optional.
 The `type` is used when not specified.
@@ -162,6 +164,7 @@ ifndef::sources[]
 - Other link:kukur.asciidoc[Kukur or Timeseer instances]
 - link:odbc.asciidoc[ODBC] data sources
 - link:piwebapi-da.asciidoc[PI Data Archive] using PI Web API
+- link:sqlite.asciidoc[SQLite] databases
 
 Source-specific parameters are documented in the linked documents.
 endif::sources[]
@@ -178,6 +181,7 @@ ifdef::sources[]
 - Other <<Kukur,Kukur or Timeseer instances>>
 - <<ODBC>> data sources
 - <<PI Data Archive using Web API>>
+- <<SQLite>> databases
 
 Source-specific parameters are documented in the linked sources reference.
 endif::sources[]

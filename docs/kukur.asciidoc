@@ -678,6 +678,8 @@ include::./source/odbc.asciidoc[leveloffset=+1]
 
 include::./source/piwebapi-da.asciidoc[leveloffset=+1]
 
+include::./source/sqlite.asciidoc[leveloffset=+1]
+
 == Connectivity guides
 
 Kukur can connect to many different time series data sources using the options detailed in the <<Sources reference>>.
