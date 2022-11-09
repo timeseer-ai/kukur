@@ -159,18 +159,17 @@ class SourceWrapper:
                 )
                 try:
                     extra_metadata = self.get_metadata(series_selector)
+                    for k, v in result.iter_names():
+                        if v is not None and v != "":
+                            extra_metadata.set_field_by_name(k, v)
+                    yield extra_metadata
                 except Exception:  # pylint: disable=broad-except
                     logger.error(
                         """Metadata query for "%s" (%s) failed all attempts.""",
                         series_selector.name,
                         series_selector.source,
                     )
-                    yield series_selector
-
-                for k, v in result.iter_names():
-                    if v is not None and v != "":
-                        extra_metadata.set_field_by_name(k, v)
-                yield extra_metadata
+                    yield result
 
     def get_metadata(self, selector: SeriesSelector) -> Metadata:
         """Return the metadata for the given series.

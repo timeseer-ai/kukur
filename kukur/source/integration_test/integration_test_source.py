@@ -9,6 +9,7 @@ from typing import Generator, Union
 from pyarrow import Table
 
 from kukur import Metadata, SeriesSearch, SeriesSelector
+from kukur.exceptions import InvalidDataError
 from kukur.metadata.fields import Description, Unit
 
 
@@ -28,6 +29,12 @@ class IntegrationTestSource:
             ),
             {Description: "integration test temperature"},
         )
+        yield Metadata(
+            SeriesSelector(
+                selector.source, {"tag1": "value1b", "tag2": "value2b"}, "pH"
+            ),
+            {Description: "integration test pH"},
+        )
 
     def get_metadata(  # pylint: disable=no-self-use
         self, selector: SeriesSelector
@@ -41,6 +48,10 @@ class IntegrationTestSource:
             selector.source, {"tag1": "value1a", "tag2": "value2a"}, "temperature"
         ):
             return Metadata(selector, {Unit: "c"})
+        if selector == SeriesSelector(
+            selector.source, {"tag1": "value1b", "tag2": "value2b"}, "pH"
+        ):
+            raise InvalidDataError("Metadata not found")
         return Metadata(selector)
 
     def get_data(
