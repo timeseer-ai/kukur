@@ -129,7 +129,7 @@ def test_metadata_backwards_compatibility(client: Client):
 
 def test_search_series_without_series_name(client: Client):
     series = list(client.search(SeriesSearch("integration-test")))
-    assert len(series) == 2
+    assert len(series) == 3
     assert isinstance(series[0], SeriesSelector)
     assert series[0].tags == {"tag1": "value1", "tag2": "value2"}
     assert series[0].field == "pressure"
@@ -141,7 +141,7 @@ def test_search_series_without_series_name(client: Client):
 
 def test_series_search_without_series_name_and_extra_metadata(client: Client):
     series = list(client.search(SeriesSearch("integration-test-extra-metadata")))
-    assert len(series) == 2
+    assert len(series) == 3
     assert isinstance(series[1], Metadata)
     assert series[1].series.tags == {"tag1": "value1a", "tag2": "value2a"}
     assert series[1].series.field == "temperature"
@@ -155,3 +155,25 @@ def test_series_metadata_without_series_name(client: Client):
         )
     )
     assert metadata.get_field_by_name("description") == "integration test pressure"
+
+
+def test_search_returns_metadata_if_extra_metadata_fails(client: Client):
+    search_results = client.search(SeriesSelector("integration-test-extra-metadata"))
+
+    metadata = next(
+        selector_or_metadata
+        for selector_or_metadata in search_results
+        if isinstance(selector_or_metadata, Metadata)
+        and selector_or_metadata.series.tags["tag1"] == "value1b"
+    )
+    assert isinstance(metadata, Metadata)
+
+
+def test_get_metadata_for_series_without_metadata(client: Client):
+    with pytest.raises(Exception) as error:
+        client.get_metadata(
+            SeriesSelector(
+                "integration-test", {"tag1": "value1b", "tag2": "value2b"}, "pH"
+            ),
+        )
+    assert error.match("Metadata not found")

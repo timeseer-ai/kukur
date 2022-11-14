@@ -154,15 +154,22 @@ class SourceWrapper:
             if len(self.__metadata) == 0 or isinstance(result, SeriesSelector):
                 yield result
             else:
-                extra_metadata = self.get_metadata(
-                    SeriesSelector.from_tags(
-                        result.series.source, result.series.tags, result.series.field
-                    )
+                series_selector = SeriesSelector.from_tags(
+                    result.series.source, result.series.tags, result.series.field
                 )
-                for k, v in result.iter_names():
-                    if v is not None and v != "":
-                        extra_metadata.set_field_by_name(k, v)
-                yield extra_metadata
+                try:
+                    extra_metadata = self.get_metadata(series_selector)
+                    for k, v in result.iter_names():
+                        if v is not None and v != "":
+                            extra_metadata.set_field_by_name(k, v)
+                    yield extra_metadata
+                except Exception:  # pylint: disable=broad-except
+                    logger.error(
+                        """Metadata query for "%s" (%s) failed all attempts.""",
+                        series_selector.name,
+                        series_selector.source,
+                    )
+                    yield result
 
     def get_metadata(self, selector: SeriesSelector) -> Metadata:
         """Return the metadata for the given series.
@@ -174,21 +181,13 @@ class SourceWrapper:
             MetadataSource(self.__source.metadata)
         ]:
             query_fn = functools.partial(metadata_source.source.get_metadata, selector)
-            try:
-                received_metadata = _retry(
-                    self.__query_retry_count,
-                    self.__query_retry_delay,
-                    query_fn,
-                    f'Metadata query for "{selector.name}" ({selector.source}) failed',
-                )
-            except Exception:  # pylint: disable=broad-except
-                logger.error(
-                    """Metadata query for "%s" (%s) failed all attempts, returning empty metadata.""",
-                    selector.name,
-                    selector.source,
-                )
-                received_metadata = Metadata(selector)
 
+            received_metadata = _retry(
+                self.__query_retry_count,
+                self.__query_retry_delay,
+                query_fn,
+                f'Metadata query for "{selector.name}" ({selector.source}) failed',
+            )
             if len(metadata_source.fields) == 0:
                 for k, v in received_metadata.iter_names():
                     if v is not None and v != "":
