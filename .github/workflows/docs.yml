@@ -41,12 +41,15 @@ jobs:
       - build
     if: github.ref == 'refs/heads/master'
     steps:
-      - name: Deploy Nomad job
-        uses: appleboy/ssh-action@v0.0.9
+      - name: Load SSH key
+        uses: shimataro/ssh-key-action@v2
         with:
-          host: ts-host02.timeseer.ai
-          username: root
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            nomad stop --purge kukur-documentation
-            nomad run /opt/nomad-jobs/kukur-documentation.hcl
+          known_hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
+
+      - name: Stop previous Nomad job
+        run: ssh root@ts-host02.timeseer.ai 'nomad stop --purge kukur-documentation'
+        continue-on-error: true
+
+      - name: Run Nomad job
+        run: ssh root@ts-host02.timeseer.ai 'nomad run /opt/nomad-jobs/kukur-documentation.hcl'
