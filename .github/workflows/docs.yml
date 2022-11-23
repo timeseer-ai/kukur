@@ -44,7 +44,7 @@ jobs:
       - name: Deploy Nomad job
         uses: appleboy/ssh-action@v0.0.9
         with:
-          host: ts-vm01.timeseer.ai
+          host: ts-host02.timeseer.ai
           username: root
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
