@@ -1,0 +1,191 @@
+== Simulator
+
+Sources with `type = "simulator"` configure simulated sources.
+
+```
+[source.<name>]
+type = "simulator"
+path = "<path to simulator YAML configuration>"
+```
+
+path points to the YAML configuration file of the simulator.
+
+There are three types of simulators.
+A step signal simulator,
+a white noise signal simulator and a sine signal simulator.
+
+In the YAML configuration file,
+the three signals can be defined.
+
+There is a common configuration for all signals and a type-specific config to define the values.
+
+The common parts contain the following:
+
+```yaml
+signals:
+    - type: "<step|noise|sine>"
+    seriesName: "<name of the series>"
+    samplingInterval:
+      intervalSecondsMin: <List of integers that define the minimum seconds of an interval>
+      intervalSecondsMax: <List of integers that define the maximum seconds of an interval>
+    numberOfSeeds: <Integer to define the randomness of the series>
+    metadata:
+        "metadata field": "metadata value"
+```
+
+The type defines the signal generator type,
+the seriesName the name of the series.
+
+The samplingInterval defines the sampling interval of the step function.
+intervalSecondsMin is a list of integers that list the minimum seconds of an interval.
+intervalSecondsMax is a list of integers that list the maximum seconds of an interval.
+For every minimum and maximum value possibility a series is created.
+
+numberOfSeeds optional parameter that defines how many series will be created.
+The default is 1.
+
+metadata is an optional dictionary of any metadata that is supplied to the series that are created.
+
+For a step signal,
+the following values are added:
+
+```yaml
+signals:
+  - type: "step"
+    seriesName: "<name of the series>"
+    values:
+      - min: <Integer defines minimum value>
+        max: <Integer defines maximum value>
+        numberOfSteps: <List of integers defines number of steps between intervals>
+    samplingInterval:
+      intervalSecondsMin: <List of integers that define the minimum seconds of an interval>
+      intervalSecondsMax: <List of integers that define the maximum seconds of an interval>
+    numberOfSeeds: <Integer to define the randomness of the series>
+    metadata:
+        "metadata field": "metadata value"
+```
+
+
+The values consists out of a list of each three parameters:
+min,
+max and numberOfSteps.
+
+Min is an integer that defines the minimum value of the step function,
+Max is an integer that defines the maximum value of the step function,
+NumberOfsteps is a list of integers that defines how many steps will be taken within one interval.
+
+For example:
+
+```yaml
+signals:
+  - type: "step"
+    seriesName: "step"
+    values:
+      - min: 0
+        max: 10
+        numberOfSteps: [1, 2, 5]
+      - min: 0
+        max: 100
+        numberOfSteps: [20]
+      - min: -100
+        max: 0
+        numberOfSteps: [1, 2, 5, 10]
+      - min: 100
+        max: 200
+        numberOfSteps: [1, 2, 5, 10]
+    samplingInterval:
+      intervalSecondsMin: [1]
+      intervalSecondsMax: [10]
+    numberOfSeeds: 10
+    metadata:
+        "interpolation type": "STEPPED"
+        "data type": "FLOAT64"
+```
+
+For a white noise simulator,
+the following values are added:
+
+```yaml
+signals:
+  - type: "white noise"
+    seriesName: "<name of the series>"
+    values:
+      mean: <List of integers that define the mean of the signal>
+      standardDeviation: <List of integers that define the standard deviation of the signal>
+    samplingInterval:
+      intervalSecondsMin: <List of integers that define the minimum seconds of an interval>
+      intervalSecondsMax: <List of integers that define the maximum seconds of an interval>
+    numberOfSeeds: <Integer to define the randomness of the series>
+    metadata:
+        "metadata field": "metadata value"
+```
+
+The values consists out of a two parameters:
+mean and standardDeviation.
+
+Mean and standardDeviation are a list of integers.
+
+For example:
+
+```yaml
+signal:
+  - type: "white noise"
+    seriesName: "noise"
+    values:
+      mean: [-10, 0, 1, 5, 10, 42, 100, 1000]
+      standardDeviation: [1, 2, 3, 4]
+    samplingInterval:
+      intervalSecondsMin: [60]
+      intervalSecondsMax: [300]
+    numberOfSeeds: 10
+    metadata:
+      "data type": "FLOAT64"
+```
+
+For a sine simulator,
+the following values are added:
+
+```yaml
+signals:
+  - type: "sine"
+    seriesName: "<name of the series>"
+    values:
+      amplitude: <List of integers to define the amplitude>
+      shift: <List of integers to define the shift>
+      periodSeconds: <List of integers to define the period>
+      phaseSeconds: <List of integers to define the phase>
+    samplingInterval:
+      intervalSecondsMin: <List of integers that define the minimum seconds of an interval>
+      intervalSecondsMax: <List of integers that define the maximum seconds of an interval>
+    numberOfSeeds: <Integer to define the randomness of the series>
+    metadata:
+        "metadata field": "metadata value"
+```
+
+The values consists out of a four parameters:
+amplitude,
+shift,
+periodSeconds and phaseSeconds.
+
+Amplitude,
+shift,
+periodSeconds and phaseSeconds are all list of integers.
+
+For example:
+
+```yaml
+signals:
+  - type: "sine"
+    seriesName: "sine"
+    values:
+      amplitude: [10, 20, 30, 40, 50]
+      shift: [0]
+      periodSeconds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+      phaseSeconds: [0]
+    samplingInterval:
+      intervalSecondsMin: [1]
+      intervalSecondsMax: [10]
+    numberOfSeeds: 10
+    metadata:
+      "data type": "FLOAT64"
+```
