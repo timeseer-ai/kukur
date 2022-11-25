@@ -161,6 +161,7 @@ def test_step_signal_generator_series() -> None:
         "max_value": "10",
         "number_of_steps": "10",
     }
+    assert one_series[0].series.field == "value"
 
     generator = StepSignalGenerator(
         {
