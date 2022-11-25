@@ -20,7 +20,7 @@ except ImportError:
 from pyarrow import Table
 
 from kukur.exceptions import InvalidSourceException, MissingModuleException
-from kukur.source.arrow import BaseArrowSource
+from kukur.source.arrow import BaseArrowSource, BaseArrowSourceOptions
 from kukur.source.quality import QualityMapper
 
 
@@ -63,6 +63,7 @@ def from_config(config: dict, quality_mapper: QualityMapper) -> DeltaLakeSource:
         raise MissingModuleException("deltalake", "delta")
 
     data_format = config.get("format", "row")
+    options = BaseArrowSourceOptions(data_format, config.get("column_mapping", {}))
     if data_format not in ["row", "pivot"]:
         raise InvalidSourceException(
             'Delta lake sources support only the "row" and "pivot" format.'
@@ -70,7 +71,7 @@ def from_config(config: dict, quality_mapper: QualityMapper) -> DeltaLakeSource:
     if "uri" not in config:
         raise InvalidSourceException('Delta lake sources require an "uri" entry')
     return DeltaLakeSource(
-        data_format,
+        options,
         DeltaLakeLoader(config),
         quality_mapper,
         sort_by_timestamp=config.get("sort_by_timestamp", False),
