@@ -93,3 +93,18 @@ location = "loc"
 
 [metadata_value_mapping.custom."process type"]
 BATCH = "batch"
+
+[source.row_header]
+type = "csv"
+path = "tests/test_data/csv/row-header.csv"
+header_row = true
+
+[source.row_column_mapping]
+type = "csv"
+path = "tests/test_data/csv/row-column-mapping.csv"
+header_row = true
+
+[source.row_column_mapping.column_mapping]
+"series name" = "name"
+"ts" = "timestamp"
+"value" = "value"

@@ -216,3 +216,23 @@ def test_metadata_with_different_encoding() -> None:
     assert metadata.get_field(fields.Unit) == "°C"
     assert metadata.get_field(fields.LimitLowFunctional) == 0
     assert metadata.get_field(fields.InterpolationType) == InterpolationType.LINEAR
+
+
+def test_row_format_with_header() -> None:
+    table = get_source("row_header").get_data(
+        make_series("row_header"), START_DATE, END_DATE
+    )
+    assert len(table) == 5
+    assert table.column_names == ["ts", "value"]
+    assert table["ts"][0].as_py() == START_DATE
+    assert table["value"][0].as_py() == 1.0
+
+
+def test_row_column_mapping() -> None:
+    table = get_source("row_column_mapping").get_data(
+        make_series("row_column_mapping"), START_DATE, END_DATE
+    )
+    assert len(table) == 5
+    assert table.column_names == ["ts", "value"]
+    assert table["ts"][0].as_py() == START_DATE
+    assert table["value"][0].as_py() == 1.0
