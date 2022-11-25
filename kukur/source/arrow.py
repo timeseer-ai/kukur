@@ -50,8 +50,13 @@ class BaseArrowSource(ABC):
         """Return the file extension for the supported pyarrow format."""
         ...
 
-    def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
-        """ArrowSource does not support searching for time series."""
+    def search(self, selector: SeriesSearch) -> Generator[SeriesSelector, None, None]:
+        """Detect series in the data."""
+        if self.__data_format == "pivot":
+            yield from self._search_pivot(selector.source)
+
+        if self.__data_format == "row":
+            yield from self._search_row(selector.source)
 
     # pylint: disable=no-self-use
     def get_metadata(self, selector: SeriesSelector) -> Metadata:
@@ -82,6 +87,11 @@ class BaseArrowSource(ABC):
 
         return self._read_row_data(selector)
 
+    def _search_pivot(self, source_name: str) -> Generator[SeriesSelector, None, None]:
+        all_data = self.read_file(self.__loader.open())
+        for name in all_data.column_names[1:]:
+            yield SeriesSelector(source_name, name)
+
     def _read_pivot_data(self, selector: SeriesSelector) -> pa.Table:
         all_data = self.read_file(self.__loader.open())
         if selector.name not in all_data.column_names:
@@ -94,6 +104,16 @@ class BaseArrowSource(ABC):
             ]
         )
         return data.cast(schema)
+
+    def _search_row(self, source_name: str) -> Generator[SeriesSelector, None, None]:
+        columns = ["series name", "ts", "value"]
+        if self.__quality_mapper.is_present():
+            columns.append("quality")
+
+        all_data = self.read_file(self.__loader.open()).rename_columns(columns)
+        # pylint: disable=no-member
+        for name in pyarrow.compute.unique(all_data["series name"]):
+            yield SeriesSelector(source_name, name.as_py())
 
     def _read_row_data(self, selector: SeriesSelector) -> pa.Table:
         columns = ["series name", "ts", "value"]

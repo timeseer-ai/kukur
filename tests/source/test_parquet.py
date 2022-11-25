@@ -9,7 +9,7 @@ from dateutil.parser import parse as parse_date
 
 import kukur.config
 
-from kukur import SeriesSelector, Source
+from kukur import SeriesSearch, SeriesSelector, Source
 from kukur.source import SourceFactory
 
 
@@ -62,6 +62,12 @@ def test_dir_string():
     assert table["value"][0].as_py() == "A"
 
 
+def test_search_row():
+    series = list(get_source("row-parquet").search(SeriesSearch("row-parquet")))
+    assert len(series) == 3
+    assert SeriesSelector("row-parquet", "test-tag-1") in series
+
+
 def test_row():
     table = get_source("row-parquet").get_data(
         make_series("row-parquet"), START_DATE, END_DATE
@@ -81,6 +87,12 @@ def test_row_quality():
     assert table["ts"][0].as_py() == START_DATE
     assert table["value"][0].as_py() == 1.0
     assert table["quality"][0].as_py() == 1
+
+
+def test_search_pivot():
+    series = list(get_source("pivot-parquet").search(SeriesSearch("pivot-parquet")))
+    assert len(series) == 3
+    assert SeriesSelector("pivot-parquet", "test-tag-1") in series
 
 
 def test_pivot():
