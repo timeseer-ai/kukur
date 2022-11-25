@@ -89,6 +89,14 @@ def test_row_quality():
     assert table["quality"][0].as_py() == 1
 
 
+def test_row_map_columns():
+    table = get_source("row-feather-map-columns").get_data(
+        make_series("row-feather-map-columns"), START_DATE, END_DATE
+    )
+    assert len(table) == 5
+    assert table.column_names == ["ts", "value"]
+
+
 def test_search_pivot():
     series = list(get_source("pivot-feather").search(SeriesSearch("pivot-feather")))
     assert len(series) == 3

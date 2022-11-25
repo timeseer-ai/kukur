@@ -21,6 +21,17 @@ metadata_type = "csv"
 metadata = "tests/test_data/csv/row-metadata.csv"
 quality_mapping = "opc_mapping_strings"
 
+[source.row-feather-map-columns]
+type = "feather"
+path = "tests/test_data/feather/row-map-columns.feather"
+metadata_type = "csv"
+metadata = "tests/test_data/csv/row-metadata.csv"
+
+[source.row-feather-map-columns.column_mapping]
+"series name" = "name"
+"ts" = "timestamp"
+"value" = "value"
+
 [source.dir-feather-quality]
 type = "feather"
 format = "dir"

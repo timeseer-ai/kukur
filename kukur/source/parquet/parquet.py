@@ -11,7 +11,7 @@ Parquet DataSets are not yet supported.
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Dict
+from typing import Any, Dict
 
 import pyarrow as pa
 
@@ -19,17 +19,18 @@ from pyarrow import parquet
 
 from kukur.exceptions import InvalidSourceException
 from kukur.loader import from_config as loader_from_config
-from kukur.source.arrow import BaseArrowSource
+from kukur.source.arrow import BaseArrowSource, BaseArrowSourceOptions
 from kukur.source.quality import QualityMapper
 
 
-def from_config(config: Dict[str, str], quality_mapper: QualityMapper):
+def from_config(config: Dict[str, Any], quality_mapper: QualityMapper):
     """Create a new Parquet data source from the given configuration dictionary."""
     loader = loader_from_config(config, files_as_path=True)
     if "path" not in config:
         raise InvalidSourceException('Parquet sources require a "path" entry')
     data_format = config.get("format", "row")
-    return ParquetSource(data_format, loader, quality_mapper)
+    options = BaseArrowSourceOptions(data_format, config.get("column_mapping", {}))
+    return ParquetSource(options, loader, quality_mapper)
 
 
 class ParquetSource(BaseArrowSource):
