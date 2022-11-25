@@ -4,6 +4,10 @@ path = "tests/test_data/csv/row.csv"
 metadata = "tests/test_data/csv/row-metadata.csv"
 dictionary_dir = "tests/test_data/csv/dictionary"
 
+[source.row_no_metadata]
+type = "csv"
+path = "tests/test_data/csv/row.csv"
+
 [source.row_quality]
 type = "csv"
 path = "tests/test_data/csv/row-quality.csv"
@@ -22,6 +26,11 @@ metadata_value_mapping = "example_value_mapping"
 type = "csv"
 path = "tests/test_data/csv/pivot.csv"
 metadata = "tests/test_data/csv/pivot-metadata.csv"
+format = "pivot"
+
+[source.pivot_no_metadata]
+type = "csv"
+path = "tests/test_data/csv/pivot.csv"
 format = "pivot"
 
 [source.dir]

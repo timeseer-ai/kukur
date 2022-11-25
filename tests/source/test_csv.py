@@ -13,6 +13,7 @@ from kukur import (
     DataType,
     Dictionary,
     InterpolationType,
+    SeriesSearch,
     SeriesSelector,
     Source,
 )
@@ -59,6 +60,12 @@ def test_dir_quality() -> None:
     assert table["quality"][3].as_py() == 1
 
 
+def test_search_row() -> None:
+    series = list(get_source("row_no_metadata").search(SeriesSearch("row_no_metadata")))
+    assert len(series) == 5
+    assert SeriesSelector("row_no_metadata", "test-tag-1") in series
+
+
 def test_row() -> None:
     table = get_source("row").get_data(make_series("row"), START_DATE, END_DATE)
     assert len(table) == 5
@@ -77,6 +84,14 @@ def test_row_quality() -> None:
     assert table["value"][0].as_py() == 1.0
     assert table["quality"][0].as_py() == 1
     assert table["quality"][2].as_py() == 0
+
+
+def test_search_pivot() -> None:
+    series = list(
+        get_source("pivot_no_metadata").search(SeriesSearch("pivot_no_metadata"))
+    )
+    assert len(series) == 2
+    assert SeriesSelector("pivot_no_metadata", "test-tag-1") in series
 
 
 def test_pivot() -> None:

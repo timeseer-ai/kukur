@@ -14,7 +14,7 @@ import csv
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, Generator, List, Optional
+from typing import Any, Dict, Generator, List, Optional, Union
 
 import pyarrow as pa
 import pyarrow.csv
@@ -97,9 +97,12 @@ class CSVSource:
         self.__data_format = data_format
         self.__mappers = mappers
 
-    def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
+    def search(
+        self, selector: SeriesSearch
+    ) -> Generator[Union[Metadata, SeriesSelector], None, None]:
         """Search for series matching the given selector."""
         if self.__loaders.metadata is None:
+            yield from self._search_in_data(selector)
             return
         with self.__loaders.metadata.open() as metadata_file:
             reader = csv.DictReader(metadata_file)
@@ -210,6 +213,25 @@ class CSVSource:
         before = pyarrow.compute.less(data["ts"], pa.scalar(end_date))
         return data.filter(pyarrow.compute.and_(on_or_after, before))
 
+    def _search_in_data(
+        self, search: SeriesSearch
+    ) -> Generator[SeriesSelector, None, None]:
+        if self.__loaders.data is None:
+            return
+
+        if self.__data_format == "row":
+            yield from self._search_row(self.__loaders.data, search)
+        elif self.__data_format == "pivot":
+            yield from _search_pivot(self.__loaders.data, search)
+
+    def _search_row(
+        self, loader: Loader, search: SeriesSearch
+    ) -> Generator[SeriesSelector, None, None]:
+        all_data = self._open_row_data(loader)
+        # pylint: disable=no-member
+        for name in pyarrow.compute.unique(all_data["series name"]):
+            yield SeriesSelector(search.source, name.as_py())
+
     def __read_all_data(self, selector: SeriesSelector) -> pa.Table:
         if self.__loaders.data is None:
             raise InvalidSourceException("No data path configured.")
@@ -222,6 +244,14 @@ class CSVSource:
         return self._read_row_data(self.__loaders.data, selector)
 
     def _read_row_data(self, loader: Loader, selector: SeriesSelector) -> pa.Table:
+        all_data = self._open_row_data(loader)
+        # pylint: disable=no-member
+        data = all_data.filter(
+            pyarrow.compute.equal(all_data["series name"], pa.scalar(selector.name))
+        )
+        return data.drop(["series name"])
+
+    def _open_row_data(self, loader: Loader) -> pa.Table:
         columns = ["series name", "ts", "value"]
         if self.__mappers.quality.is_present():
             columns.append("quality")
@@ -237,12 +267,7 @@ class CSVSource:
             all_data = all_data.set_column(
                 3, "quality", pa.array(kukur_quality_values, type=pa.int8())
             )
-
-        # pylint: disable=no-member
-        data = all_data.filter(
-            pyarrow.compute.equal(all_data["series name"], pa.scalar(selector.name))
-        )
-        return data.drop(["series name"])
+        return all_data
 
     def _read_directory_data(
         self, loader: Loader, selector: SeriesSelector
@@ -271,6 +296,14 @@ class CSVSource:
             self.__mappers.quality.from_source(source_quality_value.as_py())
             for source_quality_value in quality_data
         ]
+
+
+def _search_pivot(
+    loader: Loader, search: SeriesSearch
+) -> Generator[SeriesSelector, None, None]:
+    all_data = pyarrow.csv.read_csv(loader.open())
+    for name in all_data.column_names[1:]:
+        yield SeriesSelector(search.source, name)
 
 
 def _read_pivot_data(loader: Loader, selector: SeriesSelector) -> pa.Table:
