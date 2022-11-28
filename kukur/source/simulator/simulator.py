@@ -57,7 +57,7 @@ def from_config(
 
 
 @dataclass
-class SignalGeneratorConfig:
+class SignalGeneratorConfig:  # pylint: disable=too-many-instance-attributes
     """Base signal generator configuration."""
 
     series_name: str
@@ -67,6 +67,7 @@ class SignalGeneratorConfig:
     interval_seconds_min: Union[List[float], float]
     interval_seconds_max: Union[List[float], float]
     metadata: Dict[str, str]
+    fields: List[str]
 
 
 @dataclass
@@ -160,6 +161,7 @@ class StepSignalGenerator:
                 config["samplingInterval"]["intervalSecondsMin"],
                 config["samplingInterval"]["intervalSecondsMax"],
                 config.get("metadata", {}),
+                config.get("fields", ["value"]),
                 [
                     StepSignalGeneratorConfigValue(
                         value["min"], value["max"], _ensure_list(value["numberOfSteps"])
@@ -265,7 +267,10 @@ class StepSignalGenerator:
         )
 
         for entry in itertools.product(*arg_list):
-            yield _build_step_search_result(self.__config, entry, selector.source)
+            for field in self.__config.fields:
+                yield _build_step_search_result(
+                    self.__config, entry, selector.source, field
+                )
 
 
 def _ensure_list(value) -> List:
@@ -275,7 +280,7 @@ def _ensure_list(value) -> List:
 
 
 def _build_step_search_result(
-    config: StepSignalGeneratorConfig, entry: tuple, source_name: str
+    config: StepSignalGeneratorConfig, entry: tuple, source_name: str, field: str
 ) -> Metadata:
     series_selector = SeriesSelector(
         source_name,
@@ -289,6 +294,7 @@ def _build_step_search_result(
             "max_value": str(entry[3]["max"]),
             "number_of_steps": str(entry[3]["number_of_steps"]),
         },
+        field,
     )
     metadata = Metadata(series_selector)
     for field_name, field_value in config.metadata.items():
@@ -331,6 +337,7 @@ class WhiteNoiseSignalGenerator:
                 config["samplingInterval"]["intervalSecondsMin"],
                 config["samplingInterval"]["intervalSecondsMax"],
                 config.get("metadata", {}),
+                config.get("fields", ["value"]),
                 config["values"]["mean"],
                 config["values"]["standardDeviation"],
             )
@@ -416,13 +423,14 @@ class WhiteNoiseSignalGenerator:
         )
 
         for entry in itertools.product(*arg_list):
-            yield _build_white_noise_search_result(
-                self.__config, entry, selector.source
-            )
+            for field in self.__config.fields:
+                yield _build_white_noise_search_result(
+                    self.__config, entry, selector.source, field
+                )
 
 
 def _build_white_noise_search_result(
-    config: WhiteNoiseSignalGeneratorConfig, entry: tuple, source_name: str
+    config: WhiteNoiseSignalGeneratorConfig, entry: tuple, source_name: str, field: str
 ) -> Metadata:
     series_selector = SeriesSelector(
         source_name,
@@ -435,6 +443,7 @@ def _build_white_noise_search_result(
             "mean": str(entry[3]),
             "standard_deviation": str(entry[4]),
         },
+        field,
     )
     metadata = Metadata(series_selector)
     for field_name, field_value in config.metadata.items():
@@ -471,6 +480,7 @@ class SineSignalGenerator:
                 config["samplingInterval"]["intervalSecondsMin"],
                 config["samplingInterval"]["intervalSecondsMax"],
                 config.get("metadata", {}),
+                config.get("fields", ["value"]),
                 config["values"]["periodSeconds"],
                 config["values"]["phaseSeconds"],
                 config["values"]["amplitude"],
@@ -567,11 +577,14 @@ class SineSignalGenerator:
         arg_list.append(_extract_from_tag(selector.tags, "shift", self.__config.shift))
 
         for entry in itertools.product(*arg_list):
-            yield _build_sine_search_result(self.__config, entry, selector.source)
+            for field in self.__config.fields:
+                yield _build_sine_search_result(
+                    self.__config, entry, selector.source, field
+                )
 
 
 def _build_sine_search_result(
-    config: SineSignalGeneratorConfig, entry: tuple, source_name: str
+    config: SineSignalGeneratorConfig, entry: tuple, source_name: str, field: str
 ) -> Metadata:
     series_selector = SeriesSelector(
         source_name,
@@ -586,6 +599,7 @@ def _build_sine_search_result(
             "phase_seconds": str(entry[5]),
             "shift": str(entry[6]),
         },
+        field,
     )
     metadata = Metadata(series_selector)
     for field_name, field_value in config.metadata.items():

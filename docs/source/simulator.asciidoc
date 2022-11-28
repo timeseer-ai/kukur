@@ -31,6 +31,7 @@ signals:
     numberOfSeeds: <Integer to define the randomness of the series>
     metadata:
         "metadata field": "metadata value"
+    fields: <List of strings that define the possible fields of the signal>
 ```
 
 The type defines the signal generator type,
@@ -45,6 +46,9 @@ numberOfSeeds optional parameter that defines how many series will be created.
 The default is 1.
 
 metadata is an optional dictionary of any metadata that is supplied to the series that are created.
+
+fields is an optional list of strings containing the possible fields of the signal.
+Defaults to ["value"]
 
 For a step signal,
 the following values are added:
@@ -63,6 +67,7 @@ signals:
     numberOfSeeds: <Integer to define the randomness of the series>
     metadata:
         "metadata field": "metadata value"
+    fields: <List of strings that define the possible fields of the signal>
 ```
 
 
@@ -100,6 +105,7 @@ signals:
     metadata:
         "interpolation type": "STEPPED"
         "data type": "FLOAT64"
+    fields: ["altitude", "distance"]
 ```
 
 For a white noise simulator,
@@ -118,6 +124,7 @@ signals:
     numberOfSeeds: <Integer to define the randomness of the series>
     metadata:
         "metadata field": "metadata value"
+    fields: <List of strings that define the possible fields of the signal>
 ```
 
 The values consists out of a two parameters:
@@ -140,6 +147,7 @@ signal:
     numberOfSeeds: 10
     metadata:
       "data type": "FLOAT64"
+    fields: ["altitude", "distance"]
 ```
 
 For a sine simulator,
@@ -160,6 +168,7 @@ signals:
     numberOfSeeds: <Integer to define the randomness of the series>
     metadata:
         "metadata field": "metadata value"
+    fields: <List of strings that define the possible fields of the signal>
 ```
 
 The values consists out of a four parameters:
@@ -188,4 +197,5 @@ signals:
     numberOfSeeds: 10
     metadata:
       "data type": "FLOAT64"
+    fields: ["altitude", "distance"]
 ```

@@ -5,7 +5,6 @@
 
 
 from datetime import datetime, timedelta
-
 import pyarrow as pa
 
 from dateutil.parser import parse as parse_date
@@ -162,6 +161,7 @@ def test_step_signal_generator_series() -> None:
         "max_value": "10",
         "number_of_steps": "10",
     }
+    assert one_series[0].series.field == "value"
 
     generator = StepSignalGenerator(
         {
@@ -251,6 +251,40 @@ def test_step_signal_generator_series() -> None:
             "interval_seconds_min": "1",
             "interval_seconds_max": "2",
         }
+    generator = StepSignalGenerator(
+        {
+            "seriesName": "step",
+            "type": "step",
+            "samplingInterval": {
+                "intervalSecondsMin": 1,
+                "intervalSecondsMax": 2,
+            },
+            "metadata": {"description": "step function"},
+            "values": [
+                {
+                    "min": 0,
+                    "max": 10,
+                    "numberOfSteps": [5, 10],
+                },
+                {
+                    "min": 20,
+                    "max": 50,
+                    "numberOfSteps": [5, 10],
+                },
+            ],
+            "fields": ["temperature", "rotation"],
+        }
+    )
+    eight_series = list(generator.list_series(search))
+    assert len(eight_series) == 8
+    assert (
+        len([series for series in eight_series if series.series.field == "temperature"])
+        == 4
+    )
+    assert (
+        len([series for series in eight_series if series.series.field == "rotation"])
+        == 4
+    )
 
 
 def test_whitenoise_signal_generator_produces_same_data(
