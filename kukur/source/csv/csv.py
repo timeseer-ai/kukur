@@ -273,7 +273,7 @@ class CSVSource:
         if self.__mappers.quality.is_present():
             columns.append("quality")
 
-        if self.__options.header_row == False:
+        if not self.__options.header_row:
             read_options = pyarrow.csv.ReadOptions(column_names=columns)
         else:
             read_options = pyarrow.csv.ReadOptions()
