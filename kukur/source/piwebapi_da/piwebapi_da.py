@@ -54,7 +54,7 @@ class _DictionaryLookup:  # pylint: disable=too-few-public-methods
         self,
         session,
         request_properties: _RequestProperties,
-        data_archive: dict,
+        data_archive: Dict,
     ):
         self.__session = session
         self.__request_properties = request_properties
@@ -103,7 +103,7 @@ class _DictionaryLookup:  # pylint: disable=too-few-public-methods
 class PIWebAPIDataArchiveSource:
     """Connect to PI Data Archives using the PI Web API."""
 
-    def __init__(self, config: dict):
+    def __init__(self, config: Dict):
         self.__request_properties = _RequestProperties(
             verify_ssl=config.get("verify_ssl", True),
             max_returned_items_per_call=config.get(
@@ -270,7 +270,7 @@ class PIWebAPIDataArchiveSource:
 
 
 def _get_metadata(
-    selector: SeriesSelector, point: dict, dictionary_lookup: _DictionaryLookup
+    selector: SeriesSelector, point: Dict, dictionary_lookup: _DictionaryLookup
 ) -> Optional[Metadata]:
     metadata = Metadata(SeriesSelector(selector.source, point["Name"]))
     metadata.set_field(fields.Description, point["Descriptor"])
@@ -305,7 +305,7 @@ def _get_metadata(
     return metadata
 
 
-def from_config(config: dict) -> PIWebAPIDataArchiveSource:
+def from_config(config: Dict) -> PIWebAPIDataArchiveSource:
     """Create a new PIWebAPIDataArchiveSource."""
     if "data_archive_uri" not in config:
         raise InvalidSourceException(
