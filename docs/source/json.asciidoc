@@ -1,0 +1,16 @@
+// SPDX-FileCopyrightText: 2022 Timeseer.AI
+// SPDX-License-Identifier: Apache-2.0
+== JSON
+
+Sources with `type = "json"` configure JSON sources.
+
+JSON sources support reading metadata in the Kukur metadata format only.
+This is useful when Kukur has been used to extract an offline data set.
+
+```
+[source.<name>]
+metadata_type = "json"
+metadata = "<path to directory with JSON files>"
+```
+
+`metadata` is required.

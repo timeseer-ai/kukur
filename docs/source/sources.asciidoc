@@ -44,6 +44,7 @@ Valid values are:
 - `adodb`
 - `cratedb`
 - `csv`
+- `json`
 - `kukur`
 - `oledb`
 - `piwebapi-da`
@@ -161,6 +162,7 @@ ifndef::sources[]
 - link:csv.asciidoc[CSV] files
 - link:delta.asciidoc[Delta Lake] tables
 - link:influxdb.asciidoc[InfluxDB] data sources
+- Kukur link:json.asciidoc[JSON] metadata files
 - Other link:kukur.asciidoc[Kukur or Timeseer instances]
 - link:odbc.asciidoc[ODBC] data sources
 - link:piwebapi-da.asciidoc[PI Data Archive] using PI Web API
@@ -178,6 +180,7 @@ ifdef::sources[]
 - <<CSV>> files
 - <<Delta Lake>> tables
 - <<InfluxDB>> databases
+- Kukur <<JSON>> metadata files
 - Other <<Kukur,Kukur or Timeseer instances>>
 - <<ODBC>> data sources
 - <<PI Data Archive using Web API>>
