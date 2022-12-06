@@ -110,7 +110,7 @@ def test_plot_data_fallback(client: Client):
 
 def test_sources(client: Client):
     data = client.list_sources()
-    assert len(data) == 50
+    assert len(data) == 51
     assert "sql" in data
     assert "row" in data
     assert "noaa" in data

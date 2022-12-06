@@ -1,0 +1,11 @@
+{
+  "description": "world",
+  "data type": "FLOAT64",
+  "series": {
+    "source": "json",
+    "tags": {
+      "series name": "test-tag-0"
+    },
+    "field": "value"
+  }
+}

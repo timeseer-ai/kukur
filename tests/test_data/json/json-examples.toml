@@ -1,0 +1,4 @@
+[source.json]
+type = "json"
+metadata_type = "json"
+metadata = "tests/test_data/json"

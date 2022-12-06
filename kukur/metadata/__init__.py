@@ -152,7 +152,7 @@ class Metadata(MetadataFields):
     ) -> "Metadata":
         """Create a new Metadata object from a dictionary produced by to_data().
 
-        This used the provided series as selector, otherwise the series is expected to be inside the data."""
+        This uses the provided series as selector, otherwise the series is expected to be inside the data."""
         if series is None:
             if "series" not in data:
                 raise AttributeError()
