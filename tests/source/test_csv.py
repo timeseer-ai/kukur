@@ -236,3 +236,23 @@ def test_row_column_mapping() -> None:
     assert table.column_names == ["ts", "value"]
     assert table["ts"][0].as_py() == START_DATE
     assert table["value"][0].as_py() == 1.0
+
+
+def test_dir_header() -> None:
+    table = get_source("dir-header").get_data(
+        make_series("dir-header"), START_DATE, END_DATE
+    )
+    assert len(table) == 5
+    assert table.column_names == ["ts", "value"]
+    assert table["ts"][0].as_py() == START_DATE
+    assert table["value"][0].as_py() == 1.0
+
+
+def test_dir_header() -> None:
+    table = get_source("dir-mapping").get_data(
+        make_series("dir-mapping"), START_DATE, END_DATE
+    )
+    assert len(table) == 5
+    assert table.column_names == ["ts", "value"]
+    assert table["ts"][0].as_py() == START_DATE
+    assert table["value"][0].as_py() == 1.0

@@ -17,6 +17,7 @@ format = "row|pivot|dir"
 dictionary_dir = "<path>"
 quality_mapping = "<name>"
 file_encoding = "<codec>"
+header_row = "true|false"
 ```
 
 `path` is required for time series sources.
@@ -30,9 +31,33 @@ Three CSV data models are supported:
 - pivot (multiple series with values at the same timestamp)
 - directory based, one CSV file per tag
 
+=== Column mapping
+
+Accepted by CSV sources that use the row based or directory based data models
+and where the files contain a header row. This configuration allows mapping
+the columns from CSV files to the columns expected by Kukur.
+This is done by setting the `column_mapping` option for the source.
+
+```toml
+[source.<name>.column_mapping]
+"series name" = "name"
+"ts" = "timestamp"
+"value" = "value"
+"quality" = "quality column"
+```
+
+`series name` is only valid for the `row` format, as
+the pivot data model uses the CSV file names as the
+series names.
+
+`quality` mapping is optional.
+
 === Row Based Format
 
-A row based CSV data file does not contain a header row.
+A row based CSV data file may have a header row with column names.
+The `header_row` configuration is used to indicate this.
+The `header_row` configuration defaults to `false`.
+
 At least 3 columns are present:
 
 - series name
@@ -58,6 +83,8 @@ Labels are only for presenting to users.
 === Pivot Format
 
 The header row of CSV data files in pivot format defines which time series are available.
+This means that the `header_row` option is ignored for this format as the header
+row is always required.
 
 Other rows start with a timestamp in RFC3339 format and contain one value for each series.
 

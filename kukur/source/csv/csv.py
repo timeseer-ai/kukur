@@ -299,7 +299,10 @@ class CSVSource:
         columns = ["ts", "value"]
         if self.__mappers.quality.is_present():
             columns.append("quality")
-        read_options = pyarrow.csv.ReadOptions(column_names=columns)
+        if not self.__options.header_row:
+            read_options = pyarrow.csv.ReadOptions(column_names=columns)
+        else:
+            read_options = pyarrow.csv.ReadOptions()
         convert_options = pyarrow.csv.ConvertOptions(
             column_types={"ts": pa.timestamp("us", "utc")},
         )
@@ -308,6 +311,7 @@ class CSVSource:
             read_options=read_options,
             convert_options=convert_options,
         )
+        all_data = _map_columns(self.__options.column_mapping, all_data)
         if self.__mappers.quality.is_present():
             kukur_quality_values = self._map_quality(all_data["quality"])
             return all_data.set_column(
@@ -327,10 +331,12 @@ def _map_columns(column_mapping: Dict[str, str], data: pa.Table) -> pa.Table:
         return data
 
     columns = {
-        "series name": data[column_mapping["series name"]],
         "ts": data[column_mapping["ts"]],
         "value": data[column_mapping["value"]],
     }
+
+    if "series name" in column_mapping:
+        columns["series name"] = data[column_mapping["series name"]]
 
     if "quality" in column_mapping:
         columns["quality"] = data[column_mapping["quality"]]

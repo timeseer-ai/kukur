@@ -46,6 +46,24 @@ metadata = "tests/test_data/csv/dir-metadata.csv"
 format = "dir"
 quality_mapping = "opc_mapping_ranges"
 
+[source.dir-header]
+type = "csv"
+path = "tests/test_data/csv/dir_header"
+metadata = "tests/test_data/csv/dir-metadata.csv"
+format = "dir"
+header_row = true
+
+[source.dir-mapping]
+type = "csv"
+path = "tests/test_data/csv/dir_mapping"
+metadata = "tests/test_data/csv/dir-metadata.csv"
+format = "dir"
+header_row = true
+
+[source.dir-mapping.column_mapping]
+"ts" = "timestamp"
+"value" = "header_value"
+
 [source.custom-fields-simple]
 type = "csv"
 metadata = "tests/test_data/csv/custom-fields-metadata.csv"
