@@ -160,7 +160,9 @@ class BaseArrowSource(ABC):
             self.__loader.open_child(
                 f"{selector.tags['series name']}.{self.get_file_extension()}"
             )
-        ).rename_columns(columns)
+        )
+        data = _map_columns(self.__options.column_mapping, data)
+        data = data.rename_columns(columns)
         schema = pa.schema(
             [
                 ("ts", pa.timestamp("us", "utc")),
@@ -194,11 +196,17 @@ def _map_columns(column_mapping: Dict, data: pa.Table) -> pa.Table:
     if len(column_mapping) == 0:
         return data
 
-    columns = {
-        "series name": data[column_mapping["series name"]],
-        "ts": data[column_mapping["ts"]],
-        "value": data[column_mapping["value"]],
-    }
+    if "series name" in column_mapping:
+        columns = {
+            "series name": data[column_mapping["series name"]],
+            "ts": data[column_mapping["ts"]],
+            "value": data[column_mapping["value"]],
+        }
+    else:
+        columns = {
+            "ts": data[column_mapping["ts"]],
+            "value": data[column_mapping["value"]],
+        }
     if "quality" in column_mapping:
         columns["quality"] = data[column_mapping["quality"]]
 

@@ -39,3 +39,14 @@ path = "tests/test_data/feather/dir_quality"
 metadata_type = "csv"
 metadata = "tests/test_data/csv/dir-metadata.csv"
 quality_mapping = "opc_mapping_ranges"
+
+[source.dir-feather-mapping]
+type = "feather"
+format = "dir"
+path = "tests/test_data/feather/dir_mapping"
+metadata_type = "csv"
+metadata = "tests/test_data/csv/dir-metadata.csv"
+
+[source.dir-feather-mapping.column_mapping]
+"ts" = "timestamp"
+"value" = "value"
