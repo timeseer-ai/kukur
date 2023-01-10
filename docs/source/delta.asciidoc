@@ -58,6 +58,23 @@ when not running on Azure App Service,
 the `IDENTITY_HEADER` environment variable should be set to any value,
 for example `foo`.
 
+=== Column mapping
+
+Accepted by Delta Lake sources that use the row format.
+This configuration allows mapping the columns of the Delta Lake to the
+columns expected by Kukur. This is done by setting the
+`column_mapping` option for the source.
+
+```toml
+[source.<name>.column_mapping]
+"series name" = "name"
+"ts" = "timestamp"
+"value" = "value"
+"quality" = "quality column"
+```
+
+`quality` mapping is optional.
+
 === Row format
 
 ```toml
