@@ -6,6 +6,7 @@
 from typing import Dict
 
 from dateutil.parser import parse as parse_date
+import pytz
 
 import kukur.config
 
@@ -248,11 +249,34 @@ def test_dir_header() -> None:
     assert table["value"][0].as_py() == 1.0
 
 
-def test_dir_header() -> None:
+def test_dir_mapping() -> None:
     table = get_source("dir-mapping").get_data(
         make_series("dir-mapping"), START_DATE, END_DATE
     )
     assert len(table) == 5
     assert table.column_names == ["ts", "value"]
     assert table["ts"][0].as_py() == START_DATE
+    assert table["value"][0].as_py() == 1.0
+
+
+def test_row_timestamp_format() -> None:
+    table = get_source("row_timestamp").get_data(
+        make_series("row_timestamp"), START_DATE, END_DATE
+    )
+    assert len(table) == 5
+    assert table.column_names == ["ts", "value"]
+    start_date = table["ts"][0].as_py()
+    assert start_date == START_DATE
+    assert start_date.tzinfo == pytz.UTC
+    assert table["value"][0].as_py() == 1.0
+
+
+def test_row_timestamp_timezone() -> None:
+    table = get_source("row_timezone").get_data(
+        make_series("row_timezone"), START_DATE, END_DATE
+    )
+    assert len(table) == 5
+    assert table.column_names == ["ts", "value"]
+    start_date = table["ts"][0].as_py()
+    assert start_date == START_DATE
     assert table["value"][0].as_py() == 1.0

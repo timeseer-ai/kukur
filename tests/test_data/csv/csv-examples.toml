@@ -126,3 +126,14 @@ header_row = true
 "series name" = "name"
 "ts" = "timestamp"
 "value" = "value"
+
+[source.row_timestamp]
+type = "csv"
+path = "tests/test_data/csv/row-timestamp.csv"
+timestamp_format = "%Y/%m/%dT%H:%M%z"
+
+[source.row_timezone]
+type = "csv"
+path = "tests/test_data/csv/row-timestamp-tz.csv"
+timestamp_format = "%Y/%m/%dT%H:%M"
+timestamp_timezone = "America/Sao_Paulo"
