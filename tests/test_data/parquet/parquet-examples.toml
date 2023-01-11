@@ -38,3 +38,9 @@ metadata_type = "csv"
 [source.dir-parquet-mapping.column_mapping]
 "ts" = "IP_TREND_TIME"
 "value" = "IP_TREND_VALUE"
+
+[source.row-parquet-ts-string]
+type = "parquet"
+path = "tests/test_data/parquet/row-ts-string.parquet"
+timestamp_format = "%Y/%m/%dT%H:%M"
+timestamp_timezone = "America/Sao_Paulo"

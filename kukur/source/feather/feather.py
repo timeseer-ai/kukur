@@ -25,7 +25,12 @@ from kukur.source.quality import QualityMapper
 def from_config(config: Dict[str, Any], quality_mapper: QualityMapper):
     """Create a new Feather data source from the given configuration dictionary."""
     data_format = config.get("format", "row")
-    options = BaseArrowSourceOptions(data_format, config.get("column_mapping", {}))
+    options = BaseArrowSourceOptions(
+        data_format,
+        config.get("column_mapping", {}),
+        config.get("timestamp_format", None),
+        config.get("timestamp_timezone", None),
+    )
     if "path" not in config:
         raise InvalidSourceException('Feather sources require a "path" entry')
     loader = loader_from_config(config, files_as_path=True)

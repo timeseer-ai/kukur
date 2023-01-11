@@ -29,7 +29,12 @@ def from_config(config: Dict[str, Any], quality_mapper: QualityMapper):
     if "path" not in config:
         raise InvalidSourceException('Parquet sources require a "path" entry')
     data_format = config.get("format", "row")
-    options = BaseArrowSourceOptions(data_format, config.get("column_mapping", {}))
+    options = BaseArrowSourceOptions(
+        data_format,
+        config.get("column_mapping", {}),
+        config.get("timestamp_format", None),
+        config.get("timestamp_timezone", None),
+    )
     return ParquetSource(options, loader, quality_mapper)
 
 

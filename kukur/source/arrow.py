@@ -5,8 +5,10 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Dict, Generator
+from datetime import datetime, timezone
+from typing import Dict, Generator, Optional
+
+import dateutil
 
 import pyarrow as pa
 import pyarrow.compute
@@ -25,6 +27,8 @@ class BaseArrowSourceOptions:
 
     data_format: str
     column_mapping: Dict[str, str]
+    timestamp_format: Optional[str] = None
+    timestamp_timezone: Optional[str] = None
 
 
 class BaseArrowSource(ABC):
@@ -147,6 +151,9 @@ class BaseArrowSource(ABC):
             columns.append("quality")
 
         all_data = self.read_file(self.__loader.open())
+        all_data = _cast_ts_column(
+            all_data, self.__options.timestamp_format, self.__options.timestamp_timezone
+        )
         all_data = _map_columns(self.__options.column_mapping, all_data)
         return all_data.rename_columns(columns)
 
@@ -159,6 +166,9 @@ class BaseArrowSource(ABC):
             self.__loader.open_child(
                 f"{selector.tags['series name']}.{self.get_file_extension()}"
             )
+        )
+        data = _cast_ts_column(
+            data, self.__options.timestamp_format, self.__options.timestamp_timezone
         )
         data = _map_columns(self.__options.column_mapping, data)
         data = data.rename_columns(columns)
@@ -204,3 +214,20 @@ def _map_columns(column_mapping: Dict, data: pa.Table) -> pa.Table:
         columns["quality"] = data[column_mapping["quality"]]
 
     return pa.Table.from_pydict(columns)
+
+
+def _cast_ts_column(
+    data: pa.Table, timestamp_format: Optional[str], timestamp_timezone: Optional[str]
+) -> pa.Table:
+    if timestamp_format is None:
+        return data
+
+    def cast_ts(ts):
+        date = datetime.strptime(str(ts), timestamp_format)
+        return date.replace(
+            tzinfo=dateutil.tz.gettz(timestamp_timezone)
+            if timestamp_timezone is not None
+            else timezone.utc
+        )
+
+    return data.set_column(1, "ts", [[cast_ts(ts) for ts in data["ts"]]])
