@@ -42,5 +42,5 @@ metadata_type = "csv"
 [source.row-parquet-ts-string]
 type = "parquet"
 path = "tests/test_data/parquet/row-ts-string.parquet"
-timestamp_format = "%Y/%m/%dT%H:%M"
-timestamp_timezone = "America/Sao_Paulo"
+data_datetime_format = "%Y/%m/%dT%H:%M"
+data_timezone = "America/Sao_Paulo"

@@ -28,8 +28,8 @@ def from_config(config: Dict[str, Any], quality_mapper: QualityMapper):
     options = BaseArrowSourceOptions(
         data_format,
         config.get("column_mapping", {}),
-        config.get("timestamp_format", None),
-        config.get("timestamp_timezone", None),
+        config.get("data_datetime_format", None),
+        config.get("data_timezone", None),
     )
     if "path" not in config:
         raise InvalidSourceException('Feather sources require a "path" entry')

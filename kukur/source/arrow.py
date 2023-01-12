@@ -27,8 +27,8 @@ class BaseArrowSourceOptions:
 
     data_format: str
     column_mapping: Dict[str, str]
-    timestamp_format: Optional[str] = None
-    timestamp_timezone: Optional[str] = None
+    data_datetime_format: Optional[str] = None
+    data_timezone: Optional[str] = None
 
 
 class BaseArrowSource(ABC):
@@ -152,7 +152,7 @@ class BaseArrowSource(ABC):
 
         all_data = self.read_file(self.__loader.open())
         all_data = _cast_ts_column(
-            all_data, self.__options.timestamp_format, self.__options.timestamp_timezone
+            all_data, self.__options.data_datetime_format, self.__options.data_timezone
         )
         all_data = _map_columns(self.__options.column_mapping, all_data)
         return all_data.rename_columns(columns)
@@ -168,7 +168,7 @@ class BaseArrowSource(ABC):
             )
         )
         data = _cast_ts_column(
-            data, self.__options.timestamp_format, self.__options.timestamp_timezone
+            data, self.__options.data_datetime_format, self.__options.data_timezone
         )
         data = _map_columns(self.__options.column_mapping, data)
         data = data.rename_columns(columns)
@@ -217,16 +217,16 @@ def _map_columns(column_mapping: Dict, data: pa.Table) -> pa.Table:
 
 
 def _cast_ts_column(
-    data: pa.Table, timestamp_format: Optional[str], timestamp_timezone: Optional[str]
+    data: pa.Table, data_datetime_format: Optional[str], data_timezone: Optional[str]
 ) -> pa.Table:
-    if timestamp_format is None:
+    if data_datetime_format is None:
         return data
 
     def cast_ts(ts):
-        date = datetime.strptime(str(ts), timestamp_format)
+        date = datetime.strptime(str(ts), data_datetime_format)
         return date.replace(
-            tzinfo=dateutil.tz.gettz(timestamp_timezone)
-            if timestamp_timezone is not None
+            tzinfo=dateutil.tz.gettz(data_timezone)
+            if data_timezone is not None
             else timezone.utc
         )
 

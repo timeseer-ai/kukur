@@ -54,5 +54,5 @@ metadata = "tests/test_data/csv/dir-metadata.csv"
 [source.row-feather-ts-string]
 type = "feather"
 path = "tests/test_data/feather/row-ts-string.feather"
-timestamp_format = "%Y/%m/%dT%H:%M"
-timestamp_timezone = "America/Sao_Paulo"
+data_datetime_format = "%Y/%m/%dT%H:%M"
+data_timezone = "America/Sao_Paulo"

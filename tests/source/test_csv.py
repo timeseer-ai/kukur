@@ -259,7 +259,7 @@ def test_dir_mapping() -> None:
     assert table["value"][0].as_py() == 1.0
 
 
-def test_row_timestamp_format() -> None:
+def test_row_data_datetime_format() -> None:
     table = get_source("row_timestamp").get_data(
         make_series("row_timestamp"), START_DATE, END_DATE
     )
@@ -271,7 +271,7 @@ def test_row_timestamp_format() -> None:
     assert table["value"][0].as_py() == 1.0
 
 
-def test_row_timestamp_timezone() -> None:
+def test_row_data_timezone() -> None:
     table = get_source("row_timezone").get_data(
         make_series("row_timezone"), START_DATE, END_DATE
     )

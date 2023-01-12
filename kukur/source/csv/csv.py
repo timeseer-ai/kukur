@@ -52,14 +52,14 @@ def from_config(
         loaders.dictionary = loader_from_config(config, "dictionary_dir", "r")
     data_format = config.get("format", "row")
     column_mapping = config.get("column_mapping", {})
-    timestamp_format = config.get("timestamp_format", None)
-    timestamp_timezone = config.get("timestamp_timezone", None)
+    data_datetime_format = config.get("data_datetime_format", None)
+    data_timezone = config.get("data_timezone", None)
     options = CSVSourceOptions(
         data_format,
         config.get("header_row", False),
         column_mapping,
-        timestamp_format,
-        timestamp_timezone,
+        data_datetime_format,
+        data_timezone,
     )
     metadata_fields: List[str] = config.get("metadata_fields", [])
     if len(metadata_fields) == 0:
@@ -93,8 +93,8 @@ class CSVSourceOptions:
     data_format: str
     header_row: bool
     column_mapping: Dict[str, str]
-    timestamp_format: Optional[str] = None
-    timestamp_timezone: Optional[str] = None
+    data_datetime_format: Optional[str] = None
+    data_timezone: Optional[str] = None
 
 
 class CSVSource:
@@ -289,14 +289,14 @@ class CSVSource:
         convert_options = pyarrow.csv.ConvertOptions(
             column_types={timestamp_column: pa.timestamp("us", "utc")},
         )
-        if self.__options.timestamp_format is not None:
+        if self.__options.data_datetime_format is not None:
             column_types = {timestamp_column: pa.timestamp("us", "utc")}
-            if self.__options.timestamp_timezone is not None:
+            if self.__options.data_timezone is not None:
                 column_types = {timestamp_column: pa.timestamp("us")}
 
             convert_options = pyarrow.csv.ConvertOptions(
                 column_types=column_types,
-                timestamp_parsers=[self.__options.timestamp_format],
+                timestamp_parsers=[self.__options.data_datetime_format],
             )
 
         all_data = pyarrow.csv.read_csv(
@@ -305,12 +305,13 @@ class CSVSource:
 
         all_data = _map_columns(self.__options.column_mapping, all_data)
 
-        if self.__options.timestamp_timezone is not None:
+        if self.__options.data_timezone is not None:
+            # pylint: disable=no-member
             all_data = all_data.set_column(
                 1,
                 "ts",
                 pyarrow.compute.assume_timezone(
-                    all_data[timestamp_column], self.__options.timestamp_timezone
+                    all_data[timestamp_column], self.__options.data_timezone
                 ),
             )
         if self.__mappers.quality.is_present():
