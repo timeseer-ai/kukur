@@ -5,10 +5,8 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Dict, Generator, Optional
-
-import dateutil
 
 import pyarrow as pa
 import pyarrow.compute
@@ -222,12 +220,16 @@ def _cast_ts_column(
     if data_datetime_format is None:
         return data
 
-    def cast_ts(ts):
-        date = datetime.strptime(str(ts), data_datetime_format)
-        return date.replace(
-            tzinfo=dateutil.tz.gettz(data_timezone)
-            if data_timezone is not None
-            else timezone.utc
+    # pylint: disable=no-member
+    data = data.set_column(
+        1,
+        "ts",
+        pyarrow.compute.strptime(data["ts"], data_datetime_format, "us"),
+    )
+    if data_timezone is not None:
+        data = data.set_column(
+            1,
+            "ts",
+            pyarrow.compute.assume_timezone(data["ts"], data_timezone),
         )
-
-    return data.set_column(1, "ts", [[cast_ts(ts) for ts in data["ts"]]])
+    return data
