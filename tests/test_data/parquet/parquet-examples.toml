@@ -39,8 +39,8 @@ metadata_type = "csv"
 "ts" = "IP_TREND_TIME"
 "value" = "IP_TREND_VALUE"
 
-[source.row-parquet-ts-string]
+[source.row-parquet-timezone]
 type = "parquet"
-path = "tests/test_data/parquet/row-ts-string.parquet"
+path = "tests/test_data/parquet/row-datetime-tz.parquet"
 data_datetime_format = "%Y/%m/%dT%H:%M"
 data_timezone = "America/Sao_Paulo"

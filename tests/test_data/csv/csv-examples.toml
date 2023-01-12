@@ -127,13 +127,13 @@ header_row = true
 "ts" = "timestamp"
 "value" = "value"
 
-[source.row_timestamp]
+[source.row_datetime]
 type = "csv"
-path = "tests/test_data/csv/row-timestamp.csv"
+path = "tests/test_data/csv/row-datetime.csv"
 data_datetime_format = "%Y/%m/%dT%H:%M%z"
 
 [source.row_timezone]
 type = "csv"
-path = "tests/test_data/csv/row-timestamp-tz.csv"
+path = "tests/test_data/csv/row-datetime-tz.csv"
 data_datetime_format = "%Y/%m/%dT%H:%M"
 data_timezone = "America/Sao_Paulo"

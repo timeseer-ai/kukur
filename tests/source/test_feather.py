@@ -136,9 +136,9 @@ def test_dir_map_columns():
     assert table["value"][0].as_py() == 1.0
 
 
-def test_row_ts_string():
-    table = get_source("row-feather-ts-string").get_data(
-        make_series("row-feather-ts-string"), START_DATE, END_DATE
+def test_row_data_timezone():
+    table = get_source("row-feather-timezone").get_data(
+        make_series("row-feather-timezone"), START_DATE, END_DATE
     )
     assert len(table) == 5
     start_date = table["ts"][0].as_py()

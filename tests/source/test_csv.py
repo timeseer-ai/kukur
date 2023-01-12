@@ -260,8 +260,8 @@ def test_dir_mapping() -> None:
 
 
 def test_row_data_datetime_format() -> None:
-    table = get_source("row_timestamp").get_data(
-        make_series("row_timestamp"), START_DATE, END_DATE
+    table = get_source("row_datetime").get_data(
+        make_series("row_datetime"), START_DATE, END_DATE
     )
     assert len(table) == 5
     assert table.column_names == ["ts", "value"]
