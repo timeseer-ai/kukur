@@ -136,6 +136,15 @@ def test_dir_map_columns():
     assert table["value"][0].as_py() == 1.0
 
 
+def test_row_data_datetime_format():
+    table = get_source("row-feather-datetime").get_data(
+        make_series("row-feather-datetime"), START_DATE, END_DATE
+    )
+    assert len(table) == 5
+    start_date = table["ts"][0].as_py()
+    assert start_date == START_DATE
+
+
 def test_row_data_timezone():
     table = get_source("row-feather-timezone").get_data(
         make_series("row-feather-timezone"), START_DATE, END_DATE

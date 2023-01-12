@@ -51,6 +51,11 @@ metadata = "tests/test_data/csv/dir-metadata.csv"
 "ts" = "timestamp"
 "value" = "value"
 
+[source.row-feather-datetime]
+type = "feather"
+path = "tests/test_data/feather/row-datetime.feather"
+data_datetime_format = "%Y/%m/%dT%H:%M%z"
+
 [source.row-feather-timezone]
 type = "feather"
 path = "tests/test_data/feather/row-datetime-tz.feather"
