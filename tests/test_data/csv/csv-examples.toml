@@ -127,6 +127,32 @@ header_row = true
 "ts" = "timestamp"
 "value" = "value"
 
+[source.dir_datetime]
+type = "csv"
+path = "tests/test_data/csv/dir_datetime"
+format = "dir"
+data_datetime_format = "%Y/%m/%dT%H:%M%z"
+
+[source.dir_timezone]
+type = "csv"
+path = "tests/test_data/csv/dir_datetime_tz"
+format = "dir"
+data_datetime_format = "%Y/%m/%dT%H:%M"
+data_timezone = "America/Sao_Paulo"
+
+[source.pivot_datetime]
+type = "csv"
+path = "tests/test_data/csv/pivot-datetime.csv"
+format = "pivot"
+data_datetime_format = "%Y/%m/%dT%H:%M%z"
+
+[source.pivot_timezone]
+type = "csv"
+path = "tests/test_data/csv/pivot-datetime-tz.csv"
+format = "pivot"
+data_datetime_format = "%Y/%m/%dT%H:%M"
+data_timezone = "America/Sao_Paulo"
+
 [source.row_datetime]
 type = "csv"
 path = "tests/test_data/csv/row-datetime.csv"

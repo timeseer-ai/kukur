@@ -39,6 +39,32 @@ metadata_type = "csv"
 "ts" = "IP_TREND_TIME"
 "value" = "IP_TREND_VALUE"
 
+[source.dir-parquet-datetime]
+type = "parquet"
+path = "tests/test_data/parquet/dir_datetime"
+format = "dir"
+data_datetime_format = "%Y/%m/%dT%H:%M%z"
+
+[source.dir-parquet-timezone]
+type = "parquet"
+path = "tests/test_data/parquet/dir_datetime_tz"
+format = "dir"
+data_datetime_format = "%Y/%m/%dT%H:%M"
+data_timezone = "America/Sao_Paulo"
+
+[source.pivot-parquet-datetime]
+type = "parquet"
+path = "tests/test_data/parquet/pivot-datetime.parquet"
+format = "pivot"
+data_datetime_format = "%Y/%m/%dT%H:%M%z"
+
+[source.pivot-parquet-timezone]
+type = "parquet"
+path = "tests/test_data/parquet/pivot-datetime-tz.parquet"
+format = "pivot"
+data_datetime_format = "%Y/%m/%dT%H:%M"
+data_timezone = "America/Sao_Paulo"
+
 [source.row-parquet-datetime]
 type = "parquet"
 path = "tests/test_data/parquet/row-datetime.parquet"

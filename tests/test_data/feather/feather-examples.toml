@@ -51,6 +51,32 @@ metadata = "tests/test_data/csv/dir-metadata.csv"
 "ts" = "timestamp"
 "value" = "value"
 
+[source.dir-feather-datetime]
+type = "feather"
+path = "tests/test_data/feather/dir_datetime"
+format = "dir"
+data_datetime_format = "%Y/%m/%dT%H:%M%z"
+
+[source.dir-feather-timezone]
+type = "feather"
+path = "tests/test_data/feather/dir_datetime_tz"
+format = "dir"
+data_datetime_format = "%Y/%m/%dT%H:%M"
+data_timezone = "America/Sao_Paulo"
+
+[source.pivot-feather-datetime]
+type = "feather"
+format = "pivot"
+path = "tests/test_data/feather/pivot-datetime.feather"
+data_datetime_format = "%Y/%m/%dT%H:%M%z"
+
+[source.pivot-feather-timezone]
+type = "feather"
+format = "pivot"
+path = "tests/test_data/feather/pivot-datetime-tz.feather"
+data_datetime_format = "%Y/%m/%dT%H:%M"
+data_timezone = "America/Sao_Paulo"
+
 [source.row-feather-datetime]
 type = "feather"
 path = "tests/test_data/feather/row-datetime.feather"
