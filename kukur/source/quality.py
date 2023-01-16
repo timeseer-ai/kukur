@@ -6,6 +6,9 @@
 from enum import Enum
 from typing import Any, Dict, List, Union
 
+import pyarrow as pa
+import pyarrow.compute as pc
+
 
 class Quality(Enum):
     """Enumeration of possible Kukur quality flags."""
@@ -53,6 +56,13 @@ class QualityMapper:
         if source_quality_value in self.__good_mapping:
             return Quality.GOOD.value
         return Quality.BAD.value
+
+    def map_array(self, array: pa.Array) -> pa.Array:
+        """Use the given quality mapping to convert the values in the array to GOOD or BAD."""
+        good = pa.scalar(Quality.GOOD.value, pa.int8())
+        bad = pa.scalar(Quality.BAD.value, pa.int8())
+        # pylint: disable=no-member
+        return pc.if_else(pc.is_in(array, pa.array(self.__good_mapping)), good, bad)
 
     def is_present(self) -> bool:
         """Check if there is a quality mapping present."""

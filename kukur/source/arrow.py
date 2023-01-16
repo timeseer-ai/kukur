@@ -130,9 +130,8 @@ class BaseArrowSource(ABC):
         )
         if self.__quality_mapper.is_present():
             schema = schema.append(pa.field("quality", pa.int8()))
-            kukur_quality_values = self._map_quality(all_data["quality"])
             all_data = all_data.set_column(
-                3, "quality", pa.array(kukur_quality_values, type=pa.int8())
+                3, "quality", self._map_quality(all_data["quality"])
             )
 
         # pylint: disable=no-member
@@ -171,17 +170,11 @@ class BaseArrowSource(ABC):
         )
         if self.__quality_mapper.is_present():
             schema = schema.append(pa.field("quality", pa.int8()))
-            kukur_quality_values = self._map_quality(data["quality"])
-            data = data.set_column(
-                2, "quality", pa.array(kukur_quality_values, type=pa.int8())
-            )
+            data = data.set_column(2, "quality", self._map_quality(data["quality"]))
         return data.cast(schema)
 
-    def _map_quality(self, quality_data: pa.array) -> pa.Table:
-        return [
-            self.__quality_mapper.from_source(source_quality_value.as_py())
-            for source_quality_value in quality_data
-        ]
+    def _map_quality(self, quality_data: pa.Array) -> pa.Array:
+        return self.__quality_mapper.map_array(quality_data)
 
 
 def _get_value_schema_type(data: pa.Table):
