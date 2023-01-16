@@ -31,9 +31,10 @@ metadata_type = "csv"
 === Column mapping
 
 Accepted by Apache Parquet sources that use the row based or directory based
-data models. This configuration allows mapping the columns of tables read from
-parquet files to the columns expected by Kukur. This is done by setting the
-`column_mapping` option for the source.
+data models.
+This configuration allows mapping the columns of tables read from parquet
+files to the columns expected by Kukur.
+This is done by setting the `column_mapping` option for the source.
 
 ```toml
 [source.<name>.column_mapping]
@@ -43,9 +44,8 @@ parquet files to the columns expected by Kukur. This is done by setting the
 "quality" = "quality column"
 ```
 
-`series name` is only valid for the `row` format, as
-the directory data model uses the parquet file names as the
-series names.
+`series name` is only valid for the `row` format,
+as the directory data model uses the parquet file names as the series names.
 
 `quality` mapping is optional.
 

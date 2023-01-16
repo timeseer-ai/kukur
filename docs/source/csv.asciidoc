@@ -46,9 +46,8 @@ This is done by setting the `column_mapping` option for the source.
 "quality" = "quality column"
 ```
 
-`series name` is only valid for the `row` format, as
-the directory data model uses the CSV file names as the
-series names.
+`series name` is only valid for the `row` format,
+as the directory data model uses the CSV file names as the series names.
 
 `quality` mapping is optional.
 
