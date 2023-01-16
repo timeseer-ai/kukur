@@ -34,8 +34,9 @@ Three CSV data models are supported:
 === Column mapping
 
 Accepted by CSV sources that use the row based or directory based data models
-and where the files contain a header row. This configuration allows mapping
-the columns from CSV files to the columns expected by Kukur.
+and where the files contain a header row.
+This configuration allows mapping the columns from CSV files to the columns
+expected by Kukur.
 This is done by setting the `column_mapping` option for the source.
 
 ```toml
