@@ -14,7 +14,7 @@ import csv
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, Generator, List, Optional
+from typing import Any, Dict, Generator, List, Optional, Union
 
 import pyarrow as pa
 import pyarrow.csv
@@ -51,11 +51,15 @@ def from_config(
     if "dictionary_dir" in config:
         loaders.dictionary = loader_from_config(config, "dictionary_dir", "r")
     data_format = config.get("format", "row")
+    column_mapping = config.get("column_mapping", {})
+    options = CSVSourceOptions(
+        data_format, config.get("header_row", False), column_mapping
+    )
     metadata_fields: List[str] = config.get("metadata_fields", [])
     if len(metadata_fields) == 0:
         metadata_fields = config.get("fields", [])
     mappers = CSVMappers(metadata_mapper, metadata_value_mapper, quality_mapper)
-    return CSVSource(data_format, metadata_fields, loaders, mappers)
+    return CSVSource(options, metadata_fields, loaders, mappers)
 
 
 @dataclass
@@ -76,17 +80,26 @@ class CSVMappers:
     quality: QualityMapper
 
 
+@dataclass
+class CSVSourceOptions:
+    """Options for a CSV source."""
+
+    data_format: str
+    header_row: bool
+    column_mapping: Dict[str, str]
+
+
 class CSVSource:
     """A CSV data source."""
 
     __loaders: CSVLoaders
-    __data_format: str
+    __options: CSVSourceOptions
     __metadata_fields: List[str]
     __mappers: CSVMappers
 
     def __init__(
         self,
-        data_format: str,
+        options: CSVSourceOptions,
         metadata_fields: List[str],
         loaders: CSVLoaders,
         mappers: CSVMappers,
@@ -94,12 +107,15 @@ class CSVSource:
         """Create a new CSV data source."""
         self.__loaders = loaders
         self.__metadata_fields = metadata_fields
-        self.__data_format = data_format
+        self.__options = options
         self.__mappers = mappers
 
-    def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
+    def search(
+        self, selector: SeriesSearch
+    ) -> Generator[Union[Metadata, SeriesSelector], None, None]:
         """Search for series matching the given selector."""
         if self.__loaders.metadata is None:
+            yield from self._search_in_data(selector)
             return
         with self.__loaders.metadata.open() as metadata_file:
             reader = csv.DictReader(metadata_file)
@@ -210,39 +226,72 @@ class CSVSource:
         before = pyarrow.compute.less(data["ts"], pa.scalar(end_date))
         return data.filter(pyarrow.compute.and_(on_or_after, before))
 
+    def _search_in_data(
+        self, search: SeriesSearch
+    ) -> Generator[SeriesSelector, None, None]:
+        if self.__loaders.data is None:
+            return
+
+        if self.__options.data_format == "row":
+            yield from self._search_row(self.__loaders.data, search)
+        elif self.__options.data_format == "pivot":
+            yield from _search_pivot(self.__loaders.data, search)
+
+    def _search_row(
+        self, loader: Loader, search: SeriesSearch
+    ) -> Generator[SeriesSelector, None, None]:
+        all_data = self._open_row_data(loader)
+        # pylint: disable=no-member
+        for name in pyarrow.compute.unique(all_data["series name"]):
+            yield SeriesSelector(search.source, name.as_py())
+
     def __read_all_data(self, selector: SeriesSelector) -> pa.Table:
         if self.__loaders.data is None:
             raise InvalidSourceException("No data path configured.")
-        if self.__data_format == "pivot":
+        if self.__options.data_format == "pivot":
             return _read_pivot_data(self.__loaders.data, selector)
 
-        if self.__data_format == "dir":
+        if self.__options.data_format == "dir":
             return self._read_directory_data(self.__loaders.data, selector)
 
         return self._read_row_data(self.__loaders.data, selector)
 
     def _read_row_data(self, loader: Loader, selector: SeriesSelector) -> pa.Table:
-        columns = ["series name", "ts", "value"]
-        if self.__mappers.quality.is_present():
-            columns.append("quality")
-        read_options = pyarrow.csv.ReadOptions(column_names=columns)
-        convert_options = pyarrow.csv.ConvertOptions(
-            column_types={"ts": pa.timestamp("us", "utc")},
-        )
-        all_data = pyarrow.csv.read_csv(
-            loader.open(), read_options=read_options, convert_options=convert_options
-        )
-        if self.__mappers.quality.is_present():
-            kukur_quality_values = self._map_quality(all_data["quality"])
-            all_data = all_data.set_column(
-                3, "quality", pa.array(kukur_quality_values, type=pa.int8())
-            )
-
+        all_data = self._open_row_data(loader)
         # pylint: disable=no-member
         data = all_data.filter(
             pyarrow.compute.equal(all_data["series name"], pa.scalar(selector.name))
         )
         return data.drop(["series name"])
+
+    def _open_row_data(self, loader: Loader) -> pa.Table:
+        columns = ["series name", "ts", "value"]
+        timestamp_column = "ts"
+        if "ts" in self.__options.column_mapping:
+            timestamp_column = self.__options.column_mapping["ts"]
+
+        if self.__mappers.quality.is_present():
+            columns.append("quality")
+
+        if not self.__options.header_row:
+            read_options = pyarrow.csv.ReadOptions(column_names=columns)
+        else:
+            read_options = pyarrow.csv.ReadOptions()
+
+        convert_options = pyarrow.csv.ConvertOptions(
+            column_types={timestamp_column: pa.timestamp("us", "utc")},
+        )
+        all_data = pyarrow.csv.read_csv(
+            loader.open(), read_options=read_options, convert_options=convert_options
+        )
+        all_data = _map_columns(self.__options.column_mapping, all_data)
+
+        if self.__mappers.quality.is_present():
+            kukur_quality_values = self._map_quality(all_data["quality"])
+            all_data = all_data.set_column(
+                3, "quality", pa.array(kukur_quality_values, type=pa.int8())
+            )
+        return all_data
 
     def _read_directory_data(
         self, loader: Loader, selector: SeriesSelector
@@ -250,7 +299,10 @@ class CSVSource:
         columns = ["ts", "value"]
         if self.__mappers.quality.is_present():
             columns.append("quality")
-        read_options = pyarrow.csv.ReadOptions(column_names=columns)
+        if not self.__options.header_row:
+            read_options = pyarrow.csv.ReadOptions(column_names=columns)
+        else:
+            read_options = pyarrow.csv.ReadOptions()
         convert_options = pyarrow.csv.ConvertOptions(
             column_types={"ts": pa.timestamp("us", "utc")},
         )
@@ -259,6 +311,7 @@ class CSVSource:
             read_options=read_options,
             convert_options=convert_options,
         )
+        all_data = _map_columns(self.__options.column_mapping, all_data)
         if self.__mappers.quality.is_present():
             kukur_quality_values = self._map_quality(all_data["quality"])
             return all_data.set_column(
@@ -271,6 +324,32 @@ class CSVSource:
             self.__mappers.quality.from_source(source_quality_value.as_py())
             for source_quality_value in quality_data
         ]
+
+
+def _map_columns(column_mapping: Dict[str, str], data: pa.Table) -> pa.Table:
+    if len(column_mapping) == 0:
+        return data
+
+    columns = {
+        "ts": data[column_mapping["ts"]],
+        "value": data[column_mapping["value"]],
+    }
+
+    if "series name" in column_mapping:
+        columns["series name"] = data[column_mapping["series name"]]
+
+    if "quality" in column_mapping:
+        columns["quality"] = data[column_mapping["quality"]]
+
+    return pa.Table.from_pydict(columns)
+
+
+def _search_pivot(
+    loader: Loader, search: SeriesSearch
+) -> Generator[SeriesSelector, None, None]:
+    all_data = pyarrow.csv.read_csv(loader.open())
+    for name in all_data.column_names[1:]:
+        yield SeriesSelector(search.source, name)
 
 
 def _read_pivot_data(loader: Loader, selector: SeriesSelector) -> pa.Table:

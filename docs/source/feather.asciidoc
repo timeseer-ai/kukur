@@ -28,6 +28,28 @@ For example:
 metadata_type = "csv"
 ```
 
+=== Column mapping
+
+Accepted by Apache Feather sources that use the row based or directory based
+data models.
+This configuration allows mapping the columns of tables read from feather
+files to the columns expected by Kukur.
+This is done by setting the `column_mapping` option for the source.
+
+```toml
+[source.<name>.column_mapping]
+"series name" = "name"
+"ts" = "timestamp"
+"value" = "value"
+"quality" = "quality column"
+```
+
+`series name` is only valid for the `row` format,
+as the directory data model uses the feather file names as the
+series names.
+
+`quality` mapping is optional.
+
 === Row format
 
 ```toml

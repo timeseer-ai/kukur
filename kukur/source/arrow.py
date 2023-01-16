@@ -4,8 +4,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Generator
+from typing import Dict, Generator
 
 import pyarrow as pa
 import pyarrow.compute
@@ -18,17 +19,25 @@ from kukur.loader import Loader
 from kukur.source.quality import QualityMapper
 
 
+@dataclass
+class BaseArrowSourceOptions:
+    """Options for a BaseArrowSource."""
+
+    data_format: str
+    column_mapping: Dict[str, str]
+
+
 class BaseArrowSource(ABC):
     """Base class for pyarrow file format data sources."""
 
     __loader: Loader
-    __data_format: str
+    __options: BaseArrowSourceOptions
     __quality_mapper: QualityMapper
     __sort_by_timestamp: bool = False
 
     def __init__(
         self,
-        data_format: str,
+        options: BaseArrowSourceOptions,
         loader: Loader,
         quality_mapper: QualityMapper,
         *,
@@ -36,7 +45,7 @@ class BaseArrowSource(ABC):
     ):
         """Create a new data source."""
         self.__loader = loader
-        self.__data_format = data_format
+        self.__options = options
         self.__quality_mapper = quality_mapper
         self.__sort_by_timestamp = sort_by_timestamp
 
@@ -50,8 +59,13 @@ class BaseArrowSource(ABC):
         """Return the file extension for the supported pyarrow format."""
         ...
 
-    def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
-        """ArrowSource does not support searching for time series."""
+    def search(self, selector: SeriesSearch) -> Generator[SeriesSelector, None, None]:
+        """Detect series in the data."""
+        if self.__options.data_format == "pivot":
+            yield from self._search_pivot(selector.source)
+
+        if self.__options.data_format == "row":
+            yield from self._search_row(selector.source)
 
     # pylint: disable=no-self-use
     def get_metadata(self, selector: SeriesSelector) -> Metadata:
@@ -74,13 +88,18 @@ class BaseArrowSource(ABC):
         return data.filter(pyarrow.compute.and_(on_or_after, before))
 
     def __read_all_data(self, selector: SeriesSelector) -> pa.Table:
-        if self.__data_format == "pivot":
+        if self.__options.data_format == "pivot":
             return self._read_pivot_data(selector)
 
-        if self.__data_format == "dir":
+        if self.__options.data_format == "dir":
             return self._read_directory_data(selector)
 
         return self._read_row_data(selector)
+
+    def _search_pivot(self, source_name: str) -> Generator[SeriesSelector, None, None]:
+        all_data = self.read_file(self.__loader.open())
+        for name in all_data.column_names[1:]:
+            yield SeriesSelector(source_name, name)
 
     def _read_pivot_data(self, selector: SeriesSelector) -> pa.Table:
         all_data = self.read_file(self.__loader.open())
@@ -95,12 +114,14 @@ class BaseArrowSource(ABC):
         )
         return data.cast(schema)
 
-    def _read_row_data(self, selector: SeriesSelector) -> pa.Table:
-        columns = ["series name", "ts", "value"]
-        if self.__quality_mapper.is_present():
-            columns.append("quality")
+    def _search_row(self, source_name: str) -> Generator[SeriesSelector, None, None]:
+        all_data = self._load_row_data()
+        # pylint: disable=no-member
+        for name in pyarrow.compute.unique(all_data["series name"]):
+            yield SeriesSelector(source_name, name.as_py())
 
-        all_data = self.read_file(self.__loader.open()).rename_columns(columns)
+    def _read_row_data(self, selector: SeriesSelector) -> pa.Table:
+        all_data = self._load_row_data()
         schema = pa.schema(
             [
                 ("ts", pa.timestamp("us", "utc")),
@@ -121,6 +142,15 @@ class BaseArrowSource(ABC):
 
         return data.cast(schema)
 
+    def _load_row_data(self) -> pa.Table:
+        columns = ["series name", "ts", "value"]
+        if self.__quality_mapper.is_present():
+            columns.append("quality")
+
+        all_data = self.read_file(self.__loader.open())
+        all_data = _map_columns(self.__options.column_mapping, all_data)
+        return all_data.rename_columns(columns)
+
     def _read_directory_data(self, selector: SeriesSelector) -> pa.Table:
         columns = ["ts", "value"]
         if self.__quality_mapper.is_present():
@@ -130,7 +160,9 @@ class BaseArrowSource(ABC):
             self.__loader.open_child(
                 f"{selector.tags['series name']}.{self.get_file_extension()}"
             )
-        ).rename_columns(columns)
+        )
+        data = _map_columns(self.__options.column_mapping, data)
+        data = data.rename_columns(columns)
         schema = pa.schema(
             [
                 ("ts", pa.timestamp("us", "utc")),
@@ -158,3 +190,24 @@ def _get_value_schema_type(data: pa.Table):
         if pyarrow.types.is_string(data["value"][0].type):
             value_type = pa.string()
     return value_type
+
+
+def _map_columns(column_mapping: Dict, data: pa.Table) -> pa.Table:
+    if len(column_mapping) == 0:
+        return data
+
+    if "series name" in column_mapping:
+        columns = {
+            "series name": data[column_mapping["series name"]],
+            "ts": data[column_mapping["ts"]],
+            "value": data[column_mapping["value"]],
+        }
+    else:
+        columns = {
+            "ts": data[column_mapping["ts"]],
+            "value": data[column_mapping["value"]],
+        }
+    if "quality" in column_mapping:
+        columns["quality"] = data[column_mapping["quality"]]
+
+    return pa.Table.from_pydict(columns)

@@ -1,8 +1,6 @@
 [source.row-parquet]
 type = "parquet"
 path = "tests/test_data/parquet/row.parquet"
-metadata_type = "csv"
-metadata = "tests/test_data/csv/row-metadata.csv"
 
 [source.dir-parquet]
 type = "parquet"
@@ -15,8 +13,6 @@ metadata = "tests/test_data/csv/dir-metadata.csv"
 type = "parquet"
 format = "pivot"
 path = "tests/test_data/parquet/pivot.parquet"
-metadata_type = "csv"
-metadata = "tests/test_data/csv/pivot-metadata.csv"
 
 [source.row-parquet-quality]
 type = "parquet"
@@ -32,3 +28,13 @@ path = "tests/test_data/parquet/dir_quality"
 metadata_type = "csv"
 metadata = "tests/test_data/csv/dir-metadata.csv"
 quality_mapping = "opc_mapping_ranges"
+
+[source.dir-parquet-mapping]
+type = "parquet"
+format = "dir"
+path = "tests/test_data/parquet/dir_mapping"
+metadata_type = "csv"
+
+[source.dir-parquet-mapping.column_mapping]
+"ts" = "IP_TREND_TIME"
+"value" = "IP_TREND_VALUE"

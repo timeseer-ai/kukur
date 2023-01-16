@@ -10,7 +10,7 @@ Three formats are supported:
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Dict
+from typing import Any, Dict
 
 import pyarrow as pa
 
@@ -18,17 +18,18 @@ from pyarrow import feather
 
 from kukur.exceptions import InvalidSourceException
 from kukur.loader import from_config as loader_from_config
-from kukur.source.arrow import BaseArrowSource
+from kukur.source.arrow import BaseArrowSource, BaseArrowSourceOptions
 from kukur.source.quality import QualityMapper
 
 
-def from_config(config: Dict[str, str], quality_mapper: QualityMapper):
+def from_config(config: Dict[str, Any], quality_mapper: QualityMapper):
     """Create a new Feather data source from the given configuration dictionary."""
     data_format = config.get("format", "row")
+    options = BaseArrowSourceOptions(data_format, config.get("column_mapping", {}))
     if "path" not in config:
         raise InvalidSourceException('Feather sources require a "path" entry')
     loader = loader_from_config(config, files_as_path=True)
-    return FeatherSource(data_format, loader, quality_mapper)
+    return FeatherSource(options, loader, quality_mapper)
 
 
 class FeatherSource(BaseArrowSource):

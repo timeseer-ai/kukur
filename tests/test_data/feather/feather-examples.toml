@@ -1,8 +1,6 @@
 [source.row-feather]
 type = "feather"
 path = "tests/test_data/feather/row.feather"
-metadata_type = "csv"
-metadata = "tests/test_data/csv/row-metadata.csv"
 
 [source.dir-feather]
 type = "feather"
@@ -15,8 +13,6 @@ metadata = "tests/test_data/csv/dir-metadata.csv"
 type = "feather"
 format = "pivot"
 path = "tests/test_data/feather/pivot.feather"
-metadata_type = "csv"
-metadata = "tests/test_data/csv/pivot-metadata.csv"
 
 [source.row-feather-quality]
 type = "feather"
@@ -25,6 +21,17 @@ metadata_type = "csv"
 metadata = "tests/test_data/csv/row-metadata.csv"
 quality_mapping = "opc_mapping_strings"
 
+[source.row-feather-map-columns]
+type = "feather"
+path = "tests/test_data/feather/row-map-columns.feather"
+metadata_type = "csv"
+metadata = "tests/test_data/csv/row-metadata.csv"
+
+[source.row-feather-map-columns.column_mapping]
+"series name" = "name"
+"ts" = "timestamp"
+"value" = "value"
+
 [source.dir-feather-quality]
 type = "feather"
 format = "dir"
@@ -32,3 +39,14 @@ path = "tests/test_data/feather/dir_quality"
 metadata_type = "csv"
 metadata = "tests/test_data/csv/dir-metadata.csv"
 quality_mapping = "opc_mapping_ranges"
+
+[source.dir-feather-mapping]
+type = "feather"
+format = "dir"
+path = "tests/test_data/feather/dir_mapping"
+metadata_type = "csv"
+metadata = "tests/test_data/csv/dir-metadata.csv"
+
+[source.dir-feather-mapping.column_mapping]
+"ts" = "timestamp"
+"value" = "value"

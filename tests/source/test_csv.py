@@ -13,6 +13,7 @@ from kukur import (
     DataType,
     Dictionary,
     InterpolationType,
+    SeriesSearch,
     SeriesSelector,
     Source,
 )
@@ -59,6 +60,12 @@ def test_dir_quality() -> None:
     assert table["quality"][3].as_py() == 1
 
 
+def test_search_row() -> None:
+    series = list(get_source("row_no_metadata").search(SeriesSearch("row_no_metadata")))
+    assert len(series) == 5
+    assert SeriesSelector("row_no_metadata", "test-tag-1") in series
+
+
 def test_row() -> None:
     table = get_source("row").get_data(make_series("row"), START_DATE, END_DATE)
     assert len(table) == 5
@@ -77,6 +84,14 @@ def test_row_quality() -> None:
     assert table["value"][0].as_py() == 1.0
     assert table["quality"][0].as_py() == 1
     assert table["quality"][2].as_py() == 0
+
+
+def test_search_pivot() -> None:
+    series = list(
+        get_source("pivot_no_metadata").search(SeriesSearch("pivot_no_metadata"))
+    )
+    assert len(series) == 2
+    assert SeriesSelector("pivot_no_metadata", "test-tag-1") in series
 
 
 def test_pivot() -> None:
@@ -201,3 +216,43 @@ def test_metadata_with_different_encoding() -> None:
     assert metadata.get_field(fields.Unit) == "°C"
     assert metadata.get_field(fields.LimitLowFunctional) == 0
     assert metadata.get_field(fields.InterpolationType) == InterpolationType.LINEAR
+
+
+def test_row_format_with_header() -> None:
+    table = get_source("row_header").get_data(
+        make_series("row_header"), START_DATE, END_DATE
+    )
+    assert len(table) == 5
+    assert table.column_names == ["ts", "value"]
+    assert table["ts"][0].as_py() == START_DATE
+    assert table["value"][0].as_py() == 1.0
+
+
+def test_row_column_mapping() -> None:
+    table = get_source("row_column_mapping").get_data(
+        make_series("row_column_mapping"), START_DATE, END_DATE
+    )
+    assert len(table) == 5
+    assert table.column_names == ["ts", "value"]
+    assert table["ts"][0].as_py() == START_DATE
+    assert table["value"][0].as_py() == 1.0
+
+
+def test_dir_header() -> None:
+    table = get_source("dir-header").get_data(
+        make_series("dir-header"), START_DATE, END_DATE
+    )
+    assert len(table) == 5
+    assert table.column_names == ["ts", "value"]
+    assert table["ts"][0].as_py() == START_DATE
+    assert table["value"][0].as_py() == 1.0
+
+
+def test_dir_header() -> None:
+    table = get_source("dir-mapping").get_data(
+        make_series("dir-mapping"), START_DATE, END_DATE
+    )
+    assert len(table) == 5
+    assert table.column_names == ["ts", "value"]
+    assert table["ts"][0].as_py() == START_DATE
+    assert table["value"][0].as_py() == 1.0

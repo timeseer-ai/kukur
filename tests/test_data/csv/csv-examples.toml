@@ -4,6 +4,10 @@ path = "tests/test_data/csv/row.csv"
 metadata = "tests/test_data/csv/row-metadata.csv"
 dictionary_dir = "tests/test_data/csv/dictionary"
 
+[source.row_no_metadata]
+type = "csv"
+path = "tests/test_data/csv/row.csv"
+
 [source.row_quality]
 type = "csv"
 path = "tests/test_data/csv/row-quality.csv"
@@ -24,6 +28,11 @@ path = "tests/test_data/csv/pivot.csv"
 metadata = "tests/test_data/csv/pivot-metadata.csv"
 format = "pivot"
 
+[source.pivot_no_metadata]
+type = "csv"
+path = "tests/test_data/csv/pivot.csv"
+format = "pivot"
+
 [source.dir]
 type = "csv"
 path = "tests/test_data/csv/dir"
@@ -36,6 +45,24 @@ path = "tests/test_data/csv/dir_quality"
 metadata = "tests/test_data/csv/dir-metadata.csv"
 format = "dir"
 quality_mapping = "opc_mapping_ranges"
+
+[source.dir-header]
+type = "csv"
+path = "tests/test_data/csv/dir_header"
+metadata = "tests/test_data/csv/dir-metadata.csv"
+format = "dir"
+header_row = true
+
+[source.dir-mapping]
+type = "csv"
+path = "tests/test_data/csv/dir_mapping"
+metadata = "tests/test_data/csv/dir-metadata.csv"
+format = "dir"
+header_row = true
+
+[source.dir-mapping.column_mapping]
+"ts" = "timestamp"
+"value" = "header_value"
 
 [source.custom-fields-simple]
 type = "csv"
@@ -84,3 +111,18 @@ location = "loc"
 
 [metadata_value_mapping.custom."process type"]
 BATCH = "batch"
+
+[source.row_header]
+type = "csv"
+path = "tests/test_data/csv/row-header.csv"
+header_row = true
+
+[source.row_column_mapping]
+type = "csv"
+path = "tests/test_data/csv/row-column-mapping.csv"
+header_row = true
+
+[source.row_column_mapping.column_mapping]
+"series name" = "name"
+"ts" = "timestamp"
+"value" = "value"
