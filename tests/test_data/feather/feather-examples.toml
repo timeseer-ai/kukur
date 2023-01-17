@@ -87,3 +87,12 @@ type = "feather"
 path = "tests/test_data/feather/row-datetime-naive.feather"
 data_datetime_format = "%Y/%m/%dT%H:%M"
 data_timezone = "America/Sao_Paulo"
+
+[source.row-feather-timestamp]
+type = "feather"
+path = "tests/test_data/feather/row-timestamp.feather"
+
+[source.row-feather-timestamp-naive]
+type = "feather"
+path = "tests/test_data/feather/row-timestamp-naive.feather"
+data_timezone = "America/Sao_Paulo"

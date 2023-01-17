@@ -75,3 +75,12 @@ type = "parquet"
 path = "tests/test_data/parquet/row-datetime-naive.parquet"
 data_datetime_format = "%Y/%m/%dT%H:%M"
 data_timezone = "America/Sao_Paulo"
+
+[source.row-parquet-timestamp]
+type = "parquet"
+path = "tests/test_data/parquet/row-timestamp.parquet"
+
+[source.row-parquet-timestamp-naive]
+type = "parquet"
+path = "tests/test_data/parquet/row-timestamp-naive.parquet"
+data_timezone = "America/Sao_Paulo"

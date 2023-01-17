@@ -221,16 +221,15 @@ def _map_columns(column_mapping: Dict, data: pa.Table) -> pa.Table:
 def _cast_ts_column(
     data: pa.Table, data_datetime_format: Optional[str], data_timezone: Optional[str]
 ) -> pa.Table:
-    if data_datetime_format is None:
-        return data
-
-    # pylint: disable=no-member
-    data = data.set_column(
-        data.column_names.index("ts"),
-        "ts",
-        pyarrow.compute.strptime(data["ts"], data_datetime_format, "us"),
-    )
+    if data_datetime_format is not None:
+        # pylint: disable=no-member
+        data = data.set_column(
+            data.column_names.index("ts"),
+            "ts",
+            pyarrow.compute.strptime(data["ts"], data_datetime_format, "us"),
+        )
     if data_timezone is not None:
+        # pylint: disable=no-member
         data = data.set_column(
             data.column_names.index("ts"),
             "ts",

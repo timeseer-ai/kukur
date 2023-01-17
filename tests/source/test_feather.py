@@ -194,3 +194,23 @@ def test_row_data_timezone():
     start_date = table["ts"][0].as_py()
     assert start_date == START_DATE
     assert start_date.tzinfo == pytz.UTC
+
+
+def test_row_timestamp():
+    table = get_source("row-feather-timestamp").get_data(
+        make_series("row-feather-timestamp"), START_DATE, END_DATE
+    )
+    assert len(table) == 5
+    start_date = table["ts"][0].as_py()
+    assert start_date == START_DATE
+    assert start_date.tzinfo == pytz.UTC
+
+
+def test_row_data_timezone_timestamp_naive():
+    table = get_source("row-feather-timestamp-naive").get_data(
+        make_series("row-feather-timestamp-naive"), START_DATE, END_DATE
+    )
+    assert len(table) == 5
+    start_date = table["ts"][0].as_py()
+    assert start_date == START_DATE
+    assert start_date.tzinfo == pytz.UTC
