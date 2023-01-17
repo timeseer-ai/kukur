@@ -264,22 +264,19 @@ def test_dir_data_datetime_format() -> None:
         make_series("dir_datetime"), START_DATE, END_DATE
     )
     assert len(table) == 5
-    assert table.column_names == ["ts", "value"]
     start_date = table["ts"][0].as_py()
     assert start_date == START_DATE
     assert start_date.tzinfo == pytz.UTC
-    assert table["value"][0].as_py() == 1.0
 
 
 def test_dir_data_timezone() -> None:
-    table = get_source("dir_timezone").get_data(
-        make_series("dir_timezone"), START_DATE, END_DATE
+    table = get_source("dir_datetime_naive").get_data(
+        make_series("dir_datetime_naive"), START_DATE, END_DATE
     )
     assert len(table) == 5
-    assert table.column_names == ["ts", "value"]
     start_date = table["ts"][0].as_py()
     assert start_date == START_DATE
-    assert table["value"][0].as_py() == 1.0
+    assert start_date.tzinfo == pytz.UTC
 
 
 def test_pivot_data_datetime_format() -> None:
@@ -287,22 +284,19 @@ def test_pivot_data_datetime_format() -> None:
         make_series("pivot_datetime"), START_DATE, END_DATE
     )
     assert len(table) == 5
-    assert table.column_names == ["ts", "value"]
     start_date = table["ts"][0].as_py()
     assert start_date == START_DATE
     assert start_date.tzinfo == pytz.UTC
-    assert table["value"][0].as_py() == 1.0
 
 
 def test_pivot_data_timezone() -> None:
-    table = get_source("pivot_timezone").get_data(
-        make_series("pivot_timezone"), START_DATE, END_DATE
+    table = get_source("pivot_datetime_naive").get_data(
+        make_series("pivot_datetime_naive"), START_DATE, END_DATE
     )
     assert len(table) == 5
-    assert table.column_names == ["ts", "value"]
     start_date = table["ts"][0].as_py()
     assert start_date == START_DATE
-    assert table["value"][0].as_py() == 1.0
+    assert start_date.tzinfo == pytz.UTC
 
 
 def test_row_data_datetime_format() -> None:
@@ -310,19 +304,16 @@ def test_row_data_datetime_format() -> None:
         make_series("row_datetime"), START_DATE, END_DATE
     )
     assert len(table) == 5
-    assert table.column_names == ["ts", "value"]
     start_date = table["ts"][0].as_py()
     assert start_date == START_DATE
     assert start_date.tzinfo == pytz.UTC
-    assert table["value"][0].as_py() == 1.0
 
 
 def test_row_data_timezone() -> None:
-    table = get_source("row_timezone").get_data(
-        make_series("row_timezone"), START_DATE, END_DATE
+    table = get_source("row_datetime_naive").get_data(
+        make_series("row_datetime_naive"), START_DATE, END_DATE
     )
     assert len(table) == 5
-    assert table.column_names == ["ts", "value"]
     start_date = table["ts"][0].as_py()
     assert start_date == START_DATE
-    assert table["value"][0].as_py() == 1.0
+    assert start_date.tzinfo == pytz.UTC

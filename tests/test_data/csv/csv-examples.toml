@@ -133,9 +133,9 @@ path = "tests/test_data/csv/dir_datetime"
 format = "dir"
 data_datetime_format = "%Y/%m/%dT%H:%M%z"
 
-[source.dir_timezone]
+[source.dir_datetime_naive]
 type = "csv"
-path = "tests/test_data/csv/dir_datetime_tz"
+path = "tests/test_data/csv/dir_datetime_naive"
 format = "dir"
 data_datetime_format = "%Y/%m/%dT%H:%M"
 data_timezone = "America/Sao_Paulo"
@@ -146,9 +146,9 @@ path = "tests/test_data/csv/pivot-datetime.csv"
 format = "pivot"
 data_datetime_format = "%Y/%m/%dT%H:%M%z"
 
-[source.pivot_timezone]
+[source.pivot_datetime_naive]
 type = "csv"
-path = "tests/test_data/csv/pivot-datetime-tz.csv"
+path = "tests/test_data/csv/pivot-datetime-naive.csv"
 format = "pivot"
 data_datetime_format = "%Y/%m/%dT%H:%M"
 data_timezone = "America/Sao_Paulo"
@@ -158,8 +158,8 @@ type = "csv"
 path = "tests/test_data/csv/row-datetime.csv"
 data_datetime_format = "%Y/%m/%dT%H:%M%z"
 
-[source.row_timezone]
+[source.row_datetime_naive]
 type = "csv"
-path = "tests/test_data/csv/row-datetime-tz.csv"
+path = "tests/test_data/csv/row-datetime-naive.csv"
 data_datetime_format = "%Y/%m/%dT%H:%M"
 data_timezone = "America/Sao_Paulo"

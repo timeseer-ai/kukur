@@ -45,9 +45,9 @@ path = "tests/test_data/parquet/dir_datetime"
 format = "dir"
 data_datetime_format = "%Y/%m/%dT%H:%M%z"
 
-[source.dir-parquet-timezone]
+[source.dir-parquet-datetime-naive]
 type = "parquet"
-path = "tests/test_data/parquet/dir_datetime_tz"
+path = "tests/test_data/parquet/dir_datetime_naive"
 format = "dir"
 data_datetime_format = "%Y/%m/%dT%H:%M"
 data_timezone = "America/Sao_Paulo"
@@ -58,9 +58,9 @@ path = "tests/test_data/parquet/pivot-datetime.parquet"
 format = "pivot"
 data_datetime_format = "%Y/%m/%dT%H:%M%z"
 
-[source.pivot-parquet-timezone]
+[source.pivot-parquet-datetime-naive]
 type = "parquet"
-path = "tests/test_data/parquet/pivot-datetime-tz.parquet"
+path = "tests/test_data/parquet/pivot-datetime-naive.parquet"
 format = "pivot"
 data_datetime_format = "%Y/%m/%dT%H:%M"
 data_timezone = "America/Sao_Paulo"
@@ -70,8 +70,8 @@ type = "parquet"
 path = "tests/test_data/parquet/row-datetime.parquet"
 data_datetime_format = "%Y/%m/%dT%H:%M%z"
 
-[source.row-parquet-timezone]
+[source.row-parquet-datetime-naive]
 type = "parquet"
-path = "tests/test_data/parquet/row-datetime-tz.parquet"
+path = "tests/test_data/parquet/row-datetime-naive.parquet"
 data_datetime_format = "%Y/%m/%dT%H:%M"
 data_timezone = "America/Sao_Paulo"

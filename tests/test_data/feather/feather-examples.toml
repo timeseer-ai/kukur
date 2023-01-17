@@ -57,9 +57,9 @@ path = "tests/test_data/feather/dir_datetime"
 format = "dir"
 data_datetime_format = "%Y/%m/%dT%H:%M%z"
 
-[source.dir-feather-timezone]
+[source.dir-feather-datetime-naive]
 type = "feather"
-path = "tests/test_data/feather/dir_datetime_tz"
+path = "tests/test_data/feather/dir_datetime_naive"
 format = "dir"
 data_datetime_format = "%Y/%m/%dT%H:%M"
 data_timezone = "America/Sao_Paulo"
@@ -70,10 +70,10 @@ format = "pivot"
 path = "tests/test_data/feather/pivot-datetime.feather"
 data_datetime_format = "%Y/%m/%dT%H:%M%z"
 
-[source.pivot-feather-timezone]
+[source.pivot-feather-datetime-naive]
 type = "feather"
 format = "pivot"
-path = "tests/test_data/feather/pivot-datetime-tz.feather"
+path = "tests/test_data/feather/pivot-datetime-naive.feather"
 data_datetime_format = "%Y/%m/%dT%H:%M"
 data_timezone = "America/Sao_Paulo"
 
@@ -82,8 +82,8 @@ type = "feather"
 path = "tests/test_data/feather/row-datetime.feather"
 data_datetime_format = "%Y/%m/%dT%H:%M%z"
 
-[source.row-feather-timezone]
+[source.row-feather-datetime-naive]
 type = "feather"
-path = "tests/test_data/feather/row-datetime-tz.feather"
+path = "tests/test_data/feather/row-datetime-naive.feather"
 data_datetime_format = "%Y/%m/%dT%H:%M"
 data_timezone = "America/Sao_Paulo"
