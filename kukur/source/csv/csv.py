@@ -287,9 +287,8 @@ class CSVSource:
         all_data = _map_columns(self.__options.column_mapping, all_data)
 
         if self.__mappers.quality.is_present():
-            kukur_quality_values = self._map_quality(all_data["quality"])
             all_data = all_data.set_column(
-                3, "quality", pa.array(kukur_quality_values, type=pa.int8())
+                3, "quality", self._map_quality(all_data["quality"])
             )
         return all_data
 
@@ -313,17 +312,13 @@ class CSVSource:
         )
         all_data = _map_columns(self.__options.column_mapping, all_data)
         if self.__mappers.quality.is_present():
-            kukur_quality_values = self._map_quality(all_data["quality"])
             return all_data.set_column(
-                2, "quality", pa.array(kukur_quality_values, type=pa.int8())
+                2, "quality", self._map_quality(all_data["quality"])
             )
         return all_data
 
-    def _map_quality(self, quality_data: pa.array) -> pa.Table:
-        return [
-            self.__mappers.quality.from_source(source_quality_value.as_py())
-            for source_quality_value in quality_data
-        ]
+    def _map_quality(self, quality_data: pa.Array) -> pa.Array:
+        return self.__mappers.quality.map_array(quality_data)
 
 
 def _map_columns(column_mapping: Dict[str, str], data: pa.Table) -> pa.Table:
