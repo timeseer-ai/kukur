@@ -50,3 +50,49 @@ metadata = "tests/test_data/csv/dir-metadata.csv"
 [source.dir-feather-mapping.column_mapping]
 "ts" = "timestamp"
 "value" = "value"
+
+[source.dir-feather-datetime]
+type = "feather"
+path = "tests/test_data/feather/dir_datetime"
+format = "dir"
+data_datetime_format = "%Y/%m/%dT%H:%M%z"
+
+[source.dir-feather-datetime-naive]
+type = "feather"
+path = "tests/test_data/feather/dir_datetime_naive"
+format = "dir"
+data_datetime_format = "%Y/%m/%dT%H:%M"
+data_timezone = "America/Sao_Paulo"
+
+[source.pivot-feather-datetime]
+type = "feather"
+format = "pivot"
+path = "tests/test_data/feather/pivot-datetime.feather"
+data_datetime_format = "%Y/%m/%dT%H:%M%z"
+
+[source.pivot-feather-datetime-naive]
+type = "feather"
+format = "pivot"
+path = "tests/test_data/feather/pivot-datetime-naive.feather"
+data_datetime_format = "%Y/%m/%dT%H:%M"
+data_timezone = "America/Sao_Paulo"
+
+[source.row-feather-datetime]
+type = "feather"
+path = "tests/test_data/feather/row-datetime.feather"
+data_datetime_format = "%Y/%m/%dT%H:%M%z"
+
+[source.row-feather-datetime-naive]
+type = "feather"
+path = "tests/test_data/feather/row-datetime-naive.feather"
+data_datetime_format = "%Y/%m/%dT%H:%M"
+data_timezone = "America/Sao_Paulo"
+
+[source.row-feather-timestamp]
+type = "feather"
+path = "tests/test_data/feather/row-timestamp.feather"
+
+[source.row-feather-timestamp-naive]
+type = "feather"
+path = "tests/test_data/feather/row-timestamp-naive.feather"
+data_timezone = "America/Sao_Paulo"

@@ -6,7 +6,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, Generator
+from typing import Dict, Generator, Optional
 
 import pyarrow as pa
 import pyarrow.compute
@@ -25,6 +25,8 @@ class BaseArrowSourceOptions:
 
     data_format: str
     column_mapping: Dict[str, str]
+    data_datetime_format: Optional[str] = None
+    data_timezone: Optional[str] = None
 
 
 class BaseArrowSource(ABC):
@@ -106,6 +108,9 @@ class BaseArrowSource(ABC):
         if selector.name not in all_data.column_names:
             raise InvalidDataError(f'column "{selector.name}" not found')
         data = all_data.select([0, selector.name]).rename_columns(["ts", "value"])
+        data = _cast_ts_column(
+            data, self.__options.data_datetime_format, self.__options.data_timezone
+        )
         schema = pa.schema(
             [
                 ("ts", pa.timestamp("us", "utc")),
@@ -148,7 +153,11 @@ class BaseArrowSource(ABC):
 
         all_data = self.read_file(self.__loader.open())
         all_data = _map_columns(self.__options.column_mapping, all_data)
-        return all_data.rename_columns(columns)
+        all_data = all_data.rename_columns(columns)
+        all_data = _cast_ts_column(
+            all_data, self.__options.data_datetime_format, self.__options.data_timezone
+        )
+        return all_data
 
     def _read_directory_data(self, selector: SeriesSelector) -> pa.Table:
         columns = ["ts", "value"]
@@ -162,6 +171,9 @@ class BaseArrowSource(ABC):
         )
         data = _map_columns(self.__options.column_mapping, data)
         data = data.rename_columns(columns)
+        data = _cast_ts_column(
+            data, self.__options.data_datetime_format, self.__options.data_timezone
+        )
         schema = pa.schema(
             [
                 ("ts", pa.timestamp("us", "utc")),
@@ -204,3 +216,23 @@ def _map_columns(column_mapping: Dict, data: pa.Table) -> pa.Table:
         columns["quality"] = data[column_mapping["quality"]]
 
     return pa.Table.from_pydict(columns)
+
+
+def _cast_ts_column(
+    data: pa.Table, data_datetime_format: Optional[str], data_timezone: Optional[str]
+) -> pa.Table:
+    if data_datetime_format is not None:
+        # pylint: disable=no-member
+        data = data.set_column(
+            data.column_names.index("ts"),
+            "ts",
+            pyarrow.compute.strptime(data["ts"], data_datetime_format, "us"),
+        )
+    if data_timezone is not None:
+        # pylint: disable=no-member
+        data = data.set_column(
+            data.column_names.index("ts"),
+            "ts",
+            pyarrow.compute.assume_timezone(data["ts"], data_timezone),
+        )
+    return data

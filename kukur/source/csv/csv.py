@@ -52,8 +52,14 @@ def from_config(
         loaders.dictionary = loader_from_config(config, "dictionary_dir", "r")
     data_format = config.get("format", "row")
     column_mapping = config.get("column_mapping", {})
+    data_datetime_format = config.get("data_datetime_format", None)
+    data_timezone = config.get("data_timezone", None)
     options = CSVSourceOptions(
-        data_format, config.get("header_row", False), column_mapping
+        data_format,
+        config.get("header_row", False),
+        column_mapping,
+        data_datetime_format,
+        data_timezone,
     )
     metadata_fields: List[str] = config.get("metadata_fields", [])
     if len(metadata_fields) == 0:
@@ -87,6 +93,8 @@ class CSVSourceOptions:
     data_format: str
     header_row: bool
     column_mapping: Dict[str, str]
+    data_datetime_format: Optional[str] = None
+    data_timezone: Optional[str] = None
 
 
 class CSVSource:
@@ -249,7 +257,7 @@ class CSVSource:
         if self.__loaders.data is None:
             raise InvalidSourceException("No data path configured.")
         if self.__options.data_format == "pivot":
-            return _read_pivot_data(self.__loaders.data, selector)
+            return self._read_pivot_data(self.__loaders.data, selector)
 
         if self.__options.data_format == "dir":
             return self._read_directory_data(self.__loaders.data, selector)
@@ -278,14 +286,17 @@ class CSVSource:
         else:
             read_options = pyarrow.csv.ReadOptions()
 
-        convert_options = pyarrow.csv.ConvertOptions(
-            column_types={timestamp_column: pa.timestamp("us", "utc")},
+        convert_options = _get_convert_options(
+            timestamp_column,
+            self.__options.data_datetime_format,
+            self.__options.data_timezone,
         )
+
         all_data = pyarrow.csv.read_csv(
             loader.open(), read_options=read_options, convert_options=convert_options
         )
         all_data = _map_columns(self.__options.column_mapping, all_data)
-
+        all_data = _cast_ts_column(all_data, self.__options.data_timezone)
         if self.__mappers.quality.is_present():
             all_data = all_data.set_column(
                 3, "quality", self._map_quality(all_data["quality"])
@@ -302,23 +313,67 @@ class CSVSource:
             read_options = pyarrow.csv.ReadOptions(column_names=columns)
         else:
             read_options = pyarrow.csv.ReadOptions()
-        convert_options = pyarrow.csv.ConvertOptions(
-            column_types={"ts": pa.timestamp("us", "utc")},
+
+        convert_options = _get_convert_options(
+            "ts", self.__options.data_datetime_format, self.__options.data_timezone
         )
-        all_data = pyarrow.csv.read_csv(
+
+        data = pyarrow.csv.read_csv(
             loader.open_child(f"{selector.tags['series name']}.csv"),
             read_options=read_options,
             convert_options=convert_options,
         )
-        all_data = _map_columns(self.__options.column_mapping, all_data)
+        data = _map_columns(self.__options.column_mapping, data)
+        data = _cast_ts_column(data, self.__options.data_timezone)
         if self.__mappers.quality.is_present():
-            return all_data.set_column(
-                2, "quality", self._map_quality(all_data["quality"])
-            )
-        return all_data
+            return data.set_column(2, "quality", self._map_quality(data["quality"]))
+        return data
+
+    def _read_pivot_data(self, loader: Loader, selector: SeriesSelector) -> pa.Table:
+        convert_options = _get_convert_options(
+            "ts", self.__options.data_datetime_format, self.__options.data_timezone
+        )
+        all_data = pyarrow.csv.read_csv(loader.open(), convert_options=convert_options)
+        if selector.name not in all_data.column_names:
+            raise InvalidDataError(f'column "{selector.name}" not found')
+        data = all_data.select([0, selector.name]).rename_columns(["ts", "value"])
+        data = _cast_ts_column(data, self.__options.data_timezone)
+        schema = pa.schema([("ts", pa.timestamp("us", "utc")), ("value", pa.float64())])
+        return data.cast(schema)
 
     def _map_quality(self, quality_data: pa.Array) -> pa.Array:
         return self.__mappers.quality.map_array(quality_data)
+
+
+def _get_convert_options(
+    timestamp_column: str,
+    data_datetime_format: Optional[str],
+    data_timezone: Optional[str],
+) -> pyarrow.csv.ConvertOptions:
+    column_types = {
+        timestamp_column: pa.timestamp("us")
+        if data_timezone is not None
+        else pa.timestamp("us", "utc")
+    }
+    timestamp_parsers = (
+        [data_datetime_format] if data_datetime_format is not None else None
+    )
+    return pyarrow.csv.ConvertOptions(
+        column_types=column_types,
+        timestamp_parsers=timestamp_parsers,
+    )
+
+
+def _cast_ts_column(data: pa.Table, data_timezone: Optional[str]) -> pa.Table:
+    if data_timezone is None:
+        return data
+
+    # pylint: disable=no-member
+    return data.set_column(
+        data.column_names.index("ts"),
+        "ts",
+        pyarrow.compute.assume_timezone(data["ts"], data_timezone),
+    )
 
 
 def _map_columns(column_mapping: Dict[str, str], data: pa.Table) -> pa.Table:
@@ -345,12 +400,3 @@ def _search_pivot(
     all_data = pyarrow.csv.read_csv(loader.open())
     for name in all_data.column_names[1:]:
         yield SeriesSelector(search.source, name)
-
-
-def _read_pivot_data(loader: Loader, selector: SeriesSelector) -> pa.Table:
-    all_data = pyarrow.csv.read_csv(loader.open())
-    if selector.name not in all_data.column_names:
-        raise InvalidDataError(f'column "{selector.name}" not found')
-    columns = ["ts", "value"]
-    schema = pa.schema([("ts", pa.timestamp("us", "utc")), ("value", pa.float64())])
-    return all_data.select([0, selector.name]).rename_columns(columns).cast(schema)

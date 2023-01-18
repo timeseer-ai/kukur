@@ -38,3 +38,49 @@ metadata_type = "csv"
 [source.dir-parquet-mapping.column_mapping]
 "ts" = "IP_TREND_TIME"
 "value" = "IP_TREND_VALUE"
+
+[source.dir-parquet-datetime]
+type = "parquet"
+path = "tests/test_data/parquet/dir_datetime"
+format = "dir"
+data_datetime_format = "%Y/%m/%dT%H:%M%z"
+
+[source.dir-parquet-datetime-naive]
+type = "parquet"
+path = "tests/test_data/parquet/dir_datetime_naive"
+format = "dir"
+data_datetime_format = "%Y/%m/%dT%H:%M"
+data_timezone = "America/Sao_Paulo"
+
+[source.pivot-parquet-datetime]
+type = "parquet"
+path = "tests/test_data/parquet/pivot-datetime.parquet"
+format = "pivot"
+data_datetime_format = "%Y/%m/%dT%H:%M%z"
+
+[source.pivot-parquet-datetime-naive]
+type = "parquet"
+path = "tests/test_data/parquet/pivot-datetime-naive.parquet"
+format = "pivot"
+data_datetime_format = "%Y/%m/%dT%H:%M"
+data_timezone = "America/Sao_Paulo"
+
+[source.row-parquet-datetime]
+type = "parquet"
+path = "tests/test_data/parquet/row-datetime.parquet"
+data_datetime_format = "%Y/%m/%dT%H:%M%z"
+
+[source.row-parquet-datetime-naive]
+type = "parquet"
+path = "tests/test_data/parquet/row-datetime-naive.parquet"
+data_datetime_format = "%Y/%m/%dT%H:%M"
+data_timezone = "America/Sao_Paulo"
+
+[source.row-parquet-timestamp]
+type = "parquet"
+path = "tests/test_data/parquet/row-timestamp.parquet"
+
+[source.row-parquet-timestamp-naive]
+type = "parquet"
+path = "tests/test_data/parquet/row-timestamp-naive.parquet"
+data_timezone = "America/Sao_Paulo"

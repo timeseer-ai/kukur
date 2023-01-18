@@ -49,6 +49,24 @@ as the directory data model uses the parquet file names as the series names.
 
 `quality` mapping is optional.
 
+=== Custom datetime format
+
+The `data_datetime_format` option allows the timestamps to be parsed using a custom datetime format.
+It accepts the https://docs.python.org/3/library/datetime.html#strftime-strptime-behavior[formatting options] supported by Python.
+
+```toml
+data_datetime_format = "%Y/%m/%dT%H:%M"
+```
+
+=== Custom timezone
+
+The `data_timezone` option allows to specify the time zone of the timestamps.
+This option should only be used when the timestamps in the source do not contain time zone information.
+
+```toml
+data_timezone = "America/Sao_Paulo"
+```
+
 === Row format
 
 ```toml
