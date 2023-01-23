@@ -103,6 +103,16 @@ def test_pivot() -> None:
     assert table["value"][0].as_py() == 1.0
 
 
+def test_pivot_column_mapping() -> None:
+    table = get_source("pivot_column_mapping").get_data(
+        make_series("pivot_column_mapping"), START_DATE, END_DATE
+    )
+    assert len(table) == 7
+    assert table.column_names == ["ts", "value"]
+    assert table["ts"][0].as_py() == START_DATE
+    assert table["value"][0].as_py() == 1.0
+
+
 def test_row_metadata() -> None:
     series = make_series("row")
     metadata = get_source("row").get_metadata(series)

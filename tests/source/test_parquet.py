@@ -118,6 +118,16 @@ def test_pivot_string():
     assert table["value"][0].as_py() == "A"
 
 
+def test_pivot_column_mapping() -> None:
+    table = get_source("pivot-parquet-column-mapping").get_data(
+        make_series("pivot-parquet-column-mapping"), START_DATE, END_DATE
+    )
+    assert len(table) == 7
+    assert table.column_names == ["ts", "value"]
+    assert table["ts"][0].as_py() == START_DATE
+    assert table["value"][0].as_py() == 1.0
+
+
 def test_dir_mapping():
     table = get_source("dir-parquet-mapping").get_data(
         make_series("dir-parquet-mapping"), START_DATE, END_DATE

@@ -14,6 +14,15 @@ type = "feather"
 format = "pivot"
 path = "tests/test_data/feather/pivot.feather"
 
+[source.pivot-feather-column-mapping]
+type = "feather"
+path = "tests/test_data/feather/pivot-column-mapping.feather"
+metadata = "tests/test_data/feather/pivot-metadata.feather"
+format = "pivot"
+
+[source.pivot-feather-column-mapping.column_mapping]
+"timestamp" = "ts"
+
 [source.row-feather-quality]
 type = "feather"
 path = "tests/test_data/feather/row-quality.feather"

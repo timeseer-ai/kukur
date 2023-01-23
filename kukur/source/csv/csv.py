@@ -336,7 +336,7 @@ class CSVSource:
         all_data = pyarrow.csv.read_csv(loader.open(), convert_options=convert_options)
         if selector.name not in all_data.column_names:
             raise InvalidDataError(f'column "{selector.name}" not found')
-        data = all_data.select([0, selector.name]).rename_columns(["ts", "value"])
+        data = _map_pivot_columns(self.__options.column_mapping, selector, all_data)
         data = _cast_ts_column(data, self.__options.data_timezone)
         schema = pa.schema([("ts", pa.timestamp("us", "utc")), ("value", pa.float64())])
         return data.cast(schema)
@@ -390,6 +390,17 @@ def _map_columns(column_mapping: Dict[str, str], data: pa.Table) -> pa.Table:
 
     if "quality" in column_mapping:
         columns["quality"] = data[column_mapping["quality"]]
+
+    return pa.Table.from_pydict(columns)
+
+
+def _map_pivot_columns(
+    column_mapping: Dict[str, str], selector: SeriesSelector, data: pa.Table
+) -> pa.Table:
+    columns = {
+        "ts": data[column_mapping["timestamp"] if "timestamp" in column_mapping else 0],
+        "value": data[selector.name],
+    }
 
     return pa.Table.from_pydict(columns)
 

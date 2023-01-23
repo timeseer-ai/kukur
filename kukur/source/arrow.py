@@ -107,7 +107,7 @@ class BaseArrowSource(ABC):
         all_data = self.read_file(self.__loader.open())
         if selector.name not in all_data.column_names:
             raise InvalidDataError(f'column "{selector.name}" not found')
-        data = all_data.select([0, selector.name]).rename_columns(["ts", "value"])
+        data = _map_pivot_columns(self.__options.column_mapping, selector, all_data)
         data = _cast_ts_column(
             data, self.__options.data_datetime_format, self.__options.data_timezone
         )
@@ -214,6 +214,17 @@ def _map_columns(column_mapping: Dict, data: pa.Table) -> pa.Table:
         }
     if "quality" in column_mapping:
         columns["quality"] = data[column_mapping["quality"]]
+
+    return pa.Table.from_pydict(columns)
+
+
+def _map_pivot_columns(
+    column_mapping: Dict[str, str], selector: SeriesSelector, data: pa.Table
+) -> pa.Table:
+    columns = {
+        "ts": data[column_mapping["timestamp"] if "timestamp" in column_mapping else 0],
+        "value": data[selector.name],
+    }
 
     return pa.Table.from_pydict(columns)
 
