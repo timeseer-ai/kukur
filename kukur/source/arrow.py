@@ -99,18 +99,15 @@ class BaseArrowSource(ABC):
         return self._read_row_data(selector)
 
     def _search_pivot(self, source_name: str) -> Generator[SeriesSelector, None, None]:
-        all_data = self.read_file(self.__loader.open())
+        all_data = self._load_pivot_data()
         for name in all_data.column_names[1:]:
             yield SeriesSelector(source_name, name)
 
     def _read_pivot_data(self, selector: SeriesSelector) -> pa.Table:
-        all_data = self.read_file(self.__loader.open())
+        all_data = self._load_pivot_data()
         if selector.name not in all_data.column_names:
             raise InvalidDataError(f'column "{selector.name}" not found')
-        data = _map_pivot_columns(self.__options.column_mapping, selector, all_data)
-        data = _cast_ts_column(
-            data, self.__options.data_datetime_format, self.__options.data_timezone
-        )
+        data = all_data.select([0, selector.name]).rename_columns(["ts", "value"])
         schema = pa.schema(
             [
                 ("ts", pa.timestamp("us", "utc")),
@@ -118,6 +115,14 @@ class BaseArrowSource(ABC):
             ]
         )
         return data.cast(schema)
+
+    def _load_pivot_data(self) -> pa.Table:
+        all_data = self.read_file(self.__loader.open())
+        all_data = _map_pivot_columns(self.__options.column_mapping, all_data)
+        all_data = _cast_ts_column(
+            all_data, self.__options.data_datetime_format, self.__options.data_timezone
+        )
+        return all_data
 
     def _search_row(self, source_name: str) -> Generator[SeriesSelector, None, None]:
         all_data = self._load_row_data()
@@ -218,12 +223,17 @@ def _map_columns(column_mapping: Dict, data: pa.Table) -> pa.Table:
     return pa.Table.from_pydict(columns)
 
 
-def _map_pivot_columns(
-    column_mapping: Dict[str, str], selector: SeriesSelector, data: pa.Table
-) -> pa.Table:
+def _map_pivot_columns(column_mapping: Dict[str, str], data: pa.Table) -> pa.Table:
+    columns: dict = data.to_pydict()
+
+    ts_key = list(columns)[0]
+    if "ts" in column_mapping:
+        ts_key = column_mapping["ts"]
+
+    ts = columns.pop(ts_key)
     columns = {
-        "ts": data[column_mapping["ts"] if "ts" in column_mapping else 0],
-        "value": data[selector.name],
+        "ts": ts,
+        **columns,
     }
 
     return pa.Table.from_pydict(columns)

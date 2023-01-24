@@ -243,7 +243,7 @@ class CSVSource:
         if self.__options.data_format == "row":
             yield from self._search_row(self.__loaders.data, search)
         elif self.__options.data_format == "pivot":
-            yield from _search_pivot(self.__loaders.data, search)
+            yield from self._search_pivot(self.__loaders.data, search)
 
     def _search_row(
         self, loader: Loader, search: SeriesSearch
@@ -252,6 +252,13 @@ class CSVSource:
         # pylint: disable=no-member
         for name in pyarrow.compute.unique(all_data["series name"]):
             yield SeriesSelector(search.source, name.as_py())
+
+    def _search_pivot(
+        self, loader: Loader, search: SeriesSearch
+    ) -> Generator[SeriesSelector, None, None]:
+        all_data = self._open_pivot_data(loader)
+        for name in all_data.column_names[1:]:
+            yield SeriesSelector(search.source, name)
 
     def __read_all_data(self, selector: SeriesSelector) -> pa.Table:
         if self.__loaders.data is None:
@@ -330,16 +337,28 @@ class CSVSource:
         return data
 
     def _read_pivot_data(self, loader: Loader, selector: SeriesSelector) -> pa.Table:
-        convert_options = _get_convert_options(
-            "ts", self.__options.data_datetime_format, self.__options.data_timezone
-        )
-        all_data = pyarrow.csv.read_csv(loader.open(), convert_options=convert_options)
+        all_data = self._open_pivot_data(loader)
         if selector.name not in all_data.column_names:
             raise InvalidDataError(f'column "{selector.name}" not found')
-        data = _map_pivot_columns(self.__options.column_mapping, selector, all_data)
-        data = _cast_ts_column(data, self.__options.data_timezone)
+        data = all_data.select(["ts", selector.name]).rename_columns(["ts", "value"])
         schema = pa.schema([("ts", pa.timestamp("us", "utc")), ("value", pa.float64())])
         return data.cast(schema)
+
+    def _open_pivot_data(self, loader: Loader) -> pa.Table:
+        timestamp_column = "ts"
+        if "ts" in self.__options.column_mapping:
+            timestamp_column = self.__options.column_mapping["ts"]
+
+        convert_options = _get_convert_options(
+            timestamp_column,
+            self.__options.data_datetime_format,
+            self.__options.data_timezone,
+        )
+
+        all_data = pyarrow.csv.read_csv(loader.open(), convert_options=convert_options)
+        all_data = _map_pivot_columns(self.__options.column_mapping, all_data)
+        all_data = _cast_ts_column(all_data, self.__options.data_timezone)
+        return all_data
 
     def _map_quality(self, quality_data: pa.Array) -> pa.Array:
         return self.__mappers.quality.map_array(quality_data)
@@ -394,20 +413,17 @@ def _map_columns(column_mapping: Dict[str, str], data: pa.Table) -> pa.Table:
     return pa.Table.from_pydict(columns)
 
 
-def _map_pivot_columns(
-    column_mapping: Dict[str, str], selector: SeriesSelector, data: pa.Table
-) -> pa.Table:
+def _map_pivot_columns(column_mapping: Dict[str, str], data: pa.Table) -> pa.Table:
+    columns: dict = data.to_pydict()
+
+    ts_key = list(columns)[0]
+    if "ts" in column_mapping:
+        ts_key = column_mapping["ts"]
+
+    ts = columns.pop(ts_key)
     columns = {
-        "ts": data[column_mapping["ts"] if "ts" in column_mapping else 0],
-        "value": data[selector.name],
+        "ts": ts,
+        **columns,
     }
 
     return pa.Table.from_pydict(columns)
-
-
-def _search_pivot(
-    loader: Loader, search: SeriesSearch
-) -> Generator[SeriesSelector, None, None]:
-    all_data = pyarrow.csv.read_csv(loader.open())
-    for name in all_data.column_names[1:]:
-        yield SeriesSelector(search.source, name)
