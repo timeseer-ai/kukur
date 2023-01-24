@@ -398,7 +398,7 @@ def _map_pivot_columns(
     column_mapping: Dict[str, str], selector: SeriesSelector, data: pa.Table
 ) -> pa.Table:
     columns = {
-        "ts": data[column_mapping["timestamp"] if "timestamp" in column_mapping else 0],
+        "ts": data[column_mapping["ts"] if "ts" in column_mapping else 0],
         "value": data[selector.name],
     }
 

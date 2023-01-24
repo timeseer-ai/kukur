@@ -35,7 +35,7 @@ metadata = "tests/test_data/csv/pivot-metadata.csv"
 format = "pivot"
 
 [source.pivot_column_mapping.column_mapping]
-"timestamp" = "ts"
+"ts" = "timestamp"
 
 [source.pivot_no_metadata]
 type = "csv"

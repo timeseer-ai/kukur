@@ -21,7 +21,7 @@ metadata = "tests/test_data/feather/pivot-metadata.feather"
 format = "pivot"
 
 [source.pivot-feather-column-mapping.column_mapping]
-"timestamp" = "ts"
+"ts" = "timestamp"
 
 [source.row-feather-quality]
 type = "feather"

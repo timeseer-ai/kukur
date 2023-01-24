@@ -21,7 +21,7 @@ metadata = "tests/test_data/parquet/pivot-metadata.parquet"
 format = "pivot"
 
 [source.pivot-parquet-column-mapping.column_mapping]
-"timestamp" = "ts"
+"ts" = "timestamp"
 
 [source.row-parquet-quality]
 type = "parquet"
