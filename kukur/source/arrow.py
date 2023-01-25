@@ -224,19 +224,12 @@ def _map_columns(column_mapping: Dict, data: pa.Table) -> pa.Table:
 
 
 def _map_pivot_columns(column_mapping: Dict[str, str], data: pa.Table) -> pa.Table:
-    columns: dict = data.to_pydict()
-
-    ts_key = list(columns)[0]
+    ts_column_name = data.column_names[0]
     if "ts" in column_mapping:
-        ts_key = column_mapping["ts"]
+        ts_column_name = column_mapping["ts"]
 
-    ts = columns.pop(ts_key)
-    columns = {
-        "ts": ts,
-        **columns,
-    }
-
-    return pa.Table.from_pydict(columns)
+    ts_column = data[ts_column_name]
+    return data.drop([ts_column_name]).add_column(0, "ts", ts_column)
 
 
 def _cast_ts_column(
