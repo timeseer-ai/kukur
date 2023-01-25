@@ -28,6 +28,15 @@ path = "tests/test_data/csv/pivot.csv"
 metadata = "tests/test_data/csv/pivot-metadata.csv"
 format = "pivot"
 
+[source.pivot_column_mapping]
+type = "csv"
+path = "tests/test_data/csv/pivot-column-mapping.csv"
+metadata = "tests/test_data/csv/pivot-metadata.csv"
+format = "pivot"
+
+[source.pivot_column_mapping.column_mapping]
+"ts" = "timestamp"
+
 [source.pivot_no_metadata]
 type = "csv"
 path = "tests/test_data/csv/pivot.csv"

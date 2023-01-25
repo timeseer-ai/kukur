@@ -99,18 +99,15 @@ class BaseArrowSource(ABC):
         return self._read_row_data(selector)
 
     def _search_pivot(self, source_name: str) -> Generator[SeriesSelector, None, None]:
-        all_data = self.read_file(self.__loader.open())
+        all_data = self._load_pivot_data()
         for name in all_data.column_names[1:]:
             yield SeriesSelector(source_name, name)
 
     def _read_pivot_data(self, selector: SeriesSelector) -> pa.Table:
-        all_data = self.read_file(self.__loader.open())
+        all_data = self._load_pivot_data()
         if selector.name not in all_data.column_names:
             raise InvalidDataError(f'column "{selector.name}" not found')
         data = all_data.select([0, selector.name]).rename_columns(["ts", "value"])
-        data = _cast_ts_column(
-            data, self.__options.data_datetime_format, self.__options.data_timezone
-        )
         schema = pa.schema(
             [
                 ("ts", pa.timestamp("us", "utc")),
@@ -118,6 +115,14 @@ class BaseArrowSource(ABC):
             ]
         )
         return data.cast(schema)
+
+    def _load_pivot_data(self) -> pa.Table:
+        all_data = self.read_file(self.__loader.open())
+        all_data = _map_pivot_columns(self.__options.column_mapping, all_data)
+        all_data = _cast_ts_column(
+            all_data, self.__options.data_datetime_format, self.__options.data_timezone
+        )
+        return all_data
 
     def _search_row(self, source_name: str) -> Generator[SeriesSelector, None, None]:
         all_data = self._load_row_data()
@@ -216,6 +221,15 @@ def _map_columns(column_mapping: Dict, data: pa.Table) -> pa.Table:
         columns["quality"] = data[column_mapping["quality"]]
 
     return pa.Table.from_pydict(columns)
+
+
+def _map_pivot_columns(column_mapping: Dict[str, str], data: pa.Table) -> pa.Table:
+    ts_column_name = data.column_names[0]
+    if "ts" in column_mapping:
+        ts_column_name = column_mapping["ts"]
+
+    ts_column = data[ts_column_name]
+    return data.drop([ts_column_name]).add_column(0, "ts", ts_column)
 
 
 def _cast_ts_column(

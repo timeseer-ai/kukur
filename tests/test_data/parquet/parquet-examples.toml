@@ -14,6 +14,15 @@ type = "parquet"
 format = "pivot"
 path = "tests/test_data/parquet/pivot.parquet"
 
+[source.pivot-parquet-column-mapping]
+type = "parquet"
+path = "tests/test_data/parquet/pivot-column-mapping.parquet"
+metadata = "tests/test_data/parquet/pivot-metadata.parquet"
+format = "pivot"
+
+[source.pivot-parquet-column-mapping.column_mapping]
+"ts" = "timestamp"
+
 [source.row-parquet-quality]
 type = "parquet"
 path = "tests/test_data/parquet/row-quality.parquet"
