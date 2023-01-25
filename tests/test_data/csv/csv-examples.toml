@@ -140,35 +140,35 @@ header_row = true
 type = "csv"
 path = "tests/test_data/csv/dir_datetime"
 format = "dir"
-data_datetime_format = "%Y/%m/%dT%H:%M%z"
+data_datetime_format = "%Y-%m-%d %H:%M:%S.%f%z"
 
 [source.dir_datetime_naive]
 type = "csv"
 path = "tests/test_data/csv/dir_datetime_naive"
 format = "dir"
-data_datetime_format = "%Y/%m/%dT%H:%M"
+data_datetime_format = "%Y-%m-%d %H:%M:%S.%f"
 data_timezone = "America/Sao_Paulo"
 
 [source.pivot_datetime]
 type = "csv"
 path = "tests/test_data/csv/pivot-datetime.csv"
 format = "pivot"
-data_datetime_format = "%Y/%m/%dT%H:%M%z"
+data_datetime_format = "%Y-%m-%d %H:%M:%S.%f%z"
 
 [source.pivot_datetime_naive]
 type = "csv"
 path = "tests/test_data/csv/pivot-datetime-naive.csv"
 format = "pivot"
-data_datetime_format = "%Y/%m/%dT%H:%M"
+data_datetime_format = "%Y-%m-%d %H:%M:%S.%f"
 data_timezone = "America/Sao_Paulo"
 
 [source.row_datetime]
 type = "csv"
 path = "tests/test_data/csv/row-datetime.csv"
-data_datetime_format = "%Y/%m/%dT%H:%M%z"
+data_datetime_format = "%Y-%m-%d %H:%M:%S.%f%z"
 
 [source.row_datetime_naive]
 type = "csv"
 path = "tests/test_data/csv/row-datetime-naive.csv"
-data_datetime_format = "%Y/%m/%dT%H:%M"
+data_datetime_format = "%Y-%m-%d %H:%M:%S.%f"
 data_timezone = "America/Sao_Paulo"

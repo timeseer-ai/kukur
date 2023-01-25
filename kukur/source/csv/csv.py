@@ -302,8 +302,11 @@ class CSVSource:
         all_data = pyarrow.csv.read_csv(
             loader.open(), read_options=read_options, convert_options=convert_options
         )
+
         all_data = _map_columns(self.__options.column_mapping, all_data)
-        all_data = _cast_ts_column(all_data, self.__options.data_timezone)
+        all_data = _cast_ts_column(
+            all_data, self.__options.data_datetime_format, self.__options.data_timezone
+        )
         if self.__mappers.quality.is_present():
             all_data = all_data.set_column(
                 3, "quality", self._map_quality(all_data["quality"])
@@ -331,7 +334,9 @@ class CSVSource:
             convert_options=convert_options,
         )
         data = _map_columns(self.__options.column_mapping, data)
-        data = _cast_ts_column(data, self.__options.data_timezone)
+        data = _cast_ts_column(
+            data, self.__options.data_datetime_format, self.__options.data_timezone
+        )
         if self.__mappers.quality.is_present():
             return data.set_column(2, "quality", self._map_quality(data["quality"]))
         return data
@@ -357,7 +362,9 @@ class CSVSource:
 
         all_data = pyarrow.csv.read_csv(loader.open(), convert_options=convert_options)
         all_data = _map_pivot_columns(self.__options.column_mapping, all_data)
-        all_data = _cast_ts_column(all_data, self.__options.data_timezone)
+        all_data = _cast_ts_column(
+            all_data, self.__options.data_datetime_format, self.__options.data_timezone
+        )
         return all_data
 
     def _map_quality(self, quality_data: pa.Array) -> pa.Array:
@@ -369,22 +376,43 @@ def _get_convert_options(
     data_datetime_format: Optional[str],
     data_timezone: Optional[str],
 ) -> pyarrow.csv.ConvertOptions:
-    column_types = {
-        timestamp_column: pa.timestamp("us")
-        if data_timezone is not None
-        else pa.timestamp("us", "utc")
-    }
-    timestamp_parsers = (
-        [data_datetime_format] if data_datetime_format is not None else None
-    )
+
+    column_types = {timestamp_column: pa.string()}
+    if data_datetime_format is None:
+        column_types = {
+            timestamp_column: pa.timestamp("us")
+            if data_timezone is not None
+            else pa.timestamp("us", "utc")
+        }
     return pyarrow.csv.ConvertOptions(
         column_types=column_types,
-        timestamp_parsers=timestamp_parsers,
     )
 
 
-def _cast_ts_column(data: pa.Table, data_timezone: Optional[str]) -> pa.Table:
+def _cast_ts_column(
+    data: pa.Table, data_datetime_format: Optional[str], data_timezone: Optional[str]
+) -> pa.Table:
+    if data_datetime_format is not None:
+        # pylint: disable=no-member
+        data = data.set_column(
+            data.column_names.index("ts"),
+            "ts",
+            [
+                [
+                    datetime.strptime(timestamp.as_py(), data_datetime_format)
+                    for timestamp in data["ts"]
+                ]
+            ],
+        )
+
     if data_timezone is None:
+        if data["ts"][0].as_py().tzinfo is None:
+            # pylint: disable=no-member
+            return data.set_column(
+                data.column_names.index("ts"),
+                "ts",
+                pyarrow.compute.assume_timezone(data["ts"], "UTC"),
+            )
         return data
 
     # pylint: disable=no-member
