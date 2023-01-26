@@ -346,8 +346,7 @@ class CSVSource:
         if selector.name not in all_data.column_names:
             raise InvalidDataError(f'column "{selector.name}" not found')
         data = all_data.select(["ts", selector.name]).rename_columns(["ts", "value"])
-        schema = pa.schema([("ts", pa.timestamp("us", "utc")), ("value", pa.float64())])
-        return data.cast(schema)
+        return data
 
     def _open_pivot_data(self, loader: Loader) -> pa.Table:
         timestamp_column = "ts"
