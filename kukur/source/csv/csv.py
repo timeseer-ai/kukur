@@ -299,11 +299,35 @@ class CSVSource:
             self.__options.data_timezone,
         )
 
-        all_data = pyarrow.csv.read_csv(
-            loader.open(), read_options=read_options, convert_options=convert_options
-        )
-        all_data = _map_columns(self.__options.column_mapping, all_data)
-        all_data = _cast_ts_column(all_data, self.__options.data_timezone)
+        try:
+            all_data = pyarrow.csv.read_csv(
+                loader.open(),
+                read_options=read_options,
+                convert_options=convert_options,
+            )
+
+            all_data = _map_columns(self.__options.column_mapping, all_data)
+            all_data = _cast_ts_column(all_data, self.__options.data_timezone)
+        except pa.lib.ArrowInvalid as arrow_invalid_exception:
+            if self.__options.data_datetime_format is None:
+                raise arrow_invalid_exception
+
+            column_types = {timestamp_column: pa.string()}
+            convert_options = pyarrow.csv.ConvertOptions(
+                column_types=column_types,
+            )
+            all_data = pyarrow.csv.read_csv(
+                loader.open(),
+                read_options=read_options,
+                convert_options=convert_options,
+            )
+            all_data = _map_columns(self.__options.column_mapping, all_data)
+            all_data = _convert_timestamp(
+                all_data,
+                self.__options.data_datetime_format,
+                self.__options.data_timezone,
+            )
+
         if self.__mappers.quality.is_present():
             all_data = all_data.set_column(
                 3, "quality", self._map_quality(all_data["quality"])
@@ -314,6 +338,10 @@ class CSVSource:
         self, loader: Loader, selector: SeriesSelector
     ) -> pa.Table:
         columns = ["ts", "value"]
+        timestamp_column = "ts"
+        if "ts" in self.__options.column_mapping:
+            timestamp_column = self.__options.column_mapping["ts"]
+
         if self.__mappers.quality.is_present():
             columns.append("quality")
         if not self.__options.header_row:
@@ -325,13 +353,33 @@ class CSVSource:
             "ts", self.__options.data_datetime_format, self.__options.data_timezone
         )
 
-        data = pyarrow.csv.read_csv(
-            loader.open_child(f"{selector.tags['series name']}.csv"),
-            read_options=read_options,
-            convert_options=convert_options,
-        )
-        data = _map_columns(self.__options.column_mapping, data)
-        data = _cast_ts_column(data, self.__options.data_timezone)
+        try:
+            data = pyarrow.csv.read_csv(
+                loader.open_child(f"{selector.tags['series name']}.csv"),
+                read_options=read_options,
+                convert_options=convert_options,
+            )
+            data = _map_columns(self.__options.column_mapping, data)
+            data = _cast_ts_column(data, self.__options.data_timezone)
+        except pa.lib.ArrowInvalid as arrow_invalid_exception:
+            if self.__options.data_datetime_format is None:
+                raise arrow_invalid_exception
+
+            column_types = {timestamp_column: pa.string()}
+            convert_options = pyarrow.csv.ConvertOptions(
+                column_types=column_types,
+            )
+            data = pyarrow.csv.read_csv(
+                loader.open_child(f"{selector.tags['series name']}.csv"),
+                read_options=read_options,
+                convert_options=convert_options,
+            )
+            data = _map_columns(self.__options.column_mapping, data)
+            data = _convert_timestamp(
+                data,
+                self.__options.data_datetime_format,
+                self.__options.data_timezone,
+            )
         if self.__mappers.quality.is_present():
             return data.set_column(2, "quality", self._map_quality(data["quality"]))
         return data
@@ -341,8 +389,7 @@ class CSVSource:
         if selector.name not in all_data.column_names:
             raise InvalidDataError(f'column "{selector.name}" not found')
         data = all_data.select(["ts", selector.name]).rename_columns(["ts", "value"])
-        schema = pa.schema([("ts", pa.timestamp("us", "utc")), ("value", pa.float64())])
-        return data.cast(schema)
+        return data
 
     def _open_pivot_data(self, loader: Loader) -> pa.Table:
         timestamp_column = "ts"
@@ -354,10 +401,30 @@ class CSVSource:
             self.__options.data_datetime_format,
             self.__options.data_timezone,
         )
+        try:
+            all_data = pyarrow.csv.read_csv(
+                loader.open(), convert_options=convert_options
+            )
+            all_data = _map_pivot_columns(self.__options.column_mapping, all_data)
+            all_data = _cast_ts_column(all_data, self.__options.data_timezone)
+        except pa.lib.ArrowInvalid as arrow_invalid_exception:
+            if self.__options.data_datetime_format is None:
+                raise arrow_invalid_exception
 
-        all_data = pyarrow.csv.read_csv(loader.open(), convert_options=convert_options)
-        all_data = _map_pivot_columns(self.__options.column_mapping, all_data)
-        all_data = _cast_ts_column(all_data, self.__options.data_timezone)
+            column_types = {timestamp_column: pa.string()}
+            convert_options = pyarrow.csv.ConvertOptions(
+                column_types=column_types,
+            )
+            all_data = pyarrow.csv.read_csv(
+                loader.open(),
+                convert_options=convert_options,
+            )
+            all_data = _map_pivot_columns(self.__options.column_mapping, all_data)
+            all_data = _convert_timestamp(
+                all_data,
+                self.__options.data_datetime_format,
+                self.__options.data_timezone,
+            )
         return all_data
 
     def _map_quality(self, quality_data: pa.Array) -> pa.Array:
@@ -374,6 +441,7 @@ def _get_convert_options(
         if data_timezone is not None
         else pa.timestamp("us", "utc")
     }
+
     timestamp_parsers = (
         [data_datetime_format] if data_datetime_format is not None else None
     )
@@ -385,6 +453,39 @@ def _get_convert_options(
 
 def _cast_ts_column(data: pa.Table, data_timezone: Optional[str]) -> pa.Table:
     if data_timezone is None:
+        return data
+
+    # pylint: disable=no-member
+    return data.set_column(
+        data.column_names.index("ts"),
+        "ts",
+        pyarrow.compute.assume_timezone(data["ts"], data_timezone),
+    )
+
+
+def _convert_timestamp(
+    data: pa.Table, data_datetime_format: str, data_timezone: Optional[str]
+) -> pa.Table:
+    # pylint: disable=no-member
+    data = data.set_column(
+        data.column_names.index("ts"),
+        "ts",
+        [
+            [
+                datetime.strptime(timestamp.as_py(), data_datetime_format)
+                for timestamp in data["ts"]
+            ]
+        ],
+    )
+
+    if data_timezone is None:
+        if data["ts"][0].as_py().tzinfo is None:
+            # pylint: disable=no-member
+            return data.set_column(
+                data.column_names.index("ts"),
+                "ts",
+                pyarrow.compute.assume_timezone(data["ts"], "UTC"),
+            )
         return data
 
     # pylint: disable=no-member
