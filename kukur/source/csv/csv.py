@@ -58,6 +58,8 @@ def from_config(
         data_format,
         config.get("header_row", False),
         column_mapping,
+        config.get("tag_columns", ["series name"]),
+        config.get("field_columns", ["value"]),
         data_datetime_format,
         data_timezone,
     )
@@ -93,6 +95,8 @@ class CSVSourceOptions:
     data_format: str
     header_row: bool
     column_mapping: Dict[str, str]
+    tags: List[str]
+    fields: List[str]
     data_datetime_format: Optional[str] = None
     data_timezone: Optional[str] = None
 
@@ -249,9 +253,9 @@ class CSVSource:
         self, loader: Loader, search: SeriesSearch
     ) -> Generator[SeriesSelector, None, None]:
         all_data = self._open_row_data(loader)
-        # pylint: disable=no-member
-        for name in pyarrow.compute.unique(all_data["series name"]):
-            yield SeriesSelector(search.source, name.as_py())
+        for tags in all_data.group_by(self.__options.tags).aggregate([]).to_pylist():
+            for field_name in self.__options.fields:
+                yield SeriesSelector(search.source, tags, field_name)
 
     def _search_pivot(
         self, loader: Loader, search: SeriesSearch
@@ -272,21 +276,32 @@ class CSVSource:
         return self._read_row_data(self.__loaders.data, selector)
 
     def _read_row_data(self, loader: Loader, selector: SeriesSelector) -> pa.Table:
-        all_data = self._open_row_data(loader)
+        row_data = self._open_row_data(loader)
         # pylint: disable=no-member
-        data = all_data.filter(
-            pyarrow.compute.equal(all_data["series name"], pa.scalar(selector.name))
+        for k, v in selector.tags.items():
+            row_data = row_data.filter(pyarrow.compute.equal(row_data[k], pa.scalar(v)))
+        data = pa.Table.from_arrays(
+            [
+                row_data["ts"],
+                row_data[selector.field],
+            ],
+            ["ts", "value"],
         )
-        return data.drop(["series name"])
+        if self.__mappers.quality.is_present():
+            data = data.set_column(2, "quality", row_data["quality"])
+        return data
 
     def _open_row_data(self, loader: Loader) -> pa.Table:
-        columns = ["series name", "ts", "value"]
-        timestamp_column = "ts"
-        if "ts" in self.__options.column_mapping:
-            timestamp_column = self.__options.column_mapping["ts"]
+        columns = self.__options.tags + ["ts"] + self.__options.fields
+        timestamp_column = self.__options.column_mapping.get("ts", "ts")
 
         if self.__mappers.quality.is_present():
             columns.append("quality")
+
+        data_columns = {
+            column_name: self.__options.column_mapping.get(column_name, column_name)
+            for column_name in columns
+        }
 
         if not self.__options.header_row:
             read_options = pyarrow.csv.ReadOptions(column_names=columns)
@@ -306,7 +321,7 @@ class CSVSource:
                 convert_options=convert_options,
             )
 
-            all_data = _map_columns(self.__options.column_mapping, all_data)
+            all_data = _map_columns(data_columns, all_data)
             all_data = _cast_ts_column(all_data, self.__options.data_timezone)
         except pa.lib.ArrowInvalid as arrow_invalid_exception:
             if self.__options.data_datetime_format is None:
@@ -321,7 +336,7 @@ class CSVSource:
                 read_options=read_options,
                 convert_options=convert_options,
             )
-            all_data = _map_columns(self.__options.column_mapping, all_data)
+            all_data = _map_columns(data_columns, all_data)
             all_data = _convert_timestamp(
                 all_data,
                 self.__options.data_datetime_format,
@@ -329,9 +344,11 @@ class CSVSource:
             )
 
         if self.__mappers.quality.is_present():
-            all_data = all_data.set_column(
-                3, "quality", self._map_quality(all_data["quality"])
-            )
+            for i, name in enumerate(all_data.column_names):
+                if name == "quality":
+                    all_data = all_data.set_column(
+                        i, "quality", self._map_quality(all_data["quality"])
+                    )
         return all_data
 
     def _read_directory_data(
@@ -344,6 +361,12 @@ class CSVSource:
 
         if self.__mappers.quality.is_present():
             columns.append("quality")
+
+        data_columns = {
+            column_name: self.__options.column_mapping.get(column_name, column_name)
+            for column_name in columns
+        }
+
         if not self.__options.header_row:
             read_options = pyarrow.csv.ReadOptions(column_names=columns)
         else:
@@ -359,7 +382,7 @@ class CSVSource:
                 read_options=read_options,
                 convert_options=convert_options,
             )
-            data = _map_columns(self.__options.column_mapping, data)
+            data = _map_columns(data_columns, data)
             data = _cast_ts_column(data, self.__options.data_timezone)
         except pa.lib.ArrowInvalid as arrow_invalid_exception:
             if self.__options.data_datetime_format is None:
@@ -374,7 +397,7 @@ class CSVSource:
                 read_options=read_options,
                 convert_options=convert_options,
             )
-            data = _map_columns(self.__options.column_mapping, data)
+            data = _map_columns(data_columns, data)
             data = _convert_timestamp(
                 data,
                 self.__options.data_datetime_format,
@@ -497,21 +520,12 @@ def _convert_timestamp(
 
 
 def _map_columns(column_mapping: Dict[str, str], data: pa.Table) -> pa.Table:
-    if len(column_mapping) == 0:
-        return data
-
-    columns = {
-        "ts": data[column_mapping["ts"]],
-        "value": data[column_mapping["value"]],
-    }
-
-    if "series name" in column_mapping:
-        columns["series name"] = data[column_mapping["series name"]]
-
-    if "quality" in column_mapping:
-        columns["quality"] = data[column_mapping["quality"]]
-
-    return pa.Table.from_pydict(columns)
+    return pa.Table.from_pydict(
+        {
+            column_name: data[data_name]
+            for column_name, data_name in column_mapping.items()
+        }
+    )
 
 
 def _map_pivot_columns(column_mapping: Dict[str, str], data: pa.Table) -> pa.Table:

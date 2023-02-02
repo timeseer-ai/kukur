@@ -172,3 +172,29 @@ type = "csv"
 path = "tests/test_data/csv/row-datetime-naive.csv"
 data_datetime_format = "%Y-%m-%d %H:%M:%S.%f"
 data_timezone = "America/Sao_Paulo"
+
+[source.row_tags]
+type = "csv"
+path = "tests/test_data/csv/row-tags.csv"
+header_row = true
+tag_columns = ["location", "plant"]
+field_columns = ["value", "product"]
+
+[source.row_tags.column_mapping]
+"ts" = "date"
+"plant" = "Plant"
+"value" = "Value"
+
+[source.row_tags_quality]
+type = "csv"
+path = "tests/test_data/csv/row-tags-quality.csv"
+header_row = true
+tag_columns = ["location", "plant"]
+field_columns = ["value", "product"]
+quality_mapping = "opc_mapping_strings"
+
+[source.row_tags_quality.column_mapping]
+"ts" = "date"
+"plant" = "Plant"
+"value" = "Value"
+"quality" = "q"

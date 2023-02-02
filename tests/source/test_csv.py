@@ -327,3 +327,41 @@ def test_row_data_timezone() -> None:
     start_date = table["ts"][0].as_py()
     assert start_date == START_DATE
     assert start_date.tzinfo == pytz.UTC
+
+
+def test_row_tags_search() -> None:
+    all_series = list(get_source("row_tags").search(SeriesSearch("row_tags")))
+    assert len(all_series) == 8
+    assert (
+        SeriesSelector("row_tags", {"location": "Antwerp", "plant": "P1"}) in all_series
+    )
+    assert (
+        SeriesSelector("row_tags", {"location": "Antwerp", "plant": "P1"}, "product")
+        in all_series
+    )
+
+
+def test_row_tags_data() -> None:
+    selector = SeriesSelector("row_tags", {"location": "Antwerp", "plant": "P1"})
+    data = get_source("row_tags").get_data(selector, START_DATE, END_DATE)
+    assert len(data) == 3
+    assert data["value"].to_pylist() == [1, 2, 1]
+
+
+def test_row_tags_string_data() -> None:
+    selector = SeriesSelector(
+        "row_tags", {"location": "Antwerp", "plant": "P1"}, "product"
+    )
+    data = get_source("row_tags").get_data(selector, START_DATE, END_DATE)
+    assert len(data) == 3
+    assert data["value"].to_pylist() == ["A", "A", "B"]
+
+
+def test_row_tags_quality() -> None:
+    selector = SeriesSelector(
+        "row_tags_quality", {"location": "Antwerp", "plant": "P1"}
+    )
+    data = get_source("row_tags_quality").get_data(selector, START_DATE, END_DATE)
+    assert len(data) == 3
+    assert data["value"].to_pylist() == [1, 2, 1]
+    assert data["quality"].to_pylist() == [1, 0, 1]
