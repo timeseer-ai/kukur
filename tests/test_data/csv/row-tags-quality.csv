@@ -1,0 +1,11 @@
+location,Plant,date,q,product,Value
+Antwerp,P1,2020-01-01T00:00:00Z,GoodQuality,A,1
+Antwerp,P2,2020-01-01T00:00:00Z,GoodQuality,A,1
+Antwerp,P1,2020-01-02T00:00:00Z,Bad,A,2
+Antwerp,P1,2020-01-03T00:00:00Z,Decent,B,1
+Antwerp,P2,2020-01-03T00:00:00Z,GoodQuality,A,2
+Barcelona,P1,2020-01-01T00:00:00Z,GoodQuality,A,1
+Barcelona,P2,2020-01-01T00:00:00Z,GoodQuality,A,1
+Barcelona,P1,2020-01-02T00:00:00Z,GoodQuality,A,2
+Barcelona,P1,2020-01-03T00:00:00Z,GoodQuality,B,1
+Barcelona,P2,2020-01-03T00:00:00Z,GoodQuality,A,2

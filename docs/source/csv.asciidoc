@@ -14,10 +14,12 @@ metadata_fields = ["<name>", "<name>"]
 metadata_mapping = "<name>"
 metadata_value_mapping ="<name>"
 format = "row|pivot|dir"
+tag_columns = ["series name"]
+field_columns = ["value"]
 dictionary_dir = "<path>"
 quality_mapping = "<name>"
 file_encoding = "<codec>"
-header_row = "true|false"
+header_row = "false|true"
 ```
 
 `path` is required for time series sources.
@@ -97,6 +99,41 @@ This will cause all numerical values to be interpreted as strings.
 
 Dictionary data is integer numerical data.
 Labels are only for presenting to users.
+
+When `header_row = "true"`,
+additional structure for time series can be read from specific columns.
+
+Consider:
+
+```
+location,plant,ts,product,value
+Antwerp,P1,2020-01-01T00:00:00Z,A,1
+Antwerp,P2,2020-01-01T00:00:00Z,A,1
+Antwerp,P1,2020-01-02T00:00:00Z,A,2
+Antwerp,P1,2020-01-03T00:00:00Z,B,1
+Antwerp,P2,2020-01-03T00:00:00Z,A,2
+Barcelona,P1,2020-01-01T00:00:00Z,A,1
+Barcelona,P2,2020-01-01T00:00:00Z,A,1
+Barcelona,P1,2020-01-02T00:00:00Z,A,2
+Barcelona,P1,2020-01-03T00:00:00Z,B,1
+Barcelona,P2,2020-01-03T00:00:00Z,A,2
+```
+
+Here,
+a time series is defined by the `location` and `plant` tags.
+Each series has two fields `product` and `value`.
+
+Use the `tag_columns` and `field_colums` configuration options to achieve this:
+
+```toml
+[source."..."]
+type = "csv"
+format = "row"
+path = "..."
+header_row = true
+tag_columns = ["location", "plant"]
+field_columns = ["product", "value"]
+```
 
 === Pivot Format
 
