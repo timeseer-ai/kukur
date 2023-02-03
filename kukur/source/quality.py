@@ -19,7 +19,9 @@ class Quality(Enum):
 
 class QualityMapper:
     """QualityMapper maps quality values used in a source to the quality values of Kukur.
-    GOOD = 1 and BAD = 0."""
+
+    GOOD = 1 and BAD = 0.
+    """
 
     __good_mapping: List[Union[str, int]]
 
@@ -44,11 +46,11 @@ class QualityMapper:
         self.__good_mapping = []
 
     def add_mapping(self, quality_value: Union[str, int]):
-        """Add a mapping"""
+        """Add a mapping."""
         self.__good_mapping.append(quality_value)
 
     def add_mapping_range(self, quality_values: range):
-        """Add a mapping range"""
+        """Add a mapping range."""
         self.__good_mapping.extend(quality_values)
 
     def from_source(self, source_quality_value: Union[str, int]) -> int:

@@ -64,7 +64,8 @@ class MetadataFields:
     def find_field(self, field_name: str) -> MetadataField:
         """Return the MetadataField with the given name.
 
-        Name can either be the human readable name or a camelCase name for JSON."""
+        Name can either be the human readable name or a camelCase name for JSON.
+        """
         field = self._find_field(field_name)
         if field is None:
             raise AttributeError()
@@ -87,7 +88,8 @@ class MetadataFields:
     def coerce_field(self, field_name: str, value: Any):
         """Set the field of the given name to the corresponding value.
 
-        This tries to coerce the given value into a correctly typed one."""
+        This tries to coerce the given value into a correctly typed one.
+        """
         field = self._find_field(field_name)
         if field is not None:
             self.__values[field] = field.deserialize(value)
@@ -103,7 +105,8 @@ class MetadataFields:
     def get_field_by_name(self, field_name: str) -> Any:
         """Return the value of the given field.
 
-        When a field has not been defined, the value will be the serialized value."""
+        When a field has not been defined, the value will be the serialized value.
+        """
         field = self._find_field(field_name)
         if field is None:
             if field_name not in self.__values:
@@ -140,7 +143,8 @@ class Metadata(MetadataFields):
     ):
         """Register a new metadata field.
 
-        Optionally insert it right after the given field in the field ordering."""
+        Optionally insert it right after the given field in the field ordering.
+        """
         if after_field is not None:
             cls._fields.insert(cls._fields.index(after_field) + 1, field)
         else:
@@ -152,7 +156,8 @@ class Metadata(MetadataFields):
     ) -> "Metadata":
         """Create a new Metadata object from a dictionary produced by to_data().
 
-        This uses the provided series as selector, otherwise the series is expected to be inside the data."""
+        This uses the provided series as selector, otherwise the series is expected to be inside the data.
+        """
         if series is None:
             if "series" not in data:
                 raise AttributeError()

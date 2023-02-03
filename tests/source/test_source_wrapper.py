@@ -7,10 +7,9 @@ from typing import Generator, Optional, Union
 import pyarrow as pa
 import pytest
 
-from kukur import SeriesSelector, Metadata
+from kukur import Metadata, SeriesSelector
 from kukur.base import SourceStructure
 from kukur.source import Source, SourceWrapper
-
 
 SELECTOR = SeriesSelector.from_tags("fake", {"series name": "test-tag-1"})
 START_DATE = datetime.fromisoformat("2020-01-01T00:00:00+00:00")
@@ -112,7 +111,6 @@ class SomeStringTypesSource:
 
 
 class FailureSource:
-
     __failure_count: int
 
     def __init__(self, *, failure_count=1) -> None:

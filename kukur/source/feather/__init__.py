@@ -1,5 +1,4 @@
-"""
-feather contains the Feather data source for Timeseer.
+"""feather contains the Feather data source for Timeseer.
 
 Three formats are supported:
 - row based, with many series in one file containing one row per data point

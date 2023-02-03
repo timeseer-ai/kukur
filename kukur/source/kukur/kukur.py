@@ -13,7 +13,7 @@ from kukur.client import Client
 
 
 def from_config(config: Dict[str, Any]):
-    """Create a new Kukur source"""
+    """Create a new Kukur source."""
     source_name = config["source"]
     host = config.get("host", "localhost")
     port = config.get("port", 8081)

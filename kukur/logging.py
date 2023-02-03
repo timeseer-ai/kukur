@@ -5,7 +5,6 @@
 
 import logging
 import logging.handlers
-
 from typing import Any, Dict
 
 

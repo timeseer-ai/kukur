@@ -1,12 +1,12 @@
 """Test connections to Timeseer data sources.
 
-This takes care to not persistently store metadata."""
+This takes care to not persistently store metadata.
+"""
 
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
-
 from datetime import datetime, timezone
 from typing import Any, Generator, List
 
@@ -14,7 +14,6 @@ from dateutil.tz import tzlocal
 from pyarrow import Table
 
 from kukur import Metadata, PlotSource, SeriesSearch, SeriesSelector, Source
-
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +40,8 @@ def metadata(
 ) -> Generator[List[Any], None, None]:
     """Test fetching metadata from a source.
 
-    This does not store the metadata."""
+    This does not store the metadata.
+    """
     logger.info('Requesting metadata for "%s (%s)"', series_name, source_name)
     result = source.get_metadata(SeriesSelector(source_name, series_name))
     yield _get_metadata_header(result)
@@ -74,7 +74,7 @@ def data(
     return _yield_table(table)
 
 
-def plot(  # pylint: disable=too-many-arguments
+def plot(  # noqa: PLR0913
     source: Source,
     source_name: str,
     series_name: str,

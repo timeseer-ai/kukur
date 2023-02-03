@@ -8,7 +8,7 @@ from datetime import datetime
 
 @dataclass
 class ApiKey:
-    """An api key contains the information of an api key"""
+    """An api key contains the information of an api key."""
 
     name: str
     creation_date: datetime

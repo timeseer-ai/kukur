@@ -1,5 +1,4 @@
-"""
-csv contains the CSV data source for Timeseer.
+"""csv contains the CSV data source for Timeseer.
 
 Three formats are supported:
 - row based, with many series in one file containing one line per data point
@@ -11,19 +10,18 @@ Three formats are supported:
 # SPDX-License-Identifier: Apache-2.0
 
 import csv
-
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, Generator, List, Optional, Union
 
 import pyarrow as pa
-import pyarrow.csv
 import pyarrow.compute
+import pyarrow.csv
 
 from kukur import Dictionary, Metadata, SeriesSearch, SeriesSelector
-
-from kukur.loader import Loader, from_config as loader_from_config
 from kukur.exceptions import InvalidDataError, InvalidSourceException, KukurException
+from kukur.loader import Loader
+from kukur.loader import from_config as loader_from_config
 from kukur.metadata import fields
 from kukur.source.metadata import MetadataMapper, MetadataValueMapper
 from kukur.source.quality import QualityMapper
@@ -411,8 +409,7 @@ class CSVSource:
         all_data = self._open_pivot_data(loader)
         if selector.name not in all_data.column_names:
             raise InvalidDataError(f'column "{selector.name}" not found')
-        data = all_data.select(["ts", selector.name]).rename_columns(["ts", "value"])
-        return data
+        return all_data.select(["ts", selector.name]).rename_columns(["ts", "value"])
 
     def _open_pivot_data(self, loader: Loader) -> pa.Table:
         timestamp_column = "ts"
@@ -495,7 +492,7 @@ def _convert_timestamp(
         "ts",
         [
             [
-                datetime.strptime(timestamp.as_py(), data_datetime_format)
+                datetime.strptime(timestamp.as_py(), data_datetime_format)  # noqa: DT
                 for timestamp in data["ts"]
             ]
         ],

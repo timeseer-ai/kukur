@@ -3,7 +3,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import io
-
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Optional, Protocol, Union
@@ -48,7 +47,7 @@ class Loader(Protocol):
 
 
 class FileLoader:
-    """Load data from files"""
+    """Load data from files."""
 
     __path: Path
     __mode: str
@@ -64,7 +63,8 @@ class FileLoader:
     def open(self):
         """Open the file at path for reading.
 
-        If files_as_path is True, return the path."""
+        If files_as_path is True, return the path.
+        """
         if not self.__path.exists():
             raise InvalidDataError(f"'{self.__path}' does not exist")
         if self.__files_as_path:
@@ -81,7 +81,8 @@ class FileLoader:
     def open_child(self, name: str):
         """Open the file <name> that is in the directory path for reading.
 
-        If files_as_path is True, return the path of the child."""
+        If files_as_path is True, return the path of the child.
+        """
         if not self.__path.is_dir():
             raise InvalidDataError(f'"{self.__path}" is not a directory')
         path = self.__path / name
@@ -96,7 +97,8 @@ class FileLoader:
 class AzureBlobConfiguration:
     """Connection details for an Azure blob inside a container.
 
-    When the connection string does not include authentication tokens, provide an identity."""
+    When the connection string does not include authentication tokens, provide an identity.
+    """
 
     connection_string: str
     container: str
@@ -104,7 +106,7 @@ class AzureBlobConfiguration:
 
 
 class AzureBlobLoader:
-    """Load data from Azure blobs"""
+    """Load data from Azure blobs."""
 
     __mode: str
     __config: AzureBlobConfiguration

@@ -1,5 +1,4 @@
-"""
-Delta Lake source for Kukur
+"""Delta Lake source for Kukur.
 
 Two formats are supported:
 - row based, with many series in one file containing one row per data point
@@ -27,7 +26,8 @@ from kukur.source.quality import QualityMapper
 class DeltaLakeLoader:
     """Fakes a loader for Delta Lake tables.
 
-    It does not really load files, as the other loaders do."""
+    It does not really load files, as the other loaders do.
+    """
 
     def __init__(self, config: dict) -> None:
         self.__uri = config["uri"]
@@ -37,16 +37,16 @@ class DeltaLakeLoader:
         return self.__uri
 
     def has_child(self, subpath: str) -> bool:
-        """Not supported for Delta Lake"""
+        """Not supported for Delta Lake."""
         raise NotImplementedError()
 
     def open_child(self, subpath: str):
-        """Not supported for Delta Lake"""
+        """Not supported for Delta Lake."""
         raise NotImplementedError()
 
 
 class DeltaLakeSource(BaseArrowSource):
-    """Connect to a Delta Lake"""
+    """Connect to a Delta Lake."""
 
     def read_file(self, file_like) -> Table:
         """Return a PyArrow Table for the Delta Table at the given URI."""

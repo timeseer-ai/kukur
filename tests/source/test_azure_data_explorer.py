@@ -1,10 +1,9 @@
 # SPDX-FileCopyrightText: 2022 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from random import random
 from typing import Any, Dict, List, Union
-
 from unittest.mock import patch
 
 from kukur import SeriesSelector
@@ -21,7 +20,7 @@ class MockKustoResponse:
 
 
 def source_structure_queries(_, query) -> MockKustoResponse:
-    if query == f".show table ['telemetry-data'] schema as json":
+    if query == ".show table ['telemetry-data'] schema as json":
         return MockKustoResponse(
             [
                 {
@@ -122,10 +121,22 @@ def test_source_structure(_kusto_client) -> None:
 
 get_data_response = MockKustoResponse(
     [
-        {"ts": datetime.utcnow() - timedelta(minutes=10), "pressure": random() * 100},
-        {"ts": datetime.utcnow() - timedelta(minutes=9), "pressure": random() * 100},
-        {"ts": datetime.utcnow() - timedelta(minutes=8), "pressure": random() * 100},
-        {"ts": datetime.utcnow() - timedelta(minutes=7), "pressure": random() * 100},
+        {
+            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=10),
+            "pressure": random() * 100,
+        },
+        {
+            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=9),
+            "pressure": random() * 100,
+        },
+        {
+            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=8),
+            "pressure": random() * 100,
+        },
+        {
+            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=7),
+            "pressure": random() * 100,
+        },
     ]
 )
 
@@ -146,8 +157,8 @@ def test_get_data(kusto_client) -> None:
     selector = SeriesSelector(
         "my_source", {"location": "Curitiba", "plant": "Plant02"}, "pressure"
     )
-    initial_date = datetime.utcnow() - timedelta(minutes=20)
-    final_date = datetime.utcnow()
+    initial_date = datetime.now(tz=timezone.utc) - timedelta(minutes=20)
+    final_date = datetime.now(tz=timezone.utc)
     data = source.get_data(selector, initial_date, final_date)
     args = kusto_client.call_args.args
     assert args[0] == "telemetry"

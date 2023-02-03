@@ -4,14 +4,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Generator
 
 from pyarrow import Table
 
-from kukur import SeriesSearch, SeriesSelector, Metadata
+from kukur import Metadata, SeriesSearch, SeriesSelector
 from kukur.exceptions import InvalidSourceException
 
 
@@ -32,7 +31,7 @@ class JSONSource:
             )
 
     def get_metadata(self, selector: SeriesSelector) -> Metadata:
-        """Read exactly one Kukur JSON file"""
+        """Read exactly one Kukur JSON file."""
         path = self.__path / (
             self.__path.joinpath(f"{selector.tags['series name']}.json")
             .resolve()
@@ -43,8 +42,8 @@ class JSONSource:
             return metadata
         return _read_metadata(selector, path)
 
-    def get_data(  # pylint: disable=no-self-use
-        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
+    def get_data(
+        self, _selector: SeriesSelector, _start_date: datetime, _end_date: datetime
     ) -> Table:
         """Get data from the Flight service."""
         raise InvalidSourceException("The 'json' source does not support reading data.")

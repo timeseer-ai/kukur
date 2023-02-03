@@ -1,18 +1,19 @@
-"""Persistence for api keys"""
+"""Persistence for api keys."""
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import List, Tuple, Optional
 from datetime import datetime
-from kukur.repository.base import BaseRepository, Migration
+from typing import List, Optional, Tuple
 
 from kukur.api_key import ApiKey
+from kukur.repository.base import BaseRepository, Migration
 
 
-class ApiKeyMigration(Migration):  # pylint: disable=too-few-public-methods
+class ApiKeyMigration(Migration):
     """Create database tables for api keys."""
 
     def migrate(self):
+        """Create the API key database."""
         with self._open_db() as db:
             cursor = db.cursor()
             cursor.executescript(
@@ -39,7 +40,8 @@ class ApiKeyRepository(BaseRepository):
     def store(self, name: str, api_key: bytes, salt: bytes, creation_date: datetime):
         """Create a new api key with the given name.
 
-        It returns the newly created api_key."""
+        It returns the newly created api_key.
+        """
         with self._open_db() as db:
             cursor = db.cursor()
             cursor.execute(

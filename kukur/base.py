@@ -3,7 +3,8 @@
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-from dataclasses import dataclass, field as data_field
+from dataclasses import dataclass
+from dataclasses import field as data_field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
@@ -18,7 +19,8 @@ class Dictionary:
     The ordering of the labels can also be significant while presenting the
     series to a user.
 
-    In Python 3.8+, iteration over a dict keeps the insert ordering."""
+    In Python 3.8+, iteration over a dict keeps the insert ordering.
+    """
 
     mapping: Dict[int, str]
 
@@ -37,7 +39,7 @@ class SeriesSearch:
     def __init__(
         self,
         source: str,
-        tags: Union[str, Dict[str, str]] = None,
+        tags: Optional[Union[str, Dict[str, str]]] = None,
         field: Optional[str] = None,
     ):
         tags_dict = {}
@@ -53,7 +55,8 @@ class SeriesSearch:
     def name(self) -> str:
         """Get the series name with tags and fields included.
 
-        For sources that cannot handle tags and fields yet."""
+        For sources that cannot handle tags and fields yet.
+        """
         series_tags: List[str] = []
         for tag_key, tag_value in self.tags.items():
             if tag_key == "series name":
@@ -79,7 +82,7 @@ class SeriesSelector(SeriesSearch):
     def __init__(
         self,
         source: str,
-        tags: Union[str, Dict[str, str]] = None,
+        tags: Optional[Union[str, Dict[str, str]]] = None,
         field: str = "value",
     ):
         super().__init__(source, tags)
@@ -108,7 +111,8 @@ class SeriesSelector(SeriesSearch):
     def name(self) -> str:
         """Get the series name with tags and fields included.
 
-        For sources that cannot handle tags and fields yet."""
+        For sources that cannot handle tags and fields yet.
+        """
         series_tags: List[str] = []
         for tag_key, tag_value in self.tags.items():
             if tag_key == "series name":

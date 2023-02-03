@@ -3,12 +3,11 @@
 # SPDX-FileCopyrightText: 2022 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 
 import kukur.config
-
 from kukur import DataType, Metadata, SeriesSearch, SeriesSelector, Source
 from kukur.exceptions import InvalidSourceException
 from kukur.metadata import fields
@@ -69,4 +68,6 @@ def test_metadata_directory_traversal() -> None:
 def test_data_unsupported() -> None:
     selector = SeriesSelector("json", "../../../test-tag-1")
     with pytest.raises(InvalidSourceException):
-        get_source("json").get_data(selector, datetime.now(), datetime.now())
+        get_source("json").get_data(
+            selector, datetime.now(tz=timezone.utc), datetime.now(tz=timezone.utc)
+        )

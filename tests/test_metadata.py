@@ -1,4 +1,4 @@
-"""Test flexible Metadata"""
+"""Test flexible Metadata."""
 
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
@@ -46,11 +46,11 @@ def test_repr() -> None:
 
 
 def test_typed_field() -> None:
-    CustomField = MetadataField[str]("custom", default="", serialized_name="custom")
-    Metadata.register_field(CustomField, after_field=fields.Description)
+    custom_field = MetadataField[str]("custom", default="", serialized_name="custom")
+    Metadata.register_field(custom_field, after_field=fields.Description)
 
     metadata = Metadata(SERIES)
-    metadata.set_field(CustomField, "test")
+    metadata.set_field(custom_field, "test")
     assert list(metadata.iter_names())[1] == ("custom", "test")
 
 
