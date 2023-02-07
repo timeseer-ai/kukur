@@ -34,6 +34,9 @@ ignore = [
 ]
 line-length = 120
 
+[tool.ruff.pydocstyle]
+convention = "google"
+
 [tool.ruff.per-file-ignores]
 "kukur/__init__.py" = [
     "I001",
@@ -42,5 +45,5 @@ line-length = 120
     "ARG001",
     "ARG002",
     "D",
-    "PLR2004",
+    "PLR",
 ]
