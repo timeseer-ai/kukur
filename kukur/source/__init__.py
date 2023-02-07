@@ -4,7 +4,6 @@ import functools
 import inspect
 import logging
 import time
-
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union
@@ -12,34 +11,33 @@ from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union
 import pyarrow as pa
 import pyarrow.types
 
+from kukur import (
+    Metadata,
+    PlotSource,
+    SeriesSearch,
+    SeriesSelector,
+    SourceStructure,
+    TagSource,
+)
+from kukur import Source as SourceProtocol
+from kukur.exceptions import InvalidSourceException
 from kukur.source import (
     adodb,
+    azure_data_explorer,
     cratedb,
     csv,
-    azure_data_explorer,
     delta,
     feather,
     influxdb,
     integration_test,
-    json as json_source,
-    kukur as kukur_source,
     odbc,
     parquet,
     piwebapi_da,
     simulator,
     sqlite,
 )
-
-from kukur import (
-    Metadata,
-    PlotSource,
-    SeriesSearch,
-    SeriesSelector,
-    Source as SourceProtocol,
-    SourceStructure,
-    TagSource,
-)
-from kukur.exceptions import InvalidSourceException
+from kukur.source import json as json_source
+from kukur.source import kukur as kukur_source
 from kukur.source.quality import QualityMapper
 
 from .metadata import MetadataMapper, MetadataValueMapper
@@ -80,7 +78,8 @@ class MetadataSource:
 class Source:
     """A Kukur source can contain different metadata and data sources.
 
-    Source keeps them together."""
+    Source keeps them together.
+    """
 
     metadata: Union[SourceProtocol, TagSource]
     data: SourceProtocol
@@ -142,7 +141,8 @@ class SourceWrapper:
 
         If metadata sources are configured, query them as well and merge the results. This means that sources that
         are fast to search because they return metadata now also result in one additional query to each metadata
-        source for each series."""
+        source for each series.
+        """
         query_fn = functools.partial(self.__source.metadata.search, selector)
         results = _retry(
             self.__query_retry_count,
@@ -177,7 +177,8 @@ class SourceWrapper:
         """Return the metadata for the given series.
 
         The resulting metadata is the combination of the metadata in the source itself and any additional
-        metadata sources. Metadata sources earlier in the list of sources take precendence over later ones."""
+        metadata sources. Metadata sources earlier in the list of sources take precendence over later ones.
+        """
         metadata = Metadata(selector)
         for metadata_source in list(reversed(self.__metadata)) + [
             MetadataSource(self.__source.metadata)
@@ -220,11 +221,12 @@ class SourceWrapper:
         end_date: datetime,
         interval_count: int,
     ) -> pa.Table:
-        """Return the plotting data for the given series in the given time frame
+        """Return the plotting data for the given series in the given time frame.
 
         Plot data calls are not subject to request splitting, but do obsever other settings.
 
-        Returns normal data when plot data is not supported."""
+        Returns normal data when plot data is not supported.
+        """
         if start_date == end_date:
             return pa.Table.from_pydict({"ts": [], "value": [], "quality": []})
         if not isinstance(self.__source.data, PlotSource):
@@ -287,7 +289,7 @@ class SourceWrapper:
 
 
 class SourceFactory:
-    """Source factory to create Source objects"""
+    """Source factory to create Source objects."""
 
     __config: Dict[str, Any]
     __factory: Dict[str, Callable]
@@ -412,7 +414,8 @@ def concat_tables(tables: List[pa.Table]) -> List[pa.Table]:
 
     If any of the given tables contains strings, the result will contain a
     string value. If any of the given tables contains a floating point number,
-    the value will be a double."""
+    the value will be a double.
+    """
     tables = [table for table in tables if len(table) > 0]
     if len(tables) == 0:
         return pa.Table.from_pydict({"ts": [], "value": [], "quality": []})

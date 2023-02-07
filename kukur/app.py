@@ -2,25 +2,25 @@
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
 #
 # SPDX-License-Identifier: Apache-2.0
-from datetime import datetime
-from typing import Any, Dict, Generator, List, Optional, Union
-from pathlib import Path
-
 import json
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, Generator, List, Optional, Union
+
 import pyarrow as pa
 
 from kukur import Metadata, SeriesSearch, SeriesSelector, SourceStructure
-from kukur.exceptions import UnknownSourceException
-from kukur.source import SourceFactory, SourceWrapper
 from kukur.api_key.app import ApiKeys
-
+from kukur.exceptions import UnknownSourceException
 from kukur.repository import MigrationRunner, RepositoryRegistry
+from kukur.source import SourceFactory, SourceWrapper
 
 
 class Kukur:
     """Kukur queries the sources it's configured with for time series data and metadata.
 
-    It implements the Source interface."""
+    It implements the Source interface.
+    """
 
     __repository: RepositoryRegistry
 
@@ -60,7 +60,8 @@ class Kukur:
     ) -> pa.Table:
         """Return plot data for the given time series in the given time period.
 
-        Normal data is returned for sources that do not support plot data."""
+        Normal data is returned for sources that do not support plot data.
+        """
         return self._get_source(selector.source).get_plot_data(
             selector, start_date, end_date, interval_count
         )

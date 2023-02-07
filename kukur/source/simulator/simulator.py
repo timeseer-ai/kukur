@@ -6,7 +6,6 @@
 import itertools
 import operator
 import sys
-
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -16,7 +15,6 @@ from random import Random
 from typing import Any, Dict, Generator, List, Optional, Union
 
 import numpy
-
 import pyarrow as pa
 
 try:
@@ -34,7 +32,6 @@ from kukur import (
     SourceStructure,
 )
 from kukur.exceptions import MissingModuleException
-
 
 operator_functions = {
     "+": operator.add,
@@ -173,7 +170,7 @@ class StepSignalGenerator:
     def generate(  # pylint: disable=no-self-use, too-many-locals
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
-        """Generates data in steps based on a selector start and end date."""
+        """Generate data in steps based on a selector start and end date."""
         current_time = _get_start_of_day(start_date)
         configuration = _get_step_configuration(selector)
         ts = []
@@ -228,7 +225,7 @@ class StepSignalGenerator:
         )
 
     def list_series(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
-        """Yields all possible metadata combinations using the signal configuration and the provided selector."""
+        """Yield all possible metadata combinations using the signal configuration and the provided selector."""
         arg_list = []
         if self.__config is None:
             return
@@ -261,7 +258,7 @@ class StepSignalGenerator:
         arg_list.append(
             [
                 dict(min=value.min, max=value.max, number_of_steps=number_of_steps)
-                for value in self.__config.values
+                for value in self.__config.values  # noqa: PD
                 for number_of_steps in value.number_of_steps
             ]
         )
@@ -345,7 +342,7 @@ class WhiteNoiseSignalGenerator:
     def generate(  # pylint: disable=no-self-use
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
-        """Generates white noise based on a selector start and end date."""
+        """Generate white noise based on a selector start and end date."""
         current_time = _get_start_of_day(start_date)
         configuration = _get_white_noise_configuration(selector)
         ts = []
@@ -383,7 +380,7 @@ class WhiteNoiseSignalGenerator:
         )
 
     def list_series(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
-        """Yields all possible metadata combinations using the signal configuration and the provided selector."""
+        """Yield all possible metadata combinations using the signal configuration and the provided selector."""
         arg_list = []
         if self.__config is None:
             return
@@ -490,7 +487,7 @@ class SineSignalGenerator:
     def generate(  # pylint: disable=no-self-use
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
-        """Generates a sine function based on a selector start and end date."""
+        """Generate a sine function based on a selector start and end date."""
         current_time = _get_start_of_day(start_date)
         configuration = _get_sine_configuration(selector)
         ts = []
@@ -527,7 +524,7 @@ class SineSignalGenerator:
         )
 
     def list_series(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
-        """Yields all possible metadata combinations using the signal configuration and the provided selector."""
+        """Yield all possible metadata combinations using the signal configuration and the provided selector."""
         if self.__config is None:
             return
 
@@ -665,7 +662,7 @@ class SimulatorSource:
     def search(
         self, selector: SeriesSearch
     ) -> Generator[Union[Metadata, SeriesSelector], None, None]:
-        """Yields all possible metadata combinations using the signal configuration and the provided selector."""
+        """Yield all possible metadata combinations using the signal configuration and the provided selector."""
         all_series = []
         if "signal_type" in selector.tags:
             for generator in self.__signal_generators[selector.tags["signal_type"]]:
@@ -680,13 +677,13 @@ class SimulatorSource:
 
     # pylint: disable=no-self-use
     def get_metadata(self, selector: SeriesSelector) -> Metadata:
-        """Data explorer currently always returns empty metadata."""
+        """Return empty metadata."""
         return Metadata(selector)
 
     def get_data(
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
-        """Generates data in steps based on a selector start and end date."""
+        """Generate data in steps based on a selector start and end date."""
         if "signal_type" not in selector.tags:
             return pa.Table.from_pydict({"ts": [], "value": []})
         for generator in self.__signal_generators[selector.tags["signal_type"]]:

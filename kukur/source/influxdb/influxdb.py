@@ -4,7 +4,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-
 from datetime import datetime
 from typing import Any, Dict, Generator, Optional, Tuple
 
@@ -31,7 +30,7 @@ class InvalidClientConnection(KukurException):
 
 
 def from_config(config: Dict[str, Any]):
-    """Create a new Influx data source"""
+    """Create a new Influx data source."""
     if not HAS_INFLUX:
         raise MissingModuleException("influxdb", "influxdb")
     host = config.get("host", "localhost")

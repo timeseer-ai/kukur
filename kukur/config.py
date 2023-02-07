@@ -10,7 +10,6 @@ import toml
 
 from kukur.exceptions import KukurException
 
-
 logger = logging.getLogger(__name__)
 
 

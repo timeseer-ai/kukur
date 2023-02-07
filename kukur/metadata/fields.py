@@ -5,11 +5,9 @@
 
 from typing import Any, Callable, Generic, List, Optional, Tuple, TypeVar
 
-from kukur.base import (
-    DataType as KukurDataType,
-    Dictionary as KukurDictionary,
-    InterpolationType as KukurInterpolationType,
-)
+from kukur.base import DataType as KukurDataType
+from kukur.base import Dictionary as KukurDictionary
+from kukur.base import InterpolationType as KukurInterpolationType
 
 T = TypeVar("T")
 
@@ -19,7 +17,8 @@ class MetadataField(Generic[T]):
 
     This class is generic over the actual type of the field value.
 
-    JSON-ready data dictionary conversions should be provided for all non-trivial implementations."""
+    JSON-ready data dictionary conversions should be provided for all non-trivial implementations.
+    """
 
     def __init__(
         self,
@@ -128,7 +127,7 @@ def _calculate_accuracy(metadata, accuracy: Optional[float]) -> Optional[float]:
     if (
         accuracy_percentage is None
         or accuracy_percentage < 0
-        or accuracy_percentage > 100
+        or accuracy_percentage > 100  # noqa: PLR2004
     ):
         return None
     low_limit = metadata.get_field(LimitLowPhysical)

@@ -5,12 +5,11 @@
 
 import math
 import sqlite3
-
 from datetime import datetime
 
 from dateutil.parser import parse as parse_date
 
-from kukur import SeriesSelector, InterpolationType, Metadata
+from kukur import InterpolationType, Metadata, SeriesSelector
 from kukur.metadata import fields
 from kukur.source.metadata import MetadataValueMapper
 from kukur.source.quality import QualityMapper

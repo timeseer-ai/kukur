@@ -1,5 +1,4 @@
-"""
-csv contains the CSV data source for Timeseer.
+"""csv contains the CSV data source for Timeseer.
 
 Three formats are supported:
 - row based, with many series in one file containing one line per data point

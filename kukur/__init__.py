@@ -1,9 +1,9 @@
 """Kukur makes time series data and metadata available to the Apache Arrow ecosystem."""
-# SPDX-FileCopyrightText: 2021 Timeseer.AI
-#
-# SPDX-License-Identifier: Apache-2.0
-import typing
 
+# SPDX-FileCopyrightText: 2023 Timeseer.AI
+# SPDX-License-Identifier: Apache-2.0
+
+import typing
 from datetime import datetime
 from typing import Generator, Optional, Protocol, Union
 
@@ -19,7 +19,7 @@ from .base import (
 )
 from .exceptions import KukurException  # noqa
 from .metadata import Metadata
-from .client import Client
+from .client import Client  # noqa
 
 
 @typing.runtime_checkable
@@ -76,11 +76,11 @@ class SignalGenerator(Protocol):
     def generate(
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
-        """Generates data based on a selector, start date and end date."""
+        """Generate data based on a selector, start date and end date."""
         ...
 
     def list_series(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
-        """Yields all possible metadata combinations using the signal configuration and the provided selector."""
+        """Yield all possible metadata combinations using the signal configuration and the provided selector."""
         ...
 
 

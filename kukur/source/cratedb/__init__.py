@@ -1,5 +1,4 @@
-"""Connections to CratDB data sources from Timeseer.
-"""
+"""Connections to CratDB data sources from Timeseer."""
 
 # SPDX-FileCopyrightText: 2022 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0

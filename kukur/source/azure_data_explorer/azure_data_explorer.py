@@ -4,7 +4,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, Generator, List, Optional
@@ -59,7 +58,7 @@ def from_config(
     metadata_mapper: MetadataMapper,
     metadata_value_mapper: MetadataValueMapper,
 ):
-    """Create a new Azure Data Explorer data source"""
+    """Create a new Azure Data Explorer data source."""
     connection_string = config["connection_string"]
     database = config["database"]
     table = config["table"]
@@ -142,7 +141,7 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
         all_columns = {_escape(column) for column in self._get_table_columns()}
         fields = (
             all_columns
-            - set([self.__timestamp_column])
+            - {self.__timestamp_column}
             - set(self.__tags)
             - set(self.__metadata_columns)
             - set(self.__ignored_columns)
@@ -194,20 +193,19 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
 
     # pylint: disable=no-self-use
     def get_metadata(self, selector: SeriesSelector) -> Metadata:
-        """Data explorer currently always returns empty metadata."""
+        """Return empty metadata."""
         return Metadata(selector)
 
     def get_data(
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         """Return data for the given time series in the given time period."""
-
         query = f"""['{self.__table}']
             | where ['{self.__timestamp_column}'] >= todatetime('{start_date}')
             | where ['{self.__timestamp_column}'] <= todatetime('{end_date}')
         """
 
-        for (tag_key, tag_value) in selector.tags.items():
+        for tag_key, tag_value in selector.tags.items():
             query += f" | where ['{_escape(tag_key)}']=='{_escape(tag_value)}'"
 
         query = f"{query} | sort by ['{self.__timestamp_column}'] asc"
@@ -228,7 +226,7 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
         all_columns = {_escape(column) for column in self._get_table_columns()}
         fields = (
             all_columns
-            - set([self.__timestamp_column])
+            - {self.__timestamp_column}
             - set(self.__tags)
             - set(self.__metadata_columns)
             - set(self.__ignored_columns)

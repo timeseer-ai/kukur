@@ -6,7 +6,7 @@
 from typing import Optional
 
 
-class KukurException(Exception):
+class KukurException(Exception):  # noqa: N818
     """Base class for all Exceptions thrown by Kukur."""
 
 

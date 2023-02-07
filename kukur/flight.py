@@ -3,11 +3,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import json
-
 from typing import Any, Callable, Dict, Generator, List
 
 import pyarrow.flight as fl
-
 from dateutil.parser import parse as parse_date
 
 from kukur import PlotSource, SeriesSelector, Source, TagSource
@@ -23,7 +21,8 @@ class JSONFlightServer(fl.FlightServerBase):
     Extra keyword arguments are passed to FlightServerBase.
 
     It supports registering custom actions and request handlers. Register a GET
-    handler to return Arrow data. To return JSON, register an action handler."""
+    handler to return Arrow data. To return JSON, register an action handler.
+    """
 
     __get_handlers: Dict[str, Callable]
     __action_handlers: Dict[str, Callable]
@@ -52,7 +51,8 @@ class JSONFlightServer(fl.FlightServerBase):
 
         The handler func will receive the Flight Context and the Flight Action.
 
-        Note that there is no requirement to return JSON here."""
+        Note that there is no requirement to return JSON here.
+        """
         self.__action_handlers[action_type] = func
 
     def do_get(self, context, ticket: fl.Ticket):
@@ -76,7 +76,8 @@ class KukurFlightServer:
         """Search a data source for time series.
 
         This returns either a SeriesSelector or Metadata as JSON, depending on
-        what is supported by the source."""
+        what is supported by the source.
+        """
         request = json.loads(action.body.to_pybytes())
         selector = SeriesSelector.from_data(request)
         for result in self.__source.search(selector):
@@ -123,7 +124,7 @@ class KukurFlightServer:
 
 
 class KukurServerAuthHandler(fl.ServerAuthHandler):
-    """KukurServerAuthHandler handles the authentication"""
+    """KukurServerAuthHandler handles the authentication."""
 
     _app: Kukur
 
@@ -157,11 +158,11 @@ class KukurServerAuthHandler(fl.ServerAuthHandler):
 
 
 class KukurServerNoAuthHandler(fl.ServerAuthHandler):
-    """KukurServerNoAuthHandler handles the authentication when it is disabled"""
+    """KukurServerNoAuthHandler handles the authentication when it is disabled."""
 
     def authenticate(self, outgoing, incoming):
         """Do nothing."""
 
-    def is_valid(self, token: bytes):  # pylint: disable=no-self-use, unused-argument
+    def is_valid(self, _token: bytes):  # pylint: disable=no-self-use, unused-argument
         """Return empty string."""
         return ""

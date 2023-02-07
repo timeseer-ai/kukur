@@ -44,7 +44,6 @@ from kukur.metadata import fields
 
 @dataclass
 class _RequestProperties:
-
     verify_ssl: bool
     max_returned_items_per_call: int
 
@@ -65,7 +64,8 @@ class _DictionaryLookup:  # pylint: disable=too-few-public-methods
     def get(self, name: str) -> Dictionary:
         """Return a dictionary with the given name.
 
-        This caches dictionaries."""
+        This caches dictionaries.
+        """
         if name not in self.__dictionaries:
             self.__dictionaries[name] = self._get_dictionary(name)
         return self.__dictionaries[name]

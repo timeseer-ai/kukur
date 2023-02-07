@@ -1,0 +1,4 @@
+# [tool.ruff]
+# ignore = [
+#     "PLR2004"
+# ]

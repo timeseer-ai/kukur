@@ -20,19 +20,21 @@ class MetadataMapper:
         self.__mapping = {}
 
     def add_mapping(self, kukur_field_name: str, external_field_name: str):
-        """Add a mapping"""
+        """Add a mapping."""
         self.__mapping[kukur_field_name] = external_field_name
 
     def from_kukur(self, kukur_field_name: str) -> str:
         """Map a metadata field name defined by kukur to an external field name.
 
-        Returns the field name as is when no mapping is defined."""
+        Returns the field name as is when no mapping is defined.
+        """
         return self.__mapping.get(kukur_field_name, kukur_field_name)
 
     def from_source(self, external_field_name: str) -> str:
         """Return the field name mapping from source.
 
-        Returns the field name as is when no mapping is defined."""
+        Returns the field name as is when no mapping is defined.
+        """
         reverse_mapping = {v: k for k, v in self.__mapping.items()}
         return reverse_mapping.get(external_field_name, external_field_name)
 
@@ -49,9 +51,10 @@ class MetadataValueMapper:
     def from_config(
         cls, config: Dict[str, Dict[str, Union[str, List[str]]]]
     ) -> "MetadataValueMapper":
-        """Create a new mapper from a double dictionary
+        """Create a new mapper from a double dictionary.
 
-        The double dictionary maps kukur field names and kukur field values to external values."""
+        The double dictionary maps kukur field names and kukur field values to external values.
+        """
         mapper = cls()
         for field_name, field_mapping in config.items():
             for field_value, external_field_value in field_mapping.items():

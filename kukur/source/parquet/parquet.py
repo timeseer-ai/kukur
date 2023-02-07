@@ -14,7 +14,6 @@ Parquet DataSets are not yet supported.
 from typing import Any, Dict
 
 import pyarrow as pa
-
 from pyarrow import parquet
 
 from kukur.exceptions import InvalidSourceException

@@ -12,7 +12,6 @@ from kukur.source.metadata import MetadataValueMapper
 from kukur.source.quality import QualityMapper
 from kukur.source.sql import BaseSQLSource, SQLConfig
 
-
 sqlite3.register_converter("datetime", parse_date)
 
 
@@ -26,7 +25,8 @@ def _match(pattern, value):
 class SQLiteSource(BaseSQLSource):
     """Kukur source for SQLite."""
 
-    def connect(self):
+    def connect(self) -> sqlite3.Connection:
+        """Create a connection to SQLite."""
         uri = False
         if self._config.connection_string.startswith("file:"):
             uri = True
@@ -52,6 +52,5 @@ def from_config(
     data, metadata_value_mapper: MetadataValueMapper, quality_mapper: QualityMapper
 ) -> SQLiteSource:
     """Create a new SQLite source from a configuration dictionay."""
-
     config = SQLConfig.from_dict(data)
     return SQLiteSource(config, metadata_value_mapper, quality_mapper)

@@ -1,6 +1,7 @@
 """Package Kukur for publishing."""
 
 import os
+
 import setuptools
 
 with open("README.md", "r", encoding="utf-8") as fh:
@@ -8,7 +9,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="kukur",
-    version=os.environ.get('KUKUR_VERSION', '0.0.0'),
+    version=os.environ.get("KUKUR_VERSION", "0.0.0"),
     author="Timeseer.AI",
     author_email="pypi@timeseer.ai",
     description="Kukur makes time series data and metadata available to the Apache Arrow ecosystem.",
@@ -23,10 +24,10 @@ setuptools.setup(
     ],
     packages=setuptools.find_packages(exclude="tests"),
     install_requires=[
-          'pyarrow',
-          'python-dateutil',
-          'pytz',
-          'toml',
+          "pyarrow",
+          "python-dateutil",
+          "pytz",
+          "toml",
       ],
     extras_require={
         "adodb": ["pywin32"],
@@ -37,9 +38,9 @@ setuptools.setup(
         "odbc": ["pyodbc"],
         "piwebapi": ["requests", "requests-kerberos"],
     },
-    python_requires='>=3.8',
+    python_requires=">=3.8",
     package_data={
-        'kukur': ['py.typed'],
+        "kukur": ["py.typed"],
     },
     entry_points={
         "console_scripts": ["kukur = kukur.cli:_run"],

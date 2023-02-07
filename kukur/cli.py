@@ -1,6 +1,7 @@
 """CLI for Kukur.
 
-This allows launching Kukur as a service or testing data sources."""
+This allows launching Kukur as a service or testing data sources.
+"""
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -12,7 +13,6 @@ from dateutil.parser import parse as parse_date
 
 import kukur.logging
 import kukur.source.test as test_source
-
 from kukur.app import Kukur
 from kukur.config import from_toml
 from kukur.flight import (

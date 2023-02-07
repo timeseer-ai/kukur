@@ -24,7 +24,8 @@ def from_config(
 ):
     """Create a new ADODB data source from a configuration dict.
 
-    Raises ADODBNotInstalledError when the adodbapi module is not available."""
+    Raises ADODBNotInstalledError when the adodbapi module is not available.
+    """
     if not HAS_ADODB:
         raise MissingModuleException("pywin32", "adodb")
 
@@ -47,6 +48,7 @@ class ADODBSource(BaseSQLSource):
             raise MissingModuleException("pywin32", "adodb")
 
     def connect(self):
+        """Return an ADODB connection."""
         return adodbapi.connect(
             self._config.connection_string,
             {"timeout": self._config.query_timeout_seconds},

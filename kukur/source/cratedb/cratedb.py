@@ -24,7 +24,8 @@ def from_config(
 ):
     """Create a new CrateDB data source from a configuration dict.
 
-    Raises ADODBNotInstalledError when the adodbapi module is not available."""
+    Raises ADODBNotInstalledError when the adodbapi module is not available.
+    """
     if not HAS_CRATE:
         raise MissingModuleException("crate", "cratedb")
 
@@ -47,4 +48,5 @@ class CrateDBSource(BaseSQLSource):
             raise MissingModuleException("crate", "adodb")
 
     def connect(self):
+        """Create a cratedb connection."""
         return client.connect(self._config.connection_string)

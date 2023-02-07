@@ -5,8 +5,8 @@
 import abc
 import contextlib
 import sqlite3
-
 from typing import List
+
 from dateutil.parser import parse as parse_date
 
 

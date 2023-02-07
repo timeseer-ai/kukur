@@ -1,4 +1,4 @@
-"""Optional support for Delta Lake using https://github.com/delta-io/delta-rs"""
+"""Optional support for Delta Lake using https://github.com/delta-io/delta-rs."""
 
 # SPDX-FileCopyrightText: 2022 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
