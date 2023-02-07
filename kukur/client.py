@@ -13,17 +13,7 @@ from kukur import Metadata, SeriesSearch, SeriesSelector, SourceStructure
 
 
 class Client:
-    """Client connects to Kukur using Arrow Flight.
-
-    Notes
-    -----
-    Creating a client does not open a connection. The connection will be opened lazily.
-
-    Args:
-        api_key: the api key to connect. this is a tuple of (key name, key).
-        host: the hostname where the Kukur instance is running. Defaults to ``localhost``.
-        port: the port where the Kukur instance is running. Defaults to ``8081``.
-    """
+    """Client connects to Kukur using Arrow Flight."""
 
     _client: fl.FlightClient = None
 
@@ -33,6 +23,15 @@ class Client:
         host: str = "localhost",
         port: int = 8081,
     ):
+        """Create a new Client.
+
+        Creating a client does not open a connection. The connection will be opened lazily.
+
+        Args:
+            api_key: the api key to connect. this is a tuple of (key name, key).
+            host: the hostname where the Kukur instance is running. Defaults to ``localhost``.
+            port: the port where the Kukur instance is running. Defaults to ``8081``.
+        """
         self._location = (host, port)
         self._api_key = api_key
 
@@ -45,8 +44,7 @@ class Client:
             selector: return time series matching the given selector.
                       Use ``name = None`` (the default) to select all series in a source.
 
-        Returns
-        -------
+        Returns:
             A generator that returns either ``Metadata`` or ``SeriesSelector``s.
             The return value depends on the search that is supported by the source.
         """
@@ -67,8 +65,7 @@ class Client:
         Args:
             selector: the selected time series
 
-        Returns
-        -------
+        Returns:
             The ``Metadata`` for the time series.
         """
         body = selector.to_data()
@@ -92,8 +89,7 @@ class Client:
             start_date: the start date of the time range of data to return. Defaults to one year ago.
             end_date: the end date of the time range of data to return. Defaults to now.
 
-        Returns
-        -------
+        Returns:
             A pyarrow Table with two columns: 'ts' and 'value'.
         """
         start_date, end_date = _apply_default_range(start_date, end_date)
@@ -121,8 +117,7 @@ class Client:
             end_date: the end date of the time range of data to return. Defaults to now.
             interval_count: the number of intervals included in the plot. Defaults to 200.
 
-        Returns
-        -------
+        Returns:
             A pyarrow Table with two columns: 'ts' and 'value'.
         """
         start_date, end_date = _apply_default_range(start_date, end_date)
@@ -139,8 +134,7 @@ class Client:
     def list_sources(self) -> List[str]:
         """List all configured sources.
 
-        Returns
-        -------
+        Returns:
             A list of source names that are configured in Kukur.
         """
         results = list(self._get_client().do_action(("list_sources")))
@@ -152,8 +146,7 @@ class Client:
     ) -> Optional[SourceStructure]:
         """List all tags and fields from a source.
 
-        Returns
-        -------
+        Returns:
             A list of tag keys, tag values and fields that are configured in the source.
         """
         body = selector.to_data()
