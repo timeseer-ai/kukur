@@ -240,8 +240,22 @@ type = "csv"
 metadata = "tests/test_data/csv/row-tags-metadata-custom.csv"
 fields = ["street"]
 tag_columns = ["location", "plant"]
-field_columns = ["target"]
+metadata_field_column = ["target"]
 
 [metadata.row_tags_custom_field.column_mapping]
 "plant" = "Plant"
+"street" = "Street"
+
+[source.row_tags_custom_field_search]
+type = "csv"
+metadata = "tests/test_data/csv/row-tags-metadata-custom.csv"
+tag_columns = ["location", "plant"]
+field_columns = ["value", "product"]
+metadata_field_column = "target"
+metadata_fields = ["street"]
+
+[source.row_tags_custom_field_search.column_mapping]
+"ts" = "date"
+"plant" = "Plant"
+"value" = "Value"
 "street" = "Street"

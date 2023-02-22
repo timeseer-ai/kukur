@@ -19,3 +19,5 @@ host = "localhost"
 [metadata.noaa]
 type = "csv"
 metadata = "tests/test_data/influxdb/noaa-metadata.csv"
+tag_columns = ["series name", "location"]
+metadata_field_column = "field"
