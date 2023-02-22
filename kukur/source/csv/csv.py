@@ -182,20 +182,34 @@ class CSVSource:
         with self.__loaders.metadata.open() as metadata_file:
             reader = csv.DictReader(metadata_file)
             for row in reader:
-                if self.__mappers.metadata.from_kukur("series name") not in row:
-                    raise InvalidMetadataError('column "series name" not found')
-                if (
-                    row[self.__mappers.metadata.from_kukur("series name")]
-                    != selector.name
-                ):
+                skip_row = False
+                for tag in self.__options.tags:
+                    column_name = self.__options.column_mapping.get(tag, tag)
+                    column_name = self.__mappers.metadata.from_kukur(column_name)
+                    if column_name not in row:
+                        raise InvalidMetadataError(f'column "{column_name}" not found')
+                    if row[column_name] != selector.tags[tag]:
+                        skip_row = True
+                if skip_row:
                     continue
+                column_name = self.__options.column_mapping.get(
+                    self.__options.fields[0], self.__options.fields[0]
+                )
+                if column_name in row:
+                    if row[column_name] != selector.field:
+                        continue
+
                 field_names = [field for field, _ in metadata.iter_names()]
                 if len(self.__metadata_fields) > 0:
                     field_names = self.__metadata_fields
                 for field in field_names:
-                    if self.__mappers.metadata.from_kukur(field) in row:
+                    mapped_field = self.__mappers.metadata.from_kukur(field)
+                    mapped_field = self.__options.column_mapping.get(
+                        mapped_field, mapped_field
+                    )
+                    if mapped_field in row:
                         try:
-                            value = row[self.__mappers.metadata.from_kukur(field)]
+                            value = row[mapped_field]
                             metadata.coerce_field(
                                 field,
                                 self.__mappers.metadata_values.from_source(

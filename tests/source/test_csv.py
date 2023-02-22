@@ -364,3 +364,19 @@ def test_row_tags_quality() -> None:
     assert len(data) == 3
     assert data["value"].to_pylist() == [1, 2, 1]
     assert data["quality"].to_pylist() == [1, 0, 1]
+
+
+def test_row_tags_custom() -> None:
+    selector = SeriesSelector(
+        "row_tags_custom", {"location": "Antwerp", "plant": "P2"}, "product"
+    )
+    metadata = get_source("row_tags_custom").get_metadata(selector)
+    assert metadata.get_field_by_name("street") == "Scheldelaan"
+
+
+def test_row_tags_custom_field() -> None:
+    selector = SeriesSelector(
+        "row_tags_custom_field", {"location": "Antwerp", "plant": "P2"}, "product"
+    )
+    metadata = get_source("row_tags_custom_field").get_metadata(selector)
+    assert metadata.get_field_by_name("street") == "Scheldelaan"

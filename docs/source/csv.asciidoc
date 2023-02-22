@@ -171,7 +171,6 @@ A header row describes the metadata entry.
 
 Supported types of metadata are:
 
-- `series name` (required)
 include::{include-path}/metadata-fields.asciidoc[]
 
 Not all columns need to be present.
@@ -201,6 +200,11 @@ metadata_colums = ["unit", "process type"]
 ```
 
 Only the `unit` and the `process type` fields will be available in the resulting `Metadata`.
+
+Metadata lookups respect the `tag_columns` and `field_columns` options.
+Only the first name in `field_columns` will be used for matching a field.
+When `field_columns` is omitted,
+matching is done on `tag`s only.
 
 When the `dictionary name` field is present, the directory given in `dictionary_dir`
 is searched for a file `<dictionary name>.csv`.
