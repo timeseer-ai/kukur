@@ -58,6 +58,7 @@ def from_config(
         column_mapping,
         config.get("tag_columns", ["series name"]),
         config.get("field_columns", ["value"]),
+        config.get("metadata_field_column"),
         data_datetime_format,
         data_timezone,
     )
@@ -95,6 +96,7 @@ class CSVSourceOptions:
     column_mapping: Dict[str, str]
     tags: List[str]
     fields: List[str]
+    metadata_field_column: Optional[str] = None
     data_datetime_format: Optional[str] = None
     data_timezone: Optional[str] = None
 
@@ -130,48 +132,48 @@ class CSVSource:
         with self.__loaders.metadata.open() as metadata_file:
             reader = csv.DictReader(metadata_file)
             for row in reader:
-                if self.__mappers.metadata.from_kukur("series name") not in row:
-                    raise InvalidMetadataError('column "series name" not found')
-                series_name = row[self.__mappers.metadata.from_kukur("series name")]
-                metadata = None
-                if "series name" in selector.tags:
-                    if series_name == selector.name:
-                        metadata = Metadata(
-                            SeriesSelector.from_tags(
-                                selector.source, selector.tags, selector.field
-                            )
-                        )
-                else:
-                    selector_tags = selector.tags.copy()
-                    selector_tags["series name"] = series_name
-                    metadata = Metadata(
-                        SeriesSelector.from_tags(
-                            selector.source, selector_tags, selector.field
-                        )
-                    )
+                tags = {}
+                for tag in self.__options.tags:
+                    column_name = self._map_column_name(tag)
+                    if column_name not in row:
+                        raise InvalidMetadataError('column "{column_name}" not found')
+                    tags[tag] = row[column_name]
 
-                if metadata is not None:
-                    field_names = [field for field, _ in metadata.iter_names()]
-                    if len(self.__metadata_fields) > 0:
-                        field_names = self.__metadata_fields
-                    for field in field_names:
-                        if self.__mappers.metadata.from_kukur(field) in row:
-                            try:
-                                value = row[self.__mappers.metadata.from_kukur(field)]
-                                metadata.coerce_field(
-                                    field,
-                                    self.__mappers.metadata_values.from_source(
-                                        field, value
-                                    ),
-                                )
-                            except ValueError:
-                                pass
-                    dictionary_name = metadata.get_field(fields.DictionaryName)
-                    if dictionary_name is not None:
-                        metadata.set_field(
-                            fields.Dictionary, self.__get_dictionary(dictionary_name)
-                        )
-                    yield metadata
+                field = None
+                if self.__options.metadata_field_column is not None:
+                    column_name = self._map_column_name(
+                        self.__options.metadata_field_column
+                    )
+                    if column_name not in row:
+                        raise InvalidMetadataError('column "{column_name}" not found')
+                    field = row[column_name]
+
+                metadata = Metadata(
+                    SeriesSelector.from_tags(selector.source, tags, field)
+                )
+
+                field_names = [field for field, _ in metadata.iter_names()]
+                if len(self.__metadata_fields) > 0:
+                    field_names = self.__metadata_fields
+                for field in field_names:
+                    column_name = self._map_column_name(field)
+                    if column_name in row:
+                        value = row[column_name]
+                        try:
+                            metadata.coerce_field(
+                                field,
+                                self.__mappers.metadata_values.from_source(
+                                    field, value
+                                ),
+                            )
+                        except ValueError:
+                            pass
+                dictionary_name = metadata.get_field(fields.DictionaryName)
+                if dictionary_name is not None:
+                    metadata.set_field(
+                        fields.Dictionary, self.__get_dictionary(dictionary_name)
+                    )
+                yield metadata
 
     def get_metadata(self, selector: SeriesSelector) -> Metadata:
         """Read metadata, taking any configured metadata mapping into account."""
@@ -182,20 +184,31 @@ class CSVSource:
         with self.__loaders.metadata.open() as metadata_file:
             reader = csv.DictReader(metadata_file)
             for row in reader:
-                if self.__mappers.metadata.from_kukur("series name") not in row:
-                    raise InvalidMetadataError('column "series name" not found')
-                if (
-                    row[self.__mappers.metadata.from_kukur("series name")]
-                    != selector.name
-                ):
+                skip_row = False
+                for tag in self.__options.tags:
+                    column_name = self._map_column_name(tag)
+                    if column_name not in row:
+                        raise InvalidMetadataError(f'column "{column_name}" not found')
+                    if row[column_name] != selector.tags[tag]:
+                        skip_row = True
+                if skip_row:
                     continue
+                if self.__options.metadata_field_column is not None:
+                    column_name = self._map_column_name(
+                        self.__options.metadata_field_column
+                    )
+                    if column_name in row:
+                        if row[column_name] != selector.field:
+                            continue
+
                 field_names = [field for field, _ in metadata.iter_names()]
                 if len(self.__metadata_fields) > 0:
                     field_names = self.__metadata_fields
                 for field in field_names:
-                    if self.__mappers.metadata.from_kukur(field) in row:
+                    mapped_field = self._map_column_name(field)
+                    if mapped_field in row:
                         try:
-                            value = row[self.__mappers.metadata.from_kukur(field)]
+                            value = row[mapped_field]
                             metadata.coerce_field(
                                 field,
                                 self.__mappers.metadata_values.from_source(
@@ -212,6 +225,10 @@ class CSVSource:
                 )
 
         return metadata
+
+    def _map_column_name(self, column_name: str) -> str:
+        column_name = self.__mappers.metadata.from_kukur(column_name)
+        return self.__options.column_mapping.get(column_name, column_name)
 
     def __get_dictionary(self, set_name: str) -> Optional[Dictionary]:
         if self.__loaders.dictionary is None:
