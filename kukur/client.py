@@ -22,18 +22,36 @@ class Client:
         api_key: Tuple[str, str] = ("", ""),
         host: str = "localhost",
         port: int = 8081,
+        use_tls: bool = False,
     ):
         """Create a new Client.
 
         Creating a client does not open a connection. The connection will be opened lazily.
 
         Args:
-            api_key: the api key to connect. this is a tuple of (key name, key).
+            api_key: the api key to use when connecting. This is a tuple of (key name, key).
             host: the hostname where the Kukur instance is running. Defaults to ``localhost``.
             port: the port where the Kukur instance is running. Defaults to ``8081``.
+            use_tls: set to True to use a TLS-secured connection.
         """
-        self._location = (host, port)
+        if use_tls:
+            self._location = fl.Location.for_grpc_tls(host, port)
+        else:
+            self._location = fl.Location.for_grpc_tcp(host, port)
         self._api_key = api_key
+
+    @classmethod
+    def for_tls(
+        cls, host: str, *, port: int = 443, api_key: Tuple[str, str] = ("", "")
+    ) -> "Client":
+        """Create a new Client that uses TLS to secure the connection.
+
+        Args:
+            host: the hostname where the Kukur instance is running.
+            port: the port where the Kukur instance is running. Defaults to ``443``.
+            api_key: the api key to use when connecting. This is a tuple of (key name, key).
+        """
+        return cls(api_key=api_key, host=host, port=port, use_tls=True)
 
     def search(
         self, selector: SeriesSearch
