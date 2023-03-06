@@ -30,7 +30,10 @@ class SQLiteSource(BaseSQLSource):
         uri = False
         if self._config.connection_string.startswith("file:"):
             uri = True
-        if self._config.query_timeout_seconds == 0:
+        if (
+            self._config.query_timeout_seconds is None
+            or self._config.query_timeout_seconds == 0
+        ):
             connection = sqlite3.connect(
                 self._config.connection_string,
                 detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES,
