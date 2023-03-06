@@ -49,7 +49,9 @@ class ADODBSource(BaseSQLSource):
 
     def connect(self):
         """Return an ADODB connection."""
-        return adodbapi.connect(
-            self._config.connection_string,
-            {"timeout": self._config.query_timeout_seconds},
-        )
+        if self._config.query_timeout_seconds is not None:
+            return adodbapi.connect(
+                self._config.connection_string,
+                {"timeout": self._config.query_timeout_seconds},
+            )
+        return adodbapi.connect(self._config.connection_string)
