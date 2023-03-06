@@ -102,7 +102,7 @@ Each partition corresponds to a tag in the `SeriesSelector`.
 The resulting partition can optionally be `base64`-encoded.
 
 The last configured partition defines the file name.
-The `.feather` extenstion is added to it.
+The `.feather` extension is added to it.
 
 The Feather file contains at least 2 columns:
 

@@ -101,7 +101,7 @@ Each partition corresponds to a tag in the `SeriesSelector`.
 The resulting partition can optionally be `base64`-encoded.
 
 The last configured partition defines the file name.
-The `.parquet` extenstion is added to it.
+The `.parquet` extension is added to it.
 
 The Parquet file contains at least 2 columns:
 
