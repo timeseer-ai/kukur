@@ -83,11 +83,26 @@ The row based format expects `path` to be a Feather file with at least 3 columns
 === Directory Based Format
 
 ```toml
+[source."<name>"]
+type = "feather"
 format = "dir"
+path = ""
+
+[source."<name>".partitions]
+origin = "tag"
+key = "series name"
+# path_encoding = "base64"
 ```
 
-The directory based format expects `path` to be a directory containing Feather files.
-Each file inside `path` is named `<series name>.feather`.
+The directory based format expects `path` to be a directory structure containing Feather files.
+
+The directory structure is traversed based on the configured `partitions`.
+Each partition corresponds to a tag in the `SeriesSelector`.
+
+The resulting partition can optionally be `base64`-encoded.
+
+The last configured partition defines the file name.
+The `.feather` extenstion is added to it.
 
 The Feather file contains at least 2 columns:
 

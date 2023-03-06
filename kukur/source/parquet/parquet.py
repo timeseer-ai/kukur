@@ -27,13 +27,7 @@ def from_config(config: Dict[str, Any], quality_mapper: QualityMapper):
     loader = loader_from_config(config, files_as_path=True)
     if "path" not in config:
         raise InvalidSourceException('Parquet sources require a "path" entry')
-    data_format = config.get("format", "row")
-    options = BaseArrowSourceOptions(
-        data_format,
-        config.get("column_mapping", {}),
-        config.get("data_datetime_format", None),
-        config.get("data_timezone", None),
-    )
+    options = BaseArrowSourceOptions.from_data(config)
     return ParquetSource(options, loader, quality_mapper)
 
 

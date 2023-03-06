@@ -93,3 +93,21 @@ path = "tests/test_data/parquet/row-timestamp.parquet"
 type = "parquet"
 path = "tests/test_data/parquet/row-timestamp-naive.parquet"
 data_timezone = "America/Sao_Paulo"
+
+[source.partitioned-parquet]
+type = "parquet"
+format = "dir"
+path = "tests/test_data/parquet/partitions"
+
+[[source.partitioned-parquet.partitions]]
+origin = "tag"
+key = "location"
+
+[[source.partitioned-parquet.partitions]]
+origin = "tag"
+key = "plant"
+path_encoding = "base64"
+
+[[source.partitioned-parquet.partitions]]
+origin = "tag"
+key = "series name"
