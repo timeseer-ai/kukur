@@ -5,11 +5,13 @@
 
 from typing import Dict, Optional
 
+import pytest
 import pytz
 from dateutil.parser import parse as parse_date
 
 import kukur.config
 from kukur import SeriesSearch, SeriesSelector, Source
+from kukur.exceptions import InvalidDataError
 from kukur.source import SourceFactory
 
 START_DATE = parse_date("2020-01-01T00:00:00Z")
@@ -214,3 +216,49 @@ def test_row_data_timezone_timestamp_naive():
     start_date = table["ts"][0].as_py()
     assert start_date == START_DATE
     assert start_date.tzinfo == pytz.UTC
+
+
+def test_partitions() -> None:
+    table = get_source("partitioned-parquet").get_data(
+        make_series(
+            "partitioned-parquet",
+            {"location": "Antwerp", "plant": "PlantA", "series name": "test-tag-1"},
+        ),
+        START_DATE,
+        END_DATE,
+    )
+    assert len(table) == 5
+    assert table.column_names == ["ts", "value"]
+    assert table["ts"][0].as_py() == START_DATE
+    assert table["value"][0].as_py() == 1.0
+
+
+def test_partitions_string():
+    table = get_source("partitioned-parquet").get_data(
+        make_series(
+            "partitioned-parquet",
+            {"location": "Barcelona", "plant": "PlantB", "series name": "test-tag-5"},
+        ),
+        START_DATE,
+        END_DATE,
+    )
+    assert len(table) == 7
+    assert table.column_names == ["ts", "value"]
+    assert table["ts"][0].as_py() == START_DATE
+    assert table["value"][0].as_py() == "A"
+
+
+def test_partitions_traversal() -> None:
+    with pytest.raises(InvalidDataError):
+        get_source("partitioned-parquet").get_data(
+            make_series(
+                "partitioned-parquet",
+                {
+                    "location": "Antwerp",
+                    "plant": "PlantA",
+                    "series name": "../../../dir/test-tag-5",
+                },
+            ),
+            START_DATE,
+            END_DATE,
+        )

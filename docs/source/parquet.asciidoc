@@ -82,11 +82,26 @@ The row based format expects `path` to be a Parquet file with at least 3 columns
 === Directory Based Format
 
 ```toml
+[source."<name>"]
+type = "parquet"
 format = "dir"
+path = ""
+
+[source."<name>".partitions]
+origin = "tag"
+key = "series name"
+# path_encoding = "base64"
 ```
 
-The directory based format expects `path` to be a directory containing Parquet files.
-Each file inside `path` is named `<series name>.parquet`.
+The directory based format expects `path` to be a directory structure containing Parquet files.
+
+The directory structure is traversed based on the configured `partitions`.
+Each partition corresponds to a tag in the `SeriesSelector`.
+
+The resulting partition can optionally be `base64`-encoded.
+
+The last configured partition defines the file name.
+The `.parquet` extension is added to it.
 
 The Parquet file contains at least 2 columns:
 

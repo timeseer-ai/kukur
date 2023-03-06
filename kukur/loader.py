@@ -88,6 +88,10 @@ class FileLoader:
         path = self.__path / name
         if not path.exists():
             raise InvalidDataError(f"'{path}' does not exist")
+        try:
+            self.__path.joinpath(name).resolve().relative_to(self.__path.resolve())
+        except ValueError:
+            raise InvalidDataError("Trying to access path outside root.") from None
         if self.__files_as_path:
             return path
         return path.open(mode=self.__mode, encoding=self.__encoding)

@@ -4,9 +4,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from abc import ABC, abstractmethod
+from base64 import b64encode
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, Generator, Optional
+from pathlib import PurePath
+from typing import Any, Dict, Generator, List, Optional
 
 import pyarrow as pa
 import pyarrow.compute
@@ -14,9 +16,31 @@ import pyarrow.types
 
 from kukur import Metadata, SeriesSelector
 from kukur.base import SeriesSearch
-from kukur.exceptions import InvalidDataError
+from kukur.exceptions import InvalidDataError, InvalidSourceException
 from kukur.loader import Loader
 from kukur.source.quality import QualityMapper
+
+
+@dataclass
+class SourcePartition:
+    """A partition in a data set."""
+
+    origin: str
+    key: str
+    path_encoding: Optional[str]
+
+    @classmethod
+    def from_data(cls, data: Dict[str, Any]) -> "SourcePartition":
+        """Create a partition from a data dictionary."""
+        if "origin" not in data:
+            raise InvalidSourceException("No partition origin")
+        if "key" not in data:
+            raise InvalidSourceException("No partition key")
+        return SourcePartition(
+            data["origin"],
+            data["key"],
+            data.get("path_encoding"),
+        )
 
 
 @dataclass
@@ -27,6 +51,29 @@ class BaseArrowSourceOptions:
     column_mapping: Dict[str, str]
     data_datetime_format: Optional[str] = None
     data_timezone: Optional[str] = None
+    path_encoding: Optional[str] = None
+    partitions: Optional[List[SourcePartition]] = None
+
+    @classmethod
+    def from_data(cls, data: Dict[str, Any]) -> "BaseArrowSourceOptions":
+        """Create source options from a data dictionary."""
+        data_format = data.get("format", "row")
+        options = cls(
+            data_format,
+            data.get("column_mapping", {}),
+            data.get("data_datetime_format"),
+            data.get("data_timezone"),
+            data.get("path_encoding"),
+        )
+
+        if data_format == "dir":
+            options.partitions = [
+                SourcePartition.from_data(partition)
+                for partition in data.get("partitions", [])
+            ]
+            if len(options.partitions) == 0:
+                options.partitions.append(SourcePartition("tag", "series name", None))
+        return options
 
 
 class BaseArrowSource(ABC):
@@ -169,11 +216,26 @@ class BaseArrowSource(ABC):
         if self.__quality_mapper.is_present():
             columns.append("quality")
 
-        data = self.read_file(
-            self.__loader.open_child(
-                f"{selector.tags['series name']}.{self.get_file_extension()}"
+        if self.__options.partitions is None:
+            raise InvalidSourceException(
+                'Sources with `format = "dir"` require at least one partition'
             )
+
+        data_path = None
+        for partition in self.__options.partitions:
+            partition_path = selector.tags[partition.key]
+            if partition.path_encoding is not None:
+                if partition.path_encoding == "base64":
+                    partition_path = b64encode(partition_path.encode()).decode()
+            if data_path is None:
+                data_path = PurePath(partition_path)
+            else:
+                data_path = data_path / partition_path
+
+        data = self.read_file(
+            self.__loader.open_child(f"{data_path}.{self.get_file_extension()}")
         )
+
         data = _map_columns(self.__options.column_mapping, data)
         data = data.rename_columns(columns)
         data = _cast_ts_column(
@@ -209,13 +271,13 @@ def _map_columns(column_mapping: Dict, data: pa.Table) -> pa.Table:
     if "series name" in column_mapping:
         columns = {
             "series name": data[column_mapping["series name"]],
-            "ts": data[column_mapping["ts"]],
-            "value": data[column_mapping["value"]],
+            "ts": data[column_mapping.get("ts", "ts")],
+            "value": data[column_mapping.get("value", "value")],
         }
     else:
         columns = {
-            "ts": data[column_mapping["ts"]],
-            "value": data[column_mapping["value"]],
+            "ts": data[column_mapping.get("ts", "ts")],
+            "value": data[column_mapping.get("value", "value")],
         }
     if "quality" in column_mapping:
         columns["quality"] = data[column_mapping["quality"]]

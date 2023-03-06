@@ -107,9 +107,7 @@ def _get_metadata_header(result: Metadata) -> List[str]:
 
 
 def _get_metadata(result: Metadata) -> List[Any]:
-    return [result.series.tags["series name"]] + [
-        v for _, v in result.iter_serialized()
-    ]
+    return [result.series.name] + [v for _, v in result.iter_serialized()]
 
 
 def _make_aware(timestamp: datetime) -> datetime:
