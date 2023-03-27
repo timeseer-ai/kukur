@@ -82,6 +82,7 @@ def test_metadata_value():
         ":memory:",
         metadata_query="select dictionary_name from Metadata where series_name = ?",
         metadata_columns=["dictionary name"],
+        tag_columns=["series name"],
     )
     source = DummySQLSource(config, MetadataValueMapper(), QualityMapper())
     source.db.executescript(
@@ -105,6 +106,7 @@ def test_metadata_none_value_on_empty_return():
         ":memory:",
         metadata_query="select dictionary_name from Metadata where series_name = ?",
         metadata_columns=["dictionary name"],
+        tag_columns=["series name"],
     )
     source = DummySQLSource(config, MetadataValueMapper(), QualityMapper())
     source.db.executescript(
@@ -128,6 +130,7 @@ def test_list_none_value_on_empty_return():
         ":memory:",
         list_query="select series_name, dictionary_name from Metadata",
         list_columns=["series name", "dictionary name"],
+        tag_columns=["series name"],
     )
     source = DummySQLSource(config, MetadataValueMapper(), QualityMapper())
     source.db.executescript(
@@ -150,6 +153,7 @@ def test_custom_fields() -> None:
         ":memory:",
         metadata_query="select interpolation_type, process_type from Metadata where series_name = ?",
         metadata_columns=["interpolation type", "process type"],
+        tag_columns=["series name"],
     )
     source = DummySQLSource(config, MetadataValueMapper(), QualityMapper())
     source.db.executescript(
@@ -175,6 +179,7 @@ def test_custom_fields_search() -> None:
         ":memory:",
         list_query="select series_name, interpolation_type, process_type from Metadata",
         list_columns=["series name", "interpolation type", "process type"],
+        tag_columns=["series name"],
     )
     source = DummySQLSource(config, MetadataValueMapper(), QualityMapper())
     source.db.executescript(
@@ -205,6 +210,7 @@ def test_accuracy_percentage_metadata() -> None:
             "physical lower limit",
             "physical upper limit",
         ],
+        tag_columns=["series name"],
     )
     source = DummySQLSource(config, MetadataValueMapper(), QualityMapper())
     source.db.executescript(
@@ -231,12 +237,19 @@ def test_accuracy_percentage_metadata() -> None:
 def test_accuracy_percentage_metadata_string() -> None:
     config = SQLConfig(
         ":memory:",
+        list_columns=[
+            "series_name",
+            "accuracy percentage",
+            "physical lower limit",
+            "physical upper limit",
+        ],
         metadata_query="select accuracy_percentage, limit_low, limit_high from Metadata where series_name = ?",
         metadata_columns=[
             "accuracy percentage",
             "physical lower limit",
             "physical upper limit",
         ],
+        tag_columns=["series name"],
     )
     source = DummySQLSource(config, MetadataValueMapper(), QualityMapper())
     source.db.executescript(
@@ -270,6 +283,7 @@ def test_accuracy_percentage_search() -> None:
             "physical lower limit",
             "physical upper limit",
         ],
+        tag_columns=["series name"],
     )
     source = DummySQLSource(config, MetadataValueMapper(), QualityMapper())
     source.db.executescript(
@@ -304,6 +318,7 @@ def test_accuracy_percentage_search_with_wrong_string_value() -> None:
             "physical lower limit",
             "physical upper limit",
         ],
+        tag_columns=["series name"],
     )
     source = DummySQLSource(config, MetadataValueMapper(), QualityMapper())
     source.db.executescript(
@@ -332,6 +347,7 @@ def test_blob_values():
     config = SQLConfig(
         ":memory:",
         data_query="select ts, value from Data where series_name = ? and ts between ? and ?",
+        tag_columns=["series name"],
     )
     source = DummySQLSource(config, MetadataValueMapper(), QualityMapper())
     source.db.execute(
@@ -374,6 +390,7 @@ def test_datetime_values():
     config = SQLConfig(
         ":memory:",
         data_query="select ts, value from Data where series_name = ? and ts between ? and ?",
+        tag_columns=["series name"],
     )
     source = DummySQLSource(config, MetadataValueMapper(), QualityMapper())
     source.db.execute(
@@ -460,6 +477,7 @@ def test_quality_flag():
     config = SQLConfig(
         ":memory:",
         data_query="select ts, value, quality from Data where series_name = ? and ts between ? and ?",
+        tag_columns=["series name"],
     )
     quality_mapper = QualityMapper()
     quality_mapper.add_mapping(192)

@@ -20,6 +20,8 @@ query_string_parameters = false
 list_query = "<query to list all time series in a source>"
 list_query_path = "<path to list_query>"
 list_columns = ["<metadata type of column 1>", "<metadata type of column 2"]
+tag_columns = ["series name"]
+field_columns = []
 metadata_query = "<query for metadata of one series>"
 metadata_query_path = "<path to metadata query>"
 metadata_columns = ["<metadata type of column 1>", "<metadata type of column 2"]
@@ -86,6 +88,10 @@ list_query = "select distinct name, unit from Data"
 list_columns = ["series name", "unit"]
 ```
 
+All columns defined in `tag_columns` should be included in `list_columns`.
+All combinations of rows returned by the `list_query` and values in `field_columns`
+define a series.
+
 Built-in metadata columns are:
 
 - `series name` (required)
@@ -112,7 +118,8 @@ This example converts lowercase data types to the uppercase strings expected by 
 
 === Metadata
 
-The `metadata_query` is a query that accepts one parameter: the name of the series.
+The `metadata_query` is a query that accepts one parameter for each tag in a series,
+ordered by `tag_columns`.
 
 ```toml
 metadata_query = "select unit from Data where name = '{}'"
@@ -148,6 +155,22 @@ DICTIONARY = "dictionary"
 ```
 
 This example converts lowercase data types to the uppercase strings expected by Kukur.
+
+If the configuration defines `tag_columns`,
+they are provided in the same order as defined in `tag_columns`.
+
+```toml
+[source.<name>]
+tag_columns = ["location", "plant"]
+```
+
+```toml
+metadata_query = """
+select description, units, interpolationType, dataType, dictionaryName
+from Metadata
+where my_location = '{}' and my_plant = '{}'
+"""
+```
 
 === Dictionary
 
@@ -220,6 +243,38 @@ Set `enable_trace_logging` to `true` to log the fetched data before conversion.
 
 ```toml
 enable_trace_logging = true
+```
+
+If the configuration defines `tag_columns`,
+they are provided in the same order as defined in `tag_columns`.
+
+```toml
+[source.<name>]
+tag_columns = ["location", "plant"]
+```
+
+```toml
+data_query = """
+select timestamp, value
+from Data
+where my_location = '{}' and my_plant = '{}' and timestamp >= '{}' and timestamp < '{}'
+"""
+```
+
+If the configuration defines `field_columns`,
+they are introduced into the query with string formatting.
+
+```toml
+[source.<name>]
+field_columns = ["temperature", "pressure"]
+```
+
+```toml
+data_query = """
+select timestamp, %s,
+from Data
+where name = '{}' and timestamp >= '{}' and timestamp < '{}'
+"""
 ```
 
 === Quality

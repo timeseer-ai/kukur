@@ -7,7 +7,7 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, tzinfo
-from typing import Dict, Generator, List, Optional, Union
+from typing import Dict, Generator, List, Optional, Tuple, Union
 
 import dateutil.parser
 import pyarrow as pa
@@ -33,9 +33,11 @@ class SQLConfig:  # pylint: disable=too-many-instance-attributes
     """Configuration settings for a SQL connection."""
 
     connection_string: str
+    tag_columns: List[str]
     query_string_parameters: bool = False
     list_query: Optional[str] = None
     list_columns: List[str] = field(default_factory=list)
+    field_columns: Optional[List[str]] = None
     metadata_query: Optional[str] = None
     metadata_columns: List[str] = field(default_factory=list)
     dictionary_query: Optional[str] = None
@@ -55,13 +57,14 @@ class SQLConfig:  # pylint: disable=too-many-instance-attributes
             with open(data["connection_string_path"], encoding="utf-8") as f:
                 connection_string = f.read().strip()
 
-        config = SQLConfig(connection_string)
+        config = SQLConfig(connection_string, data.get("tag_columns", ["series name"]))
 
         config.list_query = data.get("list_query")
         if config.list_query is None and "list_query_path" in data:
             with open(data["list_query_path"], encoding="utf-8") as f:
                 config.list_query = f.read()
         config.list_columns = data.get("list_columns", [])
+        config.field_columns = data.get("field_columns")
         config.metadata_query = data.get("metadata_query")
         if config.metadata_query is None and "metadata_query_path" in data:
             with open(data["metadata_query_path"], encoding="utf-8") as f:
@@ -134,7 +137,8 @@ class BaseSQLSource(ABC):
         cursor = connection.cursor()
 
         query = self._config.metadata_query
-        params = [selector.name]
+        params = [selector.tags[tag_name] for tag_name in self._config.tag_columns]
+
         if self._config.query_string_parameters:
             query = query.format(*params)
             params = []
@@ -170,16 +174,7 @@ class BaseSQLSource(ABC):
         connection = self.connect()
         cursor = connection.cursor()
 
-        query = self._config.data_query
-        params = [
-            selector.name,
-            self.__format_date(start_date),
-            self.__format_date(end_date),
-        ]
-        if self._config.query_string_parameters:
-            query = query.format(*params)
-            params = []
-
+        query, params = self.__prepare_data_query(selector, start_date, end_date)
         cursor.execute(query, params)
 
         timestamps = []
@@ -220,6 +215,27 @@ class BaseSQLSource(ABC):
             )
         return pa.Table.from_pydict({"ts": timestamps, "value": values})
 
+    def __prepare_data_query(
+        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
+    ) -> Tuple[str, List]:
+        assert self._config.data_query is not None
+
+        try:
+            query = self._config.data_query % selector.field
+        except TypeError:
+            query = self._config.data_query
+        params = [selector.tags[tag_name] for tag_name in self._config.tag_columns]
+        params.extend(
+            [
+                self.__format_date(start_date),
+                self.__format_date(end_date),
+            ]
+        )
+        if self._config.query_string_parameters:
+            query = query.format(*params)
+            params = []
+        return query, params
+
     def __search_names(
         self, selector: SeriesSearch
     ) -> Generator[SeriesSelector, None, None]:
@@ -227,12 +243,24 @@ class BaseSQLSource(ABC):
         cursor = connection.cursor()
         cursor.execute(self._config.list_query)
 
-        for (series_name,) in cursor:
-            yield SeriesSelector(selector.source, series_name)
+        for tag_values in cursor:
+            tags = {
+                tag_name: tag_value
+                for tag_name, tag_value in zip(self._config.tag_columns, tag_values)
+            }
+            if self._config.field_columns is not None:
+                for field_name in self._config.field_columns:
+                    yield SeriesSelector(selector.source, tags, field_name)
+            else:
+                yield SeriesSelector(selector.source, tags)
 
     def __search_metadata(
         self, selector: SeriesSearch
     ) -> Generator[Metadata, None, None]:
+        for tag_name in self._config.tag_columns:
+            if tag_name not in self._config.list_columns:
+                raise InvalidMetadataError(f'tag column "{tag_name}" not found')
+
         connection = self.connect()
         cursor = connection.cursor()
         dictionary_cursor = None
@@ -240,36 +268,57 @@ class BaseSQLSource(ABC):
             dictionary_cursor = self.connect().cursor()
 
         cursor.execute(self._config.list_query)
-        series_name_index = None
-        for i, name in enumerate(self._config.list_columns):
-            if name == "series name":
-                series_name_index = i
-        if series_name_index is None:
-            raise InvalidMetadataError('column "series name" not found')
+        tag_column_indices = []
+
         for row in cursor:
-            series_selector = SeriesSelector(selector.source, row[series_name_index])
-            metadata = Metadata(series_selector)
+            tags = {}
             for i, name in enumerate(self._config.list_columns):
-                if i == series_name_index:
-                    continue
-                value = row[i]
-                if value is None:
-                    continue
-                if isinstance(value, str) and value == "":
-                    continue
-                try:
-                    metadata.coerce_field(
-                        name, self._metadata_value_mapper.from_source(name, value)
+                if name in self._config.tag_columns:
+                    if i not in tag_column_indices:
+                        tag_column_indices.append(i)
+                    tags[name] = row[i]
+
+            if self._config.field_columns is not None:
+                for field_name in self._config.field_columns:
+                    series_selector = SeriesSelector(selector.source, tags, field_name)
+                    yield self.__get_metadata(
+                        row, series_selector, tag_column_indices, dictionary_cursor
                     )
-                except ValueError:
-                    pass
-            dictionary_name = metadata.get_field(fields.DictionaryName)
-            if dictionary_name is not None and dictionary_cursor is not None:
-                metadata.set_field(
-                    fields.Dictionary,
-                    self.__query_dictionary(dictionary_cursor, dictionary_name),
+            else:
+                series_selector = SeriesSelector(selector.source, tags)
+                yield self.__get_metadata(
+                    row, series_selector, tag_column_indices, dictionary_cursor
                 )
-            yield metadata
+
+    def __get_metadata(
+        self,
+        row,
+        selector: SeriesSelector,
+        tag_column_indices: List[int],
+        dictionary_cursor,
+    ) -> Metadata:
+        metadata = Metadata(selector)
+        for i, name in enumerate(self._config.list_columns):
+            if i in tag_column_indices:
+                continue
+            value = row[i]
+            if value is None:
+                continue
+            if isinstance(value, str) and value == "":
+                continue
+            try:
+                metadata.coerce_field(
+                    name, self._metadata_value_mapper.from_source(name, value)
+                )
+            except ValueError:
+                pass
+        dictionary_name = metadata.get_field(fields.DictionaryName)
+        if dictionary_name is not None and dictionary_cursor is not None:
+            metadata.set_field(
+                fields.Dictionary,
+                self.__query_dictionary(dictionary_cursor, dictionary_name),
+            )
+        return metadata
 
     def __query_dictionary(self, cursor, dictionary_name: str) -> Optional[Dictionary]:
         if self._config.dictionary_query is None:
