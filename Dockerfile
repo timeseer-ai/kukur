@@ -1,4 +1,4 @@
-FROM python:3.9 as builder
+FROM python:3.10 as builder
 WORKDIR /usr/src/app
 
 RUN apt-get update \
@@ -11,7 +11,7 @@ COPY requirements.txt requirements-python.txt ./
 RUN pip install --prefix=/install --no-warn-script-location -r requirements.txt
 RUN pip install --prefix=/install --no-warn-script-location -r requirements-python.txt
 
-FROM python:3.9-slim
+FROM python:3.10-slim
 ENV APP_ROOT=/usr/src/app
 WORKDIR ${APP_ROOT}
 
