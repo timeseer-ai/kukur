@@ -6,11 +6,13 @@
 import sqlite3
 from datetime import datetime
 
+import pytest
 from pytest import approx
 
 from kukur import Metadata, SeriesSearch, SeriesSelector
 from kukur.metadata import fields
 from kukur.source import SourceFactory
+from kukur.source.sql import InvalidConfigurationError
 
 
 def test_search() -> None:
@@ -612,3 +614,44 @@ def test_get_metadata_tags() -> None:
         assert isinstance(metadata, Metadata)
         assert metadata.get_field(fields.Accuracy) == approx(0.5)
         assert metadata.get_field(fields.Description) == "test"
+
+
+def test_search_names_mismatched_tags_list_query() -> None:
+    db_uri = "file:search_name_tag_mismatch?mode=memory&cache=shared"
+    with sqlite3.connect(db_uri, uri=True) as connection:
+        cursor = connection.cursor()
+        cursor.executescript(
+            """
+            create table Metadata (
+                id integer primary key autoincrement,
+                location text not null,
+                plant text not null,
+                description text,
+                accuracy real
+            );
+
+            insert into Metadata (location, plant, description, accuracy)
+            values ('Antwerp', '01', 'test', 0.5);
+            insert into Metadata (location, plant, description, accuracy)
+            values ('Antwerp', '02', 'test', 1);
+            insert into Metadata (location, plant, description, accuracy)
+            values ('Barcelona', '02', 'test', 1.5);
+        """
+        )
+        connection.commit()
+
+        config = {
+            "source": {
+                "sqlite": {
+                    "type": "sqlite",
+                    "connection_string": db_uri,
+                    "list_query": "select location from Metadata",
+                    "tag_columns": ["location", "plant"],
+                }
+            }
+        }
+        source = SourceFactory(config).get_source("sqlite")
+        assert source is not None
+
+        with pytest.raises(InvalidConfigurationError):
+            list(source.search(SeriesSearch("sqlite")))

@@ -28,6 +28,13 @@ class InvalidMetadataError(KukurException):
         KukurException.__init__(self, f"invalid metadata: {message}")
 
 
+class InvalidConfigurationError(KukurException):
+    """Raised when the source configuration is invalid."""
+
+    def __init__(self, message: str):
+        KukurException.__init__(self, f"invalid configuration: {message}")
+
+
 @dataclass
 class SQLConfig:  # pylint: disable=too-many-instance-attributes
     """Configuration settings for a SQL connection."""
@@ -244,6 +251,10 @@ class BaseSQLSource(ABC):
         cursor.execute(self._config.list_query)
 
         for tag_values in cursor:
+            if len(tag_values) != len(self._config.tag_columns):
+                raise InvalidConfigurationError(
+                    "number of tag_columns does not match result of list_query"
+                )
             tags = {
                 tag_name: tag_value
                 for tag_name, tag_value in zip(self._config.tag_columns, tag_values)
