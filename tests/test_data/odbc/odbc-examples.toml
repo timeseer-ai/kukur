@@ -202,6 +202,21 @@ quality_mapping = "opc_mapping_strings"
 data_query_datetime_format = "%Y-%m-%dT%H:%M:%S"
 data_timezone = "UTC"
 
+[source.sql-decimal]
+type = "odbc"
+connection_string_path = "tests/test_data/odbc/connection.txt"
+data_query = "select date_ts, decimal_value from Data where name = ? and ts >= ? and ts < ? order by date_ts asc"
+
+[source.sql-decimal-local]
+type = "odbc"
+connection_string_path = "tests/test_data/odbc/connection-local.txt"
+data_query = "select date_ts, decimal_value from Data where name = ? and ts >= ? and ts < ? order by date_ts asc"
+
+[source.sql-decimal-linux]
+type = "odbc"
+connection_string_path = "tests/test_data/odbc/connection-linux.txt"
+data_query = "select date_ts, decimal_value from Data where name = ? and ts >= ? and ts < ? order by date_ts asc"
+
 [metadata_value_mapping.odbc_test."data type"]
 FLOAT64 = "float64"
 STRING = ["string", "text", "varchar"]

@@ -6,7 +6,8 @@
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timezone, tzinfo
+from datetime import date, datetime, timezone, tzinfo
+from decimal import Decimal
 from typing import Dict, Generator, List, Optional, Tuple, Union
 
 import dateutil.parser
@@ -172,7 +173,7 @@ class BaseSQLSource(ABC):
             )
         return metadata
 
-    def get_data(
+    def get_data(  # noqa: PLR0912
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         """Return data using the specified DB-API query."""
@@ -199,6 +200,10 @@ class BaseSQLSource(ABC):
                 )
             if isinstance(row[0], datetime):
                 ts = row[0]
+            elif isinstance(row[0], date):
+                ts = datetime(
+                    row[0].year, row[0].month, row[0].day, tzinfo=timezone.utc
+                )
             else:
                 ts = dateutil.parser.parse(row[0])
             if self._config.data_timezone:
@@ -209,8 +214,10 @@ class BaseSQLSource(ABC):
                 value = float("nan")
             if isinstance(value, bytes):
                 continue
-            if isinstance(value, datetime):
+            if isinstance(value, (datetime, date)):
                 value = value.isoformat()
+            elif isinstance(value, Decimal):
+                value = float(value)
             if self._quality_mapper.is_present():
                 quality = self._quality_mapper.from_source(row[2])
                 qualities.append(quality)
