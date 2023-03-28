@@ -225,3 +225,20 @@ def test_dictionary_data_backwards_compatibility(client: Client, suffix_source):
     assert data["value"][0].as_py() == 1.0
     assert data["ts"][4].as_py() == datetime.fromisoformat("2020-05-01T00:00:00+00:00")
     assert data["value"][4].as_py() == 1.0
+
+
+def test_date_time_decimal_values(client: Client, suffix_source):
+    start_date = datetime.fromisoformat("2020-01-01T00:00:00+00:00")
+    end_date = datetime.fromisoformat("2021-01-01T00:00:00+00:00")
+    data = client.get_data(
+        SeriesSelector(suffix_source("sql-decimal"), "test-tag-1"),
+        start_date,
+        end_date,
+    )
+    assert len(data) == 5
+    assert data["ts"][0].as_py() == start_date
+    assert data["value"][0].as_py() == pytest.approx(1.1)
+    assert data["ts"][1].as_py() == datetime.fromisoformat("2020-02-01T00:00:00+00:00")
+    assert data["value"][1].as_py() == pytest.approx(2.2)
+    assert data["ts"][4].as_py() == datetime.fromisoformat("2020-05-01T00:00:00+00:00")
+    assert data["value"][4].as_py() == pytest.approx(1.1)
