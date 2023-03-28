@@ -235,8 +235,8 @@ class BaseSQLSource(ABC):
         assert self._config.data_query is not None
 
         try:
-            query = self._config.data_query % selector.field
-        except TypeError:
+            query = self._config.data_query.format(field=selector.field)
+        except (TypeError, IndexError):
             query = self._config.data_query
         params = [selector.tags[tag_name] for tag_name in self._config.tag_columns]
         params.extend(

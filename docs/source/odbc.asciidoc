@@ -288,7 +288,7 @@ where my_location = ? and my_plant = ? and ts >= ? and ts < ?
 ```
 
 If the configuration defines `field_columns`,
-they are introduced into the query with string formatting.
+the field is available as `{field}` in the `data_query`.
 
 ```toml
 [source.<name>]
@@ -297,7 +297,7 @@ field_columns = ["temperature", "pressure"]
 
 ```toml
 data_query = """
-select ts, %s,
+select ts, {field},
 from Data
 where name = ? and ts >= ? and ts < ?
 """

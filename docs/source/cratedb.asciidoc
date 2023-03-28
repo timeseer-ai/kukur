@@ -262,7 +262,7 @@ where my_location = '{}' and my_plant = '{}' and timestamp >= '{}' and timestamp
 ```
 
 If the configuration defines `field_columns`,
-they are introduced into the query with string formatting.
+the field is available as `{field}` in the `data_query`.
 
 ```toml
 [source.<name>]
@@ -271,7 +271,7 @@ field_columns = ["temperature", "pressure"]
 
 ```toml
 data_query = """
-select timestamp, %s,
+select timestamp, {field},
 from Data
 where name = '{}' and timestamp >= '{}' and timestamp < '{}'
 """

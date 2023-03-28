@@ -374,7 +374,7 @@ def test_data_tags() -> None:
 
             insert into Data (ts, location, plant, value)
             values ('2022-01-01T00:00:00Z', 'Antwerp', '01', 0.5);
-            
+
             insert into Data (ts, location, plant, value)
             values ('2022-01-01T00:00:00Z', 'Antwerp', '02', 10);
 
@@ -449,7 +449,7 @@ def test_data_fields() -> None:
                 "sqlite": {
                     "type": "sqlite",
                     "connection_string": db_uri,
-                    "data_query": "select ts, %s from Data where name = ? and ts >= ? and ts < ?",
+                    "data_query": "select ts, {field} from Data where name = ? and ts >= ? and ts < ?",
                 }
             }
         }
@@ -491,7 +491,7 @@ def test_data_tags_fields() -> None:
 
             insert into Data (ts, location, plant, pressure)
             values ('2022-01-01T00:00:00Z', 'Antwerp', '01', 0.5);
-            
+
             insert into Data (ts, location, plant, pressure)
             values ('2022-01-01T00:00:00Z', 'Antwerp', '02', 10);
 
@@ -509,7 +509,9 @@ def test_data_tags_fields() -> None:
                 "sqlite": {
                     "type": "sqlite",
                     "connection_string": db_uri,
-                    "data_query": "select ts, %s from Data where location = ? and plant = ? and ts >= ? and ts < ?",
+                    "data_query": """
+select ts, {field} from Data where location = ? and plant = ? and ts >= ? and ts < ?
+""",
                     "list_columns": ["ts", "value", "location", "plant", "value"],
                     "tag_columns": ["location", "plant"],
                 }
