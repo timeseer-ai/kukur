@@ -43,7 +43,7 @@ def metadata(
     This does not store the metadata.
     """
     logger.info('Requesting metadata for "%s (%s)"', series_name, source_name)
-    result = source.get_metadata(SeriesSelector(source_name, series_name))
+    result = source.get_metadata(SeriesSelector.from_name(source_name, series_name))
     yield _get_metadata_header(result)
     yield _get_metadata(result)
 
@@ -67,7 +67,7 @@ def data(
     )
 
     table = source.get_data(
-        SeriesSelector(source_name, series_name),
+        SeriesSelector.from_name(source_name, series_name),
         start_date,
         end_date,
     )
@@ -97,7 +97,10 @@ def plot(  # noqa: PLR0913
     )
 
     table = source.get_plot_data(
-        SeriesSelector(source_name, series_name), start_date, end_date, interval_count
+        SeriesSelector.from_name(source_name, series_name),
+        start_date,
+        end_date,
+        interval_count,
     )
     yield from _yield_table(table)
 

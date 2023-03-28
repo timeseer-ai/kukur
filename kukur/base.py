@@ -97,11 +97,28 @@ class SeriesSelector(SeriesSearch):
 
     @classmethod
     def from_data(cls, data: Dict[str, Any]):
-        """Create a Series from a dictionary."""
+        """Create a SeriesSelector from a dictionary."""
         tags = data.get("tags", {})
         if "name" in data and "tags" not in data:
             tags["series name"] = data["name"]
         return cls(data["source"], tags, data.get("field", "value"))
+
+    @classmethod
+    def from_name(cls, source: str, name: str):
+        """Create a SeriesSelector from a name."""
+        field_parts = name.strip().rsplit("::", maxsplit=1)
+        field = "value"
+        if len(field_parts) > 1:
+            field = field_parts[1]
+        tags = {}
+        for tag_part in field_parts[0].split(","):
+            parts = tag_part.split("=", maxsplit=1)
+            if len(parts) == 1:
+                tags["series name"] = parts[0]
+            else:
+                tags[parts[0]] = parts[1]
+
+        return cls(source, tags, field)
 
     def to_data(self) -> Dict[str, Any]:
         """Convert to JSON object."""
