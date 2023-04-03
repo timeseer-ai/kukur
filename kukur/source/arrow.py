@@ -28,7 +28,6 @@ class SourcePartition:
     origin: str
     key: str
     path_encoding: Optional[str] = None
-    format: Optional[str] = None
 
     @classmethod
     def from_data(cls, data: Dict[str, Any]) -> "SourcePartition":
@@ -169,7 +168,7 @@ class BaseArrowSource(ABC):
         return data.cast(schema)
 
     def _load_pivot_data(self) -> pa.Table:
-        all_data = self.read_file(self.__loader.open(), None)
+        all_data = self.read_file(self.__loader.open())
         all_data = _map_pivot_columns(self.__options.column_mapping, all_data)
         all_data = _cast_ts_column(
             all_data, self.__options.data_datetime_format, self.__options.data_timezone
@@ -250,7 +249,7 @@ class BaseArrowSource(ABC):
                 data_path = data_path / partition_path
 
         data = self.read_file(
-            self.__loader.open_child(f"{data_path}.{self.get_file_extension()}"), None
+            self.__loader.open_child(f"{data_path}.{self.get_file_extension()}")
         )
 
         data = _map_columns(self.__options.column_mapping, data)
