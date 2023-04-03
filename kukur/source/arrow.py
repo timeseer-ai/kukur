@@ -49,6 +49,8 @@ class BaseArrowSourceOptions:
 
     data_format: str
     column_mapping: Dict[str, str]
+    tag_columns: List[str]
+    field_columns: List[str]
     data_datetime_format: Optional[str] = None
     data_timezone: Optional[str] = None
     path_encoding: Optional[str] = None
@@ -61,6 +63,8 @@ class BaseArrowSourceOptions:
         options = cls(
             data_format,
             data.get("column_mapping", {}),
+            data.get("tag_columns", ["series name"]),
+            data.get("field_columns", ["value"]),
             data.get("data_datetime_format"),
             data.get("data_timezone"),
             data.get("path_encoding"),
@@ -173,38 +177,50 @@ class BaseArrowSource(ABC):
 
     def _search_row(self, source_name: str) -> Generator[SeriesSelector, None, None]:
         all_data = self._load_row_data()
-        # pylint: disable=no-member
-        for name in pyarrow.compute.unique(all_data["series name"]):
-            yield SeriesSelector(source_name, name.as_py())
+        for tags in (
+            all_data.group_by(self.__options.tag_columns).aggregate([]).to_pylist()
+        ):
+            for field_name in self.__options.field_columns:
+                yield SeriesSelector(source_name, tags, field_name)
 
     def _read_row_data(self, selector: SeriesSelector) -> pa.Table:
         all_data = self._load_row_data()
+
+        for k, v in selector.tags.items():
+            all_data = all_data.filter(pyarrow.compute.equal(all_data[k], pa.scalar(v)))
+        data = pa.Table.from_arrays(
+            [
+                all_data["ts"],
+                all_data[selector.field],
+            ],
+            ["ts", "value"],
+        )
         schema = pa.schema(
             [
                 ("ts", pa.timestamp("us", "utc")),
-                ("value", _get_value_schema_type(all_data)),
+                ("value", _get_value_schema_type(data)),
             ]
         )
         if self.__quality_mapper.is_present():
             schema = schema.append(pa.field("quality", pa.int8()))
-            all_data = all_data.set_column(
-                3, "quality", self._map_quality(all_data["quality"])
-            )
-
-        # pylint: disable=no-member
-        data = all_data.filter(
-            pyarrow.compute.equal(all_data["series name"], pa.scalar(selector.name))
-        ).drop(["series name"])
+            data = data.set_column(2, "quality", self._map_quality(all_data["quality"]))
 
         return data.cast(schema)
 
     def _load_row_data(self) -> pa.Table:
-        columns = ["series name", "ts", "value"]
+        columns = self.__options.tag_columns + ["ts"] + self.__options.field_columns
         if self.__quality_mapper.is_present():
             columns.append("quality")
 
+        data_columns = {}
+        if len(self.__options.column_mapping) > 0:
+            data_columns = {
+                column_name: self.__options.column_mapping.get(column_name, column_name)
+                for column_name in columns
+            }
+
         all_data = self.read_file(self.__loader.open())
-        all_data = _map_columns(self.__options.column_mapping, all_data)
+        all_data = _map_columns(data_columns, all_data)
         all_data = all_data.rename_columns(columns)
         all_data = _cast_ts_column(
             all_data, self.__options.data_datetime_format, self.__options.data_timezone
@@ -264,25 +280,16 @@ def _get_value_schema_type(data: pa.Table):
     return value_type
 
 
-def _map_columns(column_mapping: Dict, data: pa.Table) -> pa.Table:
+def _map_columns(column_mapping: Dict[str, str], data: pa.Table) -> pa.Table:
     if len(column_mapping) == 0:
         return data
 
-    if "series name" in column_mapping:
-        columns = {
-            "series name": data[column_mapping["series name"]],
-            "ts": data[column_mapping.get("ts", "ts")],
-            "value": data[column_mapping.get("value", "value")],
+    return pa.Table.from_pydict(
+        {
+            column_name: data[data_name]
+            for column_name, data_name in column_mapping.items()
         }
-    else:
-        columns = {
-            "ts": data[column_mapping.get("ts", "ts")],
-            "value": data[column_mapping.get("value", "value")],
-        }
-    if "quality" in column_mapping:
-        columns["quality"] = data[column_mapping["quality"]]
-
-    return pa.Table.from_pydict(columns)
+    )
 
 
 def _map_pivot_columns(column_mapping: Dict[str, str], data: pa.Table) -> pa.Table:

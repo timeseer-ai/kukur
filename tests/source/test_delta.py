@@ -9,6 +9,7 @@ from dateutil.parser import parse as parse_date
 
 import kukur.config
 from kukur import SeriesSelector, Source
+from kukur.base import SeriesSearch
 from kukur.source import SourceFactory
 
 START_DATE = parse_date("2020-01-01T00:00:00Z")
@@ -82,3 +83,44 @@ def test_unordered():
     assert table["ts"][2].as_py() < table["ts"][3].as_py()
     assert table["ts"][3].as_py() < table["ts"][4].as_py()
     assert table["value"][0].as_py() == 1.0
+
+
+def test_row_tags_search():
+    series = list(get_source("row-delta-tags").search(SeriesSearch("row-delta-tags")))
+    assert len(series) == 8
+    assert (
+        SeriesSelector("row-delta-tags", {"location": "Antwerp", "plant": "P1"})
+        in series
+    )
+    assert (
+        SeriesSelector(
+            "row-delta-tags", {"location": "Antwerp", "plant": "P1"}, "product"
+        )
+        in series
+    )
+
+
+def test_row_tags_value():
+    table = get_source("row-delta-tags").get_data(
+        make_series("row-delta-tags", {"location": "Antwerp", "plant": "P1"}),
+        START_DATE,
+        END_DATE,
+    )
+    assert len(table) == 3
+    assert table["value"][0].as_py() == 1.0
+    assert table["value"][1].as_py() == 2.0
+    assert table["value"][2].as_py() == 1.0
+
+
+def test_row_tags_second_field():
+    table = get_source("row-delta-tags").get_data(
+        SeriesSelector(
+            "row-delta-tags", {"location": "Barcelona", "plant": "P1"}, "product"
+        ),
+        START_DATE,
+        END_DATE,
+    )
+    assert len(table) == 3
+    assert table["value"][0].as_py() == "A"
+    assert table["value"][1].as_py() == "A"
+    assert table["value"][2].as_py() == "B"

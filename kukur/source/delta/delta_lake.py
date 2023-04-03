@@ -63,7 +63,12 @@ def from_config(config: dict, quality_mapper: QualityMapper) -> DeltaLakeSource:
         raise MissingModuleException("deltalake", "delta")
 
     data_format = config.get("format", "row")
-    options = BaseArrowSourceOptions(data_format, config.get("column_mapping", {}))
+    options = BaseArrowSourceOptions(
+        data_format,
+        config.get("column_mapping", {}),
+        config.get("tag_columns", ["series name"]),
+        config.get("field_columns", ["value"]),
+    )
     if data_format not in ["row", "pivot"]:
         raise InvalidSourceException(
             'Delta lake sources support only the "row" and "pivot" format.'

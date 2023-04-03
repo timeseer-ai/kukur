@@ -222,3 +222,46 @@ def test_row_data_timezone_timestamp_naive():
     start_date = table["ts"][0].as_py()
     assert start_date == START_DATE
     assert start_date.tzinfo == pytz.UTC
+
+
+def test_row_tags_search():
+    series = list(
+        get_source("row-feather-tags").search(SeriesSearch("row-feather-tags"))
+    )
+    assert len(series) == 8
+    assert (
+        SeriesSelector("row-feather-tags", {"location": "Antwerp", "plant": "P1"})
+        in series
+    )
+    assert (
+        SeriesSelector(
+            "row-feather-tags", {"location": "Antwerp", "plant": "P1"}, "product"
+        )
+        in series
+    )
+
+
+def test_row_tags_value():
+    table = get_source("row-feather-tags").get_data(
+        make_series("row-feather-tags", {"location": "Antwerp", "plant": "P1"}),
+        START_DATE,
+        END_DATE,
+    )
+    assert len(table) == 3
+    assert table["value"][0].as_py() == 1.0
+    assert table["value"][1].as_py() == 2.0
+    assert table["value"][2].as_py() == 1.0
+
+
+def test_row_tags_second_field():
+    table = get_source("row-feather-tags").get_data(
+        SeriesSelector(
+            "row-feather-tags", {"location": "Barcelona", "plant": "P1"}, "product"
+        ),
+        START_DATE,
+        END_DATE,
+    )
+    assert len(table) == 3
+    assert table["value"][0].as_py() == "A"
+    assert table["value"][1].as_py() == "A"
+    assert table["value"][2].as_py() == "B"

@@ -12,6 +12,8 @@ Feather supports the same source layouts as CSV:
 type = "feather"
 format = "row|dir|pivot"
 path = "<path to data>"
+tag_columns = ["series name"]
+field_columns = ["value"]
 quality_mapping = "<name>"
 ```
 
@@ -79,6 +81,10 @@ The row based format expects `path` to be a Feather file with at least 3 columns
 - The first column contains the `series name` as a string
 - The second column contains the timestamp as https://arrow.apache.org/docs/python/generated/pyarrow.TimestampType.html#pyarrow.TimestampType[`pyarrow.TimestampType`].
 - The third column contains the value as a numerical type or as strings
+
+Alternatively,
+if the `tag_columns` and `field_columns` options are used,
+each combination of values defined in `tag_columns` and `field_columns` define a series.
 
 === Directory Based Format
 

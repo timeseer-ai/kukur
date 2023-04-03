@@ -105,3 +105,14 @@ path = "tests/test_data/feather/row-timestamp.feather"
 type = "feather"
 path = "tests/test_data/feather/row-timestamp-naive.feather"
 data_timezone = "America/Sao_Paulo"
+
+[source.row-feather-tags]
+type = "feather"
+path = "tests/test_data/feather/row-tags.feather"
+tag_columns = ["location", "plant"]
+field_columns = ["value", "product"]
+
+[source.row-feather-tags.column_mapping]
+"ts" = "date"
+"plant" = "Plant"
+"value" = "Value"

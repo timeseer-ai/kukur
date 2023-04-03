@@ -12,6 +12,8 @@ Delta Lake supports the `row` and `pivot` formats:
 type = "delta"
 format = "row|pivot"
 uri = "<uri of Delta Lake>"
+tag_columns = ["series name"]
+field_columns = ["value"]
 sort_by_timestamp = false
 ```
 
@@ -114,6 +116,10 @@ ifndef::sources[]
 link:sources.asciidoc#Quality[source documentation]
 endif::sources[]
 .
+
+Alternatively,
+if the `tag_columns` and `field_columns` options are used,
+each combination of values defined in `tag_columns` and `field_columns` define a series.
 
 === Pivot Format
 

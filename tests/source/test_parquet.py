@@ -262,3 +262,46 @@ def test_partitions_traversal() -> None:
             START_DATE,
             END_DATE,
         )
+
+
+def test_row_tags_search():
+    series = list(
+        get_source("row-parquet-tags").search(SeriesSearch("row-parquet-tags"))
+    )
+    assert len(series) == 8
+    assert (
+        SeriesSelector("row-parquet-tags", {"location": "Antwerp", "plant": "P1"})
+        in series
+    )
+    assert (
+        SeriesSelector(
+            "row-parquet-tags", {"location": "Antwerp", "plant": "P1"}, "product"
+        )
+        in series
+    )
+
+
+def test_row_tags_value():
+    table = get_source("row-parquet-tags").get_data(
+        make_series("row-parquet-tags", {"location": "Antwerp", "plant": "P1"}),
+        START_DATE,
+        END_DATE,
+    )
+    assert len(table) == 3
+    assert table["value"][0].as_py() == 1.0
+    assert table["value"][1].as_py() == 2.0
+    assert table["value"][2].as_py() == 1.0
+
+
+def test_row_tags_second_field():
+    table = get_source("row-parquet-tags").get_data(
+        SeriesSelector(
+            "row-parquet-tags", {"location": "Barcelona", "plant": "P1"}, "product"
+        ),
+        START_DATE,
+        END_DATE,
+    )
+    assert len(table) == 3
+    assert table["value"][0].as_py() == "A"
+    assert table["value"][1].as_py() == "A"
+    assert table["value"][2].as_py() == "B"
