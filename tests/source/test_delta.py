@@ -124,3 +124,30 @@ def test_row_tags_second_field():
     assert table["value"][0].as_py() == "A"
     assert table["value"][1].as_py() == "A"
     assert table["value"][2].as_py() == "B"
+
+
+def test_name_partition():
+    start_date = parse_date("2023-01-01T00:00:00Z")
+    end_date = parse_date("2023-03-20T00:00:00Z")
+    table = get_source("partition-name").get_data(
+        make_series("partition-name", {"series name": "test-tag-1"}),
+        start_date,
+        end_date,
+    )
+    assert len(table) == 12
+    assert table.column_names == ["ts", "value"]
+
+
+def test_location_name_partition():
+    start_date = parse_date("2023-01-01T00:00:00Z")
+    end_date = parse_date("2023-03-20T00:00:00Z")
+    table = get_source("partition-location-name").get_data(
+        make_series(
+            "partition-location-name",
+            {"series name": "test-tag-1", "location": "Antwerp"},
+        ),
+        start_date,
+        end_date,
+    )
+    assert len(table) == 12
+    assert table.column_names == ["ts", "value"]

@@ -31,3 +31,31 @@ field_columns = ["value", "product"]
 "ts" = "date"
 "plant" = "Plant"
 "value" = "Value"
+
+[source.partition-name]
+type = "delta"
+uri = "tests/test_data/delta/partitions/name"
+sort_by_timestamp = true
+
+[[source.partition-name.partitions]]
+origin = "tag"
+key = "series name"
+
+[source.partition-location-name]
+type = "delta"
+uri = "tests/test_data/delta/partitions/location-name"
+sort_by_timestamp = true
+tag_columns = ["series name", "location"]
+
+[source.partition-location-name.column_mapping]
+"ts" = "ts"
+"location" = "Location"
+"value" = "Value"
+
+[[source.partition-location-name.partitions]]
+origin = "tag"
+key = "location"
+
+[[source.partition-location-name.partitions]]
+origin = "tag"
+key = "series name"

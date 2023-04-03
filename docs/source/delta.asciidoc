@@ -15,6 +15,11 @@ uri = "<uri of Delta Lake>"
 tag_columns = ["series name"]
 field_columns = ["value"]
 sort_by_timestamp = false
+
+[[source.<name>.partitions]]
+origin = "tag"
+key = "series name"
+
 ```
 
 `format` defaults to `"row"`.
@@ -76,6 +81,19 @@ This is done by setting the `column_mapping` option for the source.
 ```
 
 `quality` mapping is optional.
+
+=== Partitioning
+
+For the `row` format,
+it is possible to take advantage of delta lake partitioning by defining one or more partitions:
+
+```toml
+[[source.partition-location-name.partitions]]
+origin = "tag"
+key = "location"
+```
+
+Every partition key must be included in the `tag_columns` option.
 
 === Custom datetime format
 

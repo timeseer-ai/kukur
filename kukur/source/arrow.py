@@ -27,7 +27,8 @@ class SourcePartition:
 
     origin: str
     key: str
-    path_encoding: Optional[str]
+    path_encoding: Optional[str] = None
+    format: Optional[str] = None
 
     @classmethod
     def from_data(cls, data: Dict[str, Any]) -> "SourcePartition":
@@ -103,7 +104,7 @@ class BaseArrowSource(ABC):
         self.__sort_by_timestamp = sort_by_timestamp
 
     @abstractmethod
-    def read_file(self, file_like) -> pa.Table:
+    def read_file(self, file_like, selector=None) -> pa.Table:
         """Read the given file-like object using the pyarrow format reader."""
         ...
 
@@ -168,7 +169,7 @@ class BaseArrowSource(ABC):
         return data.cast(schema)
 
     def _load_pivot_data(self) -> pa.Table:
-        all_data = self.read_file(self.__loader.open())
+        all_data = self.read_file(self.__loader.open(), None)
         all_data = _map_pivot_columns(self.__options.column_mapping, all_data)
         all_data = _cast_ts_column(
             all_data, self.__options.data_datetime_format, self.__options.data_timezone
@@ -184,7 +185,7 @@ class BaseArrowSource(ABC):
                 yield SeriesSelector(source_name, tags, field_name)
 
     def _read_row_data(self, selector: SeriesSelector) -> pa.Table:
-        all_data = self._load_row_data()
+        all_data = self._load_row_data(selector)
 
         for k, v in selector.tags.items():
             all_data = all_data.filter(pyarrow.compute.equal(all_data[k], pa.scalar(v)))
@@ -207,7 +208,7 @@ class BaseArrowSource(ABC):
 
         return data.cast(schema)
 
-    def _load_row_data(self) -> pa.Table:
+    def _load_row_data(self, selector: Optional[SeriesSelector] = None) -> pa.Table:
         columns = self.__options.tag_columns + ["ts"] + self.__options.field_columns
         if self.__quality_mapper.is_present():
             columns.append("quality")
@@ -219,7 +220,7 @@ class BaseArrowSource(ABC):
                 for column_name in columns
             }
 
-        all_data = self.read_file(self.__loader.open())
+        all_data = self.read_file(self.__loader.open(), selector)
         all_data = _map_columns(data_columns, all_data)
         all_data = all_data.rename_columns(columns)
         all_data = _cast_ts_column(
@@ -249,7 +250,7 @@ class BaseArrowSource(ABC):
                 data_path = data_path / partition_path
 
         data = self.read_file(
-            self.__loader.open_child(f"{data_path}.{self.get_file_extension()}")
+            self.__loader.open_child(f"{data_path}.{self.get_file_extension()}"), None
         )
 
         data = _map_columns(self.__options.column_mapping, data)

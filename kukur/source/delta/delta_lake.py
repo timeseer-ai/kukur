@@ -19,7 +19,8 @@ except ImportError:
 from pyarrow import Table
 
 from kukur.exceptions import InvalidSourceException, MissingModuleException
-from kukur.source.arrow import BaseArrowSource, BaseArrowSourceOptions
+from kukur.loader import Loader
+from kukur.source.arrow import BaseArrowSource, BaseArrowSourceOptions, SourcePartition
 from kukur.source.quality import QualityMapper
 
 
@@ -48,9 +49,33 @@ class DeltaLakeLoader:
 class DeltaLakeSource(BaseArrowSource):
     """Connect to a Delta Lake."""
 
-    def read_file(self, file_like) -> Table:
+    __options: BaseArrowSourceOptions
+
+    def __init__(
+        self,
+        options: BaseArrowSourceOptions,
+        loader: Loader,
+        quality_mapper: QualityMapper,
+        *,
+        sort_by_timestamp: bool = False
+    ):
+        self.__options = options
+        super().__init__(
+            options, loader, quality_mapper, sort_by_timestamp=sort_by_timestamp
+        )
+
+    def read_file(self, file_like, selector=None) -> Table:
         """Return a PyArrow Table for the Delta Table at the given URI."""
-        return DeltaTable(file_like).to_pyarrow_table()
+        partitions = []
+        if self.__options.partitions is not None:
+            for partition in self.__options.partitions:
+                if partition.origin == "tag":
+                    column_name = self.__options.column_mapping.get(
+                        partition.key, partition.key
+                    )
+                partitions.append((column_name, "=", selector.tags[partition.key]))
+
+        return DeltaTable(file_like).to_pyarrow_table(partitions)
 
     def get_file_extension(self) -> str:
         """Delta lakes do not support row-based formats."""
@@ -69,6 +94,10 @@ def from_config(config: dict, quality_mapper: QualityMapper) -> DeltaLakeSource:
         config.get("tag_columns", ["series name"]),
         config.get("field_columns", ["value"]),
     )
+    options.partitions = [
+        SourcePartition.from_data(partition)
+        for partition in config.get("partitions", [])
+    ]
     if data_format not in ["row", "pivot"]:
         raise InvalidSourceException(
             'Delta lake sources support only the "row" and "pivot" format.'
