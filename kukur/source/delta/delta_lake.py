@@ -19,7 +19,7 @@ except ImportError:
 from base64 import b64encode
 from datetime import datetime
 from pathlib import PurePath
-from typing import Generator, Optional, Union
+from typing import Dict, Generator, List, Optional, Tuple, Union
 
 import pyarrow as pa
 
@@ -87,7 +87,7 @@ class DeltaLakeSource:
         end_date: Optional[datetime] = None,
     ) -> pa.Table:
         """Return a PyArrow Table for the Delta Table at the given URI."""
-        partitions: list[tuple[str, str, Union[str, list[str]]]] = []
+        partitions: List[Tuple[str, str, Union[str, List[str]]]] = []
         if self.__options.partitions is not None and selector is not None:
             for partition in self.__options.partitions:
                 if partition.origin == "tag":
@@ -328,7 +328,7 @@ def _get_value_schema_type(data: pa.Table):
     return value_type
 
 
-def _map_columns(column_mapping: dict[str, str], data: pa.Table) -> pa.Table:
+def _map_columns(column_mapping: Dict[str, str], data: pa.Table) -> pa.Table:
     if len(column_mapping) == 0:
         return data
 
@@ -340,7 +340,7 @@ def _map_columns(column_mapping: dict[str, str], data: pa.Table) -> pa.Table:
     )
 
 
-def _map_pivot_columns(column_mapping: dict[str, str], data: pa.Table) -> pa.Table:
+def _map_pivot_columns(column_mapping: Dict[str, str], data: pa.Table) -> pa.Table:
     ts_column_name = data.column_names[0]
     if "ts" in column_mapping:
         ts_column_name = column_mapping["ts"]
