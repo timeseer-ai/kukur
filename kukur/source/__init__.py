@@ -33,6 +33,7 @@ from kukur.source import (
     odbc,
     parquet,
     piwebapi_da,
+    postgresql,
     simulator,
     sqlite,
 )
@@ -61,6 +62,7 @@ _FACTORY = {
     "odbc": odbc.from_config,
     "parquet": parquet.from_config,
     "piwebapi-da": piwebapi_da.from_config,
+    "postgresql": postgresql.from_config,
     "simulator": simulator.from_config,
     "sqlite": sqlite.from_config,
 }

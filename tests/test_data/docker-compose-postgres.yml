@@ -1,0 +1,22 @@
+version: '2.3'
+
+services:
+  postgres:
+    image: postgres:15
+    ports:
+      - "5431:5432"
+    environment:
+      - POSTGRES_PASSWORD=Timeseer!AI
+      - PGUSER=postgres
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/import-data.sql:/docker-entrypoint-initdb.d/import-data.sql
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+      interval: 5s
+      timeout: 5s
+      retries: 18
+      start_period: 5s
+
+volumes:
+    postgres-data:

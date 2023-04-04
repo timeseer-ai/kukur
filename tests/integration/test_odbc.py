@@ -15,6 +15,8 @@ import pytest
 from kukur import Client, InterpolationType, Metadata, SeriesSelector
 from kukur.metadata import fields
 
+pytestmark = pytest.mark.odbc
+
 
 @pytest.fixture
 def client() -> Client:

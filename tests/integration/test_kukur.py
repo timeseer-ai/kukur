@@ -7,6 +7,8 @@ import pytest
 
 from kukur import Client, SeriesSelector
 
+pytestmark = pytest.mark.kukur
+
 
 @pytest.fixture
 def client() -> Client:
