@@ -59,3 +59,26 @@ key = "location"
 [[source.partition-location-name.partitions]]
 origin = "tag"
 key = "series name"
+
+[source.partition-year]
+type = "delta"
+uri = "tests/test_data/delta/partitions/year"
+tag_columns = ["location", "series name"]
+sort_by_timestamp = true
+
+[[source.partition-year.partitions]]
+origin = "timestamp"
+key = "YEAR"
+column = "partition_year"
+
+[source.partition-year-custom]
+type = "delta"
+uri = "tests/test_data/delta/partitions/year-custom"
+tag_columns = ["location", "series name"]
+sort_by_timestamp = true
+
+[[source.partition-year-custom.partitions]]
+origin = "timestamp"
+key = "YEAR"
+column = "partition_year"
+format = "%y-year"

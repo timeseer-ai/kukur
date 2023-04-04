@@ -20,6 +20,12 @@ sort_by_timestamp = false
 origin = "tag"
 key = "series name"
 
+[[source.<name>.partitions]]
+origin = "timestamp"
+key = "YEAR"
+format = "%Y"
+column = "year"
+
 ```
 
 `format` defaults to `"row"`.
@@ -88,12 +94,33 @@ For the `row` format,
 it is possible to take advantage of delta lake partitioning by defining one or more partitions:
 
 ```toml
-[[source.partition-location-name.partitions]]
+[[source.<name>.partitions]]
 origin = "tag"
 key = "location"
 ```
 
-Every partition key must be included in the `tag_columns` option.
+Every tag based partition key must be included in the `tag_columns` option.
+
+Timestamp based partitioning is also supported:
+
+```toml
+[[source.<name>.partitions]]
+origin = "timestamp"
+key = "YEAR"
+format = "%Y"
+column = "year"
+```
+
+For timestamp based partitions:
+
+- `key` indicates the resolution to be used when querying for partitions.
+Supported values are `YEAR`, `MONTH` and `DAY`.
+
+- `format` indicates how the timestamp is used for partitioning. Defaults to `%Y`, `%Y-%m`, `%Y-%m-%d` repectively.
+It accepts the https://docs.python.org/3/library/datetime.html#strftime-strptime-behavior[formatting options] supported by Python.
+
+- `column` is optional.
+Needed if the name of the column used for partitioning does not exactly match the `key` value.
 
 === Custom datetime format
 

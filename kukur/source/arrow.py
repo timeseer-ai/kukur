@@ -28,6 +28,8 @@ class SourcePartition:
     origin: str
     key: str
     path_encoding: Optional[str] = None
+    format: Optional[str] = None
+    column: Optional[str] = None
 
     @classmethod
     def from_data(cls, data: Dict[str, Any]) -> "SourcePartition":
@@ -40,6 +42,8 @@ class SourcePartition:
             data["origin"],
             data["key"],
             data.get("path_encoding"),
+            data.get("format"),
+            data.get("column"),
         )
 
 
