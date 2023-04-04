@@ -37,6 +37,7 @@ setuptools.setup(
         "kusto": ["azure-identity", "azure-kusto-data"],
         "odbc": ["pyodbc"],
         "piwebapi": ["requests", "requests-kerberos"],
+        "postgresql": ["psycopg[binary]"],
     },
     python_requires=">=3.8",
     package_data={

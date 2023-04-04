@@ -1,0 +1,307 @@
+// SPDX-FileCopyrightText: 2023 Timeseer.AI
+// SPDX-License-Identifier: Apache-2.0
+
+== PostgreSQL
+
+Sources with `type = "postgresql"` configure PostgreSQL sources.
+
+`odbc` sources can also connect to PostgreSQL,
+provided the PostgreSQL ODBC driver is available.
+
+Many other database systems support the PostgreSQL wire format.
+This source can be used to connect to them as well.
+
+The connection string and queries can either be configured in the configuration file,
+or loaded from files.
+Inline configuration takes precedence over file-based configuration when both are provided.
+
+```toml
+[source.<name>]
+type = "postgresql"
+connection_string = "<postgresql connection_string>"
+connection_string_path = "<path to connection string>"
+list_query = "<query to list all time series in a source>"
+list_query_path = "<path to list_query>"
+list_columns = ["<metadata type of column 1>", "<metadata type of column 2"]
+tag_columns = ["series name"]
+field_columns = []
+metadata_query = "<query for metadata of one series>"
+metadata_query_path = "<path to metadata query>"
+metadata_columns = ["<metadata type of column 1>", "<metadata type of column 2"]
+dictionary_query = "<query for a possible dictionary mapping>"
+dictionary_query_path = "<path to a dictionary query>"
+metadata_value_mapping = "<metadata_value_mapping name>"
+data_query = "<query for data of one series in time range>"
+data_query_path = "<path to data query>"
+data_query_timezone = "<override or specify time zone of timestamps to send a naive timestamp to the database>"
+data_timezone = "<override or specify time zone of timestamps returned by the database>"
+enable_trace_logging = false
+quality_mapping = "<name>"
+```
+
+The examples given here operate on this schema:
+
+```sql
+create table Metadata (
+    id serial,
+    name text not null,
+    description text,
+    units text,
+    dictionary_name text,
+);
+
+create table Dictionary (
+    id serial,
+    name text not null,
+    value integer not null,
+    label text not null
+);
+
+create table Data (
+    id serial,
+    name text not null,
+    ts  timestamp with time zone,
+    value double precision
+);
+```
+
+=== Connection
+
+The `connection_string` supports the keywords supported by [`libpq`](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-PARAMKEYWORDS).
+
+```toml
+connection_string = "host=localhost port=5432 dbname=postgres user=postgres password=Timeseer!AI"
+```
+
+Alternatively, `connection_string_path` can point to a file that contains the connection string.
+Whitespace at the start and end of the connection string file is removed.
+
+`libpq` also supports reading passwords from a file using the `passfile` parameter.
+Use this to securely inject passwords into a container.
+
+=== Search
+
+The `list_query` is optional.
+It returns a list of time series found in the source.
+
+```toml
+list_query = "select name from Metadata"
+```
+
+The query can be read from a file by using `list_query_path` instead of `list_query`.
+
+The query can either return only series names or all metadata.
+When it returns all metadata, include a `list_columns` entry that describes all columns:
+
+```toml
+list_query = "select name, description, units from Metadata"
+list_columns = ["series name", "description", "unit"]
+```
+
+All columns defined in `tag_columns` should be included in `list_columns`.
+All combinations of rows returned by the `list_query` and values in `field_columns`
+define a series.
+
+Built-in metadata fields are:
+
+include::{include-path}/metadata-fields.asciidoc[]
+
+Custom metadata fields can be defined by including them in the `list_columns` list.
+
+Not all ODBC sources can map metadata field values to the values expected by Kukur.
+Use `metadata_value_mapping` to convert them.
+
+Example:
+
+```toml
+[source.<name>]
+metadata_value_mapping = "pg_lowercase"
+
+[metadata_value_mapping.pg_lowercase."data type"]
+FLOAT64 = "float64"
+STRING = ["string", "text", "varchar"]
+DICTIONARY = "dictionary"
+```
+
+This example converts lowercase data types to the uppercase strings expected by Kukur.
+
+=== Metadata
+
+The `metadata_query` is a query that accepts one parameter for each tag in a series,
+ordered by `tag_columns`.
+
+```toml
+metadata_query = "select description, units from Metadata where name = %s"
+```
+
+The columns in the result set should be mapped to a supported type of metadata.
+The `metadata_columns` entry contains a list with the positional mapping.
+
+```toml
+metadata_columns = ["description", "unit"]
+```
+
+Supported types of metadata are:
+
+include::{include-path}/metadata-fields.asciidoc[]
+
+Custom metadata fields can be defined by including them in the `metadata_columns` list.
+
+The metadata query can be read from a file by using `metadata_query_path` instead of `metadata_query`.
+
+Metadata values can be converted using `metadata_value_mapping`.
+
+Example:
+
+```toml
+[source.<name>]
+metadata_value_mapping = "pg_lowercase"
+
+[metadata_value_mapping.pg_lowercase."data type"]
+FLOAT64 = "float64"
+STRING = ["string", "text", "varchar"]
+DICTIONARY = "dictionary"
+```
+
+This example converts lowercase data types to the uppercase strings expected by Kukur.
+
+If the configuration defines `tag_columns`,
+they are provided in the same order as defined in `tag_columns`.
+
+```toml
+[source.<name>]
+tag_columns = ["location", "plant"]
+```
+
+```toml
+metadata_query = """
+select description, units, interpolationType, dataType, dictionaryName
+from Metadata
+where my_location = %s and my_plant = %s
+"""
+```
+
+=== Dictionary
+
+A dictionary maps numerical (integer) values to textual labels.
+The `dictionary_query` is a query that accepts one parameter: the name of the dictionary.
+
+The dictionary name for a series is returned by the `dictionary name` list or metadata column.
+
+```toml
+dictionary_query = "select value, label from Dictionary where name = %s"
+```
+
+The first column with the dictionary key can be any type that can be converted to an integer, even `SQL_CHAR`.
+The second column with the dictionary value should be a `SQL_CHAR` or `SQL_WCHAR`.
+
+The dictionary query can be read from a file by using `dictionary_query_path` instead of `dictionary_query`.
+
+=== Data
+
+The `data_query` is a query that accepts multiple parameters:
+
+- each tag value for the tags defined in `tag_columns`
+- the start date of the time range to query data in (as a `timestamp with time zone`)
+- the end date of the time range to query data in (as a `timestamp with time zone`)
+
+```toml
+data_query = "select ts, value from Data where name = %s and ts between %s and %s"
+```
+
+This query should return rows of two columns:
+
+- the timestamp of the data point (preferably as `timestamp with time zone`)
+- the value of the data point (preferably as `double precision`, `integer` or `text`)
+
+
+If the database table does not accept `timestamp with time zone`,
+it can be formatted as a string.
+The `data_query_datetime_format` option accepts the https://docs.python.org/3/library/datetime.html#strftime-strptime-behavior[formatting options] supported by Python.
+
+Example:
+
+```toml
+data_query_datetime_format = "%Y-%m-%dT%H:%M:%S%z"
+```
+
+This converts timestamps to the ISO8601 format.
+
+The data query can be read from a file by using `data_query_path` instead of `data_query`.
+
+If the database table doesn't accept timezoned timestamps you can specify the prefered timestamp for the input to convert the timestamp with the `data_query_timezone` option.
+The request will use the converted timestamps as naive timestamps for the queries to the driver.
+
+Example:
+
+```toml
+data_query_timezone = "UTC"
+```
+
+If the query returns dates without a time zone,
+the time zone can be specified by the `data_timezone` option.
+
+Example:
+
+```toml
+data_timezone = "UTC"
+```
+
+The exact available time zones are system-dependent.
+
+Set `enable_trace_logging` to `true` to log the fetched data before conversion.
+
+```toml
+enable_trace_logging = true
+```
+
+If the configuration defines `tag_columns`,
+they are provided to the data query in the same order as defined in `tag_columns`.
+
+```toml
+[source.<name>]
+tag_columns = ["location", "plant"]
+```
+
+```toml
+data_query = """
+select ts, value
+from Data
+where my_location = %s and my_plant = %s and ts >= %s and ts < %s
+"""
+```
+
+If the configuration defines `field_columns`,
+the field is available as `{field}` in the `data_query`.
+
+```toml
+[source.<name>]
+field_columns = ["temperature", "pressure"]
+```
+
+```toml
+data_query = """
+select ts, {field},
+from Data
+where name = %s and ts >= %s and ts < %s
+"""
+```
+
+=== Quality
+
+A quality column can be returned for each data point.
+
+In this case the data query changes:
+
+```toml
+data_query = "select ts, value, quality from Data where name = %s and ts between %s and %s"
+```
+
+Check the
+ifdef::sources[]
+<<Quality, source documentation>>
+endif::sources[]
+ifndef::sources[]
+link:sources.asciidoc#Quality[source documentation]
+endif::sources[]
+to configure the mapping of a value in the quality column to a quality status known to Kukur.

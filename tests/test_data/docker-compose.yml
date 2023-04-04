@@ -33,8 +33,18 @@ services:
     volumes:
       - crate-data:/data
     command: ["crate", "-Cdiscovery.type=single-node"]
+  postgres:
+    image: postgres:15
+    ports:
+      - "5431:5432"
+    environment:
+      - POSTGRES_PASSWORD=Timeseer!AI
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/import-data.sql:/docker-entrypoint-initdb.d/import-data.sql
 
 volumes:
     crate-data:
     database-data:
     influx-data:
+    postgres-data:

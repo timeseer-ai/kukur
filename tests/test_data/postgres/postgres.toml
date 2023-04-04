@@ -1,0 +1,20 @@
+[source.postgres]
+type = "postgresql"
+connection_string = "host=postgres port=5432 user=postgres password=Timeseer!AI"
+list_query = "select name, description from Metadata"
+list_columns = ["series name", "description"]
+data_query = "select ts, value from data where name = %s and ts >= %s and ts < %s order by ts asc"
+
+[source.postgres-local]
+type = "postgresql"
+connection_string = "host=localhost port=5431 user=postgres password=Timeseer!AI"
+list_query = "select name, description from Metadata"
+list_columns = ["series name", "description"]
+data_query = "select ts, value from data where name = %s and ts >= %s and ts < %s order by ts asc"
+
+[source.postgres-linux]
+type = "postgresql"
+connection_string = "host=localhost port=5431 user=postgres password=Timeseer!AI"
+list_query = "select name, description from Metadata"
+list_columns = ["series name", "description"]
+data_query = "select ts, value from data where name = %s and ts >= %s and ts < %s order by ts asc"
