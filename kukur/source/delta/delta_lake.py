@@ -230,9 +230,7 @@ class DeltaLakeSource:
             columns.append("quality")
 
         data_columns = {}
-        if len(self.__options.column_mapping) > 0 or len(all_data.column_names) > len(
-            columns
-        ):
+        if len(self.__options.column_mapping) > 0:
             data_columns = {
                 column_name: self.__options.column_mapping.get(column_name, column_name)
                 for column_name in columns

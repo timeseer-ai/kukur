@@ -66,6 +66,12 @@ uri = "tests/test_data/delta/partitions/year"
 tag_columns = ["location", "series name"]
 sort_by_timestamp = true
 
+[source.partition-year.column_mapping]
+"ts" = "ts"
+"series name" = "series name"
+"value" = "value"
+"location" = "location"
+
 [[source.partition-year.partitions]]
 origin = "timestamp"
 key = "YEAR"
@@ -76,6 +82,12 @@ type = "delta"
 uri = "tests/test_data/delta/partitions/year-custom"
 tag_columns = ["location", "series name"]
 sort_by_timestamp = true
+
+[source.partition-year-custom.column_mapping]
+"ts" = "ts"
+"series name" = "series name"
+"value" = "value"
+"location" = "location"
 
 [[source.partition-year-custom.partitions]]
 origin = "timestamp"
