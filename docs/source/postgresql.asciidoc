@@ -108,7 +108,7 @@ include::{include-path}/metadata-fields.asciidoc[]
 
 Custom metadata fields can be defined by including them in the `list_columns` list.
 
-Not all ODBC sources can map metadata field values to the values expected by Kukur.
+Not all PostgreSQL sources can map metadata field values to the values expected by Kukur.
 Use `metadata_value_mapping` to convert them.
 
 Example:
