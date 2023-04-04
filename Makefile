@@ -38,9 +38,38 @@ lint: ## Lint the kukur code
 test: ## Run the unit tests
 	python -m pytest --ignore tests/integration
 
+.PHONY: compose
+compose: ## Start all containers needed for integration tests
+	docker-compose \
+		-f tests/test_data/docker-compose-crate.yml \
+		-f tests/test_data/docker-compose-influxdb.yml \
+		-f tests/test_data/docker-compose-odbc.yml \
+		-f tests/test_data/docker-compose-postgres.yml \
+	 	up
+
 .PHONY: integration-test
-integration-test: ## Run integration tests (this requires a running Kukur)
+integration-test: ## Run all integration tests (this requires a running Kukur)
 	python -m pytest tests/integration
+
+.PHONY: integration-test-crate
+integration-test-crate: ## Run CrateDB integration tests
+	python -m pytest tests/integration -m crate
+
+.PHONY: integration-test-influxdb
+integration-test-influxdb: ## Run InfluxDB integration tests
+	python -m pytest tests/integration -m influxdb
+
+.PHONY: integration-test-kukur
+integration-test-kukur: ## Run Kukur (flight) integration tests
+	python -m pytest tests/integration -m kukur
+
+.PHONY: integration-test-odbc
+integration-test-odbc: ## Run ODBC integration tests
+	python -m pytest tests/integration -m odbc
+
+.PHONY: integration-test-postgres
+integration-test-postgres: ## Run PostgreSQL integration tests
+	python -m pytest tests/integration -m postgresql
 
 .PHONY: deps
 deps: ## Install runtime dependencies

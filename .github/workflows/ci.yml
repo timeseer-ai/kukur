@@ -11,7 +11,7 @@ on:
 jobs:
   lint_and_test:
     name: Lint and Test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -43,20 +43,82 @@ jobs:
       - name: Build docker container
         run: make build-docker
 
+      - name: Save docker image
+        run: docker save kukur:latest > /tmp/kukur.tar
+
+      - name: Create the docker container artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: kukur-docker
+          path: /tmp/kukur.tar
+          retention-days: 1
+
+  integration_test:
+    name: Integration test
+    runs-on: ubuntu-22.04
+    needs:
+      - lint_and_test
+    strategy:
+      matrix:
+        target:
+          - crate
+          - influxdb
+          - kukur
+          - odbc
+          - postgres
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Download docker container artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: kukur-docker
+          path: /tmp
+
+      - name: Load docker container
+        run: docker load < /tmp/kukur.tar
+
       - name: Start integration test compose environment
-        run: docker-compose -f docker-compose.container.yml -f docker-compose.yml up -d
+        run: docker-compose -f docker-compose-${{ matrix.target }}.container.yml -f docker-compose-${{ matrix.target }}.yml up -d
         working-directory: tests/test_data
 
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.8'
+          cache: 'pip'
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+            requirements-python.txt
+
+      - name: Install OS requirements
+        run: |
+          sudo apt-get update
+          sudo apt-get --yes install libkrb5-dev
+
+      - name: Install requirements
+        run: make deps dev-deps
+
       - name: Run integration test
-        run: make integration-test
+        run: make integration-test-${{ matrix.target }}
 
-      - name: Tag docker image
-        run: docker tag kukur:latest docker.timeseer.ai/kukur:${GITHUB_SHA}
-        if: github.ref == 'refs/heads/master'
+  push_container:
+    name: Push tested container
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-22.04
+    needs:
+      - integration_test
+    steps:
+      - name: Download docker container artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: kukur-docker
+          path: /tmp
 
-      - name: Tag latest docker image
-        run: docker tag kukur:latest docker.timeseer.ai/kukur:latest
-        if: github.ref == 'refs/heads/master'
+      - name: Load docker container
+        run: docker load < /tmp/kukur.tar
 
       - name: Login to container registry
         uses: azure/docker-login@v1
@@ -64,12 +126,15 @@ jobs:
           login-server: docker.timeseer.ai
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-        if: github.ref == 'refs/heads/master'
 
-      - name: Push docker image
+      - name: Tag docker container (sha)
+        run: docker tag kukur:latest docker.timeseer.ai/kukur:${GITHUB_SHA}
+
+      - name: Tag docker container (latest)
+        run: docker tag kukur:latest docker.timeseer.ai/kukur:latest
+
+      - name: Push docker image (sha)
         run: docker push docker.timeseer.ai/kukur:${GITHUB_SHA}
-        if: github.ref == 'refs/heads/master'
 
-      - name: Push docker image
+      - name: Push docker image (latest)
         run: docker push docker.timeseer.ai/kukur:latest
-        if: github.ref == 'refs/heads/master'

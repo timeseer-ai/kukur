@@ -115,7 +115,12 @@ Integration tests require Kukur to be running with a special configuration.
 Some time series databases need to be started using docker-compose.
 
 ```bash
-$ docker-compose -f tests/test_data/docker-compose.yml up -d
+$ make compose
+```
+
+Then, in another shell:
+
+```
 (venv) $ python -m kukur.cli --config-file tests/test_data/Kukur.toml
 ```
 

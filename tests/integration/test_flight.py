@@ -14,6 +14,8 @@ from kukur import Client, Metadata, SeriesSelector
 from kukur.base import SeriesSearch
 from kukur.metadata import fields
 
+pytestmark = pytest.mark.kukur
+
 
 @pytest.fixture
 def client() -> Client:

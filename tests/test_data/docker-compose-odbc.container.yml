@@ -2,7 +2,7 @@ version: '2.3'
 
 services:
   kukur:
-    build: ../../.
+    image: kukur:latest
     ports:
       - "8081:8081"
     volumes:

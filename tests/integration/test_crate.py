@@ -16,6 +16,8 @@ from crate import client as crate_client
 from kukur import Client, SeriesSelector
 from kukur.metadata import fields
 
+pytestmark = pytest.mark.crate
+
 
 @pytest.fixture
 def client() -> Client:

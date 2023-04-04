@@ -13,6 +13,8 @@ import pytest
 
 from kukur import Client, Metadata, SeriesSelector
 
+pytestmark = pytest.mark.postgresql
+
 
 @pytest.fixture
 def client() -> Client:

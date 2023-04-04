@@ -1,0 +1,20 @@
+version: '2.3'
+
+services:
+  influxdb:
+    image: influxdb:1.8
+    ports:
+      - "8086:8086"
+    volumes:
+      - influx-data:/var/lib/influxdb
+      - ./influxdb/NOAA_data.txt.gz:/NOAA_data.txt.gz
+      - ./influxdb/import-data.sh:/docker-entrypoint-initdb.d/import-data.sh
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:8086"]
+      interval: 5s
+      timeout: 5s
+      retries: 18
+      start_period: 5s
+
+volumes:
+    influx-data:

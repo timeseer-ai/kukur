@@ -17,24 +17,6 @@ services:
       timeout: 5s
       retries: 18
       start_period: 10s
-  influxdb:
-    image: influxdb:1.8
-    ports:
-      - "8086:8086"
-    volumes:
-      - influx-data:/var/lib/influxdb
-      - ./influxdb/NOAA_data.txt.gz:/NOAA_data.txt.gz
-      - ./influxdb/import-data.sh:/docker-entrypoint-initdb.d/import-data.sh
-  cratedb:
-    image: crate:4.7
-    ports:
-      - "4200:4200"
-      - "5432:5432"
-    volumes:
-      - crate-data:/data
-    command: ["crate", "-Cdiscovery.type=single-node"]
 
 volumes:
-    crate-data:
     database-data:
-    influx-data:

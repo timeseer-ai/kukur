@@ -14,6 +14,8 @@ import pytest
 from kukur import Client, Metadata, SeriesSelector
 from kukur.metadata import fields
 
+pytestmark = pytest.mark.influxdb
+
 
 @pytest.fixture
 def client() -> Client:

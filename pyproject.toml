@@ -47,3 +47,12 @@ convention = "google"
     "D",
     "PLR",
 ]
+
+[tool.pytest.ini_options]
+markers = [
+    "crate",
+    "influxdb",
+    "kukur",
+    "odbc",
+    "postgresql",
+]
