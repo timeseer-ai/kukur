@@ -126,3 +126,43 @@ sort_by_timestamp = true
 [[source.partition-day.partitions]]
 origin = "timestamp"
 key = "DAY"
+
+[source.partition-month-location]
+type = "delta"
+uri = "tests/test_data/delta/partitions/month_location"
+tag_columns = ["location", "series name"]
+sort_by_timestamp = true
+
+[source.partition-month-location.column_mapping]
+"ts" = "ts"
+"series name" = "series name"
+"value" = "value"
+"location" = "location"
+
+[[source.partition-month-location.partitions]]
+origin = "timestamp"
+key = "MONTH"
+
+[[source.partition-month-location.partitions]]
+origin = "tag"
+key = "location"
+
+[source.partition-location-month]
+type = "delta"
+uri = "tests/test_data/delta/partitions/month_location"
+tag_columns = ["location", "series name"]
+sort_by_timestamp = true
+
+[source.partition-location-month.column_mapping]
+"ts" = "ts"
+"series name" = "series name"
+"value" = "value"
+"location" = "location"
+
+[[source.partition-location-month.partitions]]
+origin = "tag"
+key = "location"
+
+[[source.partition-location-month.partitions]]
+origin = "timestamp"
+key = "MONTH"
