@@ -32,7 +32,7 @@ def from_config(config: Dict[str, Any], quality_mapper: QualityMapper):
 class FeatherSource(BaseArrowSource):
     """A Feather data source."""
 
-    def read_file(self, file_like, _=None) -> pa.Table:
+    def read_file(self, file_like) -> pa.Table:
         """Read the file_like object as Feather."""
         return feather.read_table(file_like)
 

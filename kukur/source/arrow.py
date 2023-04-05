@@ -107,7 +107,7 @@ class BaseArrowSource(ABC):
         self.__sort_by_timestamp = sort_by_timestamp
 
     @abstractmethod
-    def read_file(self, file_like, selector=None) -> pa.Table:
+    def read_file(self, file_like) -> pa.Table:
         """Read the given file-like object using the pyarrow format reader."""
         ...
 
@@ -163,7 +163,7 @@ class BaseArrowSource(ABC):
             self.__options.tag_columns + ["ts"] + self.__options.field_columns
         )
         all_data = self.read_file(self.__loader.open())
-        all_data = map_row_data(
+        all_data = map_row_columns(
             all_data, column_names, self.__options.column_mapping, self.__quality_mapper
         )
         all_data = cast_ts_column(
@@ -317,7 +317,7 @@ def _map_quality(quality_data: pa.Array, quality_mapper: QualityMapper) -> pa.Ar
     return quality_mapper.map_array(quality_data)
 
 
-def map_row_data(
+def map_row_columns(
     all_data: pa.Table,
     column_names: List[str],
     column_mapping: Dict[str, str],

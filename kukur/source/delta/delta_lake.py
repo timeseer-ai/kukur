@@ -38,7 +38,7 @@ from kukur.source.arrow import (
     filter_pivot_data,
     filter_row_data,
     map_pivot_columns,
-    map_row_data,
+    map_row_columns,
 )
 from kukur.source.quality import QualityMapper
 
@@ -282,7 +282,7 @@ class DeltaLakeSource:
             self.__options.tag_columns + ["ts"] + self.__options.field_columns
         )
         row_data = self.read_file(self.__loader.open())
-        row_data = map_row_data(
+        row_data = map_row_columns(
             row_data, column_names, self.__options.column_mapping, self.__quality_mapper
         )
         row_data = cast_ts_column(
@@ -299,7 +299,7 @@ class DeltaLakeSource:
         row_data = self.read_partitioned_file(
             self.__loader.open(), selector, start_date, end_date
         )
-        row_data = map_row_data(
+        row_data = map_row_columns(
             row_data, column_names, self.__options.column_mapping, self.__quality_mapper
         )
         row_data = cast_ts_column(
