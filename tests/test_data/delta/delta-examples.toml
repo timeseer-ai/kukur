@@ -94,3 +94,35 @@ origin = "timestamp"
 key = "YEAR"
 column = "partition_year"
 format = "%y-year"
+
+[source.partition-month]
+type = "delta"
+uri = "tests/test_data/delta/partitions/month"
+tag_columns = ["location", "series name"]
+sort_by_timestamp = true
+
+[source.partition-month.column_mapping]
+"ts" = "ts"
+"series name" = "series name"
+"value" = "value"
+"location" = "location"
+
+[[source.partition-month.partitions]]
+origin = "timestamp"
+key = "MONTH"
+
+[source.partition-day]
+type = "delta"
+uri = "tests/test_data/delta/partitions/day"
+tag_columns = ["location", "series name"]
+sort_by_timestamp = true
+
+[source.partition-day.column_mapping]
+"ts" = "ts"
+"series name" = "series name"
+"value" = "value"
+"location" = "location"
+
+[[source.partition-day.partitions]]
+origin = "timestamp"
+key = "DAY"

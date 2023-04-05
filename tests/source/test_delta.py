@@ -181,3 +181,33 @@ def test_year_partition_format():
     )
     assert len(table) == 12
     assert table.column_names == ["ts", "value"]
+
+
+def test_month_partition():
+    start_date = parse_date("2020-11-01T00:00:00Z")
+    end_date = parse_date("2021-01-31T23:59:00Z")
+    table = get_source("partition-month").get_data(
+        make_series(
+            "partition-month",
+            {"series name": "test-tag-1", "location": "Antwerp"},
+        ),
+        start_date,
+        end_date,
+    )
+    assert len(table) == 23
+    assert table.column_names == ["ts", "value"]
+
+
+def test_day_partition():
+    start_date = parse_date("2020-01-02T00:00:00Z")
+    end_date = parse_date("2020-01-03T23:59:00Z")
+    table = get_source("partition-day").get_data(
+        make_series(
+            "partition-day",
+            {"series name": "test-tag-1", "location": "Antwerp"},
+        ),
+        start_date,
+        end_date,
+    )
+    assert len(table) == 12
+    assert table.column_names == ["ts", "value"]
