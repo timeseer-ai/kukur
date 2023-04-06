@@ -23,6 +23,7 @@ from kukur import Source as SourceProtocol
 from kukur.exceptions import InvalidSourceException
 from kukur.source import (
     adodb,
+    arrows,
     azure_data_explorer,
     cratedb,
     csv,
@@ -50,6 +51,7 @@ logger = logging.getLogger(__name__)
 
 _FACTORY = {
     "adodb": adodb.from_config,
+    "arrows": arrows.from_config,
     "cratedb": cratedb.from_config,
     "csv": csv.from_config,
     "azure-data-explorer": azure_data_explorer.from_config,

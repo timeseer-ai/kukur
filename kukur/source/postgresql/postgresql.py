@@ -22,7 +22,7 @@ from kukur.source.sql import BaseSQLSource, SQLConfig
 class PostgresSource(BaseSQLSource):
     """Kukur source for PostgreSQL."""
 
-    def connect(self) -> psycopg.Connection:
+    def connect(self):
         """Create a connection to PostgreSQL."""
         return psycopg.connect(self._config.connection_string)
 
