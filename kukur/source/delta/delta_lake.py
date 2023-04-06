@@ -163,19 +163,100 @@ class DeltaLakeSource:
         self.__quality_mapper = quality_mapper
         self.__sort_by_timestamp = sort_by_timestamp
 
-    def read_file(self, file_like) -> pa.Table:
-        """Return a PyArrow Table for the Delta Table at the given URI."""
+    def search(self, selector: SeriesSearch) -> Generator[SeriesSelector, None, None]:
+        """Detect series in the data."""
+        if self.__options.data_format == "pivot":
+            yield from self._search_pivot(selector.source)
+
+        if self.__options.data_format == "row":
+            yield from self._search_row(selector.source)
+
+    # pylint: disable=no-self-use
+    def get_metadata(self, selector: SeriesSelector) -> Metadata:
+        """Feather currently always returns empty metadata."""
+        return Metadata(selector)
+
+    def get_data(
+        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
+    ) -> pa.Table:
+        """Read data in one of the predefined formats.
+
+        The complete file will be loaded in an Arrow table during processing.
+        """
+        data = self.__read_all_data(selector, start_date, end_date)
+        if self.__sort_by_timestamp is True:
+            data = data.sort_by("ts")
+        return filter_by_timerange(data, start_date, end_date)
+
+    def get_file_extension(self) -> str:
+        """Delta lakes do not support row-based formats."""
+        raise NotImplementedError()
+
+    def __read_all_data(
+        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
+    ) -> pa.Table:
+        if self.__options.data_format == "pivot":
+            all_data = self._read_pivot_data()
+            return filter_pivot_data(all_data, selector)
+
+        all_data = self._read_row_partitioned_data(selector, start_date, end_date)
+        return filter_row_data(all_data, selector, self.__quality_mapper)
+
+    def _search_pivot(self, source_name: str) -> Generator[SeriesSelector, None, None]:
+        all_data = self._read_pivot_data()
+        for name in all_data.column_names[1:]:
+            yield SeriesSelector(source_name, name)
+
+    def _read_row_data(self) -> pa.Table:
+        column_names = (
+            self.__options.tag_columns + ["ts"] + self.__options.field_columns
+        )
+        row_data = self._read_file(self.__loader.open())
+        row_data = map_row_columns(
+            row_data, column_names, self.__options.column_mapping, self.__quality_mapper
+        )
+        row_data = cast_ts_column(
+            row_data, self.__options.data_datetime_format, self.__options.data_timezone
+        )
+        return row_data
+
+    def _read_row_partitioned_data(
+        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
+    ) -> pa.Table:
+        column_names = (
+            self.__options.tag_columns + ["ts"] + self.__options.field_columns
+        )
+        row_data = self._read_partitioned_file(
+            self.__loader.open(), selector, start_date, end_date
+        )
+        row_data = map_row_columns(
+            row_data, column_names, self.__options.column_mapping, self.__quality_mapper
+        )
+        row_data = cast_ts_column(
+            row_data, self.__options.data_datetime_format, self.__options.data_timezone
+        )
+        return row_data
+
+    def _read_pivot_data(self) -> pa.Table:
+        all_data = self._read_file(self.__loader.open())
+        all_data = map_pivot_columns(self.__options.column_mapping, all_data)
+        all_data = cast_ts_column(
+            all_data, self.__options.data_datetime_format, self.__options.data_timezone
+        )
+        return all_data
+
+    def _search_row(self, source_name: str) -> Generator[SeriesSelector, None, None]:
+        all_data = self._read_row_data()
+        for tags in (
+            all_data.group_by(self.__options.tag_columns).aggregate([]).to_pylist()
+        ):
+            for field_name in self.__options.field_columns:
+                yield SeriesSelector(source_name, tags, field_name)
+
+    def _read_file(self, file_like) -> pa.Table:
         return DeltaTable(file_like).to_pyarrow_table()
 
-    def _format_tag_partition(
-        self,
-        partition: DeltaLakePartition,
-        selector: SeriesSelector,
-    ) -> Tuple[str, str, str]:
-        column_name = self.__options.column_mapping.get(partition.key, partition.key)
-        return (column_name, "=", selector.tags[partition.key])
-
-    def read_partitioned_file(
+    def _read_partitioned_file(
         self,
         file_like,
         selector: SeriesSelector,
@@ -193,6 +274,14 @@ class DeltaLakeSource:
                 )
 
         return DeltaTable(file_like).to_pyarrow_table(partitions)
+
+    def _format_tag_partition(
+        self,
+        partition: DeltaLakePartition,
+        selector: SeriesSelector,
+    ) -> Tuple[str, str, str]:
+        column_name = self.__options.column_mapping.get(partition.key, partition.key)
+        return (column_name, "=", selector.tags[partition.key])
 
     def _format_timestamp_partition(
         self,
@@ -232,96 +321,6 @@ class DeltaLakeSource:
             start_date = start_date + interval
 
         return (column, "in", partition_values)
-
-    def get_file_extension(self) -> str:
-        """Delta lakes do not support row-based formats."""
-        raise NotImplementedError()
-
-    def search(self, selector: SeriesSearch) -> Generator[SeriesSelector, None, None]:
-        """Detect series in the data."""
-        if self.__options.data_format == "pivot":
-            yield from self._search_pivot(selector.source)
-
-        if self.__options.data_format == "row":
-            yield from self._search_row(selector.source)
-
-    # pylint: disable=no-self-use
-    def get_metadata(self, selector: SeriesSelector) -> Metadata:
-        """Feather currently always returns empty metadata."""
-        return Metadata(selector)
-
-    def get_data(
-        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
-    ) -> pa.Table:
-        """Read data in one of the predefined formats.
-
-        The complete file will be loaded in an Arrow table during processing.
-        """
-        data = self.__read_all_data(selector, start_date, end_date)
-        if self.__sort_by_timestamp is True:
-            data = data.sort_by("ts")
-        return filter_by_timerange(data, start_date, end_date)
-
-    def __read_all_data(
-        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
-    ) -> pa.Table:
-        if self.__options.data_format == "pivot":
-            all_data = self._read_pivot_data()
-            return filter_pivot_data(all_data, selector)
-
-        all_data = self._read_row_partitioned_data(selector, start_date, end_date)
-        return filter_row_data(all_data, selector, self.__quality_mapper)
-
-    def _search_pivot(self, source_name: str) -> Generator[SeriesSelector, None, None]:
-        all_data = self._read_pivot_data()
-        for name in all_data.column_names[1:]:
-            yield SeriesSelector(source_name, name)
-
-    def _read_row_data(self) -> pa.Table:
-        column_names = (
-            self.__options.tag_columns + ["ts"] + self.__options.field_columns
-        )
-        row_data = self.read_file(self.__loader.open())
-        row_data = map_row_columns(
-            row_data, column_names, self.__options.column_mapping, self.__quality_mapper
-        )
-        row_data = cast_ts_column(
-            row_data, self.__options.data_datetime_format, self.__options.data_timezone
-        )
-        return row_data
-
-    def _read_row_partitioned_data(
-        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
-    ) -> pa.Table:
-        column_names = (
-            self.__options.tag_columns + ["ts"] + self.__options.field_columns
-        )
-        row_data = self.read_partitioned_file(
-            self.__loader.open(), selector, start_date, end_date
-        )
-        row_data = map_row_columns(
-            row_data, column_names, self.__options.column_mapping, self.__quality_mapper
-        )
-        row_data = cast_ts_column(
-            row_data, self.__options.data_datetime_format, self.__options.data_timezone
-        )
-        return row_data
-
-    def _read_pivot_data(self) -> pa.Table:
-        all_data = self.read_file(self.__loader.open())
-        all_data = map_pivot_columns(self.__options.column_mapping, all_data)
-        all_data = cast_ts_column(
-            all_data, self.__options.data_datetime_format, self.__options.data_timezone
-        )
-        return all_data
-
-    def _search_row(self, source_name: str) -> Generator[SeriesSelector, None, None]:
-        all_data = self._read_row_data()
-        for tags in (
-            all_data.group_by(self.__options.tag_columns).aggregate([]).to_pylist()
-        ):
-            for field_name in self.__options.field_columns:
-                yield SeriesSelector(source_name, tags, field_name)
 
 
 def from_config(config: dict, quality_mapper: QualityMapper) -> DeltaLakeSource:
