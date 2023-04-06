@@ -1,0 +1,8 @@
+// SPDX-FileCopyrightText: 2023 Timeseer.AI
+// SPDX-License-Identifier: Apache-2.0
+
+== Apache Arrow IPC Streaming
+
+Sources with `type = "arrows"` configure https://arrow.apache.org/docs/format/Columnar.html#ipc-streaming-format[Apache Arrow IPC Streaming format] sources.
+
+All settings that apply to <<Apache Feather>> sources apply.

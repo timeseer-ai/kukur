@@ -659,6 +659,8 @@ include::./source/sources.asciidoc[leveloffset=+1]
 
 include::./source/adodb.asciidoc[leveloffset=+1]
 
+include::./source/arrows.asciidoc[leveloffset=+1]
+
 include::./source/feather.asciidoc[leveloffset=+1]
 
 include::./source/parquet.asciidoc[leveloffset=+1]

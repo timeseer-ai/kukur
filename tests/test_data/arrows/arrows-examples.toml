@@ -1,0 +1,3 @@
+[source.row-arrows]
+type = "arrows"
+path = "tests/test_data/arrows/row.arrows"
