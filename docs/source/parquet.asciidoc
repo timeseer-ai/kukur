@@ -12,6 +12,8 @@ Parquet supports the same source layouts as CSV:
 type = "parquet"
 format = "row|dir|pivot"
 path = "<path to data>"
+tag_columns = ["series name"]
+field_columns = ["value"]
 quality_mapping = "<name>"
 ```
 
@@ -78,6 +80,10 @@ The row based format expects `path` to be a Parquet file with at least 3 columns
 - The first column contains the `series name` as a string
 - The second column contains the timestamp
 - The third column contains the value as a numerical type or a string
+
+Alternatively,
+if the `tag_columns` and `field_columns` options are used,
+each combination of values defined in `tag_columns` and `field_columns` define a series.
 
 === Directory Based Format
 

@@ -20,3 +20,149 @@ metadata = "tests/test_data/csv/pivot-metadata.csv"
 type = "delta"
 uri = "tests/test_data/delta/delta-unordered"
 sort_by_timestamp = true
+
+[source.row-delta-tags]
+type = "delta"
+uri = "tests/test_data/delta/delta-row-tags"
+tag_columns = ["location", "plant"]
+field_columns = ["value", "product"]
+
+[source.row-delta-tags.column_mapping]
+"ts" = "date"
+"plant" = "Plant"
+"value" = "Value"
+
+[source.partition-name]
+type = "delta"
+uri = "tests/test_data/delta/partitions/name"
+sort_by_timestamp = true
+
+[[source.partition-name.partitions]]
+origin = "tag"
+key = "series name"
+
+[source.partition-location-name]
+type = "delta"
+uri = "tests/test_data/delta/partitions/location-name"
+sort_by_timestamp = true
+tag_columns = ["series name", "location"]
+
+[source.partition-location-name.column_mapping]
+"ts" = "ts"
+"location" = "Location"
+"value" = "Value"
+
+[[source.partition-location-name.partitions]]
+origin = "tag"
+key = "location"
+
+[[source.partition-location-name.partitions]]
+origin = "tag"
+key = "series name"
+
+[source.partition-year]
+type = "delta"
+uri = "tests/test_data/delta/partitions/year"
+tag_columns = ["location", "series name"]
+sort_by_timestamp = true
+
+[source.partition-year.column_mapping]
+"ts" = "ts"
+"series name" = "series name"
+"value" = "value"
+"location" = "location"
+
+[[source.partition-year.partitions]]
+origin = "timestamp"
+key = "YEAR"
+column = "partition_year"
+
+[source.partition-year-custom]
+type = "delta"
+uri = "tests/test_data/delta/partitions/year-custom"
+tag_columns = ["location", "series name"]
+sort_by_timestamp = true
+
+[source.partition-year-custom.column_mapping]
+"ts" = "ts"
+"series name" = "series name"
+"value" = "value"
+"location" = "location"
+
+[[source.partition-year-custom.partitions]]
+origin = "timestamp"
+key = "YEAR"
+column = "partition_year"
+format = "%y-year"
+
+[source.partition-month]
+type = "delta"
+uri = "tests/test_data/delta/partitions/month"
+tag_columns = ["location", "series name"]
+sort_by_timestamp = true
+
+[source.partition-month.column_mapping]
+"ts" = "ts"
+"series name" = "series name"
+"value" = "value"
+"location" = "location"
+
+[[source.partition-month.partitions]]
+origin = "timestamp"
+key = "MONTH"
+
+[source.partition-day]
+type = "delta"
+uri = "tests/test_data/delta/partitions/day"
+tag_columns = ["location", "series name"]
+sort_by_timestamp = true
+
+[source.partition-day.column_mapping]
+"ts" = "ts"
+"series name" = "series name"
+"value" = "value"
+"location" = "location"
+
+[[source.partition-day.partitions]]
+origin = "timestamp"
+key = "DAY"
+
+[source.partition-month-location]
+type = "delta"
+uri = "tests/test_data/delta/partitions/month_location"
+tag_columns = ["location", "series name"]
+sort_by_timestamp = true
+
+[source.partition-month-location.column_mapping]
+"ts" = "ts"
+"series name" = "series name"
+"value" = "value"
+"location" = "location"
+
+[[source.partition-month-location.partitions]]
+origin = "timestamp"
+key = "MONTH"
+
+[[source.partition-month-location.partitions]]
+origin = "tag"
+key = "location"
+
+[source.partition-location-month]
+type = "delta"
+uri = "tests/test_data/delta/partitions/month_location"
+tag_columns = ["location", "series name"]
+sort_by_timestamp = true
+
+[source.partition-location-month.column_mapping]
+"ts" = "ts"
+"series name" = "series name"
+"value" = "value"
+"location" = "location"
+
+[[source.partition-location-month.partitions]]
+origin = "tag"
+key = "location"
+
+[[source.partition-location-month.partitions]]
+origin = "timestamp"
+key = "MONTH"

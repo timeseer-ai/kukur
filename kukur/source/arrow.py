@@ -27,7 +27,9 @@ class SourcePartition:
 
     origin: str
     key: str
-    path_encoding: Optional[str]
+    path_encoding: Optional[str] = None
+    format: Optional[str] = None
+    column: Optional[str] = None
 
     @classmethod
     def from_data(cls, data: Dict[str, Any]) -> "SourcePartition":
@@ -40,6 +42,8 @@ class SourcePartition:
             data["origin"],
             data["key"],
             data.get("path_encoding"),
+            data.get("format"),
+            data.get("column"),
         )
 
 
@@ -49,6 +53,8 @@ class BaseArrowSourceOptions:
 
     data_format: str
     column_mapping: Dict[str, str]
+    tag_columns: List[str]
+    field_columns: List[str]
     data_datetime_format: Optional[str] = None
     data_timezone: Optional[str] = None
     path_encoding: Optional[str] = None
@@ -61,6 +67,8 @@ class BaseArrowSourceOptions:
         options = cls(
             data_format,
             data.get("column_mapping", {}),
+            data.get("tag_columns", ["series name"]),
+            data.get("field_columns", ["value"]),
             data.get("data_datetime_format"),
             data.get("data_timezone"),
             data.get("path_encoding"),
@@ -131,85 +139,53 @@ class BaseArrowSource(ABC):
         data = self.__read_all_data(selector)
         if self.__sort_by_timestamp is True:
             data = data.sort_by("ts")
-        # pylint: disable=no-member
-        on_or_after = pyarrow.compute.greater_equal(data["ts"], pa.scalar(start_date))
-        before = pyarrow.compute.less(data["ts"], pa.scalar(end_date))
-        return data.filter(pyarrow.compute.and_(on_or_after, before))
+
+        return filter_by_timerange(data, start_date, end_date)
 
     def __read_all_data(self, selector: SeriesSelector) -> pa.Table:
         if self.__options.data_format == "pivot":
-            return self._read_pivot_data(selector)
+            all_data = self._read_pivot_data()
+            return filter_pivot_data(all_data, selector)
 
         if self.__options.data_format == "dir":
             return self._read_directory_data(selector)
 
-        return self._read_row_data(selector)
+        all_data = self._read_row_data()
+        return filter_row_data(all_data, selector, self.__quality_mapper)
 
     def _search_pivot(self, source_name: str) -> Generator[SeriesSelector, None, None]:
-        all_data = self._load_pivot_data()
+        all_data = self._read_pivot_data()
         for name in all_data.column_names[1:]:
             yield SeriesSelector(source_name, name)
 
-    def _read_pivot_data(self, selector: SeriesSelector) -> pa.Table:
-        all_data = self._load_pivot_data()
-        if selector.name not in all_data.column_names:
-            raise InvalidDataError(f'column "{selector.name}" not found')
-        data = all_data.select([0, selector.name]).rename_columns(["ts", "value"])
-        schema = pa.schema(
-            [
-                ("ts", pa.timestamp("us", "utc")),
-                ("value", _get_value_schema_type(data)),
-            ]
+    def _read_row_data(self) -> pa.Table:
+        column_names = (
+            self.__options.tag_columns + ["ts"] + self.__options.field_columns
         )
-        return data.cast(schema)
-
-    def _load_pivot_data(self) -> pa.Table:
         all_data = self.read_file(self.__loader.open())
-        all_data = _map_pivot_columns(self.__options.column_mapping, all_data)
-        all_data = _cast_ts_column(
+        all_data = map_row_columns(
+            all_data, column_names, self.__options.column_mapping, self.__quality_mapper
+        )
+        all_data = cast_ts_column(
+            all_data, self.__options.data_datetime_format, self.__options.data_timezone
+        )
+        return all_data
+
+    def _read_pivot_data(self) -> pa.Table:
+        all_data = self.read_file(self.__loader.open())
+        all_data = map_pivot_columns(self.__options.column_mapping, all_data)
+        all_data = cast_ts_column(
             all_data, self.__options.data_datetime_format, self.__options.data_timezone
         )
         return all_data
 
     def _search_row(self, source_name: str) -> Generator[SeriesSelector, None, None]:
-        all_data = self._load_row_data()
-        # pylint: disable=no-member
-        for name in pyarrow.compute.unique(all_data["series name"]):
-            yield SeriesSelector(source_name, name.as_py())
-
-    def _read_row_data(self, selector: SeriesSelector) -> pa.Table:
-        all_data = self._load_row_data()
-        schema = pa.schema(
-            [
-                ("ts", pa.timestamp("us", "utc")),
-                ("value", _get_value_schema_type(all_data)),
-            ]
-        )
-        if self.__quality_mapper.is_present():
-            schema = schema.append(pa.field("quality", pa.int8()))
-            all_data = all_data.set_column(
-                3, "quality", self._map_quality(all_data["quality"])
-            )
-
-        # pylint: disable=no-member
-        data = all_data.filter(
-            pyarrow.compute.equal(all_data["series name"], pa.scalar(selector.name))
-        ).drop(["series name"])
-
-        return data.cast(schema)
-
-    def _load_row_data(self) -> pa.Table:
-        columns = ["series name", "ts", "value"]
-        if self.__quality_mapper.is_present():
-            columns.append("quality")
-
-        all_data = self.read_file(self.__loader.open())
-        all_data = _map_columns(self.__options.column_mapping, all_data)
-        all_data = all_data.rename_columns(columns)
-        all_data = _cast_ts_column(
-            all_data, self.__options.data_datetime_format, self.__options.data_timezone
-        )
-        return all_data
+        all_data = self._read_row_data()
+        for tags in (
+            all_data.group_by(self.__options.tag_columns).aggregate([]).to_pylist()
+        ):
+            for field_name in self.__options.field_columns:
+                yield SeriesSelector(source_name, tags, field_name)
 
     def _read_directory_data(self, selector: SeriesSelector) -> pa.Table:
         columns = ["ts", "value"]
@@ -238,54 +214,34 @@ class BaseArrowSource(ABC):
 
         data = _map_columns(self.__options.column_mapping, data)
         data = data.rename_columns(columns)
-        data = _cast_ts_column(
+        data = cast_ts_column(
             data, self.__options.data_datetime_format, self.__options.data_timezone
         )
         schema = pa.schema(
             [
                 ("ts", pa.timestamp("us", "utc")),
-                ("value", _get_value_schema_type(data)),
+                ("value", get_value_schema_type(data)),
             ]
         )
         if self.__quality_mapper.is_present():
             schema = schema.append(pa.field("quality", pa.int8()))
-            data = data.set_column(2, "quality", self._map_quality(data["quality"]))
+            data = data.set_column(
+                2, "quality", _map_quality(data["quality"], self.__quality_mapper)
+            )
         return data.cast(schema)
 
-    def _map_quality(self, quality_data: pa.Array) -> pa.Array:
-        return self.__quality_mapper.map_array(quality_data)
 
-
-def _get_value_schema_type(data: pa.Table):
+def get_value_schema_type(data: pa.Table):
+    """Get the type of the value column."""
     value_type = pa.float64()
     if len(data) > 0:
-        if pyarrow.types.is_string(data["value"][0].type):
+        if pa.types.is_string(data["value"][0].type):
             value_type = pa.string()
     return value_type
 
 
-def _map_columns(column_mapping: Dict, data: pa.Table) -> pa.Table:
-    if len(column_mapping) == 0:
-        return data
-
-    if "series name" in column_mapping:
-        columns = {
-            "series name": data[column_mapping["series name"]],
-            "ts": data[column_mapping.get("ts", "ts")],
-            "value": data[column_mapping.get("value", "value")],
-        }
-    else:
-        columns = {
-            "ts": data[column_mapping.get("ts", "ts")],
-            "value": data[column_mapping.get("value", "value")],
-        }
-    if "quality" in column_mapping:
-        columns["quality"] = data[column_mapping["quality"]]
-
-    return pa.Table.from_pydict(columns)
-
-
-def _map_pivot_columns(column_mapping: Dict[str, str], data: pa.Table) -> pa.Table:
+def map_pivot_columns(column_mapping: Dict[str, str], data: pa.Table) -> pa.Table:
+    """Map pivot format columns according to the mapping definition."""
     ts_column_name = data.column_names[0]
     if "ts" in column_mapping:
         ts_column_name = column_mapping["ts"]
@@ -294,21 +250,112 @@ def _map_pivot_columns(column_mapping: Dict[str, str], data: pa.Table) -> pa.Tab
     return data.drop([ts_column_name]).add_column(0, "ts", ts_column)
 
 
-def _cast_ts_column(
+def cast_ts_column(
     data: pa.Table, data_datetime_format: Optional[str], data_timezone: Optional[str]
 ) -> pa.Table:
+    """Cast the timestamp column considering format and timezone."""
     if data_datetime_format is not None:
         # pylint: disable=no-member
         data = data.set_column(
             data.column_names.index("ts"),
             "ts",
-            pyarrow.compute.strptime(data["ts"], data_datetime_format, "us"),
+            pa.compute.strptime(data["ts"], data_datetime_format, "us"),
         )
     if data_timezone is not None:
         # pylint: disable=no-member
         data = data.set_column(
             data.column_names.index("ts"),
             "ts",
-            pyarrow.compute.assume_timezone(data["ts"], data_timezone),
+            pa.compute.assume_timezone(data["ts"], data_timezone),
         )
     return data
+
+
+def filter_pivot_data(all_data: pa.Table, selector: SeriesSelector) -> pa.Table:
+    """Filter resulting pivot data based on selector tags and field."""
+    if selector.name not in all_data.column_names:
+        raise InvalidDataError(f'column "{selector.name}" not found')
+    data = all_data.select([0, selector.name]).rename_columns(["ts", "value"])
+    schema = pa.schema(
+        [
+            ("ts", pa.timestamp("us", "utc")),
+            ("value", get_value_schema_type(data)),
+        ]
+    )
+    return data.cast(schema)
+
+
+def filter_row_data(
+    all_data: pa.Table, selector: SeriesSelector, quality_mapper: QualityMapper
+) -> pa.Table:
+    """Filter resulting row data based on selector tags and field."""
+    for k, v in selector.tags.items():
+        all_data = all_data.filter(pyarrow.compute.equal(all_data[k], pa.scalar(v)))
+    filtered_data = pa.Table.from_arrays(
+        [
+            all_data["ts"],
+            all_data[selector.field],
+        ],
+        ["ts", "value"],
+    )
+    schema = pa.schema(
+        [
+            ("ts", pa.timestamp("us", "utc")),
+            ("value", get_value_schema_type(filtered_data)),
+        ]
+    )
+    if quality_mapper.is_present():
+        schema = schema.append(pa.field("quality", pa.int8()))
+        filtered_data = filtered_data.set_column(
+            2, "quality", _map_quality(all_data["quality"], quality_mapper)
+        )
+
+    return filtered_data.cast(schema)
+
+
+def _map_quality(quality_data: pa.Array, quality_mapper: QualityMapper) -> pa.Array:
+    return quality_mapper.map_array(quality_data)
+
+
+def map_row_columns(
+    all_data: pa.Table,
+    column_names: List[str],
+    column_mapping: Dict[str, str],
+    quality_mapper: QualityMapper,
+) -> pa.Table:
+    """Map columns according to the provided column mapping."""
+    if quality_mapper.is_present():
+        column_names.append("quality")
+
+    data_columns = {}
+    if len(column_mapping) > 0:
+        data_columns = {
+            column_name: column_mapping.get(column_name, column_name)
+            for column_name in column_names
+        }
+
+    all_data = _map_columns(data_columns, all_data)
+    all_data = all_data.rename_columns(column_names)
+    return all_data
+
+
+def _map_columns(column_mapping: Dict[str, str], data: pa.Table) -> pa.Table:
+    if len(column_mapping) == 0:
+        return data
+
+    return pa.Table.from_pydict(
+        {
+            column_name: data[data_name]
+            for column_name, data_name in column_mapping.items()
+        }
+    )
+
+
+def filter_by_timerange(
+    all_data: pa.Table, start_date: datetime, end_date: datetime
+) -> pa.Table:
+    """Remove data before start_date and after end_date."""
+    # pylint: disable=no-member
+    on_or_after = pyarrow.compute.greater_equal(all_data["ts"], pa.scalar(start_date))
+    before = pyarrow.compute.less(all_data["ts"], pa.scalar(end_date))
+    return all_data.filter(pyarrow.compute.and_(on_or_after, before))

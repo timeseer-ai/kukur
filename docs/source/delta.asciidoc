@@ -12,7 +12,20 @@ Delta Lake supports the `row` and `pivot` formats:
 type = "delta"
 format = "row|pivot"
 uri = "<uri of Delta Lake>"
+tag_columns = ["series name"]
+field_columns = ["value"]
 sort_by_timestamp = false
+
+[[source.<name>.partitions]]
+origin = "tag"
+key = "series name"
+
+[[source.<name>.partitions]]
+origin = "timestamp"
+key = "YEAR"
+format = "%Y"
+column = "year"
+
 ```
 
 `format` defaults to `"row"`.
@@ -75,6 +88,40 @@ This is done by setting the `column_mapping` option for the source.
 
 `quality` mapping is optional.
 
+=== Partitioning
+
+For the `row` format,
+it is possible to take advantage of delta lake partitioning by defining one or more partitions:
+
+```toml
+[[source.<name>.partitions]]
+origin = "tag"
+key = "location"
+```
+
+Every tag based partition key must be included in the `tag_columns` option.
+
+Timestamp based partitioning is also supported:
+
+```toml
+[[source.<name>.partitions]]
+origin = "timestamp"
+key = "YEAR"
+format = "%Y"
+column = "year"
+```
+
+For timestamp based partitions:
+
+- `key` indicates the resolution to be used when querying for partitions.
+Supported values are `YEAR`, `MONTH` and `DAY`.
+
+- `format` indicates how the timestamp is used for partitioning. Defaults to `%Y`, `%Y-%m`, `%Y-%m-%d` repectively.
+It accepts the https://docs.python.org/3/library/datetime.html#strftime-strptime-behavior[formatting options] supported by Python.
+
+- `column` is optional.
+Needed if the name of the column used for partitioning does not exactly match the `key` value.
+
 === Custom datetime format
 
 The `data_datetime_format` option allows the timestamps to be parsed using a custom datetime format.
@@ -114,6 +161,10 @@ ifndef::sources[]
 link:sources.asciidoc#Quality[source documentation]
 endif::sources[]
 .
+
+Alternatively,
+if the `tag_columns` and `field_columns` options are used,
+each combination of values defined in `tag_columns` and `field_columns` define a series.
 
 === Pivot Format
 
