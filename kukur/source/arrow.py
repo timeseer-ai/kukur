@@ -219,7 +219,7 @@ class BaseArrowSource(ABC):
         )
         schema = pa.schema(
             [
-                ("ts", pa.timestamp("us", "utc")),
+                ("ts", pa.timestamp("us", "UTC")),
                 ("value", get_value_schema_type(data)),
             ]
         )
@@ -278,7 +278,7 @@ def filter_pivot_data(all_data: pa.Table, selector: SeriesSelector) -> pa.Table:
     data = all_data.select([0, selector.name]).rename_columns(["ts", "value"])
     schema = pa.schema(
         [
-            ("ts", pa.timestamp("us", "utc")),
+            ("ts", pa.timestamp("us", "UTC")),
             ("value", get_value_schema_type(data)),
         ]
     )
@@ -300,7 +300,7 @@ def filter_row_data(
     )
     schema = pa.schema(
         [
-            ("ts", pa.timestamp("us", "utc")),
+            ("ts", pa.timestamp("us", "UTC")),
             ("value", get_value_schema_type(filtered_data)),
         ]
     )

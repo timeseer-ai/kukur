@@ -299,7 +299,7 @@ Finally, read the data:
         datetime.fromisoformat('2021-01-01T00:00:00+00:00'),
     )
 pyarrow.Table
-ts: timestamp[us, tz=utc]
+ts: timestamp[us, tz=UTC]
 value: int64
 ----
 

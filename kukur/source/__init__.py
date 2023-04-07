@@ -426,7 +426,7 @@ def concat_tables(tables: List[pa.Table]) -> List[pa.Table]:
 
     schema = pa.schema(
         [
-            ("ts", pa.timestamp("us", "utc")),
+            ("ts", pa.timestamp("us", "UTC")),
             ("value", pa.float64()),
         ]
     )
@@ -434,7 +434,7 @@ def concat_tables(tables: List[pa.Table]) -> List[pa.Table]:
     if _has_any_string(tables):
         schema = pa.schema(
             [
-                ("ts", pa.timestamp("us", "utc")),
+                ("ts", pa.timestamp("us", "UTC")),
                 ("value", pa.string()),
             ]
         )
@@ -442,7 +442,7 @@ def concat_tables(tables: List[pa.Table]) -> List[pa.Table]:
     if _is_all_integer(tables):
         schema = pa.schema(
             [
-                ("ts", pa.timestamp("us", "utc")),
+                ("ts", pa.timestamp("us", "UTC")),
                 ("value", pa.int64()),
             ]
         )
