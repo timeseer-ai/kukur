@@ -14,7 +14,7 @@ format = "row|pivot"
 uri = "<uri of Delta Lake>"
 tag_columns = ["series name"]
 field_columns = ["value"]
-sort_by_timestamp = false
+sort_by_timestamp = true
 
 [[source.<name>.partitions]]
 origin = "tag"
@@ -23,7 +23,6 @@ key = "series name"
 [[source.<name>.partitions]]
 origin = "timestamp"
 key = "YEAR"
-format = "%Y"
 column = "year"
 
 ```
@@ -32,8 +31,8 @@ column = "year"
 
 `uri` is required.
 
-`sort_by_timestamp` is an optional parameter to sort unordered delta lake sources. 
-Default is `False`.
+`sort_by_timestamp` is an optional parameter to sort unordered delta lake sources.
+Default is `true`.
 
 Metadata in Delta Lakes is not supported.
 Use a different `metadata_type` to connect to metadata.
@@ -107,7 +106,6 @@ Timestamp based partitioning is also supported:
 [[source.<name>.partitions]]
 origin = "timestamp"
 key = "YEAR"
-format = "%Y"
 column = "year"
 ```
 
@@ -116,11 +114,23 @@ For timestamp based partitions:
 - `key` indicates the resolution to be used when querying for partitions.
 Supported values are `YEAR`, `MONTH` and `DAY`.
 
-- `format` indicates how the timestamp is used for partitioning. Defaults to `%Y`, `%Y-%m`, `%Y-%m-%d` repectively.
+- `format` allows optional formatting of the timestamp that is used for partitioning.
 It accepts the https://docs.python.org/3/library/datetime.html#strftime-strptime-behavior[formatting options] supported by Python.
+By default the year, month or day is used.
 
 - `column` is optional.
 Needed if the name of the column used for partitioning does not exactly match the `key` value.
+
+For example,
+when a column that contains both the year and the month defines a partition:
+
+```toml
+[[source.<name>.partitions]]
+origin = "timestamp"
+key = "YEAR"
+column = "year"
+format = "%Y-%m"
+```
 
 === Custom datetime format
 

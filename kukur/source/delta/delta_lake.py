@@ -75,7 +75,7 @@ class DeltaLakePartition:
         if "key" not in data:
             raise InvalidSourceException("No partition key")
         return DeltaLakePartition(
-            data["origin"],
+            PartitionOrigin(data["origin"]),
             data["key"],
             data.get("format"),
             data.get("column"),
@@ -305,19 +305,20 @@ class DeltaLakeSource:
 
         if resolution == Resolution.MONTH:
             start_date = start_date.replace(day=1, hour=0, minute=0, second=0)
-            if format is None:
-                format = "%Y-%m"
             interval = relativedelta(months=1)
 
         if resolution == Resolution.DAY:
             start_date = start_date.replace(hour=0, minute=0, second=0)
-            if format is None:
-                format = "%Y-%m-%d"
             interval = relativedelta(days=1)
 
-        assert format is not None
         while start_date < end_date:
-            partition_values.append(start_date.strftime(format))
+            if format is not None:
+                partition_values.append(start_date.strftime(format))
+            else:
+                if resolution == Resolution.MONTH:
+                    partition_values.append(f"{start_date.month}")
+                if resolution == Resolution.DAY:
+                    partition_values.append(f"{start_date.day}")
             start_date = start_date + interval
 
         return (column, "in", partition_values)
@@ -350,5 +351,5 @@ def from_config(config: dict, quality_mapper: QualityMapper) -> DeltaLakeSource:
         options,
         DeltaLakeLoader(config),
         quality_mapper,
-        sort_by_timestamp=config.get("sort_by_timestamp", False),
+        sort_by_timestamp=config.get("sort_by_timestamp", True),
     )
