@@ -476,7 +476,7 @@ def _get_convert_options(
     column_types = {
         timestamp_column: pa.timestamp("us")
         if data_timezone is not None
-        else pa.timestamp("us", "utc")
+        else pa.timestamp("us", "UTC")
     }
 
     timestamp_parsers = (

@@ -18,7 +18,7 @@ except ImportError:
 
 from dataclasses import dataclass
 from dataclasses import field as data_field
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
@@ -53,6 +53,7 @@ class PartitionOrigin(Enum):
 class Resolution(Enum):
     """Resultion for timestamp partioning."""
 
+    HOUR = "HOUR"
     DAY = "DAY"
     MONTH = "MONTH"
     YEAR = "YEAR"
@@ -75,7 +76,7 @@ class DeltaLakePartition:
         if "key" not in data:
             raise InvalidSourceException("No partition key")
         return DeltaLakePartition(
-            data["origin"],
+            PartitionOrigin(data["origin"]),
             data["key"],
             data.get("format"),
             data.get("column"),
@@ -296,28 +297,42 @@ class DeltaLakeSource:
 
         format = partition.format
         partition_values = []
+        max_partition_values_date = None
 
         if resolution == Resolution.YEAR:
             start_date = start_date.replace(month=1, day=1, hour=0, minute=0, second=0)
-            interval = relativedelta(years=1)
+            interval: Union[relativedelta, timedelta] = relativedelta(years=1)
             if format is None:
                 format = "%Y"
-
-        if resolution == Resolution.MONTH:
+        elif resolution == Resolution.MONTH:
             start_date = start_date.replace(day=1, hour=0, minute=0, second=0)
-            if format is None:
-                format = "%Y-%m"
+            max_partition_values_date = start_date.replace(year=start_date.year + 1)
             interval = relativedelta(months=1)
-
-        if resolution == Resolution.DAY:
+        elif resolution == Resolution.DAY:
             start_date = start_date.replace(hour=0, minute=0, second=0)
-            if format is None:
-                format = "%Y-%m-%d"
+            max_partition_values_date = start_date + timedelta(days=31)
             interval = relativedelta(days=1)
+        elif resolution == Resolution.HOUR:
+            start_date = start_date.replace(minute=0, second=0)
+            max_partition_values_date = start_date + timedelta(days=1)
+            interval = timedelta(hours=1)
 
-        assert format is not None
+        if (
+            max_partition_values_date is not None
+            and end_date > max_partition_values_date
+        ):
+            end_date = max_partition_values_date
+
         while start_date < end_date:
-            partition_values.append(start_date.strftime(format))
+            if format is not None:
+                partition_values.append(start_date.strftime(format))
+            else:
+                if resolution == Resolution.MONTH:
+                    partition_values.append(f"{start_date.month}")
+                elif resolution == Resolution.DAY:
+                    partition_values.append(f"{start_date.day}")
+                elif resolution == Resolution.HOUR:
+                    partition_values.append(f"{start_date.hour}")
             start_date = start_date + interval
 
         return (column, "in", partition_values)
@@ -350,5 +365,5 @@ def from_config(config: dict, quality_mapper: QualityMapper) -> DeltaLakeSource:
         options,
         DeltaLakeLoader(config),
         quality_mapper,
-        sort_by_timestamp=config.get("sort_by_timestamp", False),
+        sort_by_timestamp=config.get("sort_by_timestamp", True),
     )

@@ -110,6 +110,7 @@ sort_by_timestamp = true
 [[source.partition-month.partitions]]
 origin = "timestamp"
 key = "MONTH"
+format = "%Y-%m"
 
 [source.partition-day]
 type = "delta"
@@ -126,6 +127,7 @@ sort_by_timestamp = true
 [[source.partition-day.partitions]]
 origin = "timestamp"
 key = "DAY"
+format = "%Y-%m-%d"
 
 [source.partition-month-location]
 type = "delta"
@@ -142,6 +144,7 @@ sort_by_timestamp = true
 [[source.partition-month-location.partitions]]
 origin = "timestamp"
 key = "MONTH"
+format = "%Y-%m"
 
 [[source.partition-month-location.partitions]]
 origin = "tag"
@@ -166,3 +169,64 @@ key = "location"
 [[source.partition-location-month.partitions]]
 origin = "timestamp"
 key = "MONTH"
+format = "%Y-%m"
+
+[source.partition-location-year-month]
+type = "delta"
+uri = "tests/test_data/delta/partitions/location_year_month"
+tag_columns = ["location", "series name"]
+
+[source.partition-location-year-month.column_mapping]
+"ts" = "ts"
+"series name" = "series name"
+"value" = "value"
+"location" = "location"
+
+[[source.partition-location-year-month.partitions]]
+origin = "tag"
+key = "location"
+
+[[source.partition-location-year-month.partitions]]
+origin = "timestamp"
+key = "YEAR"
+column = "year"
+
+[[source.partition-location-year-month.partitions]]
+origin = "timestamp"
+key = "MONTH"
+column = "month"
+
+[source.partition-location-year-month-day-hour]
+type = "delta"
+uri = "tests/test_data/delta/partitions/location_year_month_day_hour"
+tag_columns = ["location", "series name"]
+
+[source.partition-location-year-month-day-hour.column_mapping]
+"ts" = "ts"
+"series name" = "series name"
+"value" = "value"
+"location" = "location"
+
+[[source.partition-location-year-month-day-hour.partitions]]
+origin = "tag"
+key = "location"
+
+[[source.partition-location-year-month-day-hour.partitions]]
+origin = "timestamp"
+key = "YEAR"
+column = "year"
+
+[[source.partition-location-year-month-day-hour.partitions]]
+origin = "timestamp"
+key = "MONTH"
+column = "month"
+
+[[source.partition-location-year-month-day-hour.partitions]]
+origin = "timestamp"
+key = "DAY"
+column = "day"
+
+[[source.partition-location-year-month-day-hour.partitions]]
+origin = "timestamp"
+key = "HOUR"
+column = "hour"
