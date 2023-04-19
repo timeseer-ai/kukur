@@ -251,16 +251,7 @@ class PIWebAPIDataArchiveSource:
     ):
         merged_points = []
 
-        interval = last_date - first_date
-
-        chunk_size = timedelta(days=interval.days)
-        if interval.days == 0:
-            hours = interval.seconds // 3600
-            chunk_size = timedelta(hours=hours)
-            if hours == 0:
-                minutes = interval.seconds // 60
-                chunk_size = timedelta(minutes=minutes)
-
+        chunk_size = _calculate_chunk_size(first_date, last_date)
         new_start_date = first_date
         new_end_date = first_date + chunk_size
         if new_end_date > end_date:
@@ -284,16 +275,9 @@ class PIWebAPIDataArchiveSource:
                 len(data_points)
                 == self.__request_properties.max_returned_items_per_call
             ):
+                first_date = parse_date(data_points[0]["Timestamp"])
                 last_date = parse_date(data_points[-1]["Timestamp"])
-                if chunk_size.days > 0:
-                    chunk_size = timedelta(chunk_size.days - 1)
-                else:
-                    hours = chunk_size.seconds // 3600
-                    chunk_size = timedelta(hours=hours - 1)
-                    if hours == 0:
-                        minutes = chunk_size.seconds // 60
-                        chunk_size = timedelta(minutes=minutes - 1)
-
+                chunk_size = _calculate_chunk_size(first_date, last_date)
                 new_end_date = new_start_date + chunk_size
                 continue
 
@@ -376,6 +360,19 @@ def _get_metadata(
         return None
     metadata.set_field(fields.DataType, point_types[point_type])
     return metadata
+
+
+def _calculate_chunk_size(first_date: datetime, last_date: datetime) -> timedelta:
+    interval = last_date - first_date
+
+    chunk_size = timedelta(days=interval.days)
+    if interval.days == 0:
+        hours = interval.seconds // 3600
+        chunk_size = timedelta(hours=hours)
+        if hours == 0:
+            minutes = interval.seconds // 60
+            chunk_size = timedelta(minutes=minutes)
+    return chunk_size
 
 
 def from_config(config: Dict) -> PIWebAPIDataArchiveSource:
