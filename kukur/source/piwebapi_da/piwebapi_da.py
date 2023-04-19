@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, Generator, Optional
 
 import pyarrow as pa
@@ -198,19 +198,27 @@ class PIWebAPIDataArchiveSource:
     ) -> pa.Table:
         """Return data for the given time series in the given time period."""
         session = self._get_session()
+        data_url = self._get_data_url(session, selector)
+
         response = session.get(
-            self._get_data_url(session, selector),
+            data_url,
             verify=self.__request_properties.verify_ssl,
             params=dict(
                 maxCount=str(self.__request_properties.max_returned_items_per_call),
                 startTime=start_date.isoformat(),
                 endTime=end_date.isoformat(),
+                selectedFields="Items.Value;Items.Timestamp;Items.Good",
             ),
         )
+        response.raise_for_status()
 
         data_points = response.json()["Items"]
         if len(data_points) == self.__request_properties.max_returned_items_per_call:
-            raise InvalidDataError("Increase max_returned_items_per_call")
+            first_point = parse_date(data_points[0]["Timestamp"])
+            last_point = parse_date(data_points[-1]["Timestamp"])
+            data_points = self._get_chunked_data(
+                session, data_url, first_point, last_point, end_date
+            )
 
         timestamps = []
         values = []
@@ -232,6 +240,70 @@ class PIWebAPIDataArchiveSource:
         return pa.Table.from_pydict(
             {"ts": timestamps, "value": values, "quality": quality_flags}
         )
+
+    def _get_chunked_data(  # noqa: PLR0913
+        self,
+        session: Session,
+        data_url: str,
+        first_date: datetime,
+        last_date: datetime,
+        end_date: datetime,
+    ):
+        merged_points = []
+
+        interval = last_date - first_date
+
+        chunk_size = timedelta(days=interval.days)
+        if interval.days == 0:
+            hours = interval.seconds // 3600
+            chunk_size = timedelta(hours=hours)
+            if hours == 0:
+                minutes = interval.seconds // 60
+                chunk_size = timedelta(minutes=minutes)
+
+        new_start_date = first_date
+        new_end_date = first_date + chunk_size
+        if new_end_date > end_date:
+            new_end_date = end_date
+
+        while new_end_date < end_date:
+            response = session.get(
+                data_url,
+                verify=self.__request_properties.verify_ssl,
+                params=dict(
+                    maxCount=str(self.__request_properties.max_returned_items_per_call),
+                    startTime=new_start_date.isoformat(),
+                    endTime=new_end_date.isoformat(),
+                    selectedFields="Items.Value;Items.Timestamp;Items.Good",
+                ),
+            )
+            response.raise_for_status()
+            data_points = response.json()["Items"]
+
+            if (
+                len(data_points)
+                == self.__request_properties.max_returned_items_per_call
+            ):
+                last_date = parse_date(data_points[-1]["Timestamp"])
+                if chunk_size.days > 0:
+                    chunk_size = timedelta(chunk_size.days - 1)
+                else:
+                    hours = chunk_size.seconds // 3600
+                    chunk_size = timedelta(hours=hours - 1)
+                    if hours == 0:
+                        minutes = chunk_size.seconds // 60
+                        chunk_size = timedelta(minutes=minutes - 1)
+
+                new_end_date = new_start_date + chunk_size
+                continue
+
+            new_start_date = new_end_date
+            new_end_date = new_end_date + chunk_size
+            if new_end_date > end_date:
+                new_end_date = end_date
+
+            merged_points.extend(data_points)
+        return merged_points
 
     def _get_session(self):
         session = Session()
@@ -256,6 +328,7 @@ class PIWebAPIDataArchiveSource:
             data_archive["Links"]["Points"],
             verify=self.__request_properties.verify_ssl,
             params=dict(
+                maxCount=str(self.__request_properties.max_returned_items_per_call),
                 nameFilter=selector.name,
                 selectedFields="Items.Links.RecordedData",
             ),
