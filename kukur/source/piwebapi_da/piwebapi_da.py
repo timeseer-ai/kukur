@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, Generator, Optional
 
 import pyarrow as pa
@@ -17,7 +17,7 @@ try:
 except ImportError:
     HAS_REQUESTS = False
 
-from dateutil.parser import parse as parse_date
+from dateutil.parser import isoparse as parse_date
 
 try:
     from requests_kerberos import HTTPKerberosAuth
@@ -200,94 +200,56 @@ class PIWebAPIDataArchiveSource:
         session = self._get_session()
         data_url = self._get_data_url(session, selector)
 
-        response = session.get(
-            data_url,
-            verify=self.__request_properties.verify_ssl,
-            params=dict(
-                maxCount=str(self.__request_properties.max_returned_items_per_call),
-                startTime=start_date.isoformat(),
-                endTime=end_date.isoformat(),
-                selectedFields="Items.Value;Items.Timestamp;Items.Good",
-            ),
-        )
-        response.raise_for_status()
-
-        data_points = response.json()["Items"]
-        if len(data_points) == self.__request_properties.max_returned_items_per_call:
-            first_point = parse_date(data_points[0]["Timestamp"])
-            last_point = parse_date(data_points[-1]["Timestamp"])
-            data_points = self._get_chunked_data(
-                session, data_url, first_point, last_point, end_date
-            )
-
         timestamps = []
         values = []
         quality_flags = []
-        for data_point in data_points:
-            value = data_point["Value"]
-            if isinstance(value, dict):
-                if value.get("IsSystem", False):
-                    continue
-                values.append(value["Value"])
-            else:
-                values.append(value)
-            timestamps.append(parse_date(data_point["Timestamp"]))
-            if data_point["Good"]:
-                quality_flags.append(1)
-            else:
-                quality_flags.append(0)
 
-        return pa.Table.from_pydict(
-            {"ts": timestamps, "value": values, "quality": quality_flags}
-        )
-
-    def _get_chunked_data(  # noqa: PLR0913
-        self,
-        session: Session,
-        data_url: str,
-        first_date: datetime,
-        last_date: datetime,
-        end_date: datetime,
-    ):
-        merged_points = []
-
-        chunk_size = _calculate_chunk_size(first_date, last_date)
-        new_start_date = first_date
-        new_end_date = first_date + chunk_size
-        if new_end_date > end_date:
-            new_end_date = end_date
-
-        while new_end_date < end_date:
+        timestamp = None
+        while True:
             response = session.get(
                 data_url,
                 verify=self.__request_properties.verify_ssl,
                 params=dict(
                     maxCount=str(self.__request_properties.max_returned_items_per_call),
-                    startTime=new_start_date.isoformat(),
-                    endTime=new_end_date.isoformat(),
+                    startTime=start_date.isoformat(),
+                    endTime=end_date.isoformat(),
                     selectedFields="Items.Value;Items.Timestamp;Items.Good",
                 ),
             )
             response.raise_for_status()
+
             data_points = response.json()["Items"]
+
+            for data_point in data_points:
+                timestamp = parse_date(data_point["Timestamp"])
+                value = data_point["Value"]
+                if isinstance(value, dict):
+                    if value.get("IsSystem", False):
+                        continue
+                    values.append(value["Value"])
+                else:
+                    values.append(value)
+                timestamps.append(timestamp)
+                if data_point["Good"]:
+                    quality_flags.append(1)
+                else:
+                    quality_flags.append(0)
 
             if (
                 len(data_points)
-                == self.__request_properties.max_returned_items_per_call
+                != self.__request_properties.max_returned_items_per_call
             ):
-                first_date = parse_date(data_points[0]["Timestamp"])
-                last_date = parse_date(data_points[-1]["Timestamp"])
-                chunk_size = _calculate_chunk_size(first_date, last_date)
-                new_end_date = new_start_date + chunk_size
-                continue
+                break
 
-            new_start_date = new_end_date
-            new_end_date = new_end_date + chunk_size
-            if new_end_date > end_date:
-                new_end_date = end_date
+            start_date = timestamps[-1]
+            while timestamps[-1] == start_date:
+                timestamps.pop()
+                values.pop()
+                quality_flags.pop()
 
-            merged_points.extend(data_points)
-        return merged_points
+        return pa.Table.from_pydict(
+            {"ts": timestamps, "value": values, "quality": quality_flags}
+        )
 
     def _get_session(self):
         session = Session()
@@ -360,19 +322,6 @@ def _get_metadata(
         return None
     metadata.set_field(fields.DataType, point_types[point_type])
     return metadata
-
-
-def _calculate_chunk_size(first_date: datetime, last_date: datetime) -> timedelta:
-    interval = last_date - first_date
-
-    chunk_size = timedelta(days=interval.days)
-    if interval.days == 0:
-        hours = interval.seconds // 3600
-        chunk_size = timedelta(hours=hours)
-        if hours == 0:
-            minutes = interval.seconds // 60
-            chunk_size = timedelta(minutes=minutes)
-    return chunk_size
 
 
 def from_config(config: Dict) -> PIWebAPIDataArchiveSource:
