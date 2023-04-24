@@ -204,7 +204,6 @@ class PIWebAPIDataArchiveSource:
         values = []
         quality_flags = []
 
-        timestamp = None
         while True:
             response = session.get(
                 data_url,
@@ -221,7 +220,7 @@ class PIWebAPIDataArchiveSource:
             data_points = response.json()["Items"]
 
             for data_point in data_points:
-                timestamp = parse_date(data_point["Timestamp"])
+                timestamps.append(parse_date(data_point["Timestamp"]))
                 value = data_point["Value"]
                 if isinstance(value, dict):
                     if value.get("IsSystem", False):
@@ -229,7 +228,6 @@ class PIWebAPIDataArchiveSource:
                     values.append(value["Value"])
                 else:
                     values.append(value)
-                timestamps.append(timestamp)
                 if data_point["Good"]:
                     quality_flags.append(1)
                 else:
