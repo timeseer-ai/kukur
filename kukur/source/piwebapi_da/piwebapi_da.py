@@ -17,7 +17,7 @@ try:
 except ImportError:
     HAS_REQUESTS = False
 
-from dateutil.parser import parse as parse_date
+from dateutil.parser import isoparse as parse_date
 
 try:
     from requests_kerberos import HTTPKerberosAuth
@@ -198,36 +198,52 @@ class PIWebAPIDataArchiveSource:
     ) -> pa.Table:
         """Return data for the given time series in the given time period."""
         session = self._get_session()
-        response = session.get(
-            self._get_data_url(session, selector),
-            verify=self.__request_properties.verify_ssl,
-            params=dict(
-                maxCount=str(self.__request_properties.max_returned_items_per_call),
-                startTime=start_date.isoformat(),
-                endTime=end_date.isoformat(),
-            ),
-        )
-
-        data_points = response.json()["Items"]
-        if len(data_points) == self.__request_properties.max_returned_items_per_call:
-            raise InvalidDataError("Increase max_returned_items_per_call")
+        data_url = self._get_data_url(session, selector)
 
         timestamps = []
         values = []
         quality_flags = []
-        for data_point in data_points:
-            value = data_point["Value"]
-            if isinstance(value, dict):
-                if value.get("IsSystem", False):
-                    continue
-                values.append(value["Value"])
-            else:
-                values.append(value)
-            timestamps.append(parse_date(data_point["Timestamp"]))
-            if data_point["Good"]:
-                quality_flags.append(1)
-            else:
-                quality_flags.append(0)
+
+        while True:
+            response = session.get(
+                data_url,
+                verify=self.__request_properties.verify_ssl,
+                params=dict(
+                    maxCount=str(self.__request_properties.max_returned_items_per_call),
+                    startTime=start_date.isoformat(),
+                    endTime=end_date.isoformat(),
+                    selectedFields="Items.Value;Items.Timestamp;Items.Good",
+                ),
+            )
+            response.raise_for_status()
+
+            data_points = response.json()["Items"]
+
+            for data_point in data_points:
+                timestamps.append(parse_date(data_point["Timestamp"]))
+                value = data_point["Value"]
+                if isinstance(value, dict):
+                    if value.get("IsSystem", False):
+                        continue
+                    values.append(value["Value"])
+                else:
+                    values.append(value)
+                if data_point["Good"]:
+                    quality_flags.append(1)
+                else:
+                    quality_flags.append(0)
+
+            if (
+                len(data_points)
+                != self.__request_properties.max_returned_items_per_call
+            ):
+                break
+
+            start_date = timestamps[-1]
+            while timestamps[-1] == start_date:
+                timestamps.pop()
+                values.pop()
+                quality_flags.pop()
 
         return pa.Table.from_pydict(
             {"ts": timestamps, "value": values, "quality": quality_flags}
@@ -256,6 +272,7 @@ class PIWebAPIDataArchiveSource:
             data_archive["Links"]["Points"],
             verify=self.__request_properties.verify_ssl,
             params=dict(
+                maxCount=str(self.__request_properties.max_returned_items_per_call),
                 nameFilter=selector.name,
                 selectedFields="Items.Links.RecordedData",
             ),
