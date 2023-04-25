@@ -74,6 +74,11 @@ DATA_POINTS = [
     {"Timestamp": "2020-01-01T09:42:25Z", "Value": 23.6581783, "Good": True},
     {"Timestamp": "2020-01-01T09:42:25Z", "Value": 23.6581783, "Good": True},
     {"Timestamp": "2020-01-01T09:44:25Z", "Value": 23.6581783, "Good": True},
+    {
+        "Timestamp": "2020-01-01T17:24:18Z",
+        "Value": {"Name": "Shutdown", "Value": 254, "IsSystem": True},
+        "Good": False,
+    },
     {"Timestamp": "2020-01-02T00:00:00Z", "Value": 81.83204, "Good": True},
     {"Timestamp": "2020-01-02T07:33:25Z", "Value": 13.6064939, "Good": True},
     {"Timestamp": "2020-01-02T08:37:25Z", "Value": 0.9678813, "Good": True},
