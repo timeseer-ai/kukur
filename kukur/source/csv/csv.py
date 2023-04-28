@@ -136,7 +136,7 @@ class CSVSource:
                 for tag in self.__options.tags:
                     column_name = self._map_column_name(tag)
                     if column_name not in row:
-                        raise InvalidMetadataError('column "{column_name}" not found')
+                        raise InvalidMetadataError(f'column "{column_name}" not found')
                     tags[tag] = row[column_name]
 
                 field = None
@@ -145,7 +145,7 @@ class CSVSource:
                         self.__options.metadata_field_column
                     )
                     if column_name not in row:
-                        raise InvalidMetadataError('column "{column_name}" not found')
+                        raise InvalidMetadataError(f'column "{column_name}" not found')
                     field = row[column_name]
 
                 metadata = Metadata(

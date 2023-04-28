@@ -184,7 +184,7 @@ test-tag-1,m,0,1,0.1
 ```
 
 Extra columns will be ignored,
-unless the `metadata_columns` parameter is present.
+unless the `metadata_fields` parameter is present.
 In that case all fields defined there - and only these - will be included,
 including custom metadata fields.
 
@@ -197,7 +197,7 @@ test-tag-1,"custom fields example",m,batch,Antwerp
 
 ```toml
 [source.<name>]
-metadata_colums = ["unit", "process type"]
+metadata_fields = ["unit", "process type"]
 ```
 
 Only the `unit` and the `process type` fields will be available in the resulting `Metadata`.
