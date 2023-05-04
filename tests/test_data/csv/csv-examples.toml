@@ -259,3 +259,14 @@ metadata_fields = ["street"]
 "plant" = "Plant"
 "value" = "Value"
 "street" = "Street"
+
+[source.row_comma]
+type = "csv"
+path = "tests/test_data/csv/row-comma.csv"
+data_decimal_point = ","
+
+[source.pivot_comma]
+type = "csv"
+path = "tests/test_data/csv/pivot-comma.csv"
+format = "pivot"
+data_decimal_point = ","
