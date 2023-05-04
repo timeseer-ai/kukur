@@ -7,6 +7,7 @@ from typing import Dict, Optional
 
 import pytz
 from dateutil.parser import parse as parse_date
+from pytest import approx
 
 import kukur.config
 from kukur import (
@@ -395,3 +396,17 @@ def test_row_tags_custom_field_search() -> None:
         1
     ].series == SeriesSelector(source, dict(location="Antwerp", plant="P2"), "product")
     assert all_series[1].get_field_by_name("street") == "Scheldelaan"
+
+
+def test_row_comma() -> None:
+    selector = SeriesSelector("row_comma", "test-tag-3")
+    data = get_source("row_comma").get_data(selector, START_DATE, END_DATE)
+    assert len(data) == 30
+    assert data["value"][7].as_py() == approx(5.6)
+
+
+def test_pivot_comma() -> None:
+    selector = SeriesSelector("pivot_comma", "test-tag-1")
+    data = get_source("pivot_comma").get_data(selector, START_DATE, END_DATE)
+    assert len(data) == 7
+    assert data["value"][0].as_py() == approx(1)

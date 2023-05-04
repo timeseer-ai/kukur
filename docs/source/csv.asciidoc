@@ -21,6 +21,9 @@ dictionary_dir = "<path>"
 quality_mapping = "<name>"
 file_encoding = "<codec>"
 header_row = "false|true"
+data_datetime_format = "<date format string>"
+data_timezone = "<time zone>"
+data_decimal_point = "."
 ```
 
 `path` is required for time series sources.
@@ -55,7 +58,7 @@ as the directory data model uses the CSV file names as the series names.
 
 `quality` mapping is optional.
 
-=== Custom datetime format
+=== Data conversion options
 
 The `data_datetime_format` option allows the timestamps to be parsed using a custom datetime format.
 It accepts the https://docs.python.org/3/library/datetime.html#strftime-strptime-behavior[formatting options] supported by Python.
@@ -64,13 +67,18 @@ It accepts the https://docs.python.org/3/library/datetime.html#strftime-strptime
 data_datetime_format = "%Y/%m/%dT%H:%M"
 ```
 
-=== Custom timezone
-
 The `data_timezone` option allows to specify the time zone of the timestamps.
 This option should only be used when the timestamps in the source do not contain time zone information.
 
 ```toml
 data_timezone = "America/Sao_Paulo"
+```
+
+To accept numerical data that uses `,` as the decimal point,
+use:
+
+```
+data_decimal_point = ","
 ```
 
 === Row Based Format
