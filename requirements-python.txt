@@ -3,7 +3,7 @@ crate==0.26.0
 deltalake==0.8.1
 influxdb==5.3.1
 pyodbc==4.0.30
-requests==2.27.1
+requests==2.31.0
 requests-kerberos==0.14.0
 psycopg[binary]==3.1.8
 PyYAML==6.0
