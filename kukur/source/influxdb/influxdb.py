@@ -48,7 +48,7 @@ class InfluxSource:
     if HAS_INFLUX:
         __client: InfluxDBClient
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         host: str,
         port: int,

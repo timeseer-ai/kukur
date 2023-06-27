@@ -326,13 +326,12 @@ class DeltaLakeSource:
         while start_date < end_date:
             if format is not None:
                 partition_values.append(start_date.strftime(format))
-            else:
-                if resolution == Resolution.MONTH:
-                    partition_values.append(f"{start_date.month}")
-                elif resolution == Resolution.DAY:
-                    partition_values.append(f"{start_date.day}")
-                elif resolution == Resolution.HOUR:
-                    partition_values.append(f"{start_date.hour}")
+            elif resolution == Resolution.MONTH:
+                partition_values.append(f"{start_date.month}")
+            elif resolution == Resolution.DAY:
+                partition_values.append(f"{start_date.day}")
+            elif resolution == Resolution.HOUR:
+                partition_values.append(f"{start_date.hour}")
             start_date = start_date + interval
 
         return (column, "in", partition_values)

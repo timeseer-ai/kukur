@@ -20,7 +20,7 @@ class MetadataField(Generic[T]):
     JSON-ready data dictionary conversions should be provided for all non-trivial implementations.
     """
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         name: str,
         *,

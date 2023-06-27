@@ -39,6 +39,10 @@ operator_functions = {
 }
 
 
+class UnknownSignalTypeError(Exception):
+    """Raised when a simulator type is unknown."""
+
+
 @dataclass
 class SimulatorConfiguration:
     """Simulator source configuration."""
@@ -688,6 +692,7 @@ class SimulatorSource:
             return pa.Table.from_pydict({"ts": [], "value": []})
         for generator in self.__signal_generators[selector.tags["signal_type"]]:
             return generator.generate(selector, start_date, end_date)
+        raise UnknownSignalTypeError(selector.tags["signal_type"])
 
     def get_source_structure(self, _: SeriesSelector) -> Optional[SourceStructure]:
         """Return the structure of a source."""

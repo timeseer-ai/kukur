@@ -110,6 +110,10 @@ class SomeStringTypesSource:
         return pa.Table.from_pydict({"ts": [start_date], "value": [2.5]})
 
 
+class DummyError(Exception):
+    """Raised by the FailureSource."""
+
+
 class FailureSource:
     __failure_count: int
 
@@ -127,7 +131,7 @@ class FailureSource:
         if self.__failure_count == 0:
             return Metadata(selector)
         self.__failure_count = self.__failure_count - 1
-        raise Exception("Metadata failure")
+        raise DummyError("Metadata failure")
 
     def get_data(
         self, _: SeriesSelector, start_date: datetime, end_date: datetime
@@ -136,7 +140,7 @@ class FailureSource:
             return pa.Table.from_pydict({"ts": [start_date], "value": [2.5]})
 
         self.__failure_count = self.__failure_count - 1
-        raise Exception("Data failure")
+        raise DummyError("Data failure")
 
 
 def test_split_empty():
@@ -272,7 +276,7 @@ def test_string_when_any():
 def test_failure_propagated():
     source = FailureSource()
     wrapper = SourceWrapper(Source(source, source), [], {})
-    with pytest.raises(Exception):
+    with pytest.raises(DummyError):
         wrapper.get_data(SELECTOR, START_DATE, END_DATE)
 
 
@@ -305,7 +309,7 @@ def test_exception_after_too_many_retries():
     wrapper = SourceWrapper(
         Source(source, source), [], {"query_retry_count": 1, "query_retry_delay": 0.05}
     )
-    with pytest.raises(Exception):
+    with pytest.raises(DummyError):
         wrapper.get_data(SELECTOR, START_DATE, END_DATE)
 
 
