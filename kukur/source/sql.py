@@ -262,10 +262,7 @@ class BaseSQLSource(ABC):
                 raise InvalidConfigurationError(
                     "number of tag_columns does not match result of list_query"
                 )
-            tags = {
-                tag_name: tag_value
-                for tag_name, tag_value in zip(self._config.tag_columns, tag_values)
-            }
+            tags = dict(zip(self._config.tag_columns, tag_values))
             if self._config.field_columns is not None:
                 for field_name in self._config.field_columns:
                     yield SeriesSelector(selector.source, tags, field_name)

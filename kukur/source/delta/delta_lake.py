@@ -95,6 +95,7 @@ class DeltaSourceOptions:
     data_datetime_format: Optional[str] = None
     data_timezone: Optional[str] = None
     path_encoding: Optional[str] = None
+    sort_by_timestamp: bool = True
 
     @classmethod
     def from_data(cls, data: Dict[str, Any]) -> "DeltaSourceOptions":
@@ -115,6 +116,7 @@ class DeltaSourceOptions:
             data.get("data_datetime_format"),
             data.get("data_timezone"),
             data.get("path_encoding"),
+            data.get("sort_by_timestamp", True),
         )
 
         return options
@@ -148,21 +150,17 @@ class DeltaLakeSource:
     __loader: Loader
     __options: DeltaSourceOptions
     __quality_mapper: QualityMapper
-    __sort_by_timestamp: bool = False
 
     def __init__(
         self,
         options: DeltaSourceOptions,
         loader: Loader,
         quality_mapper: QualityMapper,
-        *,
-        sort_by_timestamp: bool = False,
     ):
         """Create a new data source."""
         self.__loader = loader
         self.__options = options
         self.__quality_mapper = quality_mapper
-        self.__sort_by_timestamp = sort_by_timestamp
 
     def search(self, selector: SeriesSearch) -> Generator[SeriesSelector, None, None]:
         """Detect series in the data."""
@@ -185,9 +183,10 @@ class DeltaLakeSource:
         The complete file will be loaded in an Arrow table during processing.
         """
         data = self.__read_all_data(selector, start_date, end_date)
-        if self.__sort_by_timestamp is True:
+        data = filter_by_timerange(data, start_date, end_date)
+        if self.__options.sort_by_timestamp:
             data = data.sort_by("ts")
-        return filter_by_timerange(data, start_date, end_date)
+        return data
 
     def get_file_extension(self) -> str:
         """Delta lakes do not support row-based formats."""
@@ -326,13 +325,12 @@ class DeltaLakeSource:
         while start_date < end_date:
             if format is not None:
                 partition_values.append(start_date.strftime(format))
-            else:
-                if resolution == Resolution.MONTH:
-                    partition_values.append(f"{start_date.month}")
-                elif resolution == Resolution.DAY:
-                    partition_values.append(f"{start_date.day}")
-                elif resolution == Resolution.HOUR:
-                    partition_values.append(f"{start_date.hour}")
+            elif resolution == Resolution.MONTH:
+                partition_values.append(f"{start_date.month}")
+            elif resolution == Resolution.DAY:
+                partition_values.append(f"{start_date.day}")
+            elif resolution == Resolution.HOUR:
+                partition_values.append(f"{start_date.hour}")
             start_date = start_date + interval
 
         return (column, "in", partition_values)
@@ -343,19 +341,8 @@ def from_config(config: dict, quality_mapper: QualityMapper) -> DeltaLakeSource:
     if not HAS_DELTA_LAKE:
         raise MissingModuleException("deltalake", "delta")
 
-    data_format = config.get("format", "row")
-    partitions = []
-    for partition_data in config.get("partitions", []):
-        partitions.append(DeltaLakePartition.from_data(partition_data))
-    options = DeltaSourceOptions(
-        data_format,
-        config.get("column_mapping", {}),
-        config.get("tag_columns", ["series name"]),
-        config.get("field_columns", ["value"]),
-        partitions,
-    )
-
-    if data_format not in ["row", "pivot"]:
+    options = DeltaSourceOptions.from_data(config)
+    if options.data_format not in ["row", "pivot"]:
         raise InvalidSourceException(
             'Delta lake sources support only the "row" and "pivot" format.'
         )
@@ -365,5 +352,4 @@ def from_config(config: dict, quality_mapper: QualityMapper) -> DeltaLakeSource:
         options,
         DeltaLakeLoader(config),
         quality_mapper,
-        sort_by_timestamp=config.get("sort_by_timestamp", True),
     )
