@@ -413,7 +413,7 @@ class SourceFactory:
         return QualityMapper.from_config(self.__config["quality_mapping"][name])
 
 
-def concat_tables(tables: List[pa.Table]) -> List[pa.Table]:
+def concat_tables(tables: List[pa.Table]) -> pa.Table:
     """Safely concatenate multiple pyarrow.Table's.
 
     If any of the given tables contains strings, the result will contain a
