@@ -765,9 +765,15 @@ class CounterSignalGenerator:
         )
         arg_list.append(
             [
-                {"min": value.min, "max": value.max, "number_of_steps": number_of_steps}
+                {
+                    "min": value.min,
+                    "max": value.max,
+                    "increase_value": increase_value,
+                    "interval_seconds": interval_seconds,
+                }
                 for value in self.__config.values  # noqa: PD011
-                for number_of_steps in value.number_of_steps
+                for increase_value in value.increase_value
+                for interval_seconds in value.interval_seconds
             ]
         )
 
