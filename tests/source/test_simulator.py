@@ -231,6 +231,7 @@ def test_step_signal_generator_series() -> None:
     assert len(one_series) == 1
     assert one_series[0].get_field_by_name("description") == "step function"
     assert one_series[0].series.tags == {
+        "data_type": "numeric",
         "series name": "step",
         "signal_type": "step",
         "seed": "7106521602475165645",
@@ -271,6 +272,7 @@ def test_step_signal_generator_series() -> None:
         del metadata.series.tags["number_of_steps"]
         del metadata.series.tags["seed"]
         assert metadata.series.tags == {
+            "data_type": "numeric",
             "series name": "step",
             "signal_type": "step",
             "interval_seconds_min": "1",
@@ -323,6 +325,7 @@ def test_step_signal_generator_series() -> None:
         del metadata.series.tags["min_value"]
         del metadata.series.tags["max_value"]
         assert metadata.series.tags == {
+            "data_type": "numeric",
             "series name": "step",
             "signal_type": "step",
             "interval_seconds_min": "1",
