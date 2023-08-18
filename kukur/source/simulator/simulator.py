@@ -1,6 +1,6 @@
 """Simulate a data source by generating data for Timeseer."""
 
-# SPDX-FileCopyrightText: 2022 Timeseer.AI
+# SPDX-FileCopyrightText: 2023 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
 import itertools
@@ -320,6 +320,7 @@ def _build_step_search_result(
             "min_value": str(entry[3]["min"]),
             "max_value": str(entry[3]["max"]),
             "number_of_steps": str(entry[3]["number_of_steps"]),
+            "data_type": str(entry[3]["data_type"]),
         },
         field,
     )
