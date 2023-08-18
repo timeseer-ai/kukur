@@ -677,8 +677,8 @@ class CounterSignalGenerator:
                 config["type"],
                 config.get("initialSeed", 0),
                 config.get("numberOfSeeds", 1),
-                config["samplingInterval"]["intervalSecondsMin"],
-                config["samplingInterval"]["intervalSecondsMax"],
+                config.get("samplingInterval", {}).get("intervalSecondsMin", 0),
+                config.get("samplingInterval", {}).get("intervalSecondsMax", 0),
                 config.get("metadata", {}),
                 config.get("fields", ["value"]),
                 [
@@ -707,26 +707,20 @@ class CounterSignalGenerator:
             * configuration.interval_seconds
         )
         rem = start_date.timestamp() % period_in_seconds
-        current_time = start_date - timedelta(seconds=rem)
+        period_start = current_time = start_date - timedelta(seconds=rem)
         current_value = configuration.min_value
-        period_start = current_time
         while current_time <= end_date:
-            new_value = current_value
-
-            value.append(new_value)
+            value.append(current_value)
             ts.append(current_time)
-            current_value = new_value
 
             time_increment = configuration.interval_seconds
-            new_time = current_time + timedelta(seconds=time_increment)
-
-            if new_time > period_start + timedelta(seconds=period_in_seconds):
-                new_time = period_start + timedelta(seconds=period_in_seconds)
-                new_value = configuration.min_value
-                period_start = new_time
-
-            current_time = new_time
+            current_time += timedelta(seconds=time_increment)
             current_value += configuration.increase_value
+            if current_time > (period_start + timedelta(seconds=period_in_seconds)):
+                period_start = current_time = period_start + timedelta(
+                    seconds=period_in_seconds
+                )
+                current_value = configuration.min_value
 
         return _drop_data_before(
             pa.Table.from_pydict({"ts": ts, "value": value}), start_date
