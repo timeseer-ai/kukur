@@ -109,6 +109,57 @@ signals:
     fields: ["altitude", "distance"]
 ```
 
+For a counter signal,
+the following values are added:
+
+```yaml
+signals:
+  - type: "counter"
+    seriesName: "<name of the series>"
+    values:
+      - min: <Integer defines minimum value>
+        max: <Integer defines maximum value>
+        increaseValue: <List of integers defines amount to be increased each interval>
+        intervalSeconds: <List of integers defines the interval>
+    numberOfSeeds: <Integer to define the randomness of the series>
+    metadata:
+        "metadata field": "metadata value"
+    fields: <List of strings that define the possible fields of the signal>
+```
+
+The values consists out of a list of each three parameters:
+min,
+max,
+increaseValue,
+intervalSeconds
+
+Min is an integer that defines the minimum value of the step function,
+Max is an integer that defines the maximum value of the step function,
+IncreaseValue is a list of integers that defines the amount to be increased each inteval,
+IntervalSeconds is a list of integers that defines the interval.
+
+For example:
+
+```yaml
+signals:
+  - type: "counter"
+    seriesName: "counter"
+    values:
+      - min: 0
+        max: 10
+        increaseValue: [5]
+        intervalSeconds: [10]
+      - min: 50
+        max: 500
+        increaseValue: [5, 10]
+        intervalSeconds: [10, 100]
+    numberOfSeeds: 4
+    metadata:
+        "interpolation type": "STEPPED"
+        "data type": "FLOAT64"
+    fields: ["altitude", "distance"]
+```
+
 For a white noise simulator,
 the following values are added:
 
