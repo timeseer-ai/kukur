@@ -797,7 +797,8 @@ def _build_counter_search_result(
             "interval_seconds_max": str(entry[2]),
             "min_value": str(entry[3]["min"]),
             "max_value": str(entry[3]["max"]),
-            "number_of_steps": str(entry[3]["number_of_steps"]),
+            "increase_value": str(entry[3]["increase_value"]),
+            "interval_seconds": str(entry[3]["interval_seconds"]),
         },
         field,
     )
