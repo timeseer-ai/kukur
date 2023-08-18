@@ -106,9 +106,190 @@ def counter_signal_selector() -> SeriesSelector:
             "interval_seconds_max": "3600",
             "min_value": "0",
             "max_value": "100",
-            "number_of_steps": "10",
+            "interval_seconds": "600",
+            "increase_value": "60",
         },
     )
+
+
+def test_counter_signal_generator_produces_same_data(
+    counter_signal_generator: CounterSignalGenerator,
+    counter_signal_selector: SeriesSelector,
+):
+    first_run = counter_signal_generator.generate(
+        counter_signal_selector, START_DATE, END_DATE
+    )
+    second_run = counter_signal_generator.generate(
+        counter_signal_selector, START_DATE, END_DATE
+    )
+    assert first_run == second_run
+
+
+def test_counter_signal_generator_consistency(
+    counter_signal_generator: CounterSignalGenerator,
+    counter_signal_selector: SeriesSelector,
+):
+    bigger_data = counter_signal_generator.generate(
+        counter_signal_selector, START_DATE, END_DATE
+    )
+
+    smaller_start_date = START_DATE + timedelta(days=2)
+    smaller_end_date = END_DATE - timedelta(days=2)
+    smaller_data = counter_signal_generator.generate(
+        counter_signal_selector, smaller_start_date, smaller_end_date
+    )
+    assert (
+        drop_data_after_and_before(bigger_data, smaller_start_date, smaller_end_date)
+        == smaller_data
+    )
+
+
+def test_counter_signal_generator_data(
+    counter_signal_generator: CounterSignalGenerator,
+    counter_signal_selector: SeriesSelector,
+):
+    data = counter_signal_generator.generate(
+        counter_signal_selector, START_DATE, END_DATE
+    )
+    for value in data["value"]:
+        assert value.as_py() in list(range(0, 101, 10))
+
+
+def test_counter_signal_generator_series() -> None:
+    search = SeriesSearch("")
+    assert len(list(CounterSignalGenerator().list_series(search))) == 0
+    generator = CounterSignalGenerator(
+        {
+            "seriesName": "counter",
+            "type": "counter",
+            "samplingInterval": {
+                "intervalSecondsMin": 1,
+                "intervalSecondsMax": 1,
+            },
+            "metadata": {"description": "step function"},
+            "values": [
+                {
+                    "min": 0,
+                    "max": 10,
+                    "increaseValue": [10],
+                    "intervalSeconds": [10],
+                },
+            ],
+        }
+    )
+    one_series = list(generator.list_series(search))
+    assert len(one_series) == 1
+    assert one_series[0].get_field_by_name("description") == "step function"
+    assert one_series[0].series.tags == {
+        "series name": "counter",
+        "signal_type": "counter",
+        "interval_seconds_min": "1",
+        "interval_seconds_max": "1",
+        "seed": "7106521602475165645",
+        "min_value": "0",
+        "max_value": "10",
+        "increase_value": "10",
+        "interval_seconds": "10",
+    }
+    assert one_series[0].series.field == "value"
+
+    generator = CounterSignalGenerator(
+        {
+            "seriesName": "counter",
+            "type": "counter",
+            "samplingInterval": {
+                "intervalSecondsMin": 1,
+                "intervalSecondsMax": 1,
+            },
+            "metadata": {"description": "step function"},
+            "values": [
+                {
+                    "min": 0,
+                    "max": 10,
+                    "increaseValue": [
+                        10,
+                    ],
+                    "intervalSeconds": [10, 20],
+                },
+            ],
+        }
+    )
+    two_series = list(generator.list_series(search))
+    assert len(two_series) == 2
+    assert [metadata.series.tags["interval_seconds"] for metadata in two_series] == [
+        "10",
+        "20",
+    ]
+    for metadata in two_series:
+        assert metadata.get_field_by_name("description") == "step function"
+        del metadata.series.tags["increase_value"]
+        del metadata.series.tags["interval_seconds"]
+        del metadata.series.tags["seed"]
+        assert metadata.series.tags == {
+            "series name": "counter",
+            "signal_type": "counter",
+            "interval_seconds_min": "1",
+            "interval_seconds_max": "1",
+            "min_value": "0",
+            "max_value": "10",
+        }
+
+    generator = CounterSignalGenerator(
+        {
+            "seriesName": "counter",
+            "type": "counter",
+            "samplingInterval": {
+                "intervalSecondsMin": 1,
+                "intervalSecondsMax": 1,
+            },
+            "metadata": {"description": "step function"},
+            "values": [
+                {
+                    "min": 0,
+                    "max": 10,
+                    "increaseValue": [
+                        10,
+                    ],
+                    "intervalSeconds": [10, 20],
+                },
+                {
+                    "min": 20,
+                    "max": 50,
+                    "increaseValue": [
+                        10,
+                    ],
+                    "intervalSeconds": [10, 20],
+                },
+            ],
+        }
+    )
+    four_series = list(generator.list_series(search))
+    assert len(four_series) == 4
+    assert {metadata.series.tags["interval_seconds"] for metadata in four_series} == {
+        "10",
+        "20",
+    }
+    for metadata in four_series:
+        assert metadata.get_field_by_name("description") == "step function"
+        del metadata.series.tags["interval_seconds"]
+        del metadata.series.tags["increase_value"]
+        del metadata.series.tags["seed"]
+        assert (
+            metadata.series.tags["min_value"] == "0"
+            and metadata.series.tags["max_value"] == "10"
+        ) or (
+            metadata.series.tags["min_value"] == "20"
+            and metadata.series.tags["max_value"] == "50"
+        )
+
+        del metadata.series.tags["min_value"]
+        del metadata.series.tags["max_value"]
+        assert metadata.series.tags == {
+            "series name": "counter",
+            "signal_type": "counter",
+            "interval_seconds_min": "1",
+            "interval_seconds_max": "1",
+        }
 
 
 def test_step_signal_generator_produces_same_data(

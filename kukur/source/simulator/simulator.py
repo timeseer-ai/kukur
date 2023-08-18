@@ -716,7 +716,7 @@ class CounterSignalGenerator:
             time_increment = configuration.interval_seconds
             current_time += timedelta(seconds=time_increment)
             current_value += configuration.increase_value
-            if current_time > (period_start + timedelta(seconds=period_in_seconds)):
+            if current_time >= (period_start + timedelta(seconds=period_in_seconds)):
                 period_start = current_time = period_start + timedelta(
                     seconds=period_in_seconds
                 )
