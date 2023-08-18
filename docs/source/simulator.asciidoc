@@ -10,12 +10,13 @@ path = "<path to simulator YAML configuration>"
 
 path points to the YAML configuration file of the simulator.
 
-There are three types of simulators.
+There are four types of simulators.
 A step signal simulator,
-a white noise signal simulator and a sine signal simulator.
+a white noise signal simulator,
+a sine signal simulator and a counter signal simulator.
 
 In the YAML configuration file,
-the three signals can be defined.
+the four signals can be defined.
 
 There is a common configuration for all signals and a type-specific config to define the values.
 
@@ -23,7 +24,7 @@ The common parts contain the following:
 
 ```yaml
 signals:
-    - type: "<step|noise|sine>"
+    - type: "<step|noise|sine|counter>"
     seriesName: "<name of the series>"
     samplingInterval:
       intervalSecondsMin: <List of integers that define the minimum seconds of an interval>
@@ -197,5 +198,63 @@ signals:
     numberOfSeeds: 10
     metadata:
       "data type": "FLOAT64"
+    fields: ["altitude", "distance"]
+```
+
+For a counter signal,
+the following values are added:
+
+```yaml
+signals:
+  - type: "counter"
+    seriesName: "<name of the series>"
+    values:
+      - min: <Integer defines minimum value>
+        max: <Integer defines maximum value>
+        numberOfSteps: <List of integers defines number of steps between intervals>
+    samplingInterval:
+      intervalSecondsMin: <List of integers that define the minimum seconds of an interval>
+      intervalSecondsMax: <List of integers that define the maximum seconds of an interval>
+    numberOfSeeds: <Integer to define the randomness of the series>
+    metadata:
+        "metadata field": "metadata value"
+    fields: <List of strings that define the possible fields of the signal>
+```
+
+
+The values consists out of a list of each three parameters:
+min,
+max and numberOfSteps.
+
+Min is an integer that defines the minimum value of the counter function,
+Max is an integer that defines the maximum value of the counter function,
+NumberOfsteps is a list of integers that defines how many steps will be taken within one interval.
+
+For example:
+
+```yaml
+signals:
+  - type: "counter"
+    seriesName: "counter"
+    values:
+      - min: 0
+        max: 10
+        numberOfSteps: [1, 2, 5]
+      - min: 0
+        max: 100
+        numberOfSteps: [20]
+      - min: -100
+        max: 0
+        numberOfSteps: [1, 2, 5, 10]
+      - min: 100
+        max: 200
+        numberOfSteps: [1, 2, 5, 10]
+    samplingInterval:
+      intervalSecondsMin: [1]
+      intervalSecondsMax: [10]
+    numberOfSeeds: 10
+    metadata:
+        "interpolation type": "STEPPED"
+        "data type": "FLOAT64"
     fields: ["altitude", "distance"]
 ```

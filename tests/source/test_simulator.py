@@ -1,6 +1,6 @@
 """Unit tests for the simulator source."""
 
-# SPDX-FileCopyrightText: 2022 Timeseer.AI
+# SPDX-FileCopyrightText: 2023 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
 
@@ -12,6 +12,7 @@ from pytest import approx, fixture
 
 from kukur.base import SeriesSearch, SeriesSelector
 from kukur.source.simulator.simulator import (
+    CounterSignalGenerator,
     SineSignalGenerator,
     StepSignalGenerator,
     WhiteNoiseSignalGenerator,
@@ -35,6 +36,11 @@ def whitenoise_signal_generator() -> WhiteNoiseSignalGenerator:
 @fixture
 def sine_signal_generator() -> SineSignalGenerator:
     return SineSignalGenerator()
+
+
+@fixture
+def counter_signal_generator() -> CounterSignalGenerator:
+    return CounterSignalGenerator()
 
 
 @fixture
@@ -84,6 +90,23 @@ def sine_signal_selector() -> SeriesSelector:
             "amplitude": "10",
             "phase_seconds": "10",
             "shift": "0",
+        },
+    )
+
+
+@fixture
+def counter_signal_selector() -> SeriesSelector:
+    return SeriesSelector(
+        "",
+        {
+            "series name": "counter-signal-test",
+            "signal_type": "counter",
+            "seed": "0",
+            "interval_seconds_min": "600",
+            "interval_seconds_max": "3600",
+            "min_value": "0",
+            "max_value": "100",
+            "number_of_steps": "10",
         },
     )
 

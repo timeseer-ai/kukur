@@ -1,6 +1,6 @@
 """Simulate a data source by generating data for Timeseer."""
 
-# SPDX-FileCopyrightText: 2022 Timeseer.AI
+# SPDX-FileCopyrightText: 2023 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
 import itertools
@@ -145,6 +145,31 @@ class SineSignalConfig(SignalConfig):
     phase_seconds: float
     amplitude: float
     shift: float
+
+
+@dataclass
+class CounterSignalGeneratorConfigValue:
+    """One possible counter configuration."""
+
+    min: float
+    max: float
+    number_of_steps: List[int]
+
+
+@dataclass
+class CounterSignalGeneratorConfig(SignalGeneratorConfig):
+    """Configuration for the counter signal generator."""
+
+    values: List[CounterSignalGeneratorConfigValue]
+
+
+@dataclass
+class CounterSignalConfig(SignalConfig):
+    """Configuration for the step signal."""
+
+    min_value: float
+    max_value: float
+    number_of_steps: int
 
 
 class StepSignalGenerator:
@@ -638,6 +663,124 @@ def calculate_sine(
     )
 
 
+class CounterSignalGenerator:
+    """Count signal generator."""
+
+    __config: Optional[CounterSignalGeneratorConfig] = None
+
+    def __init__(self, config: Optional[Dict] = None):
+        if config is not None:
+            self.__config = CounterSignalGeneratorConfig(
+                config["seriesName"],
+                config["type"],
+                config.get("initialSeed", 0),
+                config.get("numberOfSeeds", 1),
+                config["samplingInterval"]["intervalSecondsMin"],
+                config["samplingInterval"]["intervalSecondsMax"],
+                config.get("metadata", {}),
+                config.get("fields", ["value"]),
+                [
+                    CounterSignalGeneratorConfigValue(
+                        value["min"], value["max"], _ensure_list(value["numberOfSteps"])
+                    )
+                    for value in config["values"]
+                ],
+            )
+
+    def generate(
+        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
+    ) -> pa.Table:
+        """Generate data as counter based on a selector start and end date."""
+        configuration = _get_counter_configuration(selector)
+        ts: List[datetime] = []
+        value: List[float] = []
+
+        return _drop_data_before(
+            pa.Table.from_pydict({"ts": ts, "value": value}), start_date
+        )
+
+    def list_series(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
+        """Yield all possible metadata combinations using the counter configuration and the provided selector."""
+        arg_list = []
+        if self.__config is None:
+            return
+
+        rng = Random(self.__config.initial_seed)
+        arg_list.append(
+            _extract_from_tag(
+                selector.tags,
+                "seed",
+                [
+                    rng.randint(0, sys.maxsize)
+                    for _ in range(self.__config.number_of_seeds)
+                ],
+            )
+        )
+        arg_list.append(
+            _extract_from_tag(
+                selector.tags,
+                "interval_seconds_min",
+                self.__config.interval_seconds_min,
+            )
+        )
+        arg_list.append(
+            _extract_from_tag(
+                selector.tags,
+                "interval_seconds_max",
+                self.__config.interval_seconds_max,
+            )
+        )
+        arg_list.append(
+            [
+                {"min": value.min, "max": value.max, "number_of_steps": number_of_steps}
+                for value in self.__config.values  # noqa: PD011
+                for number_of_steps in value.number_of_steps
+            ]
+        )
+
+        for entry in itertools.product(*arg_list):
+            for field in self.__config.fields:
+                yield _build_counter_search_result(
+                    self.__config, entry, selector.source, field
+                )
+
+
+def _build_counter_search_result(
+    config: CounterSignalGeneratorConfig, entry: tuple, source_name: str, field: str
+) -> Metadata:
+    series_selector = SeriesSelector(
+        source_name,
+        {
+            "series name": config.series_name,
+            "signal_type": config.signal_type,
+            "seed": str(entry[0]),
+            "interval_seconds_min": str(entry[1]),
+            "interval_seconds_max": str(entry[2]),
+            "min_value": str(entry[3]["min"]),
+            "max_value": str(entry[3]["max"]),
+            "number_of_steps": str(entry[3]["number_of_steps"]),
+        },
+        field,
+    )
+    metadata = Metadata(series_selector)
+    for field_name, field_value in config.metadata.items():
+        metadata.coerce_field(field_name, field_value)
+    return metadata
+
+
+def _get_counter_configuration(selector: SeriesSelector) -> CounterSignalConfig:
+    return CounterSignalConfig(
+        selector.tags["series name"],
+        selector.tags["signal_type"],
+        int(selector.tags["seed"]),
+        int(selector.tags["interval_seconds_min"]),
+        int(selector.tags["interval_seconds_max"]),
+        float(selector.tags["min_value"]),
+        float(selector.tags["max_value"]),
+        int(selector.tags["number_of_steps"]),
+    )
+
+
 class SimulatorSource:
     """A simulator data source."""
 
@@ -657,6 +800,7 @@ class SimulatorSource:
             self.__signal_generators["step"].append(StepSignalGenerator())
             self.__signal_generators["white noise"].append(WhiteNoiseSignalGenerator())
             self.__signal_generators["sine"].append(SineSignalGenerator())
+            self.__signal_generators["counter"].append(CounterSignalGenerator())
         else:
             with self.__yaml_path.open(encoding="utf-8") as file:
                 yaml_data = yaml.safe_load(file)
@@ -708,6 +852,8 @@ class SimulatorSource:
             )
         if signal_type == "sine":
             self.__signal_generators[signal_type].append(SineSignalGenerator(config))
+        if signal_type == "counter":
+            self.__signal_generators[signal_type].append(CounterSignalGenerator(config))
 
 
 def _extract_from_tag(
