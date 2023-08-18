@@ -61,6 +61,7 @@ signals:
       - min: <Integer defines minimum value>
         max: <Integer defines maximum value>
         numberOfSteps: <List of integers defines number of steps between intervals>
+        dataType: "<string|numeric>"
     samplingInterval:
       intervalSecondsMin: <List of integers that define the minimum seconds of an interval>
       intervalSecondsMax: <List of integers that define the maximum seconds of an interval>
@@ -73,11 +74,14 @@ signals:
 
 The values consists out of a list of each three parameters:
 min,
-max and numberOfSteps.
+max,
+numberOfSteps and dataType.
 
 Min is an integer that defines the minimum value of the step function,
 Max is an integer that defines the maximum value of the step function,
 NumberOfsteps is a list of integers that defines how many steps will be taken within one interval.
+dataType determines whether string or numeric values will be generated.
+The default is numeric.
 
 For example:
 
@@ -98,6 +102,7 @@ signals:
       - min: 100
         max: 200
         numberOfSteps: [1, 2, 5, 10]
+        dataType: "numeric"
     samplingInterval:
       intervalSecondsMin: [1]
       intervalSecondsMax: [10]
