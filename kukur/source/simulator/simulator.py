@@ -695,6 +695,45 @@ class CounterSignalGenerator:
         ts: List[datetime] = []
         value: List[float] = []
 
+        current_time = _get_start_of_day(start_date)
+
+        rng = Random(_get_hex_digest(current_time, configuration.to_bytes()))
+
+        step_size = (
+            configuration.max_value - configuration.min_value
+        ) / configuration.number_of_steps
+        current_value = (
+            configuration.min_value
+            + rng.randint(0, configuration.number_of_steps) * step_size
+        )
+        while current_time <= end_date:
+            generated_step = (
+                rng.randint(0, int(configuration.number_of_steps / 2)) * step_size
+            )
+            new_value = current_value + generated_step
+
+            if new_value > configuration.max_value:
+                new_value -= configuration.max_value - configuration.min_value
+
+            value.append(new_value)
+            ts.append(current_time)
+            current_value = new_value
+
+            time_increment = rng.randint(
+                configuration.interval_seconds_min, configuration.interval_seconds_max
+            )
+            new_time = current_time + timedelta(seconds=time_increment)
+
+            if new_time.date() != current_time.date():
+                new_time = _get_start_of_day(new_time)
+                rng.seed(_get_hex_digest(new_time, configuration.to_bytes()))
+                current_value = (
+                    configuration.min_value
+                    + rng.randint(0, configuration.number_of_steps) * step_size
+                )
+
+            current_time = new_time
+
         return _drop_data_before(
             pa.Table.from_pydict({"ts": ts, "value": value}), start_date
         )
