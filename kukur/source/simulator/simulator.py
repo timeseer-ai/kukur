@@ -9,6 +9,7 @@ import sys
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from enum import Enum
 from hashlib import sha1
 from pathlib import Path
 from random import Random
@@ -31,7 +32,10 @@ from kukur import (
     SignalGenerator,
     SourceStructure,
 )
-from kukur.exceptions import MissingModuleException
+from kukur.exceptions import (
+    InvalidSourceException,
+    MissingModuleException,
+)
 
 operator_functions = {
     "+": operator.add,
@@ -86,6 +90,13 @@ class SignalConfig:
         return bytes(str(self), "UTF-8")
 
 
+class SignalDataType(Enum):
+    """Data types for step signal generator."""
+
+    STRING = "string"
+    NUMERIC = "numeric"
+
+
 @dataclass
 class StepSignalGeneratorConfigValue:
     """One possible step configuration."""
@@ -93,6 +104,7 @@ class StepSignalGeneratorConfigValue:
     min: float
     max: float
     number_of_steps: List[int]
+    data_type: SignalDataType
 
 
 @dataclass
@@ -109,6 +121,7 @@ class StepSignalConfig(SignalConfig):
     min_value: float
     max_value: float
     number_of_steps: int
+    data_type: SignalDataType
 
 
 @dataclass
@@ -165,7 +178,10 @@ class StepSignalGenerator:
                 config.get("fields", ["value"]),
                 [
                     StepSignalGeneratorConfigValue(
-                        value["min"], value["max"], _ensure_list(value["numberOfSteps"])
+                        value["min"],
+                        value["max"],
+                        _ensure_list(value["numberOfSteps"]),
+                        SignalDataType(value.get("dataType", "numeric")),
                     )
                     for value in config["values"]
                 ],
@@ -205,7 +221,13 @@ class StepSignalGenerator:
                     current_value, generated_step
                 )
 
-            value.append(new_value)
+            if configuration.data_type == SignalDataType.STRING:
+                value.append(f"string_{new_value}")
+            elif configuration.data_type == SignalDataType.NUMERIC:
+                value.append(new_value)
+            else:
+                raise InvalidSourceException("Unknown data type")
+
             ts.append(current_time)
             current_value = new_value
 
@@ -313,6 +335,7 @@ def _get_step_configuration(selector: SeriesSelector) -> StepSignalConfig:
         float(selector.tags["min_value"]),
         float(selector.tags["max_value"]),
         int(selector.tags["number_of_steps"]),
+        SignalDataType(selector.tags.get("data_type", "numeric")),
     )
 
 
