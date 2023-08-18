@@ -153,7 +153,8 @@ class CounterSignalGeneratorConfigValue:
 
     min: float
     max: float
-    number_of_steps: List[int]
+    increase_value: List[float]
+    interval_seconds: List[int]
 
 
 @dataclass
@@ -682,7 +683,10 @@ class CounterSignalGenerator:
                 config.get("fields", ["value"]),
                 [
                     CounterSignalGeneratorConfigValue(
-                        value["min"], value["max"], _ensure_list(value["numberOfSteps"])
+                        value["min"],
+                        value["max"],
+                        _ensure_list(value["increaseValue"]),
+                        _ensure_list(value["intervalSeconds"]),
                     )
                     for value in config["values"]
                 ],
