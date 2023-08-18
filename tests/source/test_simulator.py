@@ -8,7 +8,8 @@ from datetime import datetime, timedelta, timezone
 
 import pyarrow as pa
 from dateutil.parser import parse as parse_date
-from pytest import approx, fixture
+from pyarrow.types import is_floating, is_string
+from pytest import approx, fixture, raises
 
 from kukur.base import SeriesSearch, SeriesSelector
 from kukur.source.simulator.simulator import (
@@ -98,6 +99,85 @@ def test_step_signal_generator_produces_same_data(
         step_signal_selector, START_DATE, END_DATE
     )
     assert first_run == second_run
+    assert is_floating(first_run["value"].type)
+
+
+def test_step_signal_generator_produces_same_data_for_string():
+    generator = StepSignalGenerator(
+        {
+            "seriesName": "step",
+            "type": "step",
+            "samplingInterval": {
+                "intervalSecondsMin": 1,
+                "intervalSecondsMax": 2,
+            },
+            "metadata": {"description": "step function"},
+            "values": [
+                {
+                    "min": 0,
+                    "max": 10,
+                    "numberOfSteps": 10,
+                    "dataType": "string",
+                },
+            ],
+        }
+    )
+    step_signal_selector = SeriesSelector(
+        "",
+        {
+            "series name": "step-signal-test",
+            "signal_type": "step",
+            "seed": "0",
+            "interval_seconds_min": "600",
+            "interval_seconds_max": "3600",
+            "min_value": "0",
+            "max_value": "100",
+            "number_of_steps": "10",
+            "data_type": "string",
+        },
+    )
+    first_run = generator.generate(step_signal_selector, START_DATE, END_DATE)
+    second_run = generator.generate(step_signal_selector, START_DATE, END_DATE)
+    assert first_run == second_run
+    assert is_string(first_run["value"].type)
+
+
+def test_step_signal_generator_wrong_data_type():
+    generator = StepSignalGenerator(
+        {
+            "seriesName": "step",
+            "type": "step",
+            "samplingInterval": {
+                "intervalSecondsMin": 1,
+                "intervalSecondsMax": 2,
+            },
+            "metadata": {"description": "step function"},
+            "values": [
+                {
+                    "min": 0,
+                    "max": 10,
+                    "numberOfSteps": 10,
+                    "dataType": "string",
+                },
+            ],
+        }
+    )
+    step_signal_selector = SeriesSelector(
+        "",
+        {
+            "series name": "step-signal-test",
+            "signal_type": "step",
+            "seed": "0",
+            "interval_seconds_min": "600",
+            "interval_seconds_max": "3600",
+            "min_value": "0",
+            "max_value": "100",
+            "number_of_steps": "10",
+            "data_type": "foofoo",
+        },
+    )
+    with raises(ValueError):
+        generator.generate(step_signal_selector, START_DATE, END_DATE)
 
 
 def test_step_signal_generator_consistency(

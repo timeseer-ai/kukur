@@ -220,7 +220,6 @@ class StepSignalGenerator:
                 new_value = operator_functions[random_operator](
                     current_value, generated_step
                 )
-
             if configuration.data_type == SignalDataType.STRING:
                 value.append(f"string_{new_value}")
             elif configuration.data_type == SignalDataType.NUMERIC:
@@ -283,7 +282,12 @@ class StepSignalGenerator:
         )
         arg_list.append(
             [
-                dict(min=value.min, max=value.max, number_of_steps=number_of_steps)
+                dict(
+                    min=value.min,
+                    max=value.max,
+                    number_of_steps=number_of_steps,
+                    data_type=value.data_type.value,
+                )
                 for value in self.__config.values  # noqa: PD
                 for number_of_steps in value.number_of_steps
             ]
