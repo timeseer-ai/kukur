@@ -2,11 +2,11 @@ name: Build Kukur
 on:
   push:
     branches:
-      - '**'
+      - "**"
     tags-ignore:
-      - '**'
+      - "**"
     paths-ignore:
-      - 'docs/**'
+      - "docs/**"
 
 jobs:
   lint_and_test:
@@ -19,8 +19,8 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v3
         with:
-          python-version: '3.8'
-          cache: 'pip'
+          python-version: "3.9"
+          cache: "pip"
           cache-dependency-path: |
             requirements.txt
             requirements-dev.txt
@@ -86,8 +86,8 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v3
         with:
-          python-version: '3.8'
-          cache: 'pip'
+          python-version: "3.9"
+          cache: "pip"
           cache-dependency-path: |
             requirements.txt
             requirements-dev.txt

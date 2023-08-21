@@ -24,11 +24,11 @@ setuptools.setup(
     ],
     packages=setuptools.find_packages(exclude="tests"),
     install_requires=[
-          "pyarrow",
-          "python-dateutil",
-          "pytz",
-          "toml",
-      ],
+        "pyarrow",
+        "python-dateutil",
+        "pytz",
+        "toml",
+    ],
     extras_require={
         "adodb": ["pywin32"],
         "cratedb": ["crate"],
@@ -39,7 +39,7 @@ setuptools.setup(
         "piwebapi": ["requests", "requests-kerberos"],
         "postgresql": ["psycopg[binary]"],
     },
-    python_requires=">=3.8",
+    python_requires=">=3.9",
     package_data={
         "kukur": ["py.typed"],
     },
