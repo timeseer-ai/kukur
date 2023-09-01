@@ -30,13 +30,12 @@ from kukur.exceptions import (
     InvalidSourceException,
     MissingModuleException,
 )
-from kukur.loader import Loader
 from kukur.metadata import Metadata
 from kukur.source.arrow import (
     cast_ts_column,
+    conform_to_schema,
     filter_by_timerange,
     filter_pivot_data,
-    filter_row_data,
     map_pivot_columns,
     map_row_columns,
 )
@@ -87,6 +86,7 @@ class DeltaLakePartition:
 class DeltaSourceOptions:
     """Options for a DeltaSource."""
 
+    uri: str
     data_format: str
     column_mapping: Dict[str, str]
     tag_columns: List[str]
@@ -100,6 +100,8 @@ class DeltaSourceOptions:
     @classmethod
     def from_data(cls, data: Dict[str, Any]) -> "DeltaSourceOptions":
         """Create source options from a data dictionary."""
+        if "uri" not in data:
+            raise InvalidSourceException("No uri provided in config")
         data_format = data.get("format", "row")
         partitions = []
         for partition_data in data.get("partitions", []):
@@ -108,6 +110,7 @@ class DeltaSourceOptions:
             partitions.append(DeltaLakePartition.from_data(partition_data))
 
         options = cls(
+            data["uri"],
             data_format,
             data.get("column_mapping", {}),
             data.get("tag_columns", ["series name"]),
@@ -122,43 +125,18 @@ class DeltaSourceOptions:
         return options
 
 
-class DeltaLakeLoader:
-    """Fakes a loader for Delta Lake tables.
-
-    It does not really load files, as the other loaders do.
-    """
-
-    def __init__(self, config: dict) -> None:
-        self.__uri = config["uri"]
-
-    def open(self):
-        """Return the URI to connect to."""
-        return self.__uri
-
-    def has_child(self, subpath: str) -> bool:
-        """Not supported for Delta Lake."""
-        raise NotImplementedError()
-
-    def open_child(self, subpath: str):
-        """Not supported for Delta Lake."""
-        raise NotImplementedError()
-
-
 class DeltaLakeSource:
     """Connect to a Delta Lake."""
 
-    __loader: Loader
     __options: DeltaSourceOptions
     __quality_mapper: QualityMapper
 
     def __init__(
         self,
         options: DeltaSourceOptions,
-        loader: Loader,
         quality_mapper: QualityMapper,
     ):
         """Create a new data source."""
-        self.__loader = loader
         self.__options = options
         self.__quality_mapper = quality_mapper
 
@@ -182,8 +160,8 @@ class DeltaLakeSource:
 
         The complete file will be loaded in an Arrow table during processing.
         """
-        data = self.__read_all_data(selector, start_date, end_date)
-        data = filter_by_timerange(data, start_date, end_date)
+        data = self.__read_data(selector, start_date, end_date)
+
         if self.__options.sort_by_timestamp:
             data = data.sort_by("ts")
         return data
@@ -192,15 +170,15 @@ class DeltaLakeSource:
         """Delta lakes do not support row-based formats."""
         raise NotImplementedError()
 
-    def __read_all_data(
+    def __read_data(
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         if self.__options.data_format == "pivot":
-            all_data = self._read_pivot_data()
-            return filter_pivot_data(all_data, selector)
+            data = self._read_pivot_data()
+            data = filter_pivot_data(data, selector)
+            return filter_by_timerange(data, start_date, end_date)
 
-        all_data = self._read_row_partitioned_data(selector, start_date, end_date)
-        return filter_row_data(all_data, selector, self.__quality_mapper)
+        return self._read_row_partitioned_data(selector, start_date, end_date)
 
     def _search_pivot(self, source_name: str) -> Generator[SeriesSelector, None, None]:
         all_data = self._read_pivot_data()
@@ -211,7 +189,7 @@ class DeltaLakeSource:
         column_names = (
             self.__options.tag_columns + ["ts"] + self.__options.field_columns
         )
-        row_data = self._read_file(self.__loader.open())
+        row_data = self._get_delta_table().to_pyarrow_table()
         row_data = map_row_columns(
             row_data, column_names, self.__options.column_mapping, self.__quality_mapper
         )
@@ -226,19 +204,71 @@ class DeltaLakeSource:
         column_names = (
             self.__options.tag_columns + ["ts"] + self.__options.field_columns
         )
-        row_data = self._read_partitioned_file(
-            self.__loader.open(), selector, start_date, end_date
+        if self.__quality_mapper.is_present():
+            column_names.append("quality")
+        effective_column_mapping = {
+            column_name: self._to_data_column_name(column_name)
+            for column_name in column_names
+        }
+
+        delta_table = DeltaTable(self.__options.uri)
+        schema = delta_table.schema().to_pyarrow()
+        is_timestamp = False
+        if pa.types.is_timestamp(schema.field(effective_column_mapping["ts"]).type):
+            is_timestamp = True
+
+        partitions: List[Tuple[str, str, Union[List[str], str]]] = []
+        for partition in self.__options.partitions:
+            if partition.origin == PartitionOrigin.TAG:
+                partitions.append(self._format_tag_partition(partition, selector))
+            if partition.origin == PartitionOrigin.TIMESTAMP:
+                partitions.append(
+                    self._format_timestamp_partition(partition, start_date, end_date)
+                )
+        filters = []
+        if is_timestamp:
+            filters.extend(
+                [
+                    (
+                        effective_column_mapping["ts"],
+                        ">=",
+                        _parquet_timestamp(start_date),
+                    ),
+                    (effective_column_mapping["ts"], "<", _parquet_timestamp(end_date)),
+                ]
+            )
+        for tag_key, tag_value in selector.tags.items():
+            filters.append((effective_column_mapping[tag_key], "=", tag_value))
+
+        columns = ["ts", selector.field]
+        if self.__quality_mapper.is_present():
+            columns.append("quality")
+        data_columns = [
+            effective_column_mapping[column_name] for column_name in columns
+        ]
+
+        table = delta_table.to_pyarrow_table(
+            partitions, columns=data_columns, filters=filters
         )
-        row_data = map_row_columns(
-            row_data, column_names, self.__options.column_mapping, self.__quality_mapper
+
+        output_columns = ["ts", "value"]
+        if self.__quality_mapper.is_present():
+            output_columns.append("quality")
+        table = table.rename_columns(output_columns)
+
+        table = cast_ts_column(
+            table, self.__options.data_datetime_format, self.__options.data_timezone
         )
-        row_data = cast_ts_column(
-            row_data, self.__options.data_datetime_format, self.__options.data_timezone
-        )
-        return row_data
+        if not is_timestamp:
+            table = filter_by_timerange(table, start_date, end_date)
+
+        return conform_to_schema(table, self.__quality_mapper)
+
+    def _to_data_column_name(self, column_name: str) -> str:
+        return self.__options.column_mapping.get(column_name, column_name)
 
     def _read_pivot_data(self) -> pa.Table:
-        all_data = self._read_file(self.__loader.open())
+        all_data = self._get_delta_table().to_pyarrow_table()
         all_data = map_pivot_columns(self.__options.column_mapping, all_data)
         all_data = cast_ts_column(
             all_data, self.__options.data_datetime_format, self.__options.data_timezone
@@ -256,24 +286,8 @@ class DeltaLakeSource:
     def _read_file(self, file_like) -> pa.Table:
         return DeltaTable(file_like).to_pyarrow_table()
 
-    def _read_partitioned_file(
-        self,
-        file_like,
-        selector: SeriesSelector,
-        start_date: datetime,
-        end_date: datetime,
-    ) -> pa.Table:
-        """Return a PyArrow Table for the Delta Table using the defined partitions."""
-        partitions: List[Tuple[str, str, Union[List[str], str]]] = []
-        for partition in self.__options.partitions:
-            if partition.origin == PartitionOrigin.TAG:
-                partitions.append(self._format_tag_partition(partition, selector))
-            if partition.origin == PartitionOrigin.TIMESTAMP:
-                partitions.append(
-                    self._format_timestamp_partition(partition, start_date, end_date)
-                )
-
-        return DeltaTable(file_like).to_pyarrow_table(partitions)
+    def _get_delta_table(self) -> DeltaTable:
+        return DeltaTable(self.__options.uri)
 
     def _format_tag_partition(
         self,
@@ -350,6 +364,9 @@ def from_config(config: dict, quality_mapper: QualityMapper) -> DeltaLakeSource:
         raise InvalidSourceException('Delta lake sources require an "uri" entry')
     return DeltaLakeSource(
         options,
-        DeltaLakeLoader(config),
         quality_mapper,
     )
+
+
+def _parquet_timestamp(value: datetime):
+    return pa.scalar(value, pa.timestamp("us"))

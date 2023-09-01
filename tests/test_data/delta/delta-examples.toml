@@ -1,6 +1,7 @@
 [source.row-delta]
 type = "delta"
 uri = "tests/test_data/delta/delta-row"
+column_mapping = { "series name" = "name" }
 
 [source.row-delta-quality]
 type = "delta"
@@ -8,6 +9,7 @@ uri = "tests/test_data/delta/delta-row-quality"
 metadata_type = "csv"
 metadata = "tests/test_data/csv/row-metadata.csv"
 quality_mapping = "opc_mapping_strings"
+column_mapping = { "series name" = "name" }
 
 [source.pivot-delta]
 type = "delta"
@@ -20,6 +22,7 @@ metadata = "tests/test_data/csv/pivot-metadata.csv"
 type = "delta"
 uri = "tests/test_data/delta/delta-unordered"
 sort_by_timestamp = true
+column_mapping = { "series name" = "name" }
 
 [source.row-delta-tags]
 type = "delta"
