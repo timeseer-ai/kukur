@@ -246,7 +246,7 @@ class DeltaLakeSource:
         data_columns = [
             effective_column_mapping[column_name] for column_name in columns
         ]
-
+        print(filters)
         table = delta_table.to_pyarrow_table(
             partitions, columns=data_columns, filters=filters
         )
