@@ -268,6 +268,13 @@ def cast_ts_column(
             "ts",
             pa.compute.assume_timezone(data["ts"], data_timezone),
         )
+
+    if not pa.types.is_timestamp(data.schema.field("ts").type):
+        data = data.set_column(
+            data.column_names.index("ts"),
+            "ts",
+            pyarrow.compute.cast(data["ts"], pa.timestamp("us", "UTC")),
+        )
     return data
 
 
@@ -298,19 +305,26 @@ def filter_row_data(
         ],
         ["ts", "value"],
     )
+    if quality_mapper.is_present():
+        filtered_data = filtered_data.set_column(2, "quality", all_data["quality"])
+    return conform_to_schema(filtered_data, quality_mapper)
+
+
+def conform_to_schema(table: pa.Table, quality_mapper: QualityMapper) -> pa.Table:
+    """Conform the table to the schema expected in Kukur."""
     schema = pa.schema(
         [
             ("ts", pa.timestamp("us", "UTC")),
-            ("value", get_value_schema_type(filtered_data)),
+            ("value", get_value_schema_type(table)),
         ]
     )
     if quality_mapper.is_present():
         schema = schema.append(pa.field("quality", pa.int8()))
-        filtered_data = filtered_data.set_column(
-            2, "quality", _map_quality(all_data["quality"], quality_mapper)
+        table = table.set_column(
+            2, "quality", _map_quality(table["quality"], quality_mapper)
         )
 
-    return filtered_data.cast(schema)
+    return table.cast(schema)
 
 
 def _map_quality(quality_data: pa.Array, quality_mapper: QualityMapper) -> pa.Array:
