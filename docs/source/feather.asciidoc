@@ -94,7 +94,7 @@ type = "feather"
 format = "dir"
 path = ""
 
-[source."<name>".partitions]
+[[source."<name>".partitions]]
 origin = "tag"
 key = "series name"
 # path_encoding = "base64"
