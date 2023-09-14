@@ -33,6 +33,7 @@ data_query_timezone = "<override or specify time zone of timestamps>"
 data_timezone = "<override or specify time zone of timestamps returned by the data query>"
 enable_trace_logging = false
 quality_mapping = "<name>"
+type_checking_row_limit = "<number of rows analysed to determine the type of the value column, defaults to 300>"
 ```
 
 The examples given here operate on a SQLite database with three tables:
