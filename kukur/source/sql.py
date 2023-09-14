@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
+import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone, tzinfo
@@ -20,6 +21,8 @@ from kukur.source.metadata import MetadataValueMapper
 from kukur.source.quality import QualityMapper
 
 logger = logging.getLogger(__name__)
+
+TYPE_CHECKING_ROW_LIMIT = 100
 
 
 class InvalidMetadataError(KukurException):
@@ -185,8 +188,9 @@ class BaseSQLSource(ABC):
         query, params = self.__prepare_data_query(selector, start_date, end_date)
         cursor.execute(query, params)
 
+        null_value: Union[float, str] = float("nan")
         timestamps = []
-        values = []
+        values: list[Union[float, str]] = []
         qualities = []
         for row in cursor:
             if self._config.enable_trace_logging:
@@ -198,6 +202,14 @@ class BaseSQLSource(ABC):
                     row[1],
                     type(row[1]),
                 )
+
+            if len(values) < TYPE_CHECKING_ROW_LIMIT:
+                if type(row[1]) == str:
+                    null_value = ""
+                    for i, value in enumerate(values):
+                        if type(value) == float and math.isnan(value):
+                            values[i] = null_value
+
             if isinstance(row[0], datetime):
                 ts = row[0]
             elif isinstance(row[0], date):
@@ -211,7 +223,7 @@ class BaseSQLSource(ABC):
             ts = ts.astimezone(timezone.utc)
             value = row[1]
             if value is None:
-                value = float("nan")
+                value = null_value
             if isinstance(value, bytes):
                 continue
             if isinstance(value, (datetime, date)):
@@ -223,6 +235,7 @@ class BaseSQLSource(ABC):
                 qualities.append(quality)
             timestamps.append(ts)
             values.append(value)
+
         if self._quality_mapper.is_present():
             return pa.Table.from_pydict(
                 {"ts": timestamps, "value": values, "quality": qualities}

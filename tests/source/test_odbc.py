@@ -522,3 +522,119 @@ def test_quality_flag():
     assert data["quality"][0].as_py() == 1
     assert data["value"][1].as_py() == "bad-quality"
     assert data["quality"][1].as_py() == 0
+
+
+def test_null_values_on_string_column():
+    config = SQLConfig(
+        ":memory:",
+        data_query="select ts, value from Data where series_name = ? and ts between ? and ?",
+        tag_columns=["series name"],
+    )
+    quality_mapper = QualityMapper()
+    source = DummySQLSource(config, MetadataValueMapper(), quality_mapper)
+    source.db.execute(
+        """
+        create table Data (
+            ts datetime,
+            series_name text,
+            value text
+        );
+        """
+    )
+    source.db.execute(
+        "insert into Data (ts, series_name, value) values (?, ?, ?)",
+        [
+            datetime.fromisoformat("2021-01-02T00:00:00+00:00"),
+            "quality-series",
+            "first-value",
+        ],
+    )
+    source.db.execute(
+        "insert into Data (ts, series_name, value) values (?, ?, ?)",
+        [
+            datetime.fromisoformat("2021-01-02T00:00:00+00:00"),
+            "quality-series",
+            None,
+        ],
+    )
+    source.db.execute(
+        "insert into Data (ts, series_name, value) values (?, ?, ?)",
+        [
+            datetime.fromisoformat("2021-01-02T00:00:00+00:00"),
+            "quality-series",
+            "second-value",
+        ],
+    )
+
+    data = source.get_data(
+        SeriesSelector.from_tags("dummy", {"series name": "quality-series"}),
+        datetime.fromisoformat("2021-01-01T00:00:00+00:00"),
+        datetime.fromisoformat("2021-02-01T00:00:00+00:00"),
+    )
+
+    assert len(data) == 3
+    assert data["value"][0].as_py() == "first-value"
+    assert data["value"][1].as_py() == ""
+    assert data["value"][2].as_py() == "second-value"
+
+
+def test_null_values_on_string_column_with_quality():
+    config = SQLConfig(
+        ":memory:",
+        data_query="select ts, value, quality from Data where series_name = ? and ts between ? and ?",
+        tag_columns=["series name"],
+    )
+    quality_mapper = QualityMapper()
+    quality_mapper.add_mapping(192)
+    source = DummySQLSource(config, MetadataValueMapper(), quality_mapper)
+    source.db.execute(
+        """
+        create table Data (
+            ts datetime,
+            series_name text,
+            value text,
+            quality int
+        );
+        """
+    )
+    source.db.execute(
+        "insert into Data (ts, series_name, value, quality) values (?, ?, ?, ?)",
+        [
+            datetime.fromisoformat("2021-01-02T00:00:00+00:00"),
+            "quality-series",
+            "good-quality",
+            192,
+        ],
+    )
+    source.db.execute(
+        "insert into Data (ts, series_name, value, quality) values (?, ?, ?, ?)",
+        [
+            datetime.fromisoformat("2021-01-02T00:00:00+00:00"),
+            "quality-series",
+            None,
+            10,
+        ],
+    )
+    source.db.execute(
+        "insert into Data (ts, series_name, value, quality) values (?, ?, ?, ?)",
+        [
+            datetime.fromisoformat("2021-01-02T00:00:00+00:00"),
+            "quality-series",
+            "bad-quality",
+            1,
+        ],
+    )
+
+    data = source.get_data(
+        SeriesSelector.from_tags("dummy", {"series name": "quality-series"}),
+        datetime.fromisoformat("2021-01-01T00:00:00+00:00"),
+        datetime.fromisoformat("2021-02-01T00:00:00+00:00"),
+    )
+
+    assert len(data) == 3
+    assert data["value"][0].as_py() == "good-quality"
+    assert data["quality"][0].as_py() == 1
+    assert data["value"][1].as_py() == ""
+    assert data["quality"][1].as_py() == 0
+    assert data["value"][2].as_py() == "bad-quality"
+    assert data["quality"][1].as_py() == 0
