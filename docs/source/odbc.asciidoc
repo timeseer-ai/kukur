@@ -34,7 +34,7 @@ data_query_timezone = "<override or specify time zone of timestamps to send a na
 data_timezone = "<override or specify time zone of timestamps returned by the odbc driver>"
 enable_trace_logging = false
 quality_mapping = "<name>"
-type_checking_row_limit = "<number of rows analysed to determine the type of the value column, defaults to 300>"
+type_checking_row_limit = 300  # number of rows analysed to determine the type of the value column
 ```
 
 The examples given here operate on this schema:
