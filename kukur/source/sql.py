@@ -202,7 +202,6 @@ class BaseSQLSource(ABC):
                     row[1],
                     type(row[1]),
                 )
-
             if isinstance(row[0], datetime):
                 ts = row[0]
             elif isinstance(row[0], date):
@@ -223,15 +222,13 @@ class BaseSQLSource(ABC):
                 type_count["datetime"] += 1
 
             if len(values) == self._config.type_checking_row_limit:
-                detected_type = "number"
-                if len(type_count) > 0:
-                    detected_type = sorted(type_count, reverse=True)[0]
+                detected_type = _get_main_type(type_count)
                 _coerce_types(values, detected_type)
 
             if detected_type == "number":
                 if value is None or type(value) not in [int, float, Decimal]:
                     value = float("nan")
-            if detected_type == "string":
+            if detected_type == "str":
                 if value is not None and type(value) in [int, float, Decimal]:
                     value = str(value)
 
@@ -248,9 +245,7 @@ class BaseSQLSource(ABC):
             values.append(value)
 
         if len(values) < self._config.type_checking_row_limit:
-            detected_type = "number"
-            if len(type_count) > 0:
-                detected_type = sorted(type_count, reverse=True)[0]
+            detected_type = _get_main_type(type_count)
             _coerce_types(values, detected_type)
 
         if self._quality_mapper.is_present():
@@ -395,6 +390,15 @@ class BaseSQLSource(ABC):
     def connect(self):
         """Create a new PEP-249 connection."""
         ...
+
+
+def _get_main_type(type_count: dict[str, int]) -> str:
+    if len(type_count) > 0:
+        detected_type = sorted(type_count, reverse=True)[0]
+        if type_count[detected_type] > (sum(type_count.values()) * 0.9):
+            return detected_type
+        return "str"
+    return "number"
 
 
 def _coerce_types(values: list[Union[float, str]], detected_type: str):
