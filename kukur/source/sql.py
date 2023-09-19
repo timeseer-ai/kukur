@@ -5,6 +5,7 @@
 
 import logging
 from abc import ABC, abstractmethod
+from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone, tzinfo
 from decimal import Decimal
@@ -55,6 +56,7 @@ class SQLConfig:  # pylint: disable=too-many-instance-attributes
     data_query_timezone: Optional[tzinfo] = None
     enable_trace_logging: bool = False
     query_timeout_seconds: Optional[int] = None
+    type_checking_row_limit: int = 300
 
     @classmethod
     def from_dict(cls, data):
@@ -173,7 +175,7 @@ class BaseSQLSource(ABC):
             )
         return metadata
 
-    def get_data(  # noqa: PLR0912
+    def get_data(  # noqa: PLR0912, PLR0915
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         """Return data using the specified DB-API query."""
@@ -186,8 +188,10 @@ class BaseSQLSource(ABC):
         cursor.execute(query, params)
 
         timestamps = []
-        values = []
+        values: list[Union[float, str]] = []
         qualities = []
+        type_count: dict[str, int] = defaultdict(int)
+        detected_type = None
         for row in cursor:
             if self._config.enable_trace_logging:
                 logger.info(
@@ -210,8 +214,24 @@ class BaseSQLSource(ABC):
                 ts = ts.replace(tzinfo=self._config.data_timezone)
             ts = ts.astimezone(timezone.utc)
             value = row[1]
-            if value is None:
-                value = float("nan")
+            if isinstance(value, str):
+                type_count["str"] += 1
+            if type(value) in [int, float, Decimal]:
+                type_count["number"] += 1
+            if isinstance(value, datetime):
+                type_count["datetime"] += 1
+
+            if len(values) == self._config.type_checking_row_limit:
+                detected_type = _get_main_type(type_count)
+                _coerce_types(values, detected_type)
+
+            if detected_type == "number":
+                if value is None or type(value) not in [int, float, Decimal]:
+                    value = float("nan")
+            if detected_type == "str":
+                if value is not None and type(value) in [int, float, Decimal]:
+                    value = str(value)
+
             if isinstance(value, bytes):
                 continue
             if isinstance(value, (datetime, date)):
@@ -223,6 +243,11 @@ class BaseSQLSource(ABC):
                 qualities.append(quality)
             timestamps.append(ts)
             values.append(value)
+
+        if len(values) < self._config.type_checking_row_limit:
+            detected_type = _get_main_type(type_count)
+            _coerce_types(values, detected_type)
+
         if self._quality_mapper.is_present():
             return pa.Table.from_pydict(
                 {"ts": timestamps, "value": values, "quality": qualities}
@@ -365,3 +390,22 @@ class BaseSQLSource(ABC):
     def connect(self):
         """Create a new PEP-249 connection."""
         ...
+
+
+def _get_main_type(type_count: dict[str, int]) -> str:
+    if len(type_count) > 0:
+        detected_type = sorted(type_count, reverse=True)[0]
+        if type_count[detected_type] > (sum(type_count.values()) * 0.9):
+            return detected_type
+        return "str"
+    return "number"
+
+
+def _coerce_types(values: list[Union[float, str]], detected_type: str):
+    for i, value in enumerate(values):
+        if detected_type == "str":
+            if value is not None and type(value) in [str, Decimal, float]:
+                values[i] = str(value)
+        elif detected_type == "number":
+            if value is None or type(value) not in [Decimal, float]:
+                values[i] = float("nan")
