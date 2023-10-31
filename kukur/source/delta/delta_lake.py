@@ -189,7 +189,7 @@ class DeltaLakeSource:
         column_names = (
             self.__options.tag_columns + ["ts"] + self.__options.field_columns
         )
-        row_data = self._get_delta_table().to_pyarrow_table()
+        row_data = DeltaTable(self.__options.uri).to_pyarrow_table()
         row_data = map_row_columns(
             row_data, column_names, self.__options.column_mapping, self.__quality_mapper
         )
@@ -268,7 +268,7 @@ class DeltaLakeSource:
         return self.__options.column_mapping.get(column_name, column_name)
 
     def _read_pivot_data(self) -> pa.Table:
-        all_data = self._get_delta_table().to_pyarrow_table()
+        all_data = DeltaTable(self.__options.uri).to_pyarrow_table()
         all_data = map_pivot_columns(self.__options.column_mapping, all_data)
         all_data = cast_ts_column(
             all_data, self.__options.data_datetime_format, self.__options.data_timezone
@@ -285,9 +285,6 @@ class DeltaLakeSource:
 
     def _read_file(self, file_like) -> pa.Table:
         return DeltaTable(file_like).to_pyarrow_table()
-
-    def _get_delta_table(self) -> DeltaTable:
-        return DeltaTable(self.__options.uri)
 
     def _format_tag_partition(
         self,
