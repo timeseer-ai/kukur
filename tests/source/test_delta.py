@@ -3,6 +3,7 @@
 # SPDX-FileCopyrightText: 2022 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
+from datetime import timedelta
 from typing import Dict, Optional
 
 from dateutil.parser import parse as parse_date
@@ -83,6 +84,18 @@ def test_unordered():
     assert table["ts"][2].as_py() < table["ts"][3].as_py()
     assert table["ts"][3].as_py() < table["ts"][4].as_py()
     assert table["value"][0].as_py() == 1.0
+
+
+def test_numerical_tags() -> None:
+    table = get_source("numerical-delta").get_data(
+        make_series("numerical-delta", {"series_id": "42"}), START_DATE, END_DATE
+    )
+    assert len(table) == 5
+    assert table.column_names == ["ts", "value"]
+    assert table["ts"][0].as_py() == START_DATE
+    assert table["ts"][4].as_py() == START_DATE + timedelta(days=4)
+    assert table["value"][0].as_py() == 1.0
+    assert table["value"][4].as_py() == 5.0
 
 
 def test_row_tags_search():

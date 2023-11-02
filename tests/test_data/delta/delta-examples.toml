@@ -24,6 +24,11 @@ uri = "tests/test_data/delta/delta-unordered"
 sort_by_timestamp = true
 column_mapping = { "series name" = "name" }
 
+[source.numerical-delta]
+type = "delta"
+uri = "tests/test_data/delta/delta-numerical"
+tag_columns = ["series_id"]
+
 [source.row-delta-tags]
 type = "delta"
 uri = "tests/test_data/delta/delta-row-tags"
