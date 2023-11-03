@@ -238,7 +238,11 @@ class DeltaLakeSource:
                 ]
             )
         for tag_key, tag_value in selector.tags.items():
-            filters.append((effective_column_mapping[tag_key], "=", tag_value))
+            filters.append(
+                _get_tag_filter_value(
+                    schema, effective_column_mapping[tag_key], tag_value
+                )
+            )
 
         columns = ["ts", selector.field]
         if self.__quality_mapper.is_present():
@@ -345,6 +349,14 @@ class DeltaLakeSource:
             start_date = start_date + interval
 
         return (column, "in", partition_values)
+
+
+def _get_tag_filter_value(
+    schema: pa.Schema, column: str, value: str
+) -> tuple[str, str, Union[str, int]]:
+    if pa.types.is_integer(schema.field(column).type):
+        return (column, "=", int(value))
+    return (column, "=", value)
 
 
 def from_config(config: dict, quality_mapper: QualityMapper) -> DeltaLakeSource:
