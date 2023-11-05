@@ -681,6 +681,8 @@ include::./source/odbc.asciidoc[leveloffset=+1]
 
 include::./source/piwebapi-da.asciidoc[leveloffset=+1]
 
+include::./source/plugin.asciidoc[leveloffset=+1]
+
 include::./source/postgresql.asciidoc[leveloffset=+1]
 
 include::./source/sqlite.asciidoc[leveloffset=+1]
