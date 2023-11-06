@@ -34,6 +34,7 @@ Valid values are:
 - `oledb`
 - `parquet`
 - `piwebapi-da`
+- `plugin`
 - `postgresql`
 - `sqlite`
 
@@ -50,6 +51,7 @@ Valid values are:
 - `kukur`
 - `oledb`
 - `piwebapi-da`
+- `plugin`
 - `sqlite`
 
 `metadata_type` is optional.
@@ -162,6 +164,7 @@ ifndef::sources[]
 - link:feather.asciidoc[Apache Feather] files
 - link:parquet.asciidoc[Apache Parquet] files
 - link:azure_data_explorer.asciidoc[Azure Data Explorer] tables
+- Binary link:plugin.asciidoc[Plugins]
 - link:csv.asciidoc[CSV] files
 - link:delta.asciidoc[Delta Lake] tables
 - link:influxdb.asciidoc[InfluxDB] data sources
@@ -181,6 +184,7 @@ ifdef::sources[]
 - <<Apache Feather>> files
 - <<Apache Parquet>> files
 - <<Azure Data Explorer>> tables
+- Binary <<Plugin>>s
 - <<CrateDB>> databases
 - <<CSV>> files
 - <<Delta Lake>> tables

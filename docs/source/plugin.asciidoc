@@ -1,0 +1,265 @@
+// SPDX-FileCopyrightText: 2023 Timeseer.AI
+// SPDX-License-Identifier: Apache-2.0
+
+== Plugin
+
+Sources with `type = "plugin"` call out to a separate binary that implements all source interface operations.
+
+```toml
+[source.<name>]
+type = "plugin"
+cmd = ["/path/to/binary"]
+extra = "foo"
+```
+
+`cmd` is a required field.
+All other fields are passed to the binary as provided.
+
+`cmd` can be either a simple string or a list of strings.
+
+The binary will be called with one extra argument:
+
+- `search` to list time series or metadata
+- `metadata` to get metadata for one time series
+- `data` to return Arrow data
+
+Input is sent on standard input.
+Output is expected on standard output.
+
+Any information sent by the binary to standard error is logged at the warning level.
+
+=== Search
+
+When called with the `search` argument,
+the binary will receive JSON on standard input.
+
+```json
+{
+    "config": {},
+    "search": {
+        "source": "<source name>"
+    }
+}
+```
+
+`"config"` contains the source configuration.
+
+The response written to standard output should contain:
+
+```json
+{
+    "series": [],
+    "metadata": []
+}
+```
+
+Both `"series"` and `"metadata"` are optional.
+
+`"series"` should contain a list of time series.
+
+```json
+{
+    "source": "<source name>",
+    "tags": {
+        "tag-1": "tag-1-value",
+        "tag-2": "tag-2-value"
+    },
+    "field": "optional-field"
+}
+```
+
+`"metadata"` should contain a list of time series metadata dictionaries.
+Time series included in `"metadata"` should not appear in `"series"`.
+
+```json
+{
+    "series": {
+        "source": "<source name>",
+        "tags": {
+            "tag-1": "tag-1-value",
+            "tag-2": "tag-2-value"
+        },
+        "field": "optional-field"
+    },
+    "description": "<the description of the series>"
+}
+```
+
+Kukur has built-in support for these metadata fields:
+
+include::{include-path}/metadata-fields.asciidoc[]
+
+=== Metadata
+
+When called with the `metadata` argument,
+the binary will receive JSON on standard input.
+
+```json
+{
+    "config": {},
+    "metadata": {
+        "series": {
+            "source": "<source name>",
+            "tags": {
+                "tag-1": "tag-1-value",
+                "tag-2": "tag-2-value"
+            },
+            "field": "optional-field"
+        }
+    }
+}
+```
+
+`"config"` contains the source configuration.
+
+`"metadata"` contains the `"series"` to return metadata for.
+
+The response written to standard output should contain metadata fields:
+
+```json
+{
+    "description": "<the description of the series>"
+}
+```
+
+Kukur has built-in support for these metadata fields:
+
+include::{include-path}/metadata-fields.asciidoc[]
+
+Note that `metadata` will generally not be called when metadata is returned by `search`.
+
+=== Data
+
+When called with the `data` argument,
+the binary will receive JSON on standard input.
+
+```json
+{
+    "config": {},
+    "data": {
+        "series": {
+            "source": "<source name>",
+            "tags": {
+                "tag-1": "tag-1-value",
+                "tag-2": "tag-2-value"
+            },
+            "field": "optional-field"
+        },
+        "startDate": "YYYY-MM-DDTHH:MM:SS+00:00",
+        "endDate": "YYYY-MM-DDTHH:MM:SS+00:00",
+    }
+}
+```
+
+`"config"` contains the source configuration.
+
+`"metadata"` contains the `"series"` to return metadata for.
+
+The `"startDate"` and `"endDate"` fields are formatted per https://datatracker.ietf.org/doc/html/rfc3339#section-5.6[RFC3339].
+
+The response written to standard output should be in the Apache Arrow https://arrow.apache.org/docs/format/Columnar.html#ipc-streaming-format[IPC Streaming Format].
+
+The schema of the record batches should contain 2 or 3 columns.
+
+A column with the name `ts` contains the timestamps of the data values.
+Kukur will try to convert timestamps to `Timestamp[unit: us, timezone: UTC]`.
+
+A column with the name `value` contains the data values.
+
+An optional column `quality` contains quality flags for the data values.
+`0` is considered bad,
+`1` is considered good.
+
+To support other quality values,
+a quality mapping can be configured for the source as provided by the
+ifdef::sources[]
+<<Quality, source documentation>>
+endif::sources[]
+ifndef::sources[]
+link:sources.asciidoc#Quality[source documentation]
+endif::sources[]
+.
+
+=== Example
+
+This example shows the basic structure for a `type = "plugin"` binary.
+
+```toml
+[source.Plugin]
+type = "plugin"
+cmd = ["/home/myuser/dev/timeseer/kukur/venv/bin/python3", "data/plugin/plugin.py"]
+quality_mapping = "plugin_quality"
+
+[quality_mapping.plugin_quality]
+GOOD = ["GOOD"]
+```
+
+`cmd` points to a Python interpreter in a virtualenv where the PyArrow library has been installed.
+
+Since quality flags are provided as text,
+a `quality_mapping` has been defined.
+
+```python
+import json
+import sys
+from datetime import datetime
+
+from pyarrow import Table, ipc
+
+
+def _run() -> None:
+    """Perform the action requested by the first argument."""
+    if sys.argv[1] == "search":
+        _search()
+    if sys.argv[1] == "metadata":
+        _metadata()
+    if sys.argv[1] == "data":
+        _data()
+    sys.exit(0)
+
+
+def _search() -> None:
+    """List all time series (or metadata)."""
+    query = json.load(sys.stdin)
+    print(query, file=sys.stderr)
+    source_name = query["search"]["source"]
+    data: dict = {
+        "metadata": [
+            {
+                "series": {"source": source_name, "tags": {"series name": "test"}},
+                "description": "Test series",
+            }
+        ],
+        "series": [{"source": source_name, "tags": {"series name": "test-2"}}],
+    }
+    json.dump(data, sys.stdout)
+
+
+def _metadata() -> None:
+    """Return metadata for the time series received on stdin."""
+    query = json.load(sys.stdin)
+    print(query, file=sys.stderr)
+    source_name = query["metadata"]["series"]["source"]
+    series_name = query["metadata"]["series"]["tags"]["series name"]
+    data: dict = {"description": f"Description of {series_name} ({source_name})"}
+    json.dump(data, sys.stdout)
+
+
+def _data() -> None:
+    """Return Arrow IPC with that for the time series received on stdin."""
+    query = json.load(sys.stdin)
+    print(query, file=sys.stderr)
+    source_name = query["data"]["series"]["source"]
+    series_name = query["data"]["series"]["tags"]["series name"]
+    start_date = datetime.fromisoformat(query["data"]["startDate"])
+    end_date = datetime.fromisoformat(query["data"]["endDate"])
+    table = Table.from_pydict(
+        {"ts": [start_date, end_date], "value": [0, 42], "quality": ["BAD", "GOOD"]}
+    )
+    with ipc.new_stream(sys.stdout.buffer, table.schema) as writer:
+        writer.write_table(table)
+
+
+if __name__ == "__main__":
+    _run()
+```
