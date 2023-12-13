@@ -3,6 +3,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import json
+import os
+import ssl
 from datetime import datetime, timezone
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
@@ -17,41 +19,61 @@ class Client:
 
     _client: fl.FlightClient = None
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         api_key: Tuple[str, str] = ("", ""),
         host: str = "localhost",
         port: int = 8081,
         use_tls: bool = False,
+        tls_root_certs: Optional[bytes] = None,
     ):
         """Create a new Client.
 
         Creating a client does not open a connection. The connection will be opened lazily.
+
+        When `use_tls=True`, the CA certificates of the operating system will be used.
+        Additional certificates can be provided using `tls_root_certs`.
 
         Args:
             api_key: the api key to use when connecting. This is a tuple of (key name, key).
             host: the hostname where the Kukur instance is running. Defaults to ``localhost``.
             port: the port where the Kukur instance is running. Defaults to ``8081``.
             use_tls: set to True to use a TLS-secured connection.
+            tls_root_certs: optional PEM encoded certificates
         """
-        if use_tls:
-            self._location = fl.Location.for_grpc_tls(host, port)
-        else:
-            self._location = fl.Location.for_grpc_tcp(host, port)
+        self._host = host
+        self._port = port
+        self._use_tls = use_tls
+        self._tls_root_certs = tls_root_certs
         self._api_key = api_key
 
     @classmethod
     def for_tls(
-        cls, host: str, *, port: int = 443, api_key: Tuple[str, str] = ("", "")
+        cls,
+        host: str,
+        *,
+        port: int = 443,
+        api_key: Tuple[str, str] = ("", ""),
+        tls_root_certs: Optional[bytes] = None
     ) -> "Client":
         """Create a new Client that uses TLS to secure the connection.
+
+        The CA certificates of the operating system will be used.
+        Additional certificates can be provided using `tls_root_certs`.
 
         Args:
             host: the hostname where the Kukur instance is running.
             port: the port where the Kukur instance is running. Defaults to ``443``.
             api_key: the api key to use when connecting. This is a tuple of (key name, key).
+            tls_root_certs: optional PEM encoded root certificates
         """
-        return cls(api_key=api_key, host=host, port=port, use_tls=True)
+        return cls(
+            api_key=api_key,
+            host=host,
+            port=port,
+            use_tls=True,
+            tls_root_certs=tls_root_certs,
+        )
 
     def search(
         self, selector: SeriesSearch
@@ -180,7 +202,23 @@ class Client:
 
     def _get_client(self):
         if self._client is None:
-            self._client = fl.FlightClient(self._location)
+            if self._use_tls:
+                location = fl.Location.for_grpc_tls(self._host, self._port)
+            else:
+                location = fl.Location.for_grpc_tcp(self._host, self._port)
+
+            extra_args = {}
+            if self._tls_root_certs is not None:
+                extra_args["tls_root_certs"] = self._tls_root_certs
+            elif self._use_tls and os.name == "nt":
+                ctx = ssl.create_default_context()
+                certs = ctx.get_ca_certs(binary_form=True)
+                pem_certs = "\n".join(
+                    [ssl.DER_cert_to_PEM_cert(cert) for cert in certs]
+                )
+                extra_args["tls_root_certs"] = pem_certs
+
+            self._client = fl.FlightClient(location, **extra_args)
             if self._api_key != ("", ""):
                 self._client.authenticate(ClientAuthenticationHandler(self._api_key))
         return self._client
