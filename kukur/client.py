@@ -1,10 +1,12 @@
 """Provide remote access to Kukur over Arrow Flight."""
+
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
-#
 # SPDX-License-Identifier: Apache-2.0
+
 import json
 import os
 import ssl
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
@@ -14,38 +16,51 @@ import pyarrow.flight as fl
 from kukur import Metadata, SeriesSearch, SeriesSelector, SourceStructure
 
 
+@dataclass
+class TLSOptions:
+    """Options for TLS connections.
+
+    Set verify to False to disable certificate validation.
+
+    By default CA certificates of the operating system will be used.
+    Alternative certificates can be provided using `root_certs`.
+    """
+
+    verify: bool = True
+    root_certs: Optional[bytes] = None
+
+
 class Client:
     """Client connects to Kukur using Arrow Flight."""
 
     _client: fl.FlightClient = None
 
-    def __init__(  # noqa: PLR0913
+    def __init__(
         self,
         api_key: Tuple[str, str] = ("", ""),
         host: str = "localhost",
         port: int = 8081,
-        use_tls: bool = False,
-        tls_root_certs: Optional[bytes] = None,
+        use_tls: Union[bool, TLSOptions] = False,
     ):
         """Create a new Client.
 
         Creating a client does not open a connection. The connection will be opened lazily.
 
-        When `use_tls=True`, the CA certificates of the operating system will be used.
-        Additional certificates can be provided using `tls_root_certs`.
-
         Args:
             api_key: the api key to use when connecting. This is a tuple of (key name, key).
             host: the hostname where the Kukur instance is running. Defaults to ``localhost``.
             port: the port where the Kukur instance is running. Defaults to ``8081``.
-            use_tls: set to True to use a TLS-secured connection.
-            tls_root_certs: optional PEM encoded certificates
+            use_tls: set to True to use a TLS-secured connection, or pass TLSOptions for more configuration.
         """
         self._host = host
         self._port = port
-        self._use_tls = use_tls
-        self._tls_root_certs = tls_root_certs
         self._api_key = api_key
+
+        self._tls_options = None
+        if use_tls is True:
+            self._tls_options = TLSOptions()
+        elif use_tls:
+            self._tls_options = use_tls
 
     @classmethod
     def for_tls(
@@ -54,7 +69,7 @@ class Client:
         *,
         port: int = 443,
         api_key: Tuple[str, str] = ("", ""),
-        tls_root_certs: Optional[bytes] = None
+        tls_options: Optional[TLSOptions] = None
     ) -> "Client":
         """Create a new Client that uses TLS to secure the connection.
 
@@ -65,14 +80,16 @@ class Client:
             host: the hostname where the Kukur instance is running.
             port: the port where the Kukur instance is running. Defaults to ``443``.
             api_key: the api key to use when connecting. This is a tuple of (key name, key).
-            tls_root_certs: optional PEM encoded root certificates
+            tls_options: TLS configuration options.
         """
+        use_tls: Union[bool, TLSOptions] = True
+        if tls_options is not None:
+            use_tls = tls_options
         return cls(
             api_key=api_key,
             host=host,
             port=port,
-            use_tls=True,
-            tls_root_certs=tls_root_certs,
+            use_tls=use_tls,
         )
 
     def search(
@@ -200,23 +217,20 @@ class Client:
             return None
         return SourceStructure.from_data(data)
 
-    def _get_client(self):
+    def _get_client(self) -> Any:
         if self._client is None:
-            if self._use_tls:
+            extra_args: Dict[str, Any] = {}
+
+            if self._tls_options is not None:
                 location = fl.Location.for_grpc_tls(self._host, self._port)
+                if self._tls_options.root_certs is not None:
+                    extra_args["tls_root_certs"] = self._tls_options.root_certs
+                elif os.name == "nt":
+                    extra_args["tls_root_certs"] = _get_os_ca_certs()
+                if not self._tls_options.verify:
+                    extra_args["disable_server_verification"] = True
             else:
                 location = fl.Location.for_grpc_tcp(self._host, self._port)
-
-            extra_args = {}
-            if self._tls_root_certs is not None:
-                extra_args["tls_root_certs"] = self._tls_root_certs
-            elif self._use_tls and os.name == "nt":
-                ctx = ssl.create_default_context()
-                certs = ctx.get_ca_certs(binary_form=True)
-                pem_certs = "\n".join(
-                    [ssl.DER_cert_to_PEM_cert(cert) for cert in certs]
-                )
-                extra_args["tls_root_certs"] = pem_certs
 
             self._client = fl.FlightClient(location, **extra_args)
             if self._api_key != ("", ""):
@@ -238,6 +252,12 @@ def _apply_default_range(
         if end_date is None:
             end_date = now
     return start_date, end_date
+
+
+def _get_os_ca_certs() -> bytes:
+    ctx = ssl.create_default_context()
+    certs = ctx.get_ca_certs(binary_form=True)
+    return "\n".join([ssl.DER_cert_to_PEM_cert(cert) for cert in certs]).encode("utf-8")
 
 
 class ClientAuthenticationHandler(fl.ClientAuthHandler):

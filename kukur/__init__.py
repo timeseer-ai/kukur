@@ -19,7 +19,7 @@ from .base import (
 )
 from .exceptions import KukurException  # noqa
 from .metadata import Metadata
-from .client import Client  # noqa
+from .client import Client, TLSOptions  # noqa
 
 
 @typing.runtime_checkable
