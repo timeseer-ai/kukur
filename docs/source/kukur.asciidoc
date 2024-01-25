@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2021 Timeseer.AI
-//
 // SPDX-License-Identifier: Apache-2.0
+
 == Kukur
 
 Sources with `type = "kukur"` configure connections to other Kukur or Timeseer instances.
@@ -15,7 +15,13 @@ api_key_name= "<the name of the api key>"
 api_key= "<the api key>"
 ```
 
-`source`, `api_key_name`, `api_key` are required fields.
+`source` is a required field.
+It points to the remote source that will be queried.
+The name of the local and the remote sources do not need to match.
+
+```toml
+source = "test"
+```
 
 `host` and `port` define the host and port where Kukur is running.
 
@@ -26,19 +32,14 @@ host = "localhost"
 port = 8081
 ```
 
-The `source` points to the remote source that will be queried for data and metadata.
-The name of the local and the remote sources do not need to match.
-
-```toml
-source = "test"
-```
-
 The `api_key_name` and `api_key` can be created in Kukur using the CLI or in Timeseer under `Configure > Global preferences > API keys`.
 
 ```toml
 api_key_name= "test-key"
 api_key= "PcRU3xy0dsVpX8CeKCO1WPqPevECB9mZAETdWngK7druSl23JFA0Rw"
 ```
+
+Omit `api_key_name` and `api_key` when the `[flight]` configuration has `authentication = false`.
 
 For example, this connects to the 'test' source on a local instance:
 
