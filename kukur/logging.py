@@ -1,6 +1,6 @@
 """Configure logging for Kukur."""
+
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
-#
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
@@ -22,3 +22,4 @@ def configure(config: Dict[str, Any]):
 
     logging.getLogger("azure.identity").setLevel(logging.WARNING)
     logging.getLogger("azure.core").setLevel(logging.WARNING)
+    logging.getLogger("botocore.credentials").setLevel(logging.WARNING)

@@ -38,6 +38,7 @@ setuptools.setup(
         "odbc": ["pyodbc"],
         "piwebapi": ["requests", "requests-kerberos"],
         "postgresql": ["psycopg[binary]"],
+        "redshift": ["redshift_connector"],
     },
     python_requires=">=3.9",
     package_data={

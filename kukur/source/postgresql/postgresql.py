@@ -14,6 +14,7 @@ try:
 except ImportError:
     HAS_POSTGRES = False
 
+from kukur.exceptions import InvalidSourceException
 from kukur.source.metadata import MetadataValueMapper
 from kukur.source.quality import QualityMapper
 from kukur.source.sql import BaseSQLSource, SQLConfig
@@ -24,6 +25,10 @@ class PostgresSource(BaseSQLSource):
 
     def connect(self):
         """Create a connection to PostgreSQL."""
+        if self._config.connection_string is None:
+            raise InvalidSourceException(
+                "'connection_string' is required for source with type 'postgresql'"
+            )
         return psycopg.connect(self._config.connection_string)
 
 

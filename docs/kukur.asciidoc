@@ -93,6 +93,7 @@ Use these to install requirements for the given source.
 - `[odbc]` for connections to ODBC data sources
 - `[piwebapi]` for connections to PI Web API
 - `[postgresql]` for connections to PostgreSQL
+- `[redshift]` for connections to Redshift
 
 For example:
 
@@ -489,8 +490,6 @@ In InfluxDB, for example, the layout looks like:
 
 A time series is identified by a 'measurement name', multiple 'tag key-value pairs' and a 'field key'.
 
-NOTE: Kukur will move from alpha to beta status once support for this structure has been implemented.
-
 ==== Metadata
 
 Kukur predefines a set of metadata fields that are all present in an ideal world.
@@ -684,6 +683,8 @@ include::./source/piwebapi-da.asciidoc[leveloffset=+1]
 include::./source/plugin.asciidoc[leveloffset=+1]
 
 include::./source/postgresql.asciidoc[leveloffset=+1]
+
+include::./source/redshift.asciidoc[leveloffset=+1]
 
 include::./source/sqlite.asciidoc[leveloffset=+1]
 

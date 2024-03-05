@@ -1,25 +1,37 @@
-// SPDX-FileCopyrightText: 2023 Timeseer.AI
-// SPDX-License-Identifier: Apache-2.0
+== Redshift
 
-== PostgreSQL
+Sources with `type = "redshift"` configure https://aws.amazon.com/redshift/[Redshift] sources.
 
-Sources with `type = "postgresql"` configure PostgreSQL sources.
-
-`odbc` sources can also connect to PostgreSQL,
-provided the PostgreSQL ODBC driver is available.
-
-Many other database systems support the PostgreSQL wire format.
-This source can be used to connect to them as well.
-
-The connection string and queries can either be configured in the configuration file,
-or loaded from files.
-Inline configuration takes precedence over file-based configuration when both are provided.
+Redshift sources connect to Redshift using the options provided in `.connection`:
 
 ```toml
 [source.<name>]
-type = "postgresql"
-connection_string = "<postgresql connection_string>"
-connection_string_path = "<path to connection string>"
+type = "redshift"
+
+[source.<name>.connection]
+region = ""
+host = ""
+database = ""
+iam = true
+```
+
+This example configuration is sufficient to connect from an EC2 instance that has an IAM role with sufficient permissions:
+
+```toml
+[source.myns.connection]
+iam = true
+host = "myns-1234567890.eu-west-1.redshift-serverless.amazonaws.com"
+database = "dev"
+```
+
+All https://aws.amazon.com/redshift/[connection parameters for the Python Redshift driver] are accepted.
+
+Next to the `.connection` properties,
+Redshift sources support these properties:
+
+```toml
+[source.<name>]
+type = "redshift"
 list_query = "<query to list all time series in a source>"
 list_query_path = "<path to list_query>"
 list_columns = ["<metadata type of column 1>", "<metadata type of column 2"]
@@ -44,41 +56,27 @@ The examples given here operate on this schema:
 
 ```sql
 create table Metadata (
-    id serial,
+    id integer identity,
     name text not null,
     description text,
     units text,
-    dictionary_name text,
+    dictionary_name text
 );
 
 create table Dictionary (
-    id serial,
+    id integer identity,
     name text not null,
     value integer not null,
     label text not null
 );
 
 create table Data (
-    id serial,
+    id integer identity,
     name text not null,
-    ts  timestamp with time zone,
-    value double precision
+    ts timestamptz not null
+    value double precision not null
 );
 ```
-
-=== Connection
-
-The `connection_string` supports the keywords supported by https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-PARAMKEYWORDS[`libpq`].
-
-```toml
-connection_string = "host=localhost port=5432 dbname=postgres user=postgres password=Timeseer!AI"
-```
-
-Alternatively, `connection_string_path` can point to a file that contains the connection string.
-Whitespace at the start and end of the connection string file is removed.
-
-`libpq` also supports reading passwords from a file using the `passfile` parameter.
-Use this to securely inject passwords into a container.
 
 === Search
 
@@ -109,7 +107,7 @@ include::{include-path}/metadata-fields.asciidoc[]
 
 Custom metadata fields can be defined by including them in the `list_columns` list.
 
-Not all PostgreSQL sources can map metadata field values to the values expected by Kukur.
+Not all Redshift sources can map metadata field values to the values expected by Kukur.
 Use `metadata_value_mapping` to convert them.
 
 Example:
@@ -118,7 +116,7 @@ Example:
 [source.<name>]
 metadata_value_mapping = "pg_lowercase"
 
-[metadata_value_mapping.pg_lowercase."data type"]
+[metadata_value_mapping.redshift_lowercase."data type"]
 FLOAT64 = "float64"
 STRING = ["string", "text", "varchar"]
 DICTIONARY = "dictionary"
@@ -130,6 +128,7 @@ This example converts lowercase data types to the uppercase strings expected by 
 
 The `metadata_query` is a query that accepts one parameter for each tag in a series,
 ordered by `tag_columns`.
+This query is generally not required when the `list` query returns metadata.
 
 ```toml
 metadata_query = "select description, units from Metadata where name = %s"
@@ -192,9 +191,6 @@ The dictionary name for a series is returned by the `dictionary name` list or me
 ```toml
 dictionary_query = "select value, label from Dictionary where name = %s"
 ```
-
-The first column with the dictionary key can be any type that can be converted to an integer, even `SQL_CHAR`.
-The second column with the dictionary value should be a `SQL_CHAR` or `SQL_WCHAR`.
 
 The dictionary query can be read from a file by using `dictionary_query_path` instead of `dictionary_query`.
 
