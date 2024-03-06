@@ -632,6 +632,27 @@ path = "examples/csv/row.csv"
 metadata = "examples/csv/row-metadata.csv"
 ----
 
+=== Logging
+
+A `[logging]` section configures diagnostic logging inside Kukur.
+
+[source,toml]
+----
+[logging]
+level = "info"
+# path = ""
+----
+
+Possible values for `level` are :
+
+- `warning`
+- `info` (the default)
+- `debug`
+
+When `path` is configured,
+Logs will be written to the specified path.
+The logs at that path will be rotated daily and 7 rotated files will be kept.
+
 === Arrow Flight
 
 A `[flight]` section configures the Arrow Flight interface.

@@ -45,3 +45,10 @@ class UnknownSourceException(KukurException):
 
     def __init__(self, source_name: str):
         KukurException.__init__(self, f"source does not exist: {source_name}")
+
+
+class InvalidLogLevelException(KukurException):
+    """Raised when the logging level in the configuration is invalid."""
+
+    def __init__(self):
+        super().__init__("Configured log level unknown.")
