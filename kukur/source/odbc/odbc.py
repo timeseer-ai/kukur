@@ -10,7 +10,7 @@ try:
 except ImportError:
     HAS_ODBC = False
 
-from kukur.exceptions import MissingModuleException
+from kukur.exceptions import InvalidSourceException, MissingModuleException
 from kukur.source.metadata import MetadataValueMapper
 from kukur.source.quality import QualityMapper
 from kukur.source.sql import BaseSQLSource, SQLConfig
@@ -43,6 +43,10 @@ class ODBCSource(BaseSQLSource):
 
     def connect(self):
         """Return a pyodbc connection."""
+        if self._config.connection_string is None:
+            raise InvalidSourceException(
+                "'connection_string' is required for source with type 'odbc'"
+            )
         connection = pyodbc.connect(self._config.connection_string)
         if self._config.query_timeout_seconds is not None:
             connection.timeout = self._config.query_timeout_seconds

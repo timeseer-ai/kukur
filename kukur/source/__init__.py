@@ -36,6 +36,7 @@ from kukur.source import (
     piwebapi_da,
     plugin,
     postgresql,
+    redshift,
     simulator,
     sqlite,
 )
@@ -67,6 +68,7 @@ _FACTORY = {
     "piwebapi-da": piwebapi_da.from_config,
     "plugin": plugin.from_config,
     "postgresql": postgresql.from_config,
+    "redshift": redshift.from_config,
     "simulator": simulator.from_config,
     "sqlite": sqlite.from_config,
 }

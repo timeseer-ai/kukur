@@ -8,6 +8,7 @@ import sqlite3
 
 from dateutil.parser import parse as parse_date
 
+from kukur.exceptions import InvalidSourceException
 from kukur.source.metadata import MetadataValueMapper
 from kukur.source.quality import QualityMapper
 from kukur.source.sql import BaseSQLSource, SQLConfig
@@ -27,6 +28,10 @@ class SQLiteSource(BaseSQLSource):
 
     def connect(self) -> sqlite3.Connection:
         """Create a connection to SQLite."""
+        if self._config.connection_string is None:
+            raise InvalidSourceException(
+                "'connection_string' is required for source with type 'sqlite'"
+            )
         uri = False
         if self._config.connection_string.startswith("file:"):
             uri = True

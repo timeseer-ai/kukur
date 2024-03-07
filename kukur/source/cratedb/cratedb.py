@@ -13,7 +13,7 @@ try:
 except ImportError:
     HAS_CRATE = False
 
-from kukur.exceptions import MissingModuleException
+from kukur.exceptions import InvalidSourceException, MissingModuleException
 from kukur.source.metadata import MetadataValueMapper
 from kukur.source.quality import QualityMapper
 from kukur.source.sql import BaseSQLSource, SQLConfig
@@ -49,4 +49,8 @@ class CrateDBSource(BaseSQLSource):
 
     def connect(self):
         """Create a cratedb connection."""
+        if self._config.connection_string is None:
+            raise InvalidSourceException(
+                "'connection_string' is required for source with type 'cratedb'"
+            )
         return client.connect(self._config.connection_string)

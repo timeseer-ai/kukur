@@ -41,7 +41,7 @@ class InvalidConfigurationError(KukurException):
 class SQLConfig:  # pylint: disable=too-many-instance-attributes
     """Configuration settings for a SQL connection."""
 
-    connection_string: str
+    connection_string: Optional[str]
     tag_columns: List[str]
     query_string_parameters: bool = False
     list_query: Optional[str] = None
@@ -61,9 +61,10 @@ class SQLConfig:  # pylint: disable=too-many-instance-attributes
     @classmethod
     def from_dict(cls, data):
         """Create a new SQL data source from a configuration dict."""
+        connection_string = None
         if "connection_string" in data:
             connection_string = data["connection_string"]
-        else:
+        elif "connection_string_path" in data:
             with open(data["connection_string_path"], encoding="utf-8") as f:
                 connection_string = f.read().strip()
 

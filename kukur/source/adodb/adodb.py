@@ -13,7 +13,7 @@ try:
 except ImportError:
     HAS_ADODB = False
 
-from kukur.exceptions import MissingModuleException
+from kukur.exceptions import InvalidSourceException, MissingModuleException
 from kukur.source.metadata import MetadataValueMapper
 from kukur.source.quality import QualityMapper
 from kukur.source.sql import BaseSQLSource, SQLConfig
@@ -49,6 +49,10 @@ class ADODBSource(BaseSQLSource):
 
     def connect(self):
         """Return an ADODB connection."""
+        if self._config.connection_string is None:
+            raise InvalidSourceException(
+                "'connection_string' is required for source with type 'adodb'"
+            )
         if self._config.query_timeout_seconds is not None:
             return adodbapi.connect(
                 self._config.connection_string,
