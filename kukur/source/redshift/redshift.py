@@ -5,7 +5,7 @@
 
 from typing import Dict
 
-from kukur.exceptions import InvalidSourceException
+from kukur.exceptions import InvalidSourceException, MissingModuleException
 from kukur.source.metadata import MetadataValueMapper
 from kukur.source.quality import QualityMapper
 from kukur.source.sql import BaseSQLSource, SQLConfig
@@ -27,6 +27,8 @@ class RedshiftSource(BaseSQLSource):
         metadata_value_mapper: MetadataValueMapper,
         quality_mapper: QualityMapper,
     ):
+        if not HAS_REDSHIFT:
+            raise MissingModuleException("redshift_connector", "redshift")
         config = SQLConfig.from_dict(data)
         if "connection" not in data:
             raise InvalidSourceException(
@@ -35,7 +37,7 @@ class RedshiftSource(BaseSQLSource):
         self.__connection_options: Dict = data["connection"]
         super().__init__(config, metadata_value_mapper, quality_mapper)
 
-    def connect(self) -> redshift_connector.Connection:
+    def connect(self):
         """Create a connection to Redshift."""
         connection_options = self.__connection_options.copy()
         if self._config.query_timeout_seconds is not None:
@@ -47,4 +49,6 @@ def from_config(
     data, metadata_value_mapper: MetadataValueMapper, quality_mapper: QualityMapper
 ) -> RedshiftSource:
     """Create a new Redshift source from a configuration dictionary."""
+    if not HAS_REDSHIFT:
+        raise MissingModuleException("redshift_connector", "redshift")
     return RedshiftSource(data, metadata_value_mapper, quality_mapper)
