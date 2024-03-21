@@ -2,6 +2,7 @@
 
 This allows launching Kukur as a service or testing data sources.
 """
+
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
 #
 # SPDX-License-Identifier: Apache-2.0

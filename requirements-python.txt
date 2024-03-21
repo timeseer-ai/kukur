@@ -1,10 +1,10 @@
-azure-kusto-data==4.2.0
-crate==0.26.0
-deltalake==0.10.0
+azure-kusto-data==4.3.1
+crate==0.35.2
+deltalake==0.16.1
 influxdb==5.3.1
-pyodbc==4.0.39
+pyodbc==5.1.0
 requests==2.31.0
 requests-kerberos==0.14.0
-psycopg[binary]==3.1.9
-PyYAML==6.0
+psycopg[binary]==3.1.18
+PyYAML==6.0.1
 redshift_connector==2.1.0

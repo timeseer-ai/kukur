@@ -11,6 +11,11 @@ metadata = "tests/test_data/csv/row-metadata.csv"
 quality_mapping = "opc_mapping_strings"
 column_mapping = { "series name" = "name" }
 
+[source.row-delta-notz]
+type = "delta"
+uri = "tests/test_data/delta/delta-notz"
+column_mapping = { "series name" = "name" }
+
 [source.pivot-delta]
 type = "delta"
 format = "pivot"

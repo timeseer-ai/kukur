@@ -315,7 +315,7 @@ class StepSignalGenerator:
                     number_of_steps=number_of_steps,
                     data_type=value.data_type.value,
                 )
-                for value in self.__config.values  # noqa: PD
+                for value in self.__config.values  # noqa: PD011
                 for number_of_steps in value.number_of_steps
             ]
         )
