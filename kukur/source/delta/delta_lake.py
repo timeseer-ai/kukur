@@ -227,14 +227,19 @@ class DeltaLakeSource:
                 )
         filters = []
         if is_timestamp:
+            tz = schema.field(effective_column_mapping["ts"]).type.tz
             filters.extend(
                 [
                     (
                         effective_column_mapping["ts"],
                         ">=",
-                        _parquet_timestamp(start_date),
+                        _parquet_timestamp(start_date, tz),
                     ),
-                    (effective_column_mapping["ts"], "<", _parquet_timestamp(end_date)),
+                    (
+                        effective_column_mapping["ts"],
+                        "<",
+                        _parquet_timestamp(end_date, tz),
+                    ),
                 ]
             )
         for tag_key, tag_value in selector.tags.items():
@@ -377,5 +382,5 @@ def from_config(config: dict, quality_mapper: QualityMapper) -> DeltaLakeSource:
     )
 
 
-def _parquet_timestamp(value: datetime):
-    return pa.scalar(value, pa.timestamp("us"))
+def _parquet_timestamp(value: datetime, tz: Optional[str]):
+    return pa.scalar(value, pa.timestamp("us", tz))

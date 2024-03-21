@@ -52,6 +52,16 @@ def test_row_quality():
     assert table["quality"][0].as_py() == 1
 
 
+def test_row_no_tz():
+    table = get_source("row-delta-notz").get_data(
+        make_series("row-delta-notz"), START_DATE, END_DATE
+    )
+    assert len(table) == 5
+    assert table.column_names == ["ts", "value"]
+    assert table["ts"][0].as_py() == START_DATE
+    assert table["value"][0].as_py() == 1.0
+
+
 def test_pivot():
     table = get_source("pivot-delta").get_data(
         make_series("pivot-delta"), START_DATE, END_DATE
