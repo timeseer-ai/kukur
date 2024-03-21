@@ -7,6 +7,9 @@ build-backend = "setuptools.build_meta"
 
 [tool.ruff]
 target-version = "py38"
+line-length = 120
+
+[tool.ruff.lint]
 select = [
     "ARG",
     "B",
@@ -32,12 +35,11 @@ ignore = [
     "D213",
     "RET504",
 ]
-line-length = 120
 
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pydocstyle]
 convention = "google"
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "kukur/__init__.py" = [
     "I001",
 ]

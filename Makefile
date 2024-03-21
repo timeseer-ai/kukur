@@ -32,7 +32,7 @@ run-docs: docs ## Run the documentation in a docker container on port 8080
 lint: ## Lint the kukur code
 	black --check kukur/ tests/
 	mypy --ignore-missing-imports kukur/
-	ruff .
+	ruff check .
 
 .PHONY: test
 test: ## Run the unit tests

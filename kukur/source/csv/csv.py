@@ -463,9 +463,11 @@ def _get_convert_options(
     options: CSVSourceOptions,
 ) -> pyarrow.csv.ConvertOptions:
     column_types = {
-        timestamp_column: pa.timestamp("us")
-        if options.data_timezone is not None
-        else pa.timestamp("us", "UTC")
+        timestamp_column: (
+            pa.timestamp("us")
+            if options.data_timezone is not None
+            else pa.timestamp("us", "UTC")
+        )
     }
 
     timestamp_parsers = (
@@ -501,7 +503,9 @@ def _convert_timestamp(
         "ts",
         [
             [
-                datetime.strptime(timestamp.as_py(), data_datetime_format)  # noqa: DT
+                datetime.strptime(  # noqa: DTZ007
+                    timestamp.as_py(), data_datetime_format
+                )
                 for timestamp in data["ts"]
             ]
         ],
