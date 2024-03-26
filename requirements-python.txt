@@ -1,5 +1,6 @@
 azure-kusto-data==4.3.1
 crate==0.35.2
+datafusion==36.0.0
 deltalake==0.16.1
 influxdb==5.3.1
 pyodbc==5.1.0

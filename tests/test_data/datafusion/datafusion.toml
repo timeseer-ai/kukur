@@ -1,0 +1,48 @@
+[source.datafusion]
+type = "datafusion"
+list_query = """
+    select
+        s.name as "series name",
+        s.unit as "unit",
+        d.description as "description",
+        t."data type" as "data type"
+    from series s
+        left join description d on s.name = d.name
+        left join datatype t on s.name = t.name
+"""
+metadata_value_mapping = "datafusion_mapping"
+
+[[source.datafusion.table]]
+type = "csv"
+name = "series"
+location = "tests/test_data/datafusion/series.csv"
+
+[[source.datafusion.table]]
+type = "json"
+name = "description"
+location = "tests/test_data/datafusion/description.json"
+
+[[source.datafusion.table]]
+type = "delta"
+name = "datatype"
+location = "tests/test_data/datafusion/datatype"
+
+[metadata_value_mapping.datafusion_mapping.unit]
+"m" = "M"
+
+[source.datafusion_tags_fields]
+type = "datafusion"
+list_query = """
+    select
+        name as "series name",
+        location
+    from series
+"""
+tag_columns = ["series name", "location"]
+field_columns = ["pressure", "temperature"]
+
+[[source.datafusion_tags_fields.table]]
+type = "csv"
+name = "series"
+location = "tests/test_data/datafusion/tags.csv"
+
