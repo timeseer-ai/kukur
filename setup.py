@@ -32,6 +32,7 @@ setuptools.setup(
     extras_require={
         "adodb": ["pywin32"],
         "cratedb": ["crate"],
+        "datafusion": ["datafusion"],
         "delta": ["deltalake"],
         "influxdb": ["influxdb"],
         "kusto": ["azure-identity", "azure-kusto-data"],

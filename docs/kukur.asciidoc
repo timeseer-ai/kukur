@@ -5,8 +5,7 @@
 :sources:
 :include-path: ./includes
 
-// SPDX-FileCopyrightText: 2021 Timeseer.AI
-//
+// SPDX-FileCopyrightText: 2024 Timeseer.AI
 // SPDX-License-Identifier: Apache-2.0
 
 == What is Kukur?
@@ -87,6 +86,7 @@ Use these to install requirements for the given source.
 
 - `[adodb]` for connections to ADODB and OLEDB data sources
 - `[cratedb]` for connections to CrateDB
+- `[datafusion]` for connections using Apache Arrow DataFusion
 - `[delta]` for connections to Delta Lakes
 - `[influxdb]` for connections to InfluxDB
 - `[kusto]` for connections to Azure Data Explorer
@@ -690,6 +690,8 @@ include::./source/cratedb.asciidoc[leveloffset=+1]
 include::./source/csv.asciidoc[leveloffset=+1]
 
 include::./source/azure_data_explorer.asciidoc[leveloffset=+1]
+
+include::./source/datafusion.asciidoc[leveloffset=+1]
 
 include::./source/delta.asciidoc[leveloffset=+1]
 

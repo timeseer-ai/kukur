@@ -48,6 +48,7 @@ Valid values are:
 - `adodb`
 - `cratedb`
 - `csv`
+- `datafusion`
 - `json`
 - `kukur`
 - `oledb`

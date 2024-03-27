@@ -27,6 +27,7 @@ from kukur.source import (
     azure_data_explorer,
     cratedb,
     csv,
+    datafusion,
     delta,
     feather,
     influxdb,
@@ -51,12 +52,13 @@ from .metadata import MetadataMapper, MetadataValueMapper
 
 logger = logging.getLogger(__name__)
 
-_FACTORY = {
+_FACTORY: Dict[str, Callable[..., SourceProtocol]] = {
     "adodb": adodb.from_config,
     "arrows": arrows.from_config,
     "cratedb": cratedb.from_config,
     "csv": csv.from_config,
     "azure-data-explorer": azure_data_explorer.from_config,
+    "datafusion": datafusion.from_config,
     "delta": delta.from_config,
     "feather": feather.from_config,
     "influxdb": influxdb.from_config,

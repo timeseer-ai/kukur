@@ -1,0 +1,71 @@
+// SPDX-FileCopyrightText: 2024 Timeseer.AI
+// SPDX-License-Identifier: Apache-2.0
+
+== DataFusion
+
+Sources with `type = "datafusion"` configure https://arrow.apache.org/datafusion/[Apache Arrow DataFusion] sources.
+
+DataFusion sources define tables that can be queried using SQL.
+DataFusion source support the `search` operation only.
+Data queries are not supported and neither are individual time series metadata lookups.
+
+```toml
+[source.<name>]
+type = "datafusion"
+list_query = "" # required: SQL query
+tag_columns = ["series name"]
+field_columns = ["value"]
+metadata_value_mapping = "" # optional: convert metadata values
+
+[[source.datafusion.table]]
+type = "csv|delta|json|parquet"
+name = "" # name of the table in SQL queries
+location = "" # path to a file or URI of a Delta Tabble
+```
+
+The column names returned by the `list_query` are used as-is to populate tags as present in `tag_columns` and known metadata fields.
+Columns with unknown names define extra metadata fields.
+
+Kukur configures DataFusion to be case sensitive.
+
+The following example defines a DataFusion source that connects to 3 tables:
+
+- A CSV files containing a list of all time series and their units.
+- An NDJSON file containing descriptions for selected time series.
+- A Delta Table containing data types for selected time series.
+
+A `metadata_value_mapping` can be provided to convert metadata values received from DataFusion to values supported by Kukur.
+
+```toml
+[source.datafusion]
+type = "datafusion"
+list_query = """
+    select
+        s.name as "series name",
+        s.unit as "unit",
+        d.description as "description",
+        t."data type" as "data type"
+    from series s
+        left join description d on s.name = d.name
+        left join datatype t on s.name = t.name
+"""
+metadata_value_mapping = "datafusion_mapping"
+
+[[source.datafusion.table]]
+type = "csv"
+name = "series"
+location = "tests/test_data/datafusion/series.csv"
+
+[[source.datafusion.table]]
+type = "json"
+name = "description"
+location = "tests/test_data/datafusion/description.json"
+
+[[source.datafusion.table]]
+type = "delta"
+name = "datatype"
+location = "tests/test_data/datafusion/datatype"
+
+[metadata_value_mapping.datafusion_mapping.unit]
+"m" = "M"
+```
