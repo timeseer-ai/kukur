@@ -20,7 +20,7 @@ metadata_value_mapping = "" # optional: convert metadata values
 [[source.datafusion.table]]
 type = "csv|delta|json|parquet"
 name = "" # name of the table in SQL queries
-location = "" # path to a file or URI of a Delta Tabble
+location = "" # path to a file or URI of a Delta Table
 ```
 
 The column names returned by the `list_query` are used as-is to populate tags as present in `tag_columns` and known metadata fields.
@@ -30,7 +30,7 @@ Kukur configures DataFusion to be case sensitive.
 
 The following example defines a DataFusion source that connects to 3 tables:
 
-- A CSV files containing a list of all time series and their units.
+- A CSV file containing a list of all time series and their units.
 - An NDJSON file containing descriptions for selected time series.
 - A Delta Table containing data types for selected time series.
 
