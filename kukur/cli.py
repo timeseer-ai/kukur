@@ -65,7 +65,7 @@ def _serve(kukur_app: Kukur, server_config):
     server.serve()
 
 
-def _run():
+def _run() -> None:
     args = parse_args()
     config = from_toml(args.config_file)
     kukur.logging.configure(config)
@@ -74,6 +74,8 @@ def _run():
         subcommand.test_source.run(app, args)
     elif args.action == "api-key":
         subcommand.api_key.run(app, args)
+    elif args.action == "inspect":
+        subcommand.inspect.run(args)
     else:
         _serve(app, config)
 

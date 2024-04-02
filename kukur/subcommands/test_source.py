@@ -5,7 +5,7 @@
 
 import csv
 import sys
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 
 from dateutil.parser import parse as parse_date
 
@@ -106,7 +106,7 @@ def define_arguments(parser: ArgumentParser):
     )
 
 
-def run(kukur_app: Kukur, args):
+def run(kukur_app: Kukur, args: Namespace):
     """Run the selected test subcommand."""
     if args.test_action not in ["search", "metadata", "data", "plot"]:
         return

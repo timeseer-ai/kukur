@@ -5,7 +5,7 @@
 
 import csv
 import sys
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 
 from kukur.app import Kukur
 
@@ -27,7 +27,7 @@ def define_arguments(parser: ArgumentParser):
     )
 
 
-def run(kukur_app: Kukur, args):
+def run(kukur_app: Kukur, args: Namespace):
     """Run the selected API key subcommand."""
     if args.api_key_action not in ["create", "revoke", "list"]:
         return
