@@ -1,12 +1,14 @@
 """Generic data loaders for file based columnar data."""
 
-# SPDX-FileCopyrightText: 2021 Timeseer.AI
+# SPDX-FileCopyrightText: 2024 Timeseer.AI
 #
 # SPDX-License-Identifier: Apache-2.0
 import io
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Optional, Protocol, Union
+
+from pyarrow.fs import FileType, S3FileSystem
 
 try:
     from azure.identity import DefaultAzureCredential
@@ -178,6 +180,71 @@ class AzureBlobLoader:
         return client.get_container_client(self.__config.container)
 
 
+@dataclass
+class AwsS3Configuration:
+    """Connection details for an AWS S3 connection."""
+
+    acces_key: Optional[str]
+    secret_key: Optional[str]
+    session_token: Optional[str]
+    region: Optional[str]
+
+
+class AwsS3Loader:
+    """Load data from AWS S3."""
+
+    def __init__(
+        self,
+        mode: str,
+        config: AwsS3Configuration,
+        path: str,
+    ):
+        self.__mode = mode
+        self.__config = config
+        self.__path = path
+
+    def open(self):
+        """Read the contents of the file given by path in a BytesIO/StringIO buffer."""
+        s3 = self._get_s3_filesystem()
+        downloader = s3.open_input_file(self.__path)
+        if "b" in self.__mode:
+            buffer = io.BytesIO()
+            buffer.write(downloader.readall())
+        else:
+            buffer = io.StringIO()
+            buffer.write(downloader.readall().decode())
+        buffer.seek(0)
+        return buffer
+
+    def has_child(self, name: str) -> bool:
+        """Test if the given child file exists."""
+        s3 = self._get_s3_filesystem()
+        file_info = s3.get_file_info(self.__path + "/" + name)
+        return file_info.type != FileType.NotFound
+
+    def open_child(self, name: str):
+        """Read the contents of the file given by path/name in a BytesIO buffer."""
+        s3 = self._get_s3_filesystem()
+        downloader = s3.open_input_file(self.__path + "/" + name)
+        buffer: Union[io.BytesIO, io.StringIO]
+        if "b" in self.__mode:
+            buffer = io.BytesIO()
+            buffer.write(downloader.readall())
+        else:
+            buffer = io.StringIO()
+            buffer.write(downloader.readall().decode())
+        buffer.seek(0)
+        return buffer
+
+    def _get_s3_filesystem(self) -> S3FileSystem:
+        return S3FileSystem(
+            access_key=self.__config.acces_key,
+            secret_key=self.__config.secret_key,
+            session_token=self.__config.session_token,
+            region=self.__config.region,
+        )
+
+
 def from_config(
     config: Dict[str, str], key="path", mode="rb", files_as_path=False
 ) -> Loader:
@@ -208,5 +275,18 @@ def from_config(
 
         path = config[key]
         return AzureBlobLoader(mode, azure_config, path)
+
+    if loader_type == "aws-s3":
+        path = config[key]
+        return AwsS3Loader(
+            mode,
+            AwsS3Configuration(
+                config.get("aws_access_key"),
+                config.get("aws_secret_key"),
+                config.get("aws_session_token"),
+                config.get("aws_region"),
+            ),
+            path,
+        )
 
     raise UnknownLoaderError(loader_type)

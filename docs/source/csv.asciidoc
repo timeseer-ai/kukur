@@ -322,3 +322,29 @@ This is the only supported value and allows connections using a managed service 
 
 When the `azure_identity` field is omitted,
 the `azure_connection_string` needs to contain the necessary secrets (SAS token, Access key).
+
+=== AWS S3
+
+Kukur can load CSV files from AWS S3.
+
+[source,toml]
+----
+[source."My AWS Source"]
+...
+loader = "aws-s3"
+aws_access_key=""
+aws_secret_key=""
+aws_session_token=""
+aws_region=""
+----
+
+All fields are optional.
+If neither `aws_access_key` nor `aws_secret_key` are provided,
+then attempts to establish the credentials automatically are being made.
+The following methods are tried, in order:
+
+    - AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_SESSION_TOKEN from environment variables
+
+    - Configuration files such as ~/.aws/credentials and ~/.aws/config
+
+    - For nodes on Amazon EC2, the EC2 Instance Metadata Service
