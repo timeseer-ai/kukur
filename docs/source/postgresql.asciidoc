@@ -12,11 +12,11 @@ Many other database systems support the PostgreSQL wire format.
 This source can be used to connect to them as well.
 
 Two providers can be used:
-- pg8000
-- psycopg
+- https://github.com/tlocke/pg8000[pg8000]
+- https://github.com/psycopg/psycopg2[psycopg]
 
-Pg8000 requires connection options provided in `.connection`.
-Psycopg requires a `connection_string` or `connection_string_path`.
+`pg8000` requires connection options provided in `.connection`.
+`psycopg` requires a `connection_string` or `connection_string_path`.
 
 The connection string and queries can either be configured in the configuration file,
 or loaded from files.
@@ -83,9 +83,9 @@ create table Data (
 
 === Connection
 
-Two providers require different connection configuration:
+Two providers require different connection configurations:
 
-==== PGg8000
+==== pg8000
 
 Connection options need to be provided in `.connection`.
 
