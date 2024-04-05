@@ -1,20 +1,59 @@
 [source.postgres]
 type = "postgresql"
+list_query = "select name, description from Metadata"
+list_columns = ["series name", "description"]
+data_query = "select ts, value from data where name = %s and ts >= %s and ts < %s order by ts asc"
+
+[source.postgres.connection]
+host = "postgres"
+port= 5432
+user = "postgres"
+password = "Timeseer!AI"
+
+[source.postgres-local]
+type = "postgresql"
+list_query = "select name, description from Metadata"
+list_columns = ["series name", "description"]
+data_query = "select ts, value from data where name = %s and ts >= %s and ts < %s order by ts asc"
+
+[source.postgres-local.connection]
+host = "localhost"
+port= 5431
+user = "postgres"
+password = "Timeseer!AI"
+
+[source.postgres-linux]
+type = "postgresql"
+list_query = "select name, description from Metadata"
+list_columns = ["series name", "description"]
+data_query = "select ts, value from data where name = %s and ts >= %s and ts < %s order by ts asc"
+
+[source.postgres-linux.connection]
+host = "localhost"
+port= 5431
+user = "postgres"
+password = "Timeseer!AI"
+
+[source.postgres-psycopg]
+type = "postgresql"
 connection_string = "host=postgres port=5432 user=postgres password=Timeseer!AI"
 list_query = "select name, description from Metadata"
 list_columns = ["series name", "description"]
 data_query = "select ts, value from data where name = %s and ts >= %s and ts < %s order by ts asc"
+provider = "psycopg"
 
-[source.postgres-local]
+[source.postgres-psycopg-local]
 type = "postgresql"
 connection_string = "host=localhost port=5431 user=postgres password=Timeseer!AI"
 list_query = "select name, description from Metadata"
 list_columns = ["series name", "description"]
 data_query = "select ts, value from data where name = %s and ts >= %s and ts < %s order by ts asc"
+provider = "psycopg"
 
-[source.postgres-linux]
+[source.postgres-psycopg-linux]
 type = "postgresql"
 connection_string = "host=localhost port=5431 user=postgres password=Timeseer!AI"
 list_query = "select name, description from Metadata"
 list_columns = ["series name", "description"]
 data_query = "select ts, value from data where name = %s and ts >= %s and ts < %s order by ts asc"
+provider = "psycopg"
