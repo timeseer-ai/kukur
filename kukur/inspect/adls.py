@@ -1,5 +1,8 @@
 """Inspect contents of a Azure Data Lake Storage Gen 2."""
 
+# SPDX-FileCopyrightText: 2024 Timeseer.AI
+# SPDX-License-Identifier: Apache-2.0
+
 import os.path
 from typing import List
 from urllib.parse import ParseResult

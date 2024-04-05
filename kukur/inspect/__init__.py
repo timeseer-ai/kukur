@@ -13,6 +13,9 @@ The `kukur.inspect.filesystem` module supports inspecting filesystems.
 The `kukur.inspect.blob` module supports inspecting blob stores.
 """
 
+# SPDX-FileCopyrightText: 2024 Timeseer.AI
+# SPDX-License-Identifier: Apache-2.0
+
 from dataclasses import dataclass
 from enum import Enum
 

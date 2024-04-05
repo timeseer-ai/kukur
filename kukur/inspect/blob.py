@@ -1,5 +1,8 @@
 """Inspect blob stores."""
 
+# SPDX-FileCopyrightText: 2024 Timeseer.AI
+# SPDX-License-Identifier: Apache-2.0
+
 from typing import List
 from urllib.parse import urlparse
 
