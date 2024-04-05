@@ -80,7 +80,7 @@ jobs:
         run: docker load < /tmp/kukur.tar
 
       - name: Start integration test compose environment
-        run: docker-compose -f docker-compose-${{ matrix.target }}.container.yml -f docker-compose-${{ matrix.target }}.yml up -d
+        run: docker compose -f docker compose-${{ matrix.target }}.container.yml -f docker compose-${{ matrix.target }}.yml up -d
         working-directory: tests/test_data
 
       - name: Set up Python
