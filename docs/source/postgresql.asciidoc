@@ -11,6 +11,13 @@ provided the PostgreSQL ODBC driver is available.
 Many other database systems support the PostgreSQL wire format.
 This source can be used to connect to them as well.
 
+Two providers can be used:
+- https://github.com/tlocke/pg8000[pg8000]
+- https://github.com/psycopg/psycopg2[psycopg]
+
+`pg8000` requires connection options provided in `.connection`.
+`psycopg` requires a `connection_string` or `connection_string_path`.
+
 The connection string and queries can either be configured in the configuration file,
 or loaded from files.
 Inline configuration takes precedence over file-based configuration when both are provided.
@@ -18,8 +25,8 @@ Inline configuration takes precedence over file-based configuration when both ar
 ```toml
 [source.<name>]
 type = "postgresql"
-connection_string = "<postgresql connection_string>"
-connection_string_path = "<path to connection string>"
+connection_string = "<postgresql connection_string>"    # for psycopg only
+connection_string_path = "<path to connection string>"  # for psycopg only
 list_query = "<query to list all time series in a source>"
 list_query_path = "<path to list_query>"
 list_columns = ["<metadata type of column 1>", "<metadata type of column 2"]
@@ -38,6 +45,14 @@ data_timezone = "<override or specify time zone of timestamps returned by the da
 enable_trace_logging = false
 quality_mapping = "<name>"
 type_checking_row_limit = 300  # number of rows analysed to determine the type of the value column
+provider = "pg8000"
+
+# for pg8000 only
+[source.<name>.connection]
+user = ""
+host = ""
+port= 5432
+password = ""
 ```
 
 The examples given here operate on this schema:
@@ -67,6 +82,22 @@ create table Data (
 ```
 
 === Connection
+
+Two providers require different connection configurations:
+
+==== pg8000
+
+Connection options need to be provided in `.connection`.
+
+```toml
+[source.<name>.connection]
+user = "postgres"
+host = "localhost"
+port= 5432
+password = "Timeseer!AI"
+```
+
+==== Psycopg
 
 The `connection_string` supports the keywords supported by https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-PARAMKEYWORDS[`libpq`].
 
