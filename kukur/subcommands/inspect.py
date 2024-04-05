@@ -9,7 +9,7 @@ import time
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
-from kukur.inspect.blob import inspect_blob
+from kukur.inspect.blob import inspect_blob, preview_blob
 from kukur.inspect.filesystem import inspect_filesystem, preview_filesystem
 
 
@@ -21,6 +21,11 @@ def define_arguments(parser: ArgumentParser):
     blob_parser = inspect_subparser.add_parser("blob", help="Inspect blob storage")
     blob_parser.add_argument(
         "--uri", required=True, help="URI of the blob (s3://, abfss://container@sa)."
+    )
+    blob_parser.add_argument(
+        "--preview",
+        action="store_true",
+        help="Display a preview of the file contents.",
     )
 
     fs_parser = inspect_subparser.add_parser("filesystem", help="Inspect a filesystem")
@@ -42,7 +47,10 @@ def run(args: Namespace):
     paths = None
     preview = None
     if args.inspect_action == "blob":
-        paths = inspect_blob(args.uri)
+        if args.preview:
+            preview = preview_blob(args.uri)
+        else:
+            paths = inspect_blob(args.uri)
     if args.inspect_action == "filesystem":
         if args.preview:
             preview = preview_filesystem(args.path)

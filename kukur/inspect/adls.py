@@ -4,11 +4,21 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os.path
-from typing import List
+from typing import List, Optional
 from urllib.parse import ParseResult
+
+import pyarrow as pa
+from pyarrow.dataset import dataset
 
 from kukur.exceptions import MissingModuleException
 from kukur.inspect import InspectedPath, InvalidInspectURI, ResourceType
+
+try:
+    from adlfs import AzureBlobFileSystem
+
+    HAS_ADLFS = True
+except ImportError:
+    HAS_ADLFS = False
 
 try:
     from azure.identity import DefaultAzureCredential
@@ -23,6 +33,13 @@ try:
     HAS_AZURE_STORAGE_FILE_DATALAKE = True
 except ImportError:
     HAS_AZURE_STORAGE_FILE_DATALAKE = False
+
+try:
+    from deltalake import DeltaTable
+
+    HAS_DELTA_LAKE = True
+except ImportError:
+    HAS_DELTA_LAKE = False
 
 
 def inspect(blob_uri: ParseResult) -> List[InspectedPath]:
@@ -71,3 +88,52 @@ def inspect(blob_uri: ParseResult) -> List[InspectedPath]:
                 paths.append(InspectedPath(resource_type, path_uri.geturl()))
 
         return paths
+
+
+def preview(blob_uri: ParseResult, num_rows: int = 5000) -> Optional[pa.Table]:
+    """Return the first nuw_rows of the blob."""
+    if not HAS_ADLFS:
+        raise MissingModuleException("adlfs")
+
+    account_uri = blob_uri.hostname
+    if account_uri is None:
+        raise InvalidInspectURI("missing storage container")
+    container_name = blob_uri.username
+    if container_name is None:
+        raise InvalidInspectURI("missing container name")
+
+    fs = AzureBlobFileSystem(account_name=account_uri.split(".")[0], anon=False)
+    blob_path = os.path.join(container_name, blob_uri.path.lstrip("/"))
+    resource_type = _get_resource_type(fs, blob_path)
+    if resource_type in [ResourceType.ARROW, ResourceType.PARQUET, ResourceType.CSV]:
+        data_set = dataset(blob_path, format=resource_type.value, filesystem=fs)
+        return data_set.head(num_rows)
+    if resource_type == ResourceType.DELTA:
+        if not HAS_DELTA_LAKE:
+            raise MissingModuleException("deltalake")
+        table = DeltaTable(blob_uri.geturl())
+        data_set = table.to_pyarrow_dataset()
+        return data_set.head(num_rows)
+    return None
+
+
+def _get_resource_type(fs, path: str) -> Optional[ResourceType]:  # noqa: PLR0911
+    if fs.isdir(path):
+        if fs.exists(os.path.join(path, "_delta_log")):
+            return ResourceType.DELTA
+        return ResourceType.DIRECTORY
+    path_parts = path.split("/")
+    if "." not in path_parts[-1]:
+        return None
+    extension = path_parts[-1].lower().split(".")[-1]
+
+    if extension == "parquet":
+        return ResourceType.PARQUET
+    if extension in ["arrow", "feather"]:
+        return ResourceType.ARROW
+    if extension in ["arrows"]:
+        return ResourceType.ARROWS
+    if extension in ["csv", "txt"]:
+        return ResourceType.CSV
+
+    return None

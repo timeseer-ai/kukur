@@ -3,8 +3,10 @@
 # SPDX-FileCopyrightText: 2024 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import List
+from typing import List, Optional
 from urllib.parse import urlparse
+
+import pyarrow as pa
 
 from kukur.inspect import InspectedPath, UnsupportedBlobException, adls
 
@@ -20,5 +22,14 @@ def inspect_blob(blob_uri: str) -> List[InspectedPath]:
     parsed_url = urlparse(blob_uri)
     if parsed_url.scheme == "abfss":
         return adls.inspect(parsed_url)
+
+    raise UnsupportedBlobException(parsed_url.scheme)
+
+
+def preview_blob(blob_uri: str, num_rows: int = 5000) -> Optional[pa.Table]:
+    """Preview the contents of a blob."""
+    parsed_url = urlparse(blob_uri)
+    if parsed_url.scheme == "abfss":
+        return adls.preview(parsed_url, num_rows)
 
     raise UnsupportedBlobException(parsed_url.scheme)
