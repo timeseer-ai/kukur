@@ -4,14 +4,16 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os.path
+from pathlib import PurePath
 from typing import List, Optional
 from urllib.parse import ParseResult
 
 import pyarrow as pa
-from pyarrow.dataset import dataset
+from pyarrow import fs
 
 from kukur.exceptions import MissingModuleException
 from kukur.inspect import InspectedPath, InvalidInspectURI, ResourceType
+from kukur.inspect.arrow import get_data_set
 
 try:
     from adlfs import AzureBlobFileSystem
@@ -102,38 +104,13 @@ def preview(blob_uri: ParseResult, num_rows: int = 5000) -> Optional[pa.Table]:
     if container_name is None:
         raise InvalidInspectURI("missing container name")
 
-    fs = AzureBlobFileSystem(account_name=account_uri.split(".")[0], anon=False)
-    blob_path = os.path.join(container_name, blob_uri.path.lstrip("/"))
-    resource_type = _get_resource_type(fs, blob_path)
-    if resource_type in [ResourceType.ARROW, ResourceType.PARQUET, ResourceType.CSV]:
-        data_set = dataset(blob_path, format=resource_type.value, filesystem=fs)
-        return data_set.head(num_rows)
-    if resource_type == ResourceType.DELTA:
+    azure_blob = AzureBlobFileSystem(account_name=account_uri.split(".")[0], anon=False)
+    blob_path = PurePath(container_name) / PurePath(blob_uri.path.lstrip("/"))
+
+    data_set = get_data_set(fs.PyFileSystem(fs.FSSpecHandler(azure_blob)), blob_path)
+    if data_set is None:
         if not HAS_DELTA_LAKE:
             raise MissingModuleException("deltalake")
         table = DeltaTable(blob_uri.geturl())
         data_set = table.to_pyarrow_dataset()
-        return data_set.head(num_rows)
-    return None
-
-
-def _get_resource_type(fs, path: str) -> Optional[ResourceType]:  # noqa: PLR0911
-    if fs.isdir(path):
-        if fs.exists(os.path.join(path, "_delta_log")):
-            return ResourceType.DELTA
-        return ResourceType.DIRECTORY
-    path_parts = path.split("/")
-    if "." not in path_parts[-1]:
-        return None
-    extension = path_parts[-1].lower().split(".")[-1]
-
-    if extension == "parquet":
-        return ResourceType.PARQUET
-    if extension in ["arrow", "feather"]:
-        return ResourceType.ARROW
-    if extension in ["arrows"]:
-        return ResourceType.ARROWS
-    if extension in ["csv", "txt"]:
-        return ResourceType.CSV
-
-    return None
+    return data_set.head(num_rows)
