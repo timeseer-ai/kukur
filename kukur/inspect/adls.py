@@ -5,11 +5,12 @@
 
 import os.path
 from pathlib import PurePath
-from typing import List, Optional
+from typing import Generator, List, Optional
 from urllib.parse import ParseResult
 
 import pyarrow as pa
 from pyarrow import fs
+from pyarrow.dataset import Dataset
 
 from kukur.exceptions import MissingModuleException
 from kukur.inspect import InspectedPath, InvalidInspectURI, ResourceType
@@ -94,6 +95,20 @@ def inspect(blob_uri: ParseResult) -> List[InspectedPath]:
 
 def preview(blob_uri: ParseResult, num_rows: int = 5000) -> Optional[pa.Table]:
     """Return the first nuw_rows of the blob."""
+    data_set = _get_data_set(blob_uri)
+    return data_set.head(num_rows)
+
+
+def read(
+    blob_uri: ParseResult, column_names: Optional[List[str]] = None
+) -> Generator[pa.RecordBatch, None, None]:
+    """Iterate over all RecordBatches at the given URI."""
+    data_set = _get_data_set(blob_uri)
+    for record_batch in data_set.to_batches(columns=column_names):
+        yield record_batch
+
+
+def _get_data_set(blob_uri: ParseResult) -> Dataset:
     if not HAS_ADLFS:
         raise MissingModuleException("adlfs")
 
@@ -113,4 +128,4 @@ def preview(blob_uri: ParseResult, num_rows: int = 5000) -> Optional[pa.Table]:
             raise MissingModuleException("deltalake")
         table = DeltaTable(blob_uri.geturl())
         data_set = table.to_pyarrow_dataset()
-    return data_set.head(num_rows)
+    return data_set

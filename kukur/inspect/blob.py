@@ -3,7 +3,7 @@
 # SPDX-FileCopyrightText: 2024 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import List, Optional
+from typing import Generator, List, Optional
 from urllib.parse import urlparse
 
 import pyarrow as pa
@@ -31,5 +31,16 @@ def preview_blob(blob_uri: str, num_rows: int = 5000) -> Optional[pa.Table]:
     parsed_url = urlparse(blob_uri)
     if parsed_url.scheme == "abfss":
         return adls.preview(parsed_url, num_rows)
+
+    raise UnsupportedBlobException(parsed_url.scheme)
+
+
+def read_blob(
+    blob_uri: str, column_names: Optional[List[str]] = None
+) -> Generator[pa.RecordBatch, None, None]:
+    """Iterate over the RecordBatches at the given URI."""
+    parsed_url = urlparse(blob_uri)
+    if parsed_url.scheme == "abfss":
+        return adls.read(parsed_url, column_names)
 
     raise UnsupportedBlobException(parsed_url.scheme)

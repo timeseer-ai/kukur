@@ -7,7 +7,7 @@ from pathlib import PurePath
 from typing import List, Optional
 
 from pyarrow import fs
-from pyarrow.dataset import dataset
+from pyarrow.dataset import Dataset, dataset
 
 from kukur.inspect import InspectedPath, ResourceType
 
@@ -22,7 +22,7 @@ def inspect(filesystem: fs.FileSystem, path: PurePath) -> List[InspectedPath]:
     return paths
 
 
-def get_data_set(filesystem: fs.FileSystem, path: PurePath) -> Optional[dataset]:
+def get_data_set(filesystem: fs.FileSystem, path: PurePath) -> Optional[Dataset]:
     """Return a PyArrow dataset for the resources at the given path."""
     resource_type = _get_resource_type_from_extension(path.suffix.lstrip("."))
     if resource_type in [ResourceType.ARROW, ResourceType.PARQUET, ResourceType.CSV]:

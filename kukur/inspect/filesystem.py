@@ -4,10 +4,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from pathlib import Path
-from typing import List, Optional
+from typing import Generator, List, Optional
 
 import pyarrow as pa
 from pyarrow import fs
+from pyarrow.dataset import Dataset
 
 from kukur.exceptions import MissingModuleException
 from kukur.inspect import InspectedPath
@@ -33,13 +34,27 @@ def inspect_filesystem(path: Path) -> List[InspectedPath]:
 
 def preview_filesystem(path: Path, num_rows: int = 5000) -> Optional[pa.Table]:
     """Preview a data file at the specified filesystem location."""
+    data_set = _get_data_set(path)
+    return data_set.head(num_rows)
+
+
+def read_filesystem(
+    path: Path, column_names: Optional[List[str]] = None
+) -> Generator[pa.RecordBatch, None, None]:
+    """Read path as a series of record batches.
+
+    Optionally filters the columns returned.
+    """
+    data_set = _get_data_set(path)
+    for record_batch in data_set.to_batches(columns=column_names):
+        yield record_batch
+
+
+def _get_data_set(path: Path) -> Dataset:
     local = fs.LocalFileSystem()
     data_set = get_data_set(local, path)
     if data_set is None:
         if not HAS_DELTA_LAKE:
             raise MissingModuleException("deltalake")
         data_set = DeltaTable(path).to_pyarrow_dataset()
-    if data_set is None:
-        return None
-
-    return data_set.head(num_rows)
+    return data_set
