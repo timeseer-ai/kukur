@@ -5,7 +5,7 @@
 
 from pathlib import Path
 
-from kukur.inspect import ResourceType
+from kukur.inspect import InspectedPath, ResourceType
 from kukur.inspect.filesystem import (
     inspect_filesystem,
     preview_filesystem,
@@ -13,10 +13,15 @@ from kukur.inspect.filesystem import (
 )
 
 
+def _sort_by_path(path: InspectedPath) -> str:
+    return path.path
+
+
 def test_inspect_filesystem() -> None:
     path = Path("tests/test_data/feather/dir")
     results = inspect_filesystem(path)
     assert len(results) == 2
+    results = sorted(results, key=_sort_by_path)
     assert results[0].path == str(path / Path("test-tag-1.feather"))
     assert results[0].resource_type == ResourceType.ARROW
     assert results[1].path == str(path / Path("test-tag-5.feather"))
@@ -26,12 +31,14 @@ def test_inspect_filesystem() -> None:
 def test_preview_filesystem() -> None:
     path = Path("tests/test_data/feather/row.feather")
     results = preview_filesystem(path)
+    assert results is not None
     assert len(results) == 47
 
 
 def test_preview_filesystem_limit_rows() -> None:
     path = Path("tests/test_data/feather/row.feather")
     results = preview_filesystem(path, 10)
+    assert results is not None
     assert len(results) == 10
 
 
@@ -57,6 +64,7 @@ def test_inspect_filesystem_delta_table() -> None:
     path = Path("tests/test_data/delta/delta-row")
     results = inspect_filesystem(path)
     assert len(results) == 2
+    results = sorted(results, key=_sort_by_path)
     assert results[0].path == str(path / Path("_delta_log"))
     assert results[0].resource_type == ResourceType.DIRECTORY
     assert results[1].path == str(
@@ -69,12 +77,14 @@ def test_inspect_filesystem_delta_table() -> None:
 def test_preview_filesystem_delta_table() -> None:
     path = Path("tests/test_data/delta/delta-row")
     results = preview_filesystem(path)
+    assert results is not None
     assert len(results) == 47
 
 
 def test_preview_filesystem_delta_table_limit_rows() -> None:
     path = Path("tests/test_data/delta/delta-row")
     results = preview_filesystem(path, 10)
+    assert results is not None
     assert len(results) == 10
 
 
