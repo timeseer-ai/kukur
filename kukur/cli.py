@@ -3,17 +3,13 @@
 This allows launching Kukur as a service or testing data sources.
 """
 
-# SPDX-FileCopyrightText: 2021 Timeseer.AI
-#
+# SPDX-FileCopyrightText: 2024 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
-import argparse
-import csv
-import sys
 
-from dateutil.parser import parse as parse_date
+import argparse
 
 import kukur.logging
-import kukur.source.test as test_source
+import kukur.subcommands as subcommand
 from kukur.app import Kukur
 from kukur.config import from_toml
 from kukur.flight import (
@@ -35,114 +31,17 @@ def parse_args():
     subparsers.add_parser(
         "flight", help="Enable the Arrow Flight interface (the default)"
     )
+    inspect_parser = subparsers.add_parser(
+        "inspect", help="List resources in a blob store and determine their schema"
+    )
     test_parser = subparsers.add_parser("test", help="Test data source connectivity")
     api_key_parser = subparsers.add_parser(
         "api-key", help="Create an api key for the Arrow Flight interface"
     )
 
-    test_subparsers = test_parser.add_subparsers(
-        dest="test_action", help="Select the type of data to test"
-    )
-    search_parser = test_subparsers.add_parser(
-        "search", help="List all time series in the source"
-    )
-    metadata_parser = test_subparsers.add_parser(
-        "metadata", help="Display metadata for one time series"
-    )
-    data_parser = test_subparsers.add_parser(
-        "data", help="Display data for one time series"
-    )
-    plot_parser = test_subparsers.add_parser(
-        "plot", help="Display plot data for one time series"
-    )
-
-    search_parser.add_argument(
-        "--source",
-        required=True,
-        metavar="SOURCE NAME",
-        help="The name of the data source to test",
-    )
-    metadata_parser.add_argument(
-        "--source",
-        required=True,
-        metavar="SOURCE NAME",
-        help="The name of the data source to test",
-    )
-    metadata_parser.add_argument(
-        "--name",
-        required=True,
-        metavar="SERIES NAME",
-        help="The name of the series to query",
-    )
-    data_parser.add_argument(
-        "--source",
-        required=True,
-        metavar="SOURCE NAME",
-        help="The name of the data source to test",
-    )
-    data_parser.add_argument(
-        "--name",
-        required=True,
-        metavar="SERIES NAME",
-        help="The name of the series to query",
-    )
-    data_parser.add_argument(
-        "--start",
-        required=True,
-        metavar="START DATE",
-        help="The start date of the time period to query",
-    )
-    data_parser.add_argument(
-        "--end",
-        required=True,
-        metavar="END DATE",
-        help="The end date of the time period to query",
-    )
-    plot_parser.add_argument(
-        "--source",
-        required=True,
-        metavar="SOURCE NAME",
-        help="The name of the data source to test",
-    )
-    plot_parser.add_argument(
-        "--name",
-        required=True,
-        metavar="SERIES NAME",
-        help="The name of the series to query",
-    )
-    plot_parser.add_argument(
-        "--start",
-        required=True,
-        metavar="START DATE",
-        help="The start date of the time period to query",
-    )
-    plot_parser.add_argument(
-        "--end",
-        required=True,
-        metavar="END DATE",
-        help="The end date of the time period to query",
-    )
-    plot_parser.add_argument(
-        "--interval-count",
-        type=int,
-        default=200,
-        metavar="INTERVAL COUNT",
-        help="The number of intervals to divide the plot into.",
-    )
-
-    api_key_subparser = api_key_parser.add_subparsers(
-        dest="api_key_action", help="Select the action for api keys"
-    )
-    create_parser = api_key_subparser.add_parser("create", help="Create an api key")
-    revoke_parser = api_key_subparser.add_parser("revoke", help="Revoke an api key")
-    api_key_subparser.add_parser("list", help="List all api keys")
-
-    create_parser.add_argument(
-        "--name", required=True, metavar="API KEY NAME", help="The name of the api key"
-    )
-    revoke_parser.add_argument(
-        "--name", required=True, metavar="API KEY NAME", help="The name of the api key"
-    )
+    subcommand.api_key.define_arguments(api_key_parser)
+    subcommand.inspect.define_arguments(inspect_parser)
+    subcommand.test_source.define_arguments(test_parser)
 
     return parser.parse_args()
 
@@ -166,71 +65,17 @@ def _serve(kukur_app: Kukur, server_config):
     server.serve()
 
 
-def _test_source(kukur_app: Kukur, args):
-    if args.test_action not in ["search", "metadata", "data", "plot"]:
-        return
-
-    writer = csv.writer(sys.stdout)
-
-    source_name: str = args.source
-
-    series_name: str
-    if args.test_action == "search":
-        for row in test_source.search(kukur_app, source_name):
-            writer.writerow(row)
-    elif args.test_action == "metadata":
-        series_name = args.name
-        for row in test_source.metadata(kukur_app, source_name, series_name):
-            writer.writerow(row)
-    elif args.test_action == "data":
-        series_name = args.name
-        start_date = parse_date(args.start)
-        end_date = parse_date(args.end)
-        for row in test_source.data(
-            kukur_app, source_name, series_name, start_date, end_date
-        ):
-            writer.writerow(row)
-    elif args.test_action == "plot":
-        series_name = args.name
-        start_date = parse_date(args.start)
-        end_date = parse_date(args.end)
-        for row in test_source.plot(
-            kukur_app,
-            source_name,
-            series_name,
-            start_date,
-            end_date,
-            args.interval_count,
-        ):
-            writer.writerow(row)
-
-
-def _api_keys(kukur_app: Kukur, args):
-    if args.api_key_action not in ["create", "revoke", "list"]:
-        return
-
-    writer = csv.writer(sys.stdout)
-
-    if args.api_key_action == "create":
-        api_key = kukur_app.get_api_keys().create(args.name)
-        writer.writerow([api_key])
-    elif args.api_key_action == "revoke":
-        kukur_app.get_api_keys().revoke(args.name)
-    elif args.api_key_action == "list":
-        api_keys = kukur_app.get_api_keys().list()
-        for key in api_keys:
-            writer.writerow((key.name, key.creation_date.isoformat()))
-
-
-def _run():
+def _run() -> None:
     args = parse_args()
     config = from_toml(args.config_file)
     kukur.logging.configure(config)
     app = Kukur(config)
     if args.action == "test":
-        _test_source(app, args)
+        subcommand.test_source.run(app, args)
     elif args.action == "api-key":
-        _api_keys(app, args)
+        subcommand.api_key.run(app, args)
+    elif args.action == "inspect":
+        subcommand.inspect.run(args)
     else:
         _serve(app, config)
 

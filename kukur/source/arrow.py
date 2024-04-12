@@ -254,28 +254,29 @@ def cast_ts_column(
     data: pa.Table, data_datetime_format: Optional[str], data_timezone: Optional[str]
 ) -> pa.Table:
     """Cast the timestamp column considering format and timezone."""
+    return data.set_column(
+        data.column_names.index("ts"),
+        "ts",
+        cast_timestamp(data["ts"], data_datetime_format, data_timezone),
+    )
+
+
+def cast_timestamp(
+    array: pa.Array, data_datetime_format: Optional[str], data_timezone: Optional[str]
+) -> pa.Array:
+    """Cast a timestamp column considering format and timezone."""
     if data_datetime_format is not None:
         # pylint: disable=no-member
-        data = data.set_column(
-            data.column_names.index("ts"),
-            "ts",
-            pa.compute.strptime(data["ts"], data_datetime_format, "us"),
-        )
+        array = pa.compute.strptime(array, data_datetime_format, "us")
+
     if data_timezone is not None:
         # pylint: disable=no-member
-        data = data.set_column(
-            data.column_names.index("ts"),
-            "ts",
-            pa.compute.assume_timezone(data["ts"], data_timezone),
-        )
+        array = pa.compute.assume_timezone(array, data_timezone)
 
-    if not pa.types.is_timestamp(data.schema.field("ts").type):
-        data = data.set_column(
-            data.column_names.index("ts"),
-            "ts",
-            pyarrow.compute.cast(data["ts"], pa.timestamp("us", "UTC")),
-        )
-    return data
+    if not pa.types.is_timestamp(array.type):
+        array = pyarrow.compute.cast(array, pa.timestamp("us", "UTC"))
+
+    return array
 
 
 def filter_pivot_data(all_data: pa.Table, selector: SeriesSelector) -> pa.Table:
