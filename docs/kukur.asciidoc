@@ -69,9 +69,10 @@ usage: kukur [-h] [--config-file CONFIG_FILE] {flight,test,api-key} ...
 Start Kukur.
 
 positional arguments:
-  {flight,test,api-key}
+  {flight,inspect,test,api-key}
                         Select the CLI action
     flight              Enable the Arrow Flight interface (the default)
+    inspect             List resources in a blob store and determine their schema
     test                Test data source connectivity
     api-key             Create an api key for the Arrow Flight interface
 
@@ -89,6 +90,7 @@ Use these to install requirements for the given source.
 - `[datafusion]` for connections using Apache Arrow DataFusion
 - `[delta]` for connections to Delta Lakes
 - `[influxdb]` for connections to InfluxDB
+- `[inspect]` for inspection of storage containers
 - `[kusto]` for connections to Azure Data Explorer
 - `[odbc]` for connections to ODBC data sources
 - `[piwebapi]` for connections to PI Web API
@@ -670,6 +672,49 @@ Kukur listens on port `8081` of all IP addresses by default.
 Authentication can be turned off for local instances or when provided by external services
 by setting `authentication` to `false`.
 When authentication is turned on, an API key has to be supplied by callers.
+
+== Inspect
+
+The Kukur CLI supports inspecting file storage locations for data files and previewing them.
+
+File storage locations include:
+
+- Local filesystems using `inspect filesystem <path>`
+- Azure Data Lake Storage Gen2 using `inspect blob --uri abfss://<container>@<storage account>/<path>`
+- AWS S3 buckets using `inspect blob --uri s3://<bucket>/<path>`
+
+Detected files can be previewed using `--preview`.
+
+For example
+
+[source,bash]
+----
+$ python -m kukur.cli inspect filesystem --path tests/test_data/delta
+delta,tests/test_data/delta/delta-row-quality
+directory,tests/test_data/delta/partitions
+delta,tests/test_data/delta/delta-pivot
+delta,tests/test_data/delta/delta-notz
+delta,tests/test_data/delta/delta-numerical
+delta,tests/test_data/delta/delta-row
+delta,tests/test_data/delta/delta-unordered
+delta,tests/test_data/delta/delta-row-tags
+$ python -m kukur.cli inspect filesystem --path tests/test_data/delta/delta-row --preview
+pyarrow.Table
+name: string
+ts: timestamp[us, tz=UTC]
+value: double
+---
+name: [["test-tag-1","test-tag-1","test-tag-1","test-tag-1","test-tag-1",...,"test-tag-3","test-tag-3","test-tag-3","test-tag-3","test-tag-3"]]
+ts: [[2020-01-01 00:00:00.000000Z,2020-02-01 00:00:00.000000Z,2020-03-01 00:00:00.000000Z,2020-04-01 00:00:00.000000Z,2020-05-01 00:00:00.000000Z,...,2020-01-01 00:25:00.000000Z,2020-01-01 00:26:00.000000Z,2020-01-01 00:27:00.000000Z,2020-01-01 00:28:00.000000Z,2020-01-01 00:29:00.000000Z]]
+value: [[1,2,2,1,1,...,6,9,9.5,8,6]]
+$ AZURE_USE_AZURE_CLI=True python -m kukur.cli inspect blob --uri abfss://poc@satsdeltalake.dfs.core.windows.net
+delta,abfss://poc@satsdeltalake.dfs.core.windows.net/iot_devices
+delta,abfss://poc@satsdeltalake.dfs.core.windows.net/tsai-antwerp
+parquet,abfss://poc@satsdeltalake.dfs.core.windows.net/tsai-antwerp.parquet
+----
+
+Connections to Azure are configured using the default Azure Identity environment variables.
+Likewise for connections on AWS.
 
 == Sources
 
