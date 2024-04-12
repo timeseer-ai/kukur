@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 
 import pyarrow as pa
 
-from kukur.inspect import InspectedPath, UnsupportedBlobException, adls
+from kukur.inspect import InspectedPath, UnsupportedBlobException, adls, s3
 
 
 def inspect_blob(blob_uri: str) -> List[InspectedPath]:
@@ -22,6 +22,8 @@ def inspect_blob(blob_uri: str) -> List[InspectedPath]:
     parsed_url = urlparse(blob_uri)
     if parsed_url.scheme == "abfss":
         return adls.inspect(parsed_url)
+    if parsed_url.scheme == "s3":
+        return s3.inspect(parsed_url)
 
     raise UnsupportedBlobException(parsed_url.scheme)
 
@@ -31,6 +33,8 @@ def preview_blob(blob_uri: str, num_rows: int = 5000) -> Optional[pa.Table]:
     parsed_url = urlparse(blob_uri)
     if parsed_url.scheme == "abfss":
         return adls.preview(parsed_url, num_rows)
+    if parsed_url.scheme == "s3":
+        return s3.preview(parsed_url, num_rows)
 
     raise UnsupportedBlobException(parsed_url.scheme)
 
@@ -42,5 +46,7 @@ def read_blob(
     parsed_url = urlparse(blob_uri)
     if parsed_url.scheme == "abfss":
         return adls.read(parsed_url, column_names)
+    if parsed_url.scheme == "s3":
+        return s3.read(parsed_url, column_names)
 
     raise UnsupportedBlobException(parsed_url.scheme)

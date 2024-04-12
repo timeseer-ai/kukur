@@ -26,7 +26,7 @@ def get_data_set(filesystem: fs.FileSystem, path: PurePath) -> Optional[Dataset]
     """Return a PyArrow dataset for the resources at the given path."""
     resource_type = _get_resource_type_from_extension(path.suffix.lstrip("."))
     if resource_type in [ResourceType.ARROW, ResourceType.PARQUET, ResourceType.CSV]:
-        return dataset(path, format=resource_type.value, filesystem=filesystem)
+        return dataset(str(path), format=resource_type.value, filesystem=filesystem)
     return None
 
 
