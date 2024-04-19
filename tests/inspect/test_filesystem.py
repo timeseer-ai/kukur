@@ -5,7 +5,7 @@
 
 from pathlib import Path
 
-from kukur.inspect import InspectedPath, ResourceType
+from kukur.inspect import InspectedPath, InspectOptions, ResourceType
 from kukur.inspect.filesystem import (
     inspect_filesystem,
     preview_filesystem,
@@ -53,7 +53,7 @@ def test_read_filesystem() -> None:
 
 def test_read_filesystem_series_column() -> None:
     path = Path("tests/test_data/feather/row.feather")
-    results = list(read_filesystem(path, column_names=["series name"]))
+    results = list(read_filesystem(path, InspectOptions(column_names=["series name"])))
 
     assert (len(results)) == 1
     assert results[0].num_columns == 1
@@ -92,15 +92,24 @@ def test_read_filesystem_delta_table() -> None:
     path = Path("tests/test_data/delta/delta-row")
     results = list(read_filesystem(path))
 
-    assert (len(results)) == 1
+    assert len(results) == 1
     assert results[0].num_columns == 3
     assert results[0].num_rows == 47
 
 
 def test_read_filesystem_delta_table_series_column() -> None:
     path = Path("tests/test_data/delta/delta-row")
-    results = list(read_filesystem(path, column_names=["name"]))
+    results = list(read_filesystem(path, InspectOptions(column_names=["name"])))
 
-    assert (len(results)) == 1
+    assert len(results) == 1
     assert results[0].num_columns == 1
     assert results[0].num_rows == 47
+
+
+def test_read_filesystem_csv_delimiter_semicolon() -> None:
+    path = Path("tests/test_data/csv/row-semicolon.csv")
+    results = list(read_filesystem(path, InspectOptions(csv_delimiter=";")))
+
+    assert len(results) == 1
+    assert results[0].num_columns == 3
+    assert results[0].num_rows == 60

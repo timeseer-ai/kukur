@@ -8,7 +8,13 @@ from urllib.parse import urlparse
 
 import pyarrow as pa
 
-from kukur.inspect import InspectedPath, UnsupportedBlobException, adls, s3
+from kukur.inspect import (
+    InspectedPath,
+    InspectOptions,
+    UnsupportedBlobException,
+    adls,
+    s3,
+)
 
 
 def inspect_blob(blob_uri: str) -> List[InspectedPath]:
@@ -28,25 +34,27 @@ def inspect_blob(blob_uri: str) -> List[InspectedPath]:
     raise UnsupportedBlobException(parsed_url.scheme)
 
 
-def preview_blob(blob_uri: str, num_rows: int = 5000) -> Optional[pa.Table]:
+def preview_blob(
+    blob_uri: str, num_rows: int = 5000, options: Optional[InspectOptions] = None
+) -> Optional[pa.Table]:
     """Preview the contents of a blob."""
     parsed_url = urlparse(blob_uri)
     if parsed_url.scheme == "abfss":
-        return adls.preview(parsed_url, num_rows)
+        return adls.preview(parsed_url, num_rows, options)
     if parsed_url.scheme == "s3":
-        return s3.preview(parsed_url, num_rows)
+        return s3.preview(parsed_url, num_rows, options)
 
     raise UnsupportedBlobException(parsed_url.scheme)
 
 
 def read_blob(
-    blob_uri: str, column_names: Optional[List[str]] = None
+    blob_uri: str, options: Optional[InspectOptions] = None
 ) -> Generator[pa.RecordBatch, None, None]:
     """Iterate over the RecordBatches at the given URI."""
     parsed_url = urlparse(blob_uri)
     if parsed_url.scheme == "abfss":
-        return adls.read(parsed_url, column_names)
+        return adls.read(parsed_url, options)
     if parsed_url.scheme == "s3":
-        return s3.read(parsed_url, column_names)
+        return s3.read(parsed_url, options)
 
     raise UnsupportedBlobException(parsed_url.scheme)

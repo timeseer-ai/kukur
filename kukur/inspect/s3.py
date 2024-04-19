@@ -12,7 +12,7 @@ from pyarrow.dataset import Dataset
 from pyarrow.fs import S3FileSystem
 
 from kukur.exceptions import MissingModuleException
-from kukur.inspect import InspectedPath, InvalidInspectURI
+from kukur.inspect import InspectedPath, InspectOptions, InvalidInspectURI
 from kukur.inspect.arrow import get_data_set
 from kukur.inspect.arrow import inspect as inspect_s3
 
@@ -30,25 +30,30 @@ def inspect(blob_uri: ParseResult) -> List[InspectedPath]:
     return inspect_s3(S3FileSystem(), blob_path)
 
 
-def preview(blob_uri: ParseResult, num_rows: int = 5000) -> Optional[pa.Table]:
+def preview(
+    blob_uri: ParseResult, num_rows: int, options: Optional[InspectOptions]
+) -> Optional[pa.Table]:
     """Return the first nuw_rows of the blob."""
-    data_set = _get_data_set(blob_uri)
+    data_set = _get_data_set(blob_uri, options)
     return data_set.head(num_rows)
 
 
 def read(
-    blob_uri: ParseResult, column_names: Optional[List[str]] = None
+    blob_uri: ParseResult, options: Optional[InspectOptions]
 ) -> Generator[pa.RecordBatch, None, None]:
     """Iterate over all RecordBatches at the given URI."""
-    data_set = _get_data_set(blob_uri)
+    data_set = _get_data_set(blob_uri, options)
+    column_names = None
+    if options is not None:
+        column_names = options.column_names
     for record_batch in data_set.to_batches(columns=column_names):
         yield record_batch
 
 
-def _get_data_set(blob_uri: ParseResult) -> Dataset:
+def _get_data_set(blob_uri: ParseResult, options: Optional[InspectOptions]) -> Dataset:
     filesystem = S3FileSystem()
     blob_path = _get_blob_path(blob_uri)
-    data_set = get_data_set(filesystem, blob_path)
+    data_set = get_data_set(filesystem, blob_path, options)
     if data_set is None:
         if not HAS_DELTA_LAKE:
             raise MissingModuleException("deltalake")
