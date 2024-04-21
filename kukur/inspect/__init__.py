@@ -63,3 +63,4 @@ class InspectOptions:
 
     column_names: Optional[List[str]] = None
     csv_delimiter: Optional[str] = None
+    csv_header_row: bool = True

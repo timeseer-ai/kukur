@@ -113,3 +113,11 @@ def test_read_filesystem_csv_delimiter_semicolon() -> None:
     assert len(results) == 1
     assert results[0].num_columns == 3
     assert results[0].num_rows == 60
+
+
+def test_read_filesystem_csv_no_header_row() -> None:
+    path = Path("tests/test_data/csv/dir/test-tag-1.csv")
+    results = list(read_filesystem(path, InspectOptions(csv_header_row=False)))
+    assert len(results) == 1
+    assert results[0].num_columns == 2
+    assert results[0].num_rows == 5

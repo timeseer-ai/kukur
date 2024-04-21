@@ -31,7 +31,10 @@ def get_data_set(
         format = resource_type.value
         if resource_type == ResourceType.CSV and options is not None:
             format = CsvFileFormat(
-                parse_options=csv.ParseOptions(delimiter=options.csv_delimiter)
+                read_options=csv.ReadOptions(
+                    autogenerate_column_names=not options.csv_header_row
+                ),
+                parse_options=csv.ParseOptions(delimiter=options.csv_delimiter),
             )
         return dataset(str(path), format=format, filesystem=filesystem)
     return None
