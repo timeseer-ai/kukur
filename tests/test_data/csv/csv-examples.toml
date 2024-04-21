@@ -270,3 +270,21 @@ type = "csv"
 path = "tests/test_data/csv/pivot-comma.csv"
 format = "pivot"
 data_decimal_point = ","
+
+[source.row_semicolon_separator]
+type = "csv"
+path = "tests/test_data/csv/row-semicolon.csv"
+data_column_separator = ";"
+
+[source.pivot_semicolon_separator]
+type = "csv"
+format = "pivot"
+path = "tests/test_data/csv/pivot-semicolon.csv"
+data_column_separator = ";"
+
+[source.dir_semicolon_separator]
+type = "csv"
+format = "dir"
+path = "tests/test_data/csv/dir_semicolon/"
+data_column_separator = ";"
+metadata = "tests/test_data/csv/dir-semicolon-metadata.csv"
