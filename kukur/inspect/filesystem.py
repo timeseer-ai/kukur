@@ -11,7 +11,7 @@ from pyarrow import fs
 from pyarrow.dataset import Dataset
 
 from kukur.exceptions import MissingModuleException
-from kukur.inspect import InspectedPath
+from kukur.inspect import InspectedPath, InspectOptions
 from kukur.inspect.arrow import get_data_set, inspect
 
 try:
@@ -32,27 +32,32 @@ def inspect_filesystem(path: Path) -> List[InspectedPath]:
     return inspect(local, path)
 
 
-def preview_filesystem(path: Path, num_rows: int = 5000) -> Optional[pa.Table]:
+def preview_filesystem(
+    path: Path, num_rows: int = 5000, options: Optional[InspectOptions] = None
+) -> Optional[pa.Table]:
     """Preview a data file at the specified filesystem location."""
-    data_set = _get_data_set(path)
+    data_set = _get_data_set(path, options)
     return data_set.head(num_rows)
 
 
 def read_filesystem(
-    path: Path, column_names: Optional[List[str]] = None
+    path: Path, options: Optional[InspectOptions] = None
 ) -> Generator[pa.RecordBatch, None, None]:
     """Read path as a series of record batches.
 
     Optionally filters the columns returned.
     """
-    data_set = _get_data_set(path)
+    data_set = _get_data_set(path, options)
+    column_names = None
+    if options is not None and options.column_names is not None:
+        column_names = options.column_names
     for record_batch in data_set.to_batches(columns=column_names):
         yield record_batch
 
 
-def _get_data_set(path: Path) -> Dataset:
+def _get_data_set(path: Path, options: Optional[InspectOptions]) -> Dataset:
     local = fs.LocalFileSystem()
-    data_set = get_data_set(local, path)
+    data_set = get_data_set(local, path, options)
     if data_set is None:
         if not HAS_DELTA_LAKE:
             raise MissingModuleException("deltalake")

@@ -62,6 +62,7 @@ def from_config(
         data_datetime_format,
         data_timezone,
         config.get("data_decimal_point", "."),
+        config.get("data_column_separator"),
     )
     metadata_fields: List[str] = config.get("metadata_fields", [])
     if len(metadata_fields) == 0:
@@ -101,6 +102,7 @@ class CSVSourceOptions:
     data_datetime_format: Optional[str] = None
     data_timezone: Optional[str] = None
     data_decimal_point: str = "."
+    data_column_separator: Optional[str] = None
 
 
 class CSVSource:
@@ -132,7 +134,12 @@ class CSVSource:
             yield from self._search_in_data(selector)
             return
         with self.__loaders.metadata.open() as metadata_file:
-            reader = csv.DictReader(metadata_file)
+            if self.__options.data_column_separator is not None:
+                reader = csv.DictReader(
+                    metadata_file, delimiter=self.__options.data_column_separator
+                )
+            else:
+                reader = csv.DictReader(metadata_file)
             for row in reader:
                 tags = {}
                 for tag in self.__options.tags:
@@ -320,17 +327,12 @@ class CSVSource:
             for column_name in columns
         }
 
-        if not self.__options.header_row:
-            read_options = pyarrow.csv.ReadOptions(column_names=columns)
-        else:
-            read_options = pyarrow.csv.ReadOptions()
-
-        convert_options = _get_convert_options(timestamp_column, self.__options)
         try:
             all_data = pyarrow.csv.read_csv(
                 loader.open(),
-                read_options=read_options,
-                convert_options=convert_options,
+                read_options=self._get_read_options(columns),
+                parse_options=self._get_parse_options(),
+                convert_options=self._get_convert_options(timestamp_column),
             )
 
             all_data = _map_columns(data_columns, all_data)
@@ -345,7 +347,8 @@ class CSVSource:
             )
             all_data = pyarrow.csv.read_csv(
                 loader.open(),
-                read_options=read_options,
+                read_options=self._get_read_options(columns),
+                parse_options=self._get_parse_options(),
                 convert_options=convert_options,
             )
             all_data = _map_columns(data_columns, all_data)
@@ -379,17 +382,12 @@ class CSVSource:
             for column_name in columns
         }
 
-        if not self.__options.header_row:
-            read_options = pyarrow.csv.ReadOptions(column_names=columns)
-        else:
-            read_options = pyarrow.csv.ReadOptions()
-
-        convert_options = _get_convert_options("ts", self.__options)
         try:
             data = pyarrow.csv.read_csv(
                 loader.open_child(f"{selector.tags['series name']}.csv"),
-                read_options=read_options,
-                convert_options=convert_options,
+                parse_options=self._get_parse_options(),
+                read_options=self._get_read_options(columns),
+                convert_options=self._get_convert_options(timestamp_column),
             )
             data = _map_columns(data_columns, data)
             data = _cast_ts_column(data, self.__options.data_timezone)
@@ -403,7 +401,8 @@ class CSVSource:
             )
             data = pyarrow.csv.read_csv(
                 loader.open_child(f"{selector.tags['series name']}.csv"),
-                read_options=read_options,
+                parse_options=self._get_parse_options(),
+                read_options=self._get_read_options(columns),
                 convert_options=convert_options,
             )
             data = _map_columns(data_columns, data)
@@ -427,10 +426,11 @@ class CSVSource:
         if "ts" in self.__options.column_mapping:
             timestamp_column = self.__options.column_mapping["ts"]
 
-        convert_options = _get_convert_options(timestamp_column, self.__options)
         try:
             all_data = pyarrow.csv.read_csv(
-                loader.open(), convert_options=convert_options
+                loader.open(),
+                parse_options=self._get_parse_options(),
+                convert_options=self._get_convert_options(timestamp_column),
             )
             all_data = _map_pivot_columns(self.__options.column_mapping, all_data)
             all_data = _cast_ts_column(all_data, self.__options.data_timezone)
@@ -457,29 +457,43 @@ class CSVSource:
     def _map_quality(self, quality_data: pa.Array) -> pa.Array:
         return self.__mappers.quality.map_array(quality_data)
 
+    def _get_read_options(self, columns: list[str]) -> pyarrow.csv.ReadOptions:
+        if not self.__options.header_row:
+            read_options = pyarrow.csv.ReadOptions(column_names=columns)
+        else:
+            read_options = pyarrow.csv.ReadOptions()
+        return read_options
 
-def _get_convert_options(
-    timestamp_column: str,
-    options: CSVSourceOptions,
-) -> pyarrow.csv.ConvertOptions:
-    column_types = {
-        timestamp_column: (
-            pa.timestamp("us")
-            if options.data_timezone is not None
-            else pa.timestamp("us", "UTC")
+    def _get_parse_options(self) -> Optional[pyarrow.csv.ParseOptions]:
+        parse_options = None
+        if self.__options.data_column_separator is not None:
+            parse_options = pyarrow.csv.ParseOptions(
+                delimiter=self.__options.data_column_separator
+            )
+        return parse_options
+
+    def _get_convert_options(
+        self,
+        timestamp_column: str,
+    ) -> pyarrow.csv.ConvertOptions:
+        column_types = {
+            timestamp_column: (
+                pa.timestamp("us")
+                if self.__options.data_timezone is not None
+                else pa.timestamp("us", "UTC")
+            )
+        }
+
+        timestamp_parsers = (
+            [self.__options.data_datetime_format]
+            if self.__options.data_datetime_format is not None
+            else None
         )
-    }
-
-    timestamp_parsers = (
-        [options.data_datetime_format]
-        if options.data_datetime_format is not None
-        else None
-    )
-    return pyarrow.csv.ConvertOptions(
-        column_types=column_types,
-        timestamp_parsers=timestamp_parsers,
-        decimal_point=options.data_decimal_point,
-    )
+        return pyarrow.csv.ConvertOptions(
+            column_types=column_types,
+            timestamp_parsers=timestamp_parsers,
+            decimal_point=self.__options.data_decimal_point,
+        )
 
 
 def _cast_ts_column(data: pa.Table, data_timezone: Optional[str]) -> pa.Table:

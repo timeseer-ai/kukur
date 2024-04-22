@@ -13,7 +13,7 @@ from pyarrow import fs
 from pyarrow.dataset import Dataset
 
 from kukur.exceptions import MissingModuleException
-from kukur.inspect import InspectedPath, InvalidInspectURI, ResourceType
+from kukur.inspect import InspectedPath, InspectOptions, InvalidInspectURI, ResourceType
 from kukur.inspect.arrow import get_data_set
 
 try:
@@ -93,22 +93,27 @@ def inspect(blob_uri: ParseResult) -> List[InspectedPath]:
         return paths
 
 
-def preview(blob_uri: ParseResult, num_rows: int = 5000) -> Optional[pa.Table]:
+def preview(
+    blob_uri: ParseResult, num_rows: int, options: Optional[InspectOptions]
+) -> Optional[pa.Table]:
     """Return the first nuw_rows of the blob."""
-    data_set = _get_data_set(blob_uri)
+    data_set = _get_data_set(blob_uri, options)
     return data_set.head(num_rows)
 
 
 def read(
-    blob_uri: ParseResult, column_names: Optional[List[str]] = None
+    blob_uri: ParseResult, options: Optional[InspectOptions]
 ) -> Generator[pa.RecordBatch, None, None]:
     """Iterate over all RecordBatches at the given URI."""
-    data_set = _get_data_set(blob_uri)
+    data_set = _get_data_set(blob_uri, options)
+    column_names = None
+    if options is not None:
+        column_names = options.column_names
     for record_batch in data_set.to_batches(columns=column_names):
         yield record_batch
 
 
-def _get_data_set(blob_uri: ParseResult) -> Dataset:
+def _get_data_set(blob_uri: ParseResult, options: Optional[InspectOptions]) -> Dataset:
     if not HAS_ADLFS:
         raise MissingModuleException("adlfs")
 
@@ -122,7 +127,9 @@ def _get_data_set(blob_uri: ParseResult) -> Dataset:
     azure_blob = AzureBlobFileSystem(account_name=account_uri.split(".")[0], anon=False)
     blob_path = PurePath(container_name) / PurePath(blob_uri.path.lstrip("/"))
 
-    data_set = get_data_set(fs.PyFileSystem(fs.FSSpecHandler(azure_blob)), blob_path)
+    data_set = get_data_set(
+        fs.PyFileSystem(fs.FSSpecHandler(azure_blob)), blob_path, options
+    )
     if data_set is None:
         if not HAS_DELTA_LAKE:
             raise MissingModuleException("deltalake")

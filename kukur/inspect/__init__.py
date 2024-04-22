@@ -18,6 +18,7 @@ The `kukur.inspect.blob` module supports inspecting blob stores.
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import List, Optional
 
 from kukur.exceptions import KukurException
 
@@ -50,3 +51,16 @@ class InspectedPath:
 
     resource_type: ResourceType
     path: str
+
+
+@dataclass
+class InspectOptions:
+    """Options for inspect operations.
+
+    `column_names` restricts preview and data fetching operations to the specified columns only.
+    `csv_delimiter` defines the delimiter used to separate columns in CSV files.
+    """
+
+    column_names: Optional[List[str]] = None
+    csv_delimiter: Optional[str] = None
+    csv_header_row: bool = True

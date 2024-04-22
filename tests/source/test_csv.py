@@ -410,3 +410,51 @@ def test_pivot_comma() -> None:
     data = get_source("pivot_comma").get_data(selector, START_DATE, END_DATE)
     assert len(data) == 7
     assert data["value"][0].as_py() == approx(1)
+
+
+def test_row_semicolon_separator_search() -> None:
+    many_series = list(
+        get_source("row_semicolon_separator").search(
+            SeriesSearch("row_semicolon_separator")
+        )
+    )
+    assert len(many_series) == 5
+
+
+def test_row_semicolon_separator_data() -> None:
+    selector = SeriesSelector("row_semicolon_separator", "test-tag-3")
+    data = get_source(selector.source).get_data(selector, START_DATE, END_DATE)
+    assert len(data) == 30
+    assert data["value"][7].as_py() == approx(5.6)
+
+
+def test_pivot_semicolon_separator_search() -> None:
+    many_series = list(
+        get_source("pivot_semicolon_separator").search(
+            SeriesSearch("pivot_semicolon_separator")
+        )
+    )
+    assert len(many_series) == 2
+
+
+def test_pivot_semicolon_separator_data() -> None:
+    selector = SeriesSelector("pivot_semicolon_separator", "test-tag-1")
+    data = get_source(selector.source).get_data(selector, START_DATE, END_DATE)
+    assert len(data) == 7
+    assert data["value"][6].as_py() == approx(3)
+
+
+def test_dir_semicolon_separator_search() -> None:
+    many_series = list(
+        get_source("dir_semicolon_separator").search(
+            SeriesSearch("dir_semicolon_separator")
+        )
+    )
+    assert len(many_series) == 2
+
+
+def test_dir_semicolon_separator_data() -> None:
+    selector = SeriesSelector("dir_semicolon_separator", "test-tag-1")
+    data = get_source(selector.source).get_data(selector, START_DATE, END_DATE)
+    assert len(data) == 5
+    assert data["value"][1].as_py() == approx(2)

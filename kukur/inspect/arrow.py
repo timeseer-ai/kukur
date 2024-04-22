@@ -6,10 +6,10 @@
 from pathlib import PurePath
 from typing import List, Optional
 
-from pyarrow import fs
-from pyarrow.dataset import Dataset, dataset
+from pyarrow import csv, fs
+from pyarrow.dataset import CsvFileFormat, Dataset, dataset
 
-from kukur.inspect import InspectedPath, ResourceType
+from kukur.inspect import InspectedPath, InspectOptions, ResourceType
 
 
 def inspect(filesystem: fs.FileSystem, path: PurePath) -> List[InspectedPath]:
@@ -22,11 +22,21 @@ def inspect(filesystem: fs.FileSystem, path: PurePath) -> List[InspectedPath]:
     return paths
 
 
-def get_data_set(filesystem: fs.FileSystem, path: PurePath) -> Optional[Dataset]:
+def get_data_set(
+    filesystem: fs.FileSystem, path: PurePath, options: Optional[InspectOptions]
+) -> Optional[Dataset]:
     """Return a PyArrow dataset for the resources at the given path."""
     resource_type = _get_resource_type_from_extension(path.suffix.lstrip("."))
     if resource_type in [ResourceType.ARROW, ResourceType.PARQUET, ResourceType.CSV]:
-        return dataset(str(path), format=resource_type.value, filesystem=filesystem)
+        format = resource_type.value
+        if resource_type == ResourceType.CSV and options is not None:
+            format = CsvFileFormat(
+                read_options=csv.ReadOptions(
+                    autogenerate_column_names=not options.csv_header_row
+                ),
+                parse_options=csv.ParseOptions(delimiter=options.csv_delimiter),
+            )
+        return dataset(str(path), format=format, filesystem=filesystem)
     return None
 
 

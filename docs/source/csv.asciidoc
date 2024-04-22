@@ -24,6 +24,7 @@ header_row = "false|true"
 data_datetime_format = "<date format string>"
 data_timezone = "<time zone>"
 data_decimal_point = "."
+data_column_separator = ","
 ```
 
 `path` is required for time series sources.
@@ -79,6 +80,14 @@ use:
 
 ```
 data_decimal_point = ","
+```
+
+When columns are not separated by columns,
+use `data_column_separator`.
+For example, to use `;`:
+
+```
+data_column_separator = ";"
 ```
 
 === Row Based Format
