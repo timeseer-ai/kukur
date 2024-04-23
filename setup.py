@@ -35,7 +35,6 @@ setuptools.setup(
         "datafusion": ["datafusion"],
         "delta": ["deltalake"],
         "influxdb": ["influxdb"],
-        "inspect": ["azure-storage-file-datalake", "adlfs"],
         "kusto": ["azure-identity", "azure-kusto-data"],
         "odbc": ["pyodbc"],
         "piwebapi": ["requests", "requests-kerberos"],
