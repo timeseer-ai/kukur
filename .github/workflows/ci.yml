@@ -14,10 +14,10 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: "3.9"
           cache: "pip"
@@ -47,7 +47,7 @@ jobs:
         run: docker save kukur:latest > /tmp/kukur.tar
 
       - name: Create the docker container artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: kukur-docker
           path: /tmp/kukur.tar
@@ -68,10 +68,10 @@ jobs:
           - postgres
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Download docker container artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: kukur-docker
           path: /tmp
@@ -84,7 +84,7 @@ jobs:
         working-directory: tests/test_data
 
       - name: Set up Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: "3.9"
           cache: "pip"
