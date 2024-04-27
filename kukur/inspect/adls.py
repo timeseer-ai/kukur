@@ -27,7 +27,7 @@ except ImportError:
 def inspect(blob_uri: ParseResult) -> List[InspectedPath]:
     """Inspect a path on ADLS Gen 2 storage."""
     filesystem, blob_path = _get_filesystem_path(blob_uri)
-    return inspect_blob(filesystem, blob_path)
+    return _remove_container_from_path(blob_uri, inspect_blob(filesystem, blob_path))
 
 
 def preview(
@@ -61,6 +61,7 @@ def _get_data_set(blob_uri: ParseResult, options: Optional[InspectOptions]) -> D
 
 
 def _get_filesystem_path(blob_uri: ParseResult) -> Tuple[AzureFileSystem, PurePath]:
+    """Add the container name as the first path component."""
     if blob_uri.hostname is None:
         raise InvalidInspectURI("missing storage account name")
     account_name = blob_uri.hostname.split(".")[0]
@@ -71,3 +72,22 @@ def _get_filesystem_path(blob_uri: ParseResult) -> Tuple[AzureFileSystem, PurePa
 
     path = PurePath(container_name) / PurePath(blob_uri.path.lstrip("/"))
     return AzureFileSystem(account_name), path
+
+
+def _remove_container_from_path(
+    blob_uri: ParseResult, paths: list[InspectedPath]
+) -> list[InspectedPath]:
+    """Remove the container name.
+
+    It is already part of the URL before the @.
+    """
+    container_name = blob_uri.username
+    if container_name is None:
+        raise InvalidInspectURI("missing container name")
+    return [
+        InspectedPath(
+            path.resource_type,
+            str(PurePath(path.path).relative_to(PurePath(container_name))),
+        )
+        for path in paths
+    ]
