@@ -35,7 +35,7 @@ def preview(
 ) -> Optional[pa.Table]:
     """Return the first nuw_rows of the blob."""
     data_set = _get_data_set(blob_uri, options)
-    return data_set.head(num_rows)
+    return data_set.head(num_rows, batch_size=num_rows, batch_readahead=1)
 
 
 def read(
@@ -46,7 +46,7 @@ def read(
     column_names = None
     if options is not None:
         column_names = options.column_names
-    for record_batch in data_set.to_batches(columns=column_names):
+    for record_batch in data_set.to_batches(columns=column_names, batch_readahead=1):
         yield record_batch
 
 
