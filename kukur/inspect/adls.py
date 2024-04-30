@@ -8,8 +8,8 @@ from typing import Generator, List, Optional, Tuple
 from urllib.parse import ParseResult
 
 import pyarrow as pa
+from pyarrow import fs
 from pyarrow.dataset import Dataset
-from pyarrow.fs import AzureFileSystem
 
 from kukur.exceptions import MissingModuleException
 from kukur.inspect import InspectedPath, InspectOptions, InvalidInspectURI
@@ -22,6 +22,13 @@ try:
     HAS_DELTA_LAKE = True
 except ImportError:
     HAS_DELTA_LAKE = False
+
+try:
+    from pyarrow.fs import AzureFileSystem
+
+    HAS_AZURE_FS = True
+except ImportError:
+    HAS_AZURE_FS = False
 
 
 def inspect(blob_uri: ParseResult) -> List[InspectedPath]:
@@ -60,8 +67,10 @@ def _get_data_set(blob_uri: ParseResult, options: Optional[InspectOptions]) -> D
     return data_set
 
 
-def _get_filesystem_path(blob_uri: ParseResult) -> Tuple[AzureFileSystem, PurePath]:
+def _get_filesystem_path(blob_uri: ParseResult) -> Tuple[fs.FileSystem, PurePath]:
     """Add the container name as the first path component."""
+    if not HAS_AZURE_FS:
+        raise MissingModuleException("azurefilesystem")
     if blob_uri.hostname is None:
         raise InvalidInspectURI("missing storage account name")
     account_name = blob_uri.hostname.split(".")[0]
