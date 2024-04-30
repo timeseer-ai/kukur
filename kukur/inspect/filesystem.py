@@ -37,7 +37,7 @@ def preview_filesystem(
 ) -> Optional[pa.Table]:
     """Preview a data file at the specified filesystem location."""
     data_set = _get_data_set(path, options)
-    return data_set.head(num_rows)
+    return data_set.head(num_rows, batch_size=num_rows, batch_readahead=1)
 
 
 def read_filesystem(
@@ -51,7 +51,7 @@ def read_filesystem(
     column_names = None
     if options is not None and options.column_names is not None:
         column_names = options.column_names
-    for record_batch in data_set.to_batches(columns=column_names):
+    for record_batch in data_set.to_batches(columns=column_names, batch_readahead=1):
         yield record_batch
 
 
