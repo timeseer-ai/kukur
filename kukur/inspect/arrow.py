@@ -10,6 +10,7 @@ from pyarrow import csv, fs
 from pyarrow.dataset import CsvFileFormat, Dataset, dataset
 
 from kukur.inspect import InspectedPath, InspectOptions, ResourceType
+from kukur.source.gpx import parse_gpx
 
 
 def inspect(filesystem: fs.FileSystem, path: PurePath) -> List[InspectedPath]:
@@ -37,6 +38,8 @@ def get_data_set(
                 parse_options=csv.ParseOptions(delimiter=options.csv_delimiter),
             )
         return dataset(str(path), format=format, filesystem=filesystem)
+    if resource_type == ResourceType.GPX:
+        return dataset(parse_gpx(filesystem.open_input_file(str(path))))
     return None
 
 
@@ -60,4 +63,6 @@ def _get_resource_type_from_extension(extension: str) -> Optional[ResourceType]:
         return ResourceType.ARROWS
     if extension in ["csv", "txt"]:
         return ResourceType.CSV
+    if extension in ["gpx"]:
+        return ResourceType.GPX
     return None

@@ -42,6 +42,7 @@ class ResourceType(Enum):
     CSV = "csv"
     DELTA = "delta"
     DIRECTORY = "directory"
+    GPX = "gpx"
     PARQUET = "parquet"
 
 
