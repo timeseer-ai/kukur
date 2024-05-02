@@ -35,7 +35,7 @@ def parse_gpx(readable) -> Table:  # noqa: PLR0912
     """Parse a GPX file to a PyArrow Table.
 
     This concatenates all track segments of all tracks.
-    All data points of the first trackpoint will be include.
+    Elevation and all extension data points of the first trackpoint will be included as columns.
     """
     tables = []
 
