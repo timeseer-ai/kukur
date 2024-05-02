@@ -8,18 +8,9 @@ from typing import Generator, List, Optional
 
 import pyarrow as pa
 from pyarrow import fs
-from pyarrow.dataset import Dataset
 
-from kukur.exceptions import MissingModuleException
 from kukur.inspect import InspectedPath, InspectOptions
-from kukur.inspect.arrow import get_data_set, inspect
-
-try:
-    from deltalake import DeltaTable
-
-    HAS_DELTA_LAKE = True
-except ImportError:
-    HAS_DELTA_LAKE = False
+from kukur.inspect.arrow import BlobResource, inspect
 
 
 def inspect_filesystem(path: Path) -> List[InspectedPath]:
@@ -36,7 +27,9 @@ def preview_filesystem(
     path: Path, num_rows: int = 5000, options: Optional[InspectOptions] = None
 ) -> Optional[pa.Table]:
     """Preview a data file at the specified filesystem location."""
-    data_set = _get_data_set(path, options)
+    local = fs.LocalFileSystem()
+    resource = BlobResource(str(path), local, path)
+    data_set = resource.get_data_set(options)
     return data_set.head(num_rows, batch_size=num_rows, batch_readahead=1)
 
 
@@ -47,19 +40,7 @@ def read_filesystem(
 
     Optionally filters the columns returned.
     """
-    data_set = _get_data_set(path, options)
-    column_names = None
-    if options is not None and options.column_names is not None:
-        column_names = options.column_names
-    for record_batch in data_set.to_batches(columns=column_names, batch_readahead=1):
-        yield record_batch
-
-
-def _get_data_set(path: Path, options: Optional[InspectOptions]) -> Dataset:
     local = fs.LocalFileSystem()
-    data_set = get_data_set(local, path, options)
-    if data_set is None:
-        if not HAS_DELTA_LAKE:
-            raise MissingModuleException("deltalake")
-        data_set = DeltaTable(path).to_pyarrow_dataset()
-    return data_set
+    resource = BlobResource(str(path), local, path)
+    for batch in resource.read_batches(options):
+        yield batch
