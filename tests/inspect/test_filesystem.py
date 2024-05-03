@@ -121,3 +121,10 @@ def test_read_filesystem_csv_no_header_row() -> None:
     assert len(results) == 1
     assert results[0].num_columns == 2
     assert results[0].num_rows == 5
+
+
+def test_read_filesystem_parquet() -> None:
+    path = Path("tests/test_data/parquet/row.parquet")
+    batches = list(read_filesystem(path))
+    assert len(batches) == 1
+    assert len(batches[0]) == 47
