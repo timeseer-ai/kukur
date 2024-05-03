@@ -35,8 +35,7 @@ def read(
 ) -> Generator[pa.RecordBatch, None, None]:
     """Iterate over all RecordBatches at the given URI."""
     resource = _get_resource(blob_uri)
-    for batch in resource.read_batches(options):
-        yield batch
+    yield from resource.read_batches(options)
 
 
 def _get_resource(blob_uri: ParseResult) -> BlobResource:

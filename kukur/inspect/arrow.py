@@ -59,15 +59,11 @@ class BlobResource:
             stream = self.__fs.open_input_file(str(self.__path))
             rdr = parquet.ParquetFile(stream)
             column_names = _get_column_names(options)
-            for batch in rdr.iter_batches(columns=column_names):
-                yield batch
+            yield from rdr.iter_batches(columns=column_names)
         else:
             data_set = self.get_data_set(options)
             column_names = _get_column_names(options)
-            for record_batch in data_set.to_batches(
-                columns=column_names, batch_readahead=1
-            ):
-                yield record_batch
+            yield from data_set.to_batches(columns=column_names, batch_readahead=1)
 
 
 def _get_column_names(options: Optional[InspectOptions]) -> Optional[List[str]]:

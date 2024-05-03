@@ -42,5 +42,4 @@ def read_filesystem(
     """
     local = fs.LocalFileSystem()
     resource = BlobResource(str(path), local, path)
-    for batch in resource.read_batches(options):
-        yield batch
+    yield from resource.read_batches(options)
