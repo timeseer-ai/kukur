@@ -18,7 +18,7 @@ from kukur.inspect.arrow import inspect as inspect_s3
 def inspect(blob_uri: ParseResult) -> List[InspectedPath]:
     """Inspect a path in an AWS S3 bucket."""
     blob_path = _get_blob_path(blob_uri)
-    return inspect_s3(S3FileSystem(), blob_path)
+    return _remove_bucket_from_path(blob_uri, inspect_s3(S3FileSystem(), blob_path))
 
 
 def preview(
@@ -49,3 +49,22 @@ def _get_blob_path(blob_uri: ParseResult) -> PurePath:
     if bucket_name is None:
         raise InvalidInspectURI("missing bucket name")
     return PurePath(bucket_name) / PurePath(blob_uri.path.lstrip("/"))
+
+
+def _remove_bucket_from_path(
+    blob_uri: ParseResult, paths: list[InspectedPath]
+) -> list[InspectedPath]:
+    """Remove the bucket name.
+
+    It is already the hostname.
+    """
+    bucket_name = blob_uri.hostname
+    if bucket_name is None:
+        raise InvalidInspectURI("missing bucket name")
+    return [
+        InspectedPath(
+            path.resource_type,
+            str(PurePath(path.path).relative_to(PurePath(bucket_name))),
+        )
+        for path in paths
+    ]
