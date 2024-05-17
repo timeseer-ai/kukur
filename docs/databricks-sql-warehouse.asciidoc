@@ -1,0 +1,73 @@
+= Connecting to Databricks SQL Warehouses on Azure using Managed Identities
+
+Connections to https://learn.microsoft.com/en-us/azure/databricks/compute/sql-warehouse/[Databricks SQL Warehouses] from Kukur are made using the https://www.databricks.com/spark/odbc-drivers-download[Databricks ODBC Driver].
+
+This guide assumes Kukur is running as a container on an Azure VM with a System Assigned Managed Identity.
+The Managed Identity will be used to connect securely to the SQL Warehouse.
+
+The first step is to build a container image that includes the ODBC driver.
+An example `Dockerfile` https://github.com/timeseer-ai/kukur/tree/master/docker/spark/Dockerfile[is available].
+
+== Creating a Service Principal in Databricks
+
+The Managed Identity of the VM needs to be defined as a Service Principal in Databricks.
+
+The full documentation to achieve this is available at https://learn.microsoft.com/en-us/azure/databricks/dev-tools/azure-mi-auth[Set up and use Azure managed identities authentication for Azure Databricks automation]
+
+The required steps are:
+
+- Go to the VM in the Azure portal. Copy the `Object ID` of the VM Identity.
+- Go to Entra ID. Search for the `Object ID` copied in the previous step. Copy the `Application ID`.
+- Go to the https://accounts.azuredatabricks.net/[Databricks Account console].
+- In `User management` - `Service principals`, choose `Add service principal`.
+- Choose `Microsoft Entra ID managed`. Paste the `Application ID`. Give the service principal a name.
+- Go to `SQL Warehouses` in the Databricks Workspace. Add `Can use` permissions to the service principal.
+- In the `Catalog`, grant `Data Reader` permissions to the service principal.
+
+== Configuring Kukur
+
+First open the Azure Portal.
+Navigate to the `Properties` of the `Azure Databricks Service`.
+Copy the `Id`.
+
+Open the SQL Warehouse in the Databricks Workspace.
+Go to `Connection details`.
+
+Copy the `Server hostname` and the `HTTP path`.
+
+This example below connects to `adb-5136731089164599.19.azuredatabricks.net` at `/sql/1.0/warehouses/2cf2d4cd375bb81a`.
+The `Id` of the Workspace is: `/subscriptions/4eaf5c02-76be-4f45-b92a-d5882e686c95/resourceGroups/rg-kukur/providers/Microsoft.Databricks/workspaces/kukur-demo`.
+
+A connection is made to the table at `tsaideltalake.poc.tsai_antwerp`.
+
+```toml
+[source.Databricks]
+type = "odbc"
+connection_string = """
+Driver=/opt/simba/spark/lib/64/libsparkodbc_sb64.so;
+Host=adb-5136731089164599.19.azuredatabricks.net;
+Port=443;
+HTTPPath=/sql/1.0/warehouses/2cf2d4cd375bb81a;
+SSL=1;
+ThriftTransport=2;
+AuthMech=11;
+Auth_Flow=3;
+Azure_workspace_resource_id=/subscriptions/4eaf5c02-76be-4f45-b92a-d5882e686c95/resourceGroups/rg-kukur/providers/Microsoft.Databricks/workspaces/kukur-demo;
+"""
+autocommit = true
+list_query = """
+select distinct `series name` from tsdeltalake.poc.tsai_antwerp
+"""
+list_columns = ["series name"]
+data_query = """
+select ts, value
+from tsdeltalake.poc.tsai_antwerp
+where `series name` = ?
+  and ts >= ?
+  and ts < ?
+"""
+```
+
+It is important to set `autocommit = true` since the Spark ODBC driver does not support transactions.
+
+Refer to https://learn.microsoft.com/en-us/azure/databricks/integrations/odbc/authentication[Authentication settings for the Databricks ODBC Driver] for alternative authentication options.

@@ -47,7 +47,12 @@ class ODBCSource(BaseSQLSource):
             raise InvalidSourceException(
                 "'connection_string' is required for source with type 'odbc'"
             )
-        connection = pyodbc.connect(self._config.connection_string)
+        autocommit = False
+        if self._config.autocommit is not None:
+            autocommit = self._config.autocommit
+        connection = pyodbc.connect(
+            self._config.connection_string, autocommit=autocommit
+        )
         if self._config.query_timeout_seconds is not None:
             connection.timeout = self._config.query_timeout_seconds
         return connection
