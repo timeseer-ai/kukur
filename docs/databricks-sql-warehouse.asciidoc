@@ -10,7 +10,7 @@ An example `Dockerfile` https://github.com/timeseer-ai/kukur/tree/master/docker/
 
 == Creating a Service Principal in Databricks
 
-The Managed Identity of the VM needs to be defines as a Service Principal in Databricks.
+The Managed Identity of the VM needs to be defined as a Service Principal in Databricks.
 
 The full documentation to achieve this is available at https://learn.microsoft.com/en-us/azure/databricks/dev-tools/azure-mi-auth[Set up and use Azure managed identities authentication for Azure Databricks automation]
 
