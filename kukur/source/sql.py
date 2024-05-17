@@ -57,6 +57,7 @@ class SQLConfig:  # pylint: disable=too-many-instance-attributes
     enable_trace_logging: bool = False
     query_timeout_seconds: Optional[int] = None
     type_checking_row_limit: int = 300
+    autocommit: Optional[bool] = None
 
     @classmethod
     def from_dict(cls, data):
@@ -102,7 +103,7 @@ class SQLConfig:  # pylint: disable=too-many-instance-attributes
             config.enable_trace_logging = data.get("enable_trace_logging", False)
         if data.get("query_timeout_enable", True):
             config.query_timeout_seconds = data.get("query_timeout_seconds", 0)
-
+        config.autocommit = data.get("autocommit")
         return config
 
 

@@ -14,6 +14,7 @@ Inline configuration takes precedence over file-based configuration when both ar
 type = "odbc"
 connection_string = "<ODBC connection_string>"
 connection_string_path = "<path to connection string>"
+autocommit = false
 query_timeout_seconds = 0
 query_timeout_enable = true
 query_string_parameters = false
@@ -92,6 +93,11 @@ no timeout.
 
 Some drivers do not allow setting a timeout.
 Disable it using `query_timeout_enable = false`.
+
+By default,
+a transaction is created in which all queries run.
+Some drivers do not support this.
+A transaction will not be created when `autocommit = true`.
 
 === Search
 
