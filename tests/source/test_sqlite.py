@@ -537,6 +537,66 @@ select ts, {field} from Data where location = ? and plant = ? and ts >= ? and ts
         assert data["value"][1].as_py() == approx(10.5)
 
 
+def test_data_query_tags() -> None:
+    db_uri = "file:data_query_tags?mode=memory&cache=shared"
+    with sqlite3.connect(db_uri, uri=True) as connection:
+        cursor = connection.cursor()
+        cursor.executescript(
+            """
+            create table Data (
+                id integer primary key autoincrement,
+                ts datetime,
+                location text not null,
+                plant text not null,
+                value real
+            );
+
+            insert into Data (ts, location, plant, value)
+            values ('2022-01-01T00:00:00Z', 'Antwerp', '01', 0.5);
+
+            insert into Data (ts, location, plant, value)
+            values ('2022-01-01T00:00:00Z', 'Antwerp', '02', 10);
+
+            insert into Data (ts, location, plant, value)
+            values ('2022-01-01T00:01:00Z', 'Antwerp', '01', 1);
+
+            insert into Data (ts, location, plant, value)
+            values ('2022-01-01T00:01:00Z', 'Antwerp', '02', 10.5);
+        """
+        )
+        connection.commit()
+
+        config = {
+            "source": {
+                "sqlite": {
+                    "type": "sqlite",
+                    "connection_string": db_uri,
+                    "data_query": "select ts, value from Data where location = ? and plant = ? and ts >= ? and ts < ?",
+                    "tag_columns": ["location", "plant", "sensor"],
+                    "data_query_tags": ["location", "plant"],
+                }
+            }
+        }
+        source = SourceFactory(config).get_source("sqlite")
+        assert source is not None
+        data = source.get_data(
+            SeriesSelector(
+                "sqlite", {"location": "Antwerp", "plant": "02", "sensor": "01"}
+            ),
+            datetime.fromisoformat("2022-01-01T00:00:00+00:00"),
+            datetime.fromisoformat("2022-01-04T00:00:00+00:00"),
+        )
+        assert len(data) == 2
+        assert data["ts"][0].as_py() == datetime.fromisoformat(
+            "2022-01-01T00:00:00+00:00"
+        )
+        assert data["ts"][1].as_py() == datetime.fromisoformat(
+            "2022-01-01T00:01:00+00:00"
+        )
+        assert data["value"][0].as_py() == approx(10)
+        assert data["value"][1].as_py() == approx(10.5)
+
+
 def test_get_metadata() -> None:
     db_uri = "file:get_metadata?mode=memory&cache=shared"
     with sqlite3.connect(db_uri, uri=True) as connection:

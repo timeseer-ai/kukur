@@ -54,6 +54,7 @@ class SQLConfig:  # pylint: disable=too-many-instance-attributes
     data_query_datetime_format: Optional[str] = None
     data_timezone: Optional[tzinfo] = None
     data_query_timezone: Optional[tzinfo] = None
+    data_query_tags: Optional[List[str]] = None
     enable_trace_logging: bool = False
     query_timeout_seconds: Optional[int] = None
     type_checking_row_limit: int = 300
@@ -99,6 +100,7 @@ class SQLConfig:  # pylint: disable=too-many-instance-attributes
             config.data_query_timezone = dateutil.tz.gettz(
                 data.get("data_query_timezone")
             )
+        config.data_query_tags = data.get("data_query_tags")
         if "enable_trace_logging" in data:
             config.enable_trace_logging = data.get("enable_trace_logging", False)
         if data.get("query_timeout_enable", True):
@@ -265,7 +267,12 @@ class BaseSQLSource(ABC):
             query = self._config.data_query.format(field=selector.field)
         except (TypeError, IndexError):
             query = self._config.data_query
-        params = [selector.tags[tag_name] for tag_name in self._config.tag_columns]
+        if self._config.data_query_tags is None:
+            params = [selector.tags[tag_name] for tag_name in self._config.tag_columns]
+        else:
+            params = [
+                selector.tags[tag_name] for tag_name in self._config.data_query_tags
+            ]
         params.extend(
             [
                 self.__format_date(start_date),
