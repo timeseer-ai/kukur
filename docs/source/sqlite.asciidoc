@@ -30,6 +30,7 @@ data_query = "<query for data of one series in time range>"
 data_query_path = "<path to data query>"
 data_query_datetime_format = "<strftime format>"
 data_query_timezone = "<override or specify time zone of timestamps>"
+data_query_tags = [] # provide only a subset of tags to the data query
 data_timezone = "<override or specify time zone of timestamps returned by the data query>"
 enable_trace_logging = false
 quality_mapping = "<name>"
@@ -295,6 +296,14 @@ select ts, value
 from Data
 where my_location = ? and my_plant = ? and ts >= ? and ts < ?
 """
+```
+
+It is possible to pass only a subset of tags to the data query,
+by using `data_query_tags`.
+
+```toml
+[source.<name>]
+data_query_tags = ["location"]
 ```
 
 If the configuration defines `field_columns`,
