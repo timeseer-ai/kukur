@@ -45,6 +45,7 @@ from kukur.metadata import fields
 @dataclass
 class _RequestProperties:
     verify_ssl: bool
+    timeout_seconds: float
     max_returned_items_per_call: int
 
 
@@ -76,6 +77,7 @@ class _DictionaryLookup:  # pylint: disable=too-few-public-methods
         response = self.__session.get(
             self.__digital_set_links[name],
             verify=self.__request_properties.verify_ssl,
+            timeout=self.__request_properties.timeout_seconds,
             params=dict(maxCount=self.__request_properties.max_returned_items_per_call),
         )
         response.raise_for_status()
@@ -90,6 +92,7 @@ class _DictionaryLookup:  # pylint: disable=too-few-public-methods
         response = self.__session.get(
             self.__data_archive["Links"]["EnumerationSets"],
             verify=self.__request_properties.verify_ssl,
+            timeout=self.__request_properties.timeout_seconds,
             params=dict(maxCount=self.__request_properties.max_returned_items_per_call),
         )
         response.raise_for_status()
@@ -106,6 +109,7 @@ class PIWebAPIDataArchiveSource:
     def __init__(self, config: Dict):
         self.__request_properties = _RequestProperties(
             verify_ssl=config.get("verify_ssl", True),
+            timeout_seconds=config.get("timeout_seconds", 60),
             max_returned_items_per_call=config.get(
                 "max_returned_items_per_call", 150000
             ),
@@ -126,6 +130,7 @@ class PIWebAPIDataArchiveSource:
         response = session.get(
             self.__data_archive_uri,
             verify=self.__request_properties.verify_ssl,
+            timeout=self.__request_properties.timeout_seconds,
             params=dict(selectedFields="Links.Points;Links.EnumerationSets"),
         )
         response.raise_for_status()
@@ -141,6 +146,7 @@ class PIWebAPIDataArchiveSource:
             response = session.get(
                 data_archive["Links"]["Points"],
                 verify=self.__request_properties.verify_ssl,
+                timeout=self.__request_properties.timeout_seconds,
                 params=dict(
                     maxCount=self.__request_properties.max_returned_items_per_call,
                     startIndex=page
@@ -168,6 +174,7 @@ class PIWebAPIDataArchiveSource:
         response = session.get(
             self.__data_archive_uri,
             verify=self.__request_properties.verify_ssl,
+            timeout=self.__request_properties.timeout_seconds,
             params=dict(selectedFields="Links.Points;Links.EnumerationSets"),
         )
         response.raise_for_status()
@@ -176,6 +183,7 @@ class PIWebAPIDataArchiveSource:
         response = session.get(
             data_archive["Links"]["Points"],
             verify=self.__request_properties.verify_ssl,
+            timeout=self.__request_properties.timeout_seconds,
             params=dict(nameFilter=selector.name),
         )
         response.raise_for_status()
@@ -208,6 +216,7 @@ class PIWebAPIDataArchiveSource:
             response = session.get(
                 data_url,
                 verify=self.__request_properties.verify_ssl,
+                timeout=self.__request_properties.timeout_seconds,
                 params=dict(
                     maxCount=str(self.__request_properties.max_returned_items_per_call),
                     startTime=start_date.isoformat(),
@@ -264,6 +273,7 @@ class PIWebAPIDataArchiveSource:
         response = session.get(
             self.__data_archive_uri,
             verify=self.__request_properties.verify_ssl,
+            timeout=self.__request_properties.timeout_seconds,
             params=dict(selectedFields="Links.Points"),
         )
         response.raise_for_status()
@@ -272,6 +282,7 @@ class PIWebAPIDataArchiveSource:
         response = session.get(
             data_archive["Links"]["Points"],
             verify=self.__request_properties.verify_ssl,
+            timeout=self.__request_properties.timeout_seconds,
             params=dict(
                 maxCount=str(self.__request_properties.max_returned_items_per_call),
                 nameFilter=selector.name,

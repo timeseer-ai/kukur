@@ -11,6 +11,7 @@ type = "piwebapi-da"
 data_archive_uri = "The self-URI of the DataServer"
 max_returned_items_per_call = 150000
 verify_ssl = true
+timeout_seconds = 60 # The maximum time to wait for a response
 username = "" # optional: username for basic authentication
 password = "" # optional: password for basic authentication
 ```
@@ -58,6 +59,9 @@ will have 86400 values per day.
 This means a safe value of `data_query_interval_seconds` is `86400` when the default limit of `150000` is in place in PI Web API.
 For a time series that is being recorded at 1 value per minute and can have 44640 values per month,
 `data_query_interval_seconds = 2678400` is a safe value.
+
+Increase `timeout_seconds` when responses could take longer than the already long 2 minutes.
+Use with `query_retry_count` and `query_retry_delay` to work around flaky connections.
 
 Set `verify_ssl` to `false` when PI Web API uses a self-signed certificate.
 
