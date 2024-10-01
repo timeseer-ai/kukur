@@ -265,3 +265,27 @@ def test_row_tags_second_field():
     assert table["value"][0].as_py() == "A"
     assert table["value"][1].as_py() == "A"
     assert table["value"][2].as_py() == "B"
+
+
+def test_row_no_mapping_search() -> None:
+    series = list(
+        get_source("row-feather-no-mapping").search(
+            SeriesSearch("row-feather-no-mapping")
+        )
+    )
+    assert len(series) == 2
+
+
+def test_row_no_mapping_data() -> None:
+    table = get_source("row-feather-no-mapping").get_data(
+        SeriesSelector(
+            "row-feather-no-mapping",
+            {"name": "name", "location": "location"},
+            "pressure",
+        ),
+        START_DATE,
+        END_DATE,
+    )
+
+    assert len(table) == 1
+    assert table["value"][0].as_py() == 42

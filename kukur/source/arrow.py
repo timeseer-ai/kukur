@@ -342,12 +342,10 @@ def map_row_columns(
     if quality_mapper.is_present():
         column_names.append("quality")
 
-    data_columns = {}
-    if len(column_mapping) > 0:
-        data_columns = {
-            column_name: column_mapping.get(column_name, column_name)
-            for column_name in column_names
-        }
+    data_columns = {
+        column_name: column_mapping.get(column_name, column_name)
+        for column_name in column_names
+    }
 
     all_data = _map_columns(data_columns, all_data)
     all_data = all_data.rename_columns(column_names)
