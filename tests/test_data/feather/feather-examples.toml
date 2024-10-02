@@ -116,3 +116,9 @@ field_columns = ["value", "product"]
 "ts" = "date"
 "plant" = "Plant"
 "value" = "Value"
+
+[source.row-feather-no-mapping]
+type = "feather"
+path = "tests/test_data/feather/row-no-mapping.feather"
+tag_columns = ["name", "location"]
+field_columns = ["temperature", "pressure"]
