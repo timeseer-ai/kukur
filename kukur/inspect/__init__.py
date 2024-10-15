@@ -43,6 +43,8 @@ class ResourceType(Enum):
     DELTA = "delta"
     DIRECTORY = "directory"
     GPX = "gpx"
+    NDJSON = "json"
+    ORC = "orc"
     PARQUET = "parquet"
 
 

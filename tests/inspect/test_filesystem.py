@@ -128,3 +128,17 @@ def test_read_filesystem_parquet() -> None:
     batches = list(read_filesystem(path))
     assert len(batches) == 1
     assert len(batches[0]) == 47
+
+
+def test_read_filesystem_ndjson() -> None:
+    path = Path("tests/test_data/ndjson/inspect.ndjson")
+    batches = list(read_filesystem(path))
+    assert len(batches) == 1
+    assert len(batches[0]) == 5
+
+
+def test_read_filesystem_orc() -> None:
+    path = Path("tests/test_data/orc/row.orc")
+    batches = list(read_filesystem(path))
+    assert len(batches) == 1
+    assert len(batches[0]) == 47

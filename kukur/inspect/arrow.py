@@ -78,7 +78,13 @@ def get_data_set(
 ) -> Optional[Dataset]:
     """Return a PyArrow dataset for the resources at the given path."""
     resource_type = get_resource_type_from_extension(path.suffix.lstrip("."))
-    if resource_type in [ResourceType.ARROW, ResourceType.PARQUET, ResourceType.CSV]:
+    if resource_type in [
+        ResourceType.ARROW,
+        ResourceType.PARQUET,
+        ResourceType.CSV,
+        ResourceType.NDJSON,
+        ResourceType.ORC,
+    ]:
         format = resource_type.value
         if resource_type == ResourceType.CSV and options is not None:
             format = CsvFileFormat(
@@ -104,7 +110,9 @@ def _get_resource_type(
     return get_resource_type_from_extension(file_info.extension)
 
 
-def get_resource_type_from_extension(extension: str) -> Optional[ResourceType]:
+def get_resource_type_from_extension(  # noqa: PLR0911
+    extension: str,
+) -> Optional[ResourceType]:
     """Return the resource type based on a file extension."""
     if extension == "parquet":
         return ResourceType.PARQUET
@@ -116,4 +124,8 @@ def get_resource_type_from_extension(extension: str) -> Optional[ResourceType]:
         return ResourceType.CSV
     if extension in ["gpx"]:
         return ResourceType.GPX
+    if extension in ["ndjson", "json"]:
+        return ResourceType.NDJSON
+    if extension in ["orc"]:
+        return ResourceType.ORC
     return None
