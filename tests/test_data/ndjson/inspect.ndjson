@@ -1,0 +1,5 @@
+{"ts": "2021-01-01T00:00:00Z", "series name": "test-tag-1", "value": 1}
+{"ts": "2021-01-02T00:00:00Z", "series name": "test-tag-1", "value": 2}
+{"ts": "2021-01-03T00:00:00Z", "series name": "test-tag-1", "value": 3}
+{"ts": "2021-01-04T00:00:00Z", "series name": "test-tag-2", "value": 1.0}
+{"ts": "2021-01-05T00:00:00Z", "series name": "test-tag-2", "value": 2.0}
