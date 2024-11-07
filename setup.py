@@ -37,6 +37,7 @@ setuptools.setup(
         "influxdb": ["influxdb"],
         "kusto": ["azure-identity", "azure-kusto-data"],
         "odbc": ["pyodbc"],
+        "numpy": ["numpy"],
         "piwebapi": ["requests", "requests-kerberos"],
         "postgresql": ["psycopg[binary]"],
         "redshift": ["redshift_connector"],

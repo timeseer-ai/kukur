@@ -92,6 +92,7 @@ Use these to install requirements for the given source.
 - `[influxdb]` for connections to InfluxDB
 - `[inspect]` for inspection of storage containers
 - `[kusto]` for connections to Azure Data Explorer
+- `[numpy]` for creating simulator sources
 - `[odbc]` for connections to ODBC data sources
 - `[piwebapi]` for connections to PI Web API
 - `[postgresql]` for connections to PostgreSQL
