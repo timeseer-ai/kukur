@@ -15,7 +15,13 @@ from pathlib import Path
 from random import Random
 from typing import Any, Dict, Generator, List, Optional, Union
 
-import numpy
+try:
+    import numpy
+
+    HAS_NUMPY = True
+except ImportError:
+    HAS_NUMPY = False
+
 import pyarrow as pa
 
 try:
@@ -384,6 +390,8 @@ class WhiteNoiseSignalGenerator:
     __config: Optional[WhiteNoiseSignalGeneratorConfig] = None
 
     def __init__(self, config: Optional[Dict] = None):
+        if not HAS_NUMPY:
+            raise MissingModuleException("numpy")
         if config is not None:
             self.__config = WhiteNoiseSignalGeneratorConfig(
                 config["seriesName"],
@@ -527,6 +535,8 @@ class SineSignalGenerator:
     __config: Optional[SineSignalGeneratorConfig] = None
 
     def __init__(self, config: Optional[Dict] = None):
+        if not HAS_NUMPY:
+            raise MissingModuleException("numpy")
         if config is not None:
             self.__config = SineSignalGeneratorConfig(
                 config["seriesName"],
