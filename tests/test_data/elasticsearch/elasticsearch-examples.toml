@@ -1,0 +1,15 @@
+[source.noaa-es]
+type = "elasticsearch"
+host = "localhost"
+metadata_index = "tsai_metadata"
+index = "tsai_data"
+timestamp_column = "ts"
+tag_columns = ["series name", "location"]
+metadata_field_column = "field"
+metadata_mapping = "noaa_es_mapping"
+
+
+[metadata_mapping."noaa_es_mapping"]
+"series name" = "name"
+"functional lower limit" = "limits.low"
+"functional upper limit" = "limits.high"
