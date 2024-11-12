@@ -44,7 +44,7 @@ def from_config(
     metadata_value_mapper: MetadataValueMapper,
 ):
     """Create a new Influx data source."""
-    host = config.get("host", "localhost")
+    host = config.get("host", "http://localhost")
     port = config.get("port", 9200)
 
     username = config.get("username", "")
@@ -150,7 +150,7 @@ class ElasticsearchSource:
             query += f' | where {column_name} == "{_escape(selector.field)}"'
 
         response = requests.post(
-            f"http://{self.__configuration.host}:{self.__configuration.port}/_query",
+            f"{self.__configuration.host}:{self.__configuration.port}/_query",
             auth=(self.__configuration.username, self.__configuration.password),
             headers={"Content-Type": "application/json"},
             json={"query": query, "columnar": True},
@@ -218,7 +218,7 @@ class ElasticsearchSource:
                 query += f' | where {_escape(self.__metadata_mapper.from_kukur(tag_key))} == "{_escape(tag_value)}"'
 
         response = requests.post(
-            f"http://{self.__configuration.host}:{self.__configuration.port}/_query",
+            f"{self.__configuration.host}:{self.__configuration.port}/_query",
             auth=(self.__configuration.username, self.__configuration.password),
             headers={"Content-Type": "application/json"},
             json={"query": query, "columnar": True},
@@ -258,7 +258,7 @@ class ElasticsearchSource:
 
             query += f" | keep {self.__options.timestamp_column}, {selector.field}"
             response = requests.post(
-                f"http://{self.__configuration.host}:{self.__configuration.port}/_query",
+                f"{self.__configuration.host}:{self.__configuration.port}/_query",
                 auth=(self.__configuration.username, self.__configuration.password),
                 headers={"Content-Type": "application/json"},
                 json={"query": query, "params": params, "columnar": True},

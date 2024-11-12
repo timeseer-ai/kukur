@@ -1,6 +1,5 @@
 [source.noaa-es]
 type = "elasticsearch"
-host = "localhost"
 tag_columns = ["name", "location"]
 field_columns = ["water_level", "temperature"]
 metadata_columns = ["name", "description", "limits.low", "limits.high"]

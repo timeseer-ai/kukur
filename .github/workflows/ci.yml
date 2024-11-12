@@ -102,6 +102,11 @@ jobs:
       - name: Install requirements
         run: make deps dev-deps
 
+      - name: import data
+        if: matrix.target == 'elasticsearch'
+        run: |
+          curl -X POST http://localhost:9200/_bulk --data-binary @tests/test_data/elasticsearch/data.ndjson -H 'Content-Type: application/json'
+
       - name: Run integration test
         run: make integration-test-${{ matrix.target }}
 
