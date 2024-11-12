@@ -55,6 +55,10 @@ integration-test: ## Run all integration tests (this requires a running Kukur)
 integration-test-crate: ## Run CrateDB integration tests
 	python -m pytest tests/integration -m crate
 
+.PHONY: integration-test-elasticsearch
+integration-test-elasticsearch: ## Run Elasticsearch integration tests
+	python -m pytest tests/integration -m elasticsearch
+
 .PHONY: integration-test-influxdb
 integration-test-influxdb: ## Run InfluxDB integration tests
 	python -m pytest tests/integration -m influxdb
