@@ -1,12 +1,16 @@
 [source.noaa-es]
 type = "elasticsearch"
 host = "localhost"
-metadata_index = "tsai_metadata"
-index = "tsai_data"
-timestamp_column = "ts"
-tag_columns = ["series name", "location"]
-metadata_field_column = "field"
+username="elastic"
+tag_columns = ["name", "location"]
+field_columns = ["water_level", "temperature"]
+metadata_columns = ["name", "description", "limits.low", "limits.high"]
 metadata_mapping = "noaa_es_mapping"
+list_query = "from tsai_metadata"
+metadata_query = "from tsai_metadata"
+data_query = "from tsai_data | where ts >= ? and ts <= ? | sort ts asc"
+metadata_field_column = "field"
+timestamp_column = "ts"
 
 
 [metadata_mapping."noaa_es_mapping"]

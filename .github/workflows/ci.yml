@@ -62,6 +62,7 @@ jobs:
       matrix:
         target:
           - crate
+          - elasticsearch
           - influxdb
           - kukur
           - odbc

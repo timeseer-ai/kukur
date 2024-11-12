@@ -11,6 +11,7 @@ from datetime import datetime
 import pytest
 
 from kukur import Client, Metadata, SeriesSelector
+from kukur.base import SeriesSearch
 from kukur.metadata import fields
 
 pytestmark = pytest.mark.elasticsearch
@@ -24,7 +25,7 @@ def client() -> Client:
 
 
 def test_search(client: Client):
-    many_series = list(client.search(SeriesSelector("noaa-es")))
+    many_series = list(client.search(SeriesSearch("noaa-es")))
     assert len(many_series) == 3
     series = [
         series
@@ -42,7 +43,7 @@ def test_search(client: Client):
 def test_search_with_tags(client: Client):
     many_series = list(
         client.search(
-            SeriesSelector(
+            SeriesSearch(
                 "noaa-es",
                 {"series name": "h2o", "location": "coyote_creek"},
             )
@@ -60,9 +61,9 @@ def test_search_with_tags(client: Client):
 def test_search_with_fields(client: Client):
     many_series = list(
         client.search(
-            SeriesSelector(
+            SeriesSearch(
                 "noaa-es",
-                {"series name": "h2o_feet", "location": "coyote_creek"},
+                {"series name": "h2o", "location": "coyote_creek"},
                 "water_level",
             )
         )
