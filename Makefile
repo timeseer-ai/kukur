@@ -42,6 +42,7 @@ test: ## Run the unit tests
 compose: ## Start all containers needed for integration tests
 	docker-compose \
 		-f tests/test_data/docker-compose-crate.yml \
+		-f tests/test_data/docker-compose-elasticsearch.yml \
 		-f tests/test_data/docker-compose-influxdb.yml \
 		-f tests/test_data/docker-compose-odbc.yml \
 		-f tests/test_data/docker-compose-postgres.yml \

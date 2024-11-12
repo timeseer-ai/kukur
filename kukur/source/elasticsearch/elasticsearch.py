@@ -11,7 +11,7 @@ from typing import Any, Dict, Generator, List, Optional
 
 import pyarrow as pa
 
-from kukur.source.metadata import MetadataMapper
+from kukur.source.metadata import MetadataMapper, MetadataValueMapper
 
 try:
     import requests
@@ -38,7 +38,11 @@ class InvalidMetadataError(KukurException):
         KukurException.__init__(self, f"invalid metadata: {message}")
 
 
-def from_config(config: Dict[str, Any], metadata_mapper: MetadataMapper):
+def from_config(
+    config: Dict[str, Any],
+    metadata_mapper: MetadataMapper,
+    metadata_value_mapper: MetadataValueMapper,
+):
     """Create a new Influx data source."""
     host = config.get("host", "localhost")
     port = config.get("port", 9200)
@@ -53,13 +57,15 @@ def from_config(config: Dict[str, Any], metadata_mapper: MetadataMapper):
         config["data_query"],
         config.get("tag_columns", ["series name"]),
         config.get("field_columns", ["value"]),
-        config["metadata_columns"],
+        config.get("metadata_columns", []),
+        config.get("timestamp_column", "ts"),
         config.get("max_number_of_rows", 10000),
         config.get("metadata_field_column"),
-        config.get("timestamp_column"),
     )
 
-    return ElasticsearchSource(configuration, options, metadata_mapper)
+    return ElasticsearchSource(
+        configuration, options, metadata_mapper, metadata_value_mapper
+    )
 
 
 @dataclass
@@ -82,9 +88,9 @@ class ElasticsearchSourceOptions:
     tag_columns: List[str]
     field_columns: List[str]
     metadata_columns: List[str]
+    timestamp_column: str
     max_number_of_rows: int
     metadata_field_column: Optional[str] = None
-    timestamp_column: Optional[str] = None
 
 
 class ElasticsearchSource:
@@ -95,10 +101,12 @@ class ElasticsearchSource:
         configuration: ElasticsearchSourceConfiguration,
         options: ElasticsearchSourceOptions,
         metadata_mapper: MetadataMapper,
+        metadata_value_mapper: MetadataValueMapper,
     ):
         self.__configuration = configuration
         self.__options = options
         self.__metadata_mapper = metadata_mapper
+        self.__metadata_value_mapper = metadata_value_mapper
 
     def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
         """Search for series matching the given selector."""
@@ -123,7 +131,11 @@ class ElasticsearchSource:
                             continue
                         if v is None:
                             continue
-                        metadata.coerce_field(self.__metadata_mapper.from_source(k), v)
+                        name = self.__metadata_mapper.from_source(k)
+                        metadata.coerce_field(
+                            name,
+                            self.__metadata_value_mapper.from_source(name, v),
+                        )
                     yield metadata
 
     def _search_esql(self, selector: SeriesSearch) -> pa.Table:
@@ -142,6 +154,7 @@ class ElasticsearchSource:
             auth=(self.__configuration.username, self.__configuration.password),
             headers={"Content-Type": "application/json"},
             json={"query": query, "columnar": True},
+            timeout=60,
         )
         response.raise_for_status()
         content = json.loads(response.content)
@@ -184,7 +197,9 @@ class ElasticsearchSource:
         for field_name in field_names:
             column_name = self.__metadata_mapper.from_kukur(field_name)
             if column_name in row:
-                value = row[column_name]
+                value = self.__metadata_value_mapper.from_source(
+                    field_name, row[column_name]
+                )
                 try:
                     metadata.coerce_field(
                         field_name,
@@ -207,6 +222,7 @@ class ElasticsearchSource:
             auth=(self.__configuration.username, self.__configuration.password),
             headers={"Content-Type": "application/json"},
             json={"query": query, "columnar": True},
+            timeout=60,
         )
         response.raise_for_status()
         content = json.loads(response.content)
@@ -246,6 +262,7 @@ class ElasticsearchSource:
                 auth=(self.__configuration.username, self.__configuration.password),
                 headers={"Content-Type": "application/json"},
                 json={"query": query, "params": params, "columnar": True},
+                timeout=60,
             )
             response.raise_for_status()
             content = json.loads(response.content)

@@ -741,6 +741,8 @@ include::./source/datafusion.asciidoc[leveloffset=+1]
 
 include::./source/delta.asciidoc[leveloffset=+1]
 
+include::./source/elasticsearch.asciidoc[leveloffset=+1]
+
 include::./source/influxdb.asciidoc[leveloffset=+1]
 
 include::./source/kukur.asciidoc[leveloffset=+1]
