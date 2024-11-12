@@ -54,7 +54,7 @@ def from_config(config: Dict[str, Any], metadata_mapper: MetadataMapper):
         config.get("tag_columns", ["series name"]),
         config.get("field_columns", ["value"]),
         config["metadata_columns"],
-        config.get("query_type", "esql"),
+        config.get("max_number_of_rows", 10000),
         config.get("metadata_field_column"),
         config.get("timestamp_column"),
     )
@@ -82,7 +82,7 @@ class ElasticsearchSourceOptions:
     tag_columns: List[str]
     field_columns: List[str]
     metadata_columns: List[str]
-    query_type: str
+    max_number_of_rows: int
     metadata_field_column: Optional[str] = None
     timestamp_column: Optional[str] = None
 
@@ -127,6 +127,7 @@ class ElasticsearchSource:
                     yield metadata
 
     def _search_esql(self, selector: SeriesSearch) -> pa.Table:
+
         query = self.__options.list_query
         if selector.tags is not None and len(selector.tags) > 0:
             for tag_key, tag_value in selector.tags.items():
@@ -144,7 +145,7 @@ class ElasticsearchSource:
         )
         response.raise_for_status()
         content = json.loads(response.content)
-        columns = {}
+        columns: Dict[str, List] = {}
         for index, column in enumerate(content["columns"]):
             if (
                 column["name"] in self.__options.tag_columns
@@ -152,7 +153,10 @@ class ElasticsearchSource:
                 or column["name"] in self.__options.field_columns
                 or column["name"] == self.__options.metadata_field_column
             ):
-                columns[column["name"]] = content["values"][index]
+                if column["name"] in columns:
+                    columns[column["name"]].extend(content["values"][index])
+                else:
+                    columns[column["name"]] = content["values"][index]
 
         return pa.Table.from_pydict(columns)
 
@@ -222,35 +226,45 @@ class ElasticsearchSource:
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         """Return data for the given time series in the given time period."""
-        query = self.__options.data_query
-        split_query = self.__options.data_query.split("|", 1)
-        query = split_query[0]
-        params = [start_date.isoformat(), end_date.isoformat()]
-        if len(selector.tags) > 0:
-            for tag_key, tag_value in selector.tags.items():
-                query += f' | where {_escape(self.__metadata_mapper.from_kukur(tag_key))} == "{_escape(tag_value)}"'
+        timestamps = []
+        values = []
+        while True:
+            query = self.__options.data_query
+            split_query = self.__options.data_query.split("|", 1)
+            query = split_query[0]
+            params = [start_date.isoformat(), end_date.isoformat()]
+            if len(selector.tags) > 0:
+                for tag_key, tag_value in selector.tags.items():
+                    query += f' | where {_escape(self.__metadata_mapper.from_kukur(tag_key))} == "{_escape(tag_value)}"'
 
-        if len(split_query) > 1:
-            query += f" | {split_query[1]}"
+            if len(split_query) > 1:
+                query += f" | {split_query[1]}"
 
-        query += f" | keep {self.__options.timestamp_column}, {selector.field}"
-        response = requests.post(
-            f"http://{self.__configuration.host}:{self.__configuration.port}/_query",
-            auth=(self.__configuration.username, self.__configuration.password),
-            headers={"Content-Type": "application/json"},
-            json={"query": query, "params": params, "columnar": True},
-        )
-        response.raise_for_status()
-        content = json.loads(response.content)
+            query += f" | keep {self.__options.timestamp_column}, {selector.field}"
+            response = requests.post(
+                f"http://{self.__configuration.host}:{self.__configuration.port}/_query",
+                auth=(self.__configuration.username, self.__configuration.password),
+                headers={"Content-Type": "application/json"},
+                json={"query": query, "params": params, "columnar": True},
+            )
+            response.raise_for_status()
+            content = json.loads(response.content)
 
-        columns = {}
-        for index, column in enumerate(content["columns"]):
-            if column["name"] == self.__options.timestamp_column:
-                columns["ts"] = content["values"][index]
-            if column["name"] == selector.field:
-                columns["value"] = content["values"][index]
+            for index, column in enumerate(content["columns"]):
+                if column["name"] == self.__options.timestamp_column:
+                    timestamps.extend(content["values"][index])
+                if column["name"] == selector.field:
+                    values.extend(content["values"][index])
 
-        return pa.Table.from_pydict(columns)
+            if len(content["values"][0]) != self.__options.max_number_of_rows:
+                break
+
+            start_date = timestamps[-1]
+            while timestamps[-1] == start_date:
+                timestamps.pop()
+                values.pop()
+
+        return pa.Table.from_pydict({"ts": timestamps, "value": values})
 
     def get_source_structure(self, _: SeriesSelector) -> Optional[SourceStructure]:
         """Return the available tag keys, tag value and tag fields."""
