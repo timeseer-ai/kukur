@@ -109,3 +109,15 @@ Kukur will interpret it as `FLOAT64`.
 
 `metadata_mapping` and `metadata_value_mapping` can be used together
 to map wildly different metadata formats to a format supported by Kukur.
+
+Credentials can be added in a separate credential config.
+
+For example:
+```
+[source.<name>.credentials]
+username = ""
+password = ""
+api_key = ""
+```
+
+either username and password needs to be provided or the encoded value of the api key provided by Elasticsearch.

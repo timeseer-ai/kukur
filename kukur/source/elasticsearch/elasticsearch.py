@@ -48,10 +48,13 @@ def from_config(
     port = config.get("port", 9200)
 
     credentials = config.get("credentials")
+    username = ""
+    password = ""
+    api_key = None
     if credentials is not None:
-        username = config.get("username", "")
-        password = config.get("password", "")
-        api_key = config.get("api_key")
+        username = credentials.get("username", "")
+        password = credentials.get("password", "")
+        api_key = credentials.get("api_key")
     configuration = ElasticsearchSourceConfiguration(
         host, port, username, password, api_key
     )
