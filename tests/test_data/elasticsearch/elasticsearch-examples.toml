@@ -4,12 +4,14 @@ tag_columns = ["name", "location"]
 field_columns = ["water_level", "temperature"]
 metadata_columns = ["name", "description", "limits.low", "limits.high"]
 metadata_mapping = "noaa_es_mapping"
-list_query = "from tsai_metadata"
-metadata_query = "from tsai_metadata"
-data_query = "from tsai_data | where ts >= ? and ts <= ? | sort ts asc"
+list_index = "tsai_metadata"
+index = "tsai_data"
+
+#list_query = "select * from tsai_metadata"
+#metadata_query = "select * from tsai_metadata"
+#data_query = "select * from tsai_data where ts >= ? and ts <= ? order by ts asc"
 metadata_field_column = "field"
 timestamp_column = "ts"
-max_number_of_rows = 10000
 
 
 [metadata_mapping."noaa_es_mapping"]

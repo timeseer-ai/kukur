@@ -1,9 +1,9 @@
 { "index" : { "_index" : "tsai_metadata" } }
-{ "name": "h2o", "location": "coyote_creek", "description": "between 6 and 9 feet", "field": "water_level", "limits": { "low": 6, "high": 9}}
+{ "name": "h2o", "location": "coyote_creek", "description": "between 6 and 9 feet", "field": "water_level", "limits.low": 6, "limits.high": 9}
 { "index" : { "_index" : "tsai_metadata" } }
-{ "name": "h2o", "location": "coyote_creek", "description": "between 0 and 40 degrees", "field": "temperature", "limits": { "low": 0, "high": 40}}
+{ "name": "h2o", "location": "coyote_creek", "description": "between 0 and 40 degrees", "field": "temperature", "limits.low": 0, "limits.high": 40}
 { "index" : { "_index" : "tsai_metadata" } }
-{ "name": "h2o", "location": "santa_monica", "description": "between 7 and 8 feet", "field": "water_level", "limits": { "low": 7, "high": 8}}
+{ "name": "h2o", "location": "santa_monica", "description": "between 7 and 8 feet", "field": "water_level", "limits.low": 7, "limits.high": 8}
 { "index" : { "_index" : "tsai_data" } }
 {"name": "h2o", "location": "coyote_creek", "water_level": 9.98263496531526, "temperature": 1.6523056101207745, "ts": "2024-01-01T00:00:00+00:00"}
 { "index" : { "_index" : "tsai_data" } }
