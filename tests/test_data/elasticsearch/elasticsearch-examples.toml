@@ -7,7 +7,6 @@ metadata_columns = ["name", "description", "limits.low", "limits.high"]
 metadata_mapping = "noaa_es_mapping"
 list_index = "tsai_metadata"
 index = "tsai_data"
-data_query = "select * from tsai_data where ts >= ? and ts <= ? order by ts asc"
 metadata_field_column = "field"
 timestamp_column = "ts"
 
@@ -20,7 +19,6 @@ metadata_columns = ["name", "description", "limits.low", "limits.high"]
 metadata_mapping = "noaa_es_mapping"
 list_index = "tsai_metadata"
 index = "tsai_data"
-data_query = "select * from tsai_data where ts >= ? and ts <= ? order by ts asc"
 metadata_field_column = "field"
 timestamp_column = "ts"
 
@@ -33,7 +31,6 @@ metadata_columns = ["name", "description", "limits.low", "limits.high"]
 metadata_mapping = "noaa_es_mapping"
 list_index = "tsai_metadata"
 index = "tsai_data"
-data_query = "select * from tsai_data where ts >= ? and ts <= ? order by ts asc"
 metadata_field_column = "field"
 timestamp_column = "ts"
 
@@ -62,7 +59,7 @@ metadata_field_column = "field"
 metadata_mapping = "noaa_es_mapping"
 
 
-[source.noaa-es-sql-localhost]
+[source.noaa-es-sql-local]
 type = "elasticsearch"
 host = "localhost"
 tag_columns = ["name", "location"]

@@ -11,22 +11,26 @@ Sources with `type = "elasticsearch"` configure https://www.elastic.co/guide/en/
 type = "elasticsearch"
 host = "localhost"
 port = 9200
-list_query = ""
-metadata_query = ""
-data_query = ""
+index = ""
+list_index = ""
 tag_columns = []
 field_columns = []
 metadata_columns = []
 metadata_field_column = ""
 timestamp_column = ""
-max_number_of_rows = 10000
+search_query = ""
 metadata_mapping = ""
 metadata_value_mapping = ""
+query_timeout = 60
 ```
 
-`list_query`, `metadata_query` and `data_query` are required.
+`index` is required.
+It refers to the Elasticsearch index.
 
-Currently  https://www.elastic.co/guide/en/elasticsearch/reference/current/esql.html[ES|QL] is supported.
+`list_index` is optional and defaults to `index` if not provided.
+It can be used to refer to a different Elasticsearch index for listing time series and their metadata.
+
+Currently https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl.html[Query DSL] is supported.
 
 `timestamp_column` is an optional parameter used to define the name
 of the database column that contains timestamps for the series.
@@ -121,3 +125,9 @@ api_key = ""
 ```
 
 either username and password needs to be provided or the encoded value of the api key provided by Elasticsearch.
+
+
+`search_query` refers to a SQL query that can be used to search time series and metadata.
+When `search_query` is provided the https://www.elastic.co/guide/en/elasticsearch/reference/current/sql-rest.html[Elasticsearch SQL] query is used.
+
+`query_timeout` configures the timeout of the API request to Elasticsearch.
