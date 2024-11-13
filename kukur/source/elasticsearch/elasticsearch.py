@@ -131,27 +131,56 @@ class ElasticsearchSource:
                 for metadata in self._get_metadata(selector.source, row):
                     yield metadata
         else:
-            table = self._search_query_dsl({})
+            table = self._search_query_dsl({}, [{"_doc": "asc"}])
             for one_row in table:
                 row = one_row["_source"]
                 for metadata in self._get_metadata(selector.source, row):
                     yield metadata
 
-    def _search_query_dsl(self, query: Dict) -> List:
-        content = self._send_query(query, f"{self.__options.list_index}/_search")
-        return content["hits"]["hits"]
+    def _search_query_dsl(self, search_query: Dict, sort: List) -> List:
+        table = []
+        search_after = None
+        query: Dict = {}
+        if len(search_query) != 0:
+            query["query"] = search_query
+        query["sort"] = sort
+        while True:
+            if search_after is not None:
+                query = {}
+                if len(search_query) != 0:
+                    query["query"] = search_query
+                query["search_after"] = search_after
+                query["sort"] = sort
+
+            rows = self._send_query(query, f"{self.__options.list_index}/_search")
+            table.extend(rows["hits"]["hits"])
+            if len(table) >= rows["hits"]["total"]["value"]:
+                break
+            search_after = rows["hits"]["hits"][-1]["sort"]
+        return table
 
     def _search_sql(self, query: Dict) -> pa.Table:
-        content = self._send_query(query, "_sql")
         columns = {}
-        for index, column in enumerate(content["columns"]):
-            if (
-                column["name"] in self.__options.tag_columns
-                or column["name"] in self.__options.metadata_columns
-                or column["name"] in self.__options.field_columns
-                or column["name"] == self.__options.metadata_field_column
-            ):
-                columns[column["name"]] = content["values"][index]
+        while True:
+            content = self._send_query(query, "_sql")
+            if "columns" in content:
+                for index, column in enumerate(content["columns"]):
+                    if (
+                        column["name"] in self.__options.tag_columns
+                        or column["name"] in self.__options.metadata_columns
+                        or column["name"] in self.__options.field_columns
+                        or column["name"] == self.__options.metadata_field_column
+                    ):
+                        columns[column["name"]] = content["values"][index]
+            else:
+                for index, column in enumerate(columns.keys()):
+                    columns[column].extend(content["values"][index])
+            if "cursor" not in content:
+                break
+            query = {
+                "cursor": content["cursor"],
+                "columnar": True,
+            }
         return pa.Table.from_pydict(columns)
 
     def _get_metadata(
@@ -209,23 +238,19 @@ class ElasticsearchSource:
                     {"term": {self.__options.metadata_field_column: selector.field}}
                 ]
             query = {
-                "query": {
-                    "bool": {
-                        "must": [
-                            {
-                                "term": {
-                                    self.__metadata_mapper.from_kukur(
-                                        tag_name
-                                    ): tag_value
-                                }
+                "bool": {
+                    "must": [
+                        {
+                            "term": {
+                                self.__metadata_mapper.from_kukur(tag_name): tag_value
                             }
-                            for tag_name, tag_value in selector.tags.items()
-                        ]
-                        + fields
-                    }
+                        }
+                        for tag_name, tag_value in selector.tags.items()
+                    ]
+                    + fields
                 }
             }
-            rows = self._search_query_dsl(query)
+            rows = self._search_query_dsl(query, [{"_score": "asc"}])
 
             if len(rows) == 0:
                 return metadata
