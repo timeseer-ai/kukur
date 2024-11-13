@@ -10,6 +10,7 @@ from datetime import datetime
 from typing import Any, Dict, Generator, List, Optional
 
 import pyarrow as pa
+import pyarrow.compute as pc
 
 from kukur.source.metadata import MetadataMapper, MetadataValueMapper
 
@@ -44,7 +45,7 @@ def from_config(
     metadata_value_mapper: MetadataValueMapper,
 ):
     """Create a new Influx data source."""
-    host = config.get("host", "http://localhost")
+    host = config.get("host", "localhost")
     port = config.get("port", 9200)
 
     credentials = config.get("credentials")
@@ -56,7 +57,7 @@ def from_config(
         password = credentials.get("password", "")
         api_key = credentials.get("api_key")
     configuration = ElasticsearchSourceConfiguration(
-        host, port, username, password, api_key
+        host, port, username, password, api_key, config.get("query_timeout", 60)
     )
     index = config["index"]
     list_index = config.get("list_index", index)
@@ -68,8 +69,8 @@ def from_config(
         config.get("field_columns", ["value"]),
         config.get("metadata_columns", []),
         config.get("timestamp_column", "ts"),
-        config.get("max_number_of_rows", 10000),
         config.get("metadata_field_column"),
+        config.get("search_query"),
     )
 
     return ElasticsearchSource(
@@ -86,6 +87,7 @@ class ElasticsearchSourceConfiguration:
     username: str
     password: str
     api_key: Optional[str]
+    query_timeout: int
 
 
 @dataclass
@@ -98,8 +100,8 @@ class ElasticsearchSourceOptions:
     field_columns: List[str]
     metadata_columns: List[str]
     timestamp_column: str
-    max_number_of_rows: int
     metadata_field_column: Optional[str] = None
+    search_query: Optional[str] = None
 
 
 class ElasticsearchSource:
@@ -119,74 +121,115 @@ class ElasticsearchSource:
 
     def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
         """Search for series matching the given selector."""
-        table = self._search_query_dsl({})
-
-        for one_row in table:
-            row = one_row["_source"]
-            tags = {
-                self.__metadata_mapper.from_source(tag_name): row[tag_name]
-                for tag_name in self.__options.tag_columns
+        if self.__options.search_query is not None:
+            search_query = {
+                "query": self.__options.search_query,
+                "columnar": True,
             }
-            fields = self.__options.field_columns
-            if self.__options.metadata_field_column is not None:
-                fields = [row[self.__options.metadata_field_column]]
-            for field_column in fields:
-                series = SeriesSelector(selector.source, tags, field_column)
-                metadata = Metadata(series)
-                if len(row) == len(tags):
+            result = self._search_sql(search_query)
+            for row in result.to_pylist():
+                for metadata in self._get_metadata(selector.source, row):
                     yield metadata
-                else:
-                    for k, v in row.items():
-                        if k in self.__options.tag_columns:
-                            continue
-                        if v is None:
-                            continue
-                        name = self.__metadata_mapper.from_source(k)
-                        metadata.coerce_field(
-                            name,
-                            self.__metadata_value_mapper.from_source(name, v),
-                        )
+        else:
+            table = self._search_query_dsl({})
+            for one_row in table:
+                row = one_row["_source"]
+                for metadata in self._get_metadata(selector.source, row):
                     yield metadata
 
-    def _search_query_dsl(self, query: dict) -> List:
-        content = self._send_search_query(query, self.__options.list_index)
+    def _search_query_dsl(self, query: Dict) -> List:
+        content = self._send_query(query, f"{self.__options.list_index}/_search")
         return content["hits"]["hits"]
 
-    def _get_field_column_name(self):
-        column_name = "value"
-        if self.__options.metadata_field_column is not None:
-            column_name = self.__metadata_mapper.from_kukur(
-                self.__options.metadata_field_column
-            )
+    def _search_sql(self, query: Dict) -> pa.Table:
+        content = self._send_query(query, "_sql")
+        columns = {}
+        for index, column in enumerate(content["columns"]):
+            if (
+                column["name"] in self.__options.tag_columns
+                or column["name"] in self.__options.metadata_columns
+                or column["name"] in self.__options.field_columns
+                or column["name"] == self.__options.metadata_field_column
+            ):
+                columns[column["name"]] = content["values"][index]
+        return pa.Table.from_pydict(columns)
 
-        return column_name
+    def _get_metadata(
+        self, source_name: str, row: Dict
+    ) -> Generator[Metadata, None, None]:
+        tags = {
+            self.__metadata_mapper.from_source(tag_name): row[tag_name]
+            for tag_name in self.__options.tag_columns
+        }
+        fields = self.__options.field_columns
+        if self.__options.metadata_field_column is not None:
+            fields = [row[self.__options.metadata_field_column]]
+        for field_column in fields:
+            series = SeriesSelector(source_name, tags, field_column)
+            metadata = Metadata(series)
+            if len(row) == len(tags):
+                yield metadata
+            else:
+                for k, v in row.items():
+                    if k in self.__options.tag_columns:
+                        continue
+                    if v is None:
+                        continue
+                    name = self.__metadata_mapper.from_source(k)
+                    metadata.coerce_field(
+                        name,
+                        self.__metadata_value_mapper.from_source(name, v),
+                    )
+                yield metadata
 
     def get_metadata(self, selector: SeriesSelector) -> Metadata:
         """Read metadata, taking any configured metadata mapping into account."""
-        fields = []
-        if self.__options.metadata_field_column is not None:
-            fields = [{"term": {self.__options.metadata_field_column: selector.field}}]
-        query = {
-            "query": {
-                "bool": {
-                    "must": [
-                        {
-                            "term": {
-                                self.__metadata_mapper.from_kukur(tag_name): tag_value
+        metadata = Metadata(selector)
+        if self.__options.search_query is not None:
+            search_query = {
+                "query": self.__options.search_query,
+                "columnar": True,
+            }
+            table = self._search_sql(search_query)
+            table = table.filter(
+                pc.field(self.__options.metadata_field_column) == selector.field
+            )
+            for tag_name, tag_value in selector.tags.items():
+                table = table.filter(
+                    pc.field(self.__metadata_mapper.from_kukur(tag_name)) == tag_value
+                )
+
+            if table.num_rows == 0:
+                return metadata
+            row = table.to_pylist()[0]
+        else:
+            fields = []
+            if self.__options.metadata_field_column is not None:
+                fields = [
+                    {"term": {self.__options.metadata_field_column: selector.field}}
+                ]
+            query = {
+                "query": {
+                    "bool": {
+                        "must": [
+                            {
+                                "term": {
+                                    self.__metadata_mapper.from_kukur(
+                                        tag_name
+                                    ): tag_value
+                                }
                             }
-                        }
-                        for tag_name, tag_value in selector.tags.items()
-                    ]
-                    + fields
+                            for tag_name, tag_value in selector.tags.items()
+                        ]
+                        + fields
+                    }
                 }
             }
-        }
-        rows = self._search_query_dsl(query)
+            rows = self._search_query_dsl(query)
 
-        metadata = Metadata(selector)
-        if len(rows) == 0:
-            return metadata
-        row = rows[0]["_source"]
+            if len(rows) == 0:
+                return metadata
+            row = rows[0]["_source"]
 
         field_names = [field for field, _ in metadata.iter_names()]
 
@@ -237,14 +280,19 @@ class ElasticsearchSource:
         search_after = None
         while True:
             if search_after is not None:
-                query["search_after"] = search_after
-            data = self._send_search_query(data_query, self.__options.index)
+                data_query = {
+                    "query": query,
+                    "fields": [self.__options.timestamp_column, selector.field],
+                    "search_after": search_after,
+                    "sort": [{self.__options.timestamp_column: "asc"}],
+                }
+            data = self._send_query(data_query, f"{self.__options.index}/_search")
             for row in data["hits"]["hits"]:
                 fields = row["fields"]
                 timestamps.extend(fields[self.__options.timestamp_column])
                 values.extend(fields[selector.field])
                 search_after = row["sort"]
-            if len(timestamps) == data["hits"]["total"]["value"]:
+            if len(timestamps) >= data["hits"]["total"]["value"]:
                 break
 
         return pa.Table.from_pydict({"ts": timestamps, "value": values})
@@ -253,11 +301,7 @@ class ElasticsearchSource:
         """Return the available tag keys, tag value and tag fields."""
         return None
 
-    def _send_query(self, query: str, params: Optional[List] = None) -> Dict:
-        data = {"query": query, "columnar": True}
-        if params is not None:
-            data["params"] = params
-
+    def _send_query(self, query: Dict, path: str) -> Dict:
         headers = {"Content-Type": "application/json"}
         auth = None
         if self.__configuration.api_key is not None:
@@ -265,30 +309,11 @@ class ElasticsearchSource:
         else:
             auth = (self.__configuration.username, self.__configuration.password)
         response = requests.post(
-            f"{self.__configuration.host}:{self.__configuration.port}/_query",
-            auth=auth,
-            headers=headers,
-            json=data,
-            timeout=60,
-        )
-
-        response.raise_for_status()
-        return json.loads(response.content)
-
-    def _send_search_query(self, query: dict, index: str) -> Dict:
-
-        headers = {"Content-Type": "application/json"}
-        auth = None
-        if self.__configuration.api_key is not None:
-            headers["Authorization"] = f"ApiKey {self.__configuration.api_key}"
-        else:
-            auth = (self.__configuration.username, self.__configuration.password)
-        response = requests.post(
-            f"{self.__configuration.host}:{self.__configuration.port}/{index}/_search",
+            f"http://{self.__configuration.host}:{self.__configuration.port}/{path}",
             auth=auth,
             headers=headers,
             json=query,
-            timeout=60,
+            timeout=self.__configuration.query_timeout,
         )
         response.raise_for_status()
         return json.loads(response.content)

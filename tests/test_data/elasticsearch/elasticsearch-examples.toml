@@ -1,17 +1,78 @@
 [source.noaa-es]
 type = "elasticsearch"
+host = "elasticsearch"
 tag_columns = ["name", "location"]
 field_columns = ["water_level", "temperature"]
 metadata_columns = ["name", "description", "limits.low", "limits.high"]
 metadata_mapping = "noaa_es_mapping"
 list_index = "tsai_metadata"
 index = "tsai_data"
-
-#list_query = "select * from tsai_metadata"
-#metadata_query = "select * from tsai_metadata"
-#data_query = "select * from tsai_data where ts >= ? and ts <= ? order by ts asc"
+data_query = "select * from tsai_data where ts >= ? and ts <= ? order by ts asc"
 metadata_field_column = "field"
 timestamp_column = "ts"
+
+[source.noaa-es-linux]
+type = "elasticsearch"
+host = "localhost"
+tag_columns = ["name", "location"]
+field_columns = ["water_level", "temperature"]
+metadata_columns = ["name", "description", "limits.low", "limits.high"]
+metadata_mapping = "noaa_es_mapping"
+list_index = "tsai_metadata"
+index = "tsai_data"
+data_query = "select * from tsai_data where ts >= ? and ts <= ? order by ts asc"
+metadata_field_column = "field"
+timestamp_column = "ts"
+
+[source.noaa-es-local]
+type = "elasticsearch"
+host = "localhost"
+tag_columns = ["name", "location"]
+field_columns = ["water_level", "temperature"]
+metadata_columns = ["name", "description", "limits.low", "limits.high"]
+metadata_mapping = "noaa_es_mapping"
+list_index = "tsai_metadata"
+index = "tsai_data"
+data_query = "select * from tsai_data where ts >= ? and ts <= ? order by ts asc"
+metadata_field_column = "field"
+timestamp_column = "ts"
+
+[source.noaa-es-sql]
+type = "elasticsearch"
+host = "elasticsearch"
+tag_columns = ["name", "location"]
+field_columns = ["water_level", "temperature"]
+metadata_columns = ["name", "description", "limits.low", "limits.high"]
+metadata_index = "tsai_metadata"
+index = "tsai_data"
+search_query = "select * from tsai_metadata"
+metadata_field_column = "field"
+metadata_mapping = "noaa_es_mapping"
+
+[source.noaa-es-sql-linux]
+type = "elasticsearch"
+host = "localhost"
+tag_columns = ["name", "location"]
+field_columns = ["water_level", "temperature"]
+metadata_columns = ["name", "description", "limits.low", "limits.high"]
+metadata_index = "tsai_metadata"
+index = "tsai_data"
+search_query = "select * from tsai_metadata"
+metadata_field_column = "field"
+metadata_mapping = "noaa_es_mapping"
+
+
+[source.noaa-es-sql-localhost]
+type = "elasticsearch"
+host = "localhost"
+tag_columns = ["name", "location"]
+field_columns = ["water_level", "temperature"]
+metadata_columns = ["name", "description", "limits.low", "limits.high"]
+metadata_index = "tsai_metadata"
+index = "tsai_data"
+search_query = "select * from tsai_metadata"
+metadata_field_column = "field"
+metadata_mapping = "noaa_es_mapping"
 
 
 [metadata_mapping."noaa_es_mapping"]
