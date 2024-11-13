@@ -47,9 +47,14 @@ def from_config(
     host = config.get("host", "http://localhost")
     port = config.get("port", 9200)
 
-    username = config.get("username", "")
-    password = config.get("password", "")
-    configuration = ElasticsearchSourceConfiguration(host, port, username, password)
+    credentials = config.get("credentials")
+    if credentials is not None:
+        username = config.get("username", "")
+        password = config.get("password", "")
+        api_key = config.get("api_key")
+    configuration = ElasticsearchSourceConfiguration(
+        host, port, username, password, api_key
+    )
 
     options = ElasticsearchSourceOptions(
         config["list_query"],
@@ -76,6 +81,7 @@ class ElasticsearchSourceConfiguration:
     port: int
     username: str
     password: str
+    api_key: str | None
 
 
 @dataclass
@@ -149,15 +155,8 @@ class ElasticsearchSource:
             column_name = self._get_field_column_name()
             query += f' | where {column_name} == "{_escape(selector.field)}"'
 
-        response = requests.post(
-            f"{self.__configuration.host}:{self.__configuration.port}/_query",
-            auth=(self.__configuration.username, self.__configuration.password),
-            headers={"Content-Type": "application/json"},
-            json={"query": query, "columnar": True},
-            timeout=60,
-        )
-        response.raise_for_status()
-        content = json.loads(response.content)
+        content = self._send_query(query)
+
         columns: Dict[str, List] = {}
         for index, column in enumerate(content["columns"]):
             if (
@@ -217,15 +216,7 @@ class ElasticsearchSource:
             for tag_key, tag_value in selector.tags.items():
                 query += f' | where {_escape(self.__metadata_mapper.from_kukur(tag_key))} == "{_escape(tag_value)}"'
 
-        response = requests.post(
-            f"{self.__configuration.host}:{self.__configuration.port}/_query",
-            auth=(self.__configuration.username, self.__configuration.password),
-            headers={"Content-Type": "application/json"},
-            json={"query": query, "columnar": True},
-            timeout=60,
-        )
-        response.raise_for_status()
-        content = json.loads(response.content)
+        content = self._send_query(query)
         columns = {}
         for index, column in enumerate(content["columns"]):
             if (
@@ -257,15 +248,7 @@ class ElasticsearchSource:
                 query += f" | {split_query[1]}"
 
             query += f" | keep {self.__options.timestamp_column}, {selector.field}"
-            response = requests.post(
-                f"{self.__configuration.host}:{self.__configuration.port}/_query",
-                auth=(self.__configuration.username, self.__configuration.password),
-                headers={"Content-Type": "application/json"},
-                json={"query": query, "params": params, "columnar": True},
-                timeout=60,
-            )
-            response.raise_for_status()
-            content = json.loads(response.content)
+            content = self._send_query(query, params)
 
             for index, column in enumerate(content["columns"]):
                 if column["name"] == self.__options.timestamp_column:
@@ -286,6 +269,28 @@ class ElasticsearchSource:
     def get_source_structure(self, _: SeriesSelector) -> Optional[SourceStructure]:
         """Return the available tag keys, tag value and tag fields."""
         return None
+
+    def _send_query(self, query: str, params: List | None = None) -> Dict:
+        data = {"query": query, "columnar": True}
+        if params is not None:
+            data["params"] = params
+
+        headers = {"Content-Type": "application/json"}
+        auth = None
+        if self.__configuration.api_key is not None:
+            headers["Authorization"] = f"ApiKey {self.__configuration.api_key}"
+        else:
+            auth = (self.__configuration.username, self.__configuration.password)
+        response = requests.post(
+            f"{self.__configuration.host}:{self.__configuration.port}/_query",
+            auth=auth,
+            headers=headers,
+            json=data,
+            timeout=60,
+        )
+
+        response.raise_for_status()
+        return json.loads(response.content)
 
 
 def _escape(context: Optional[str]) -> str:
