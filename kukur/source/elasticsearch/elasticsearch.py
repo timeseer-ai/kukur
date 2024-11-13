@@ -84,7 +84,7 @@ class ElasticsearchSourceConfiguration:
     port: int
     username: str
     password: str
-    api_key: str | None
+    api_key: Optional[str]
 
 
 @dataclass
@@ -273,7 +273,7 @@ class ElasticsearchSource:
         """Return the available tag keys, tag value and tag fields."""
         return None
 
-    def _send_query(self, query: str, params: List | None = None) -> Dict:
+    def _send_query(self, query: str, params: Optional[List] = None) -> Dict:
         data = {"query": query, "columnar": True}
         if params is not None:
             data["params"] = params
