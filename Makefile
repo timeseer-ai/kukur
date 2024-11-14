@@ -42,6 +42,7 @@ test: ## Run the unit tests
 compose: ## Start all containers needed for integration tests
 	docker-compose \
 		-f tests/test_data/docker-compose-crate.yml \
+		-f tests/test_data/docker-compose-elasticsearch.yml \
 		-f tests/test_data/docker-compose-influxdb.yml \
 		-f tests/test_data/docker-compose-odbc.yml \
 		-f tests/test_data/docker-compose-postgres.yml \
@@ -54,6 +55,10 @@ integration-test: ## Run all integration tests (this requires a running Kukur)
 .PHONY: integration-test-crate
 integration-test-crate: ## Run CrateDB integration tests
 	python -m pytest tests/integration -m crate
+
+.PHONY: integration-test-elasticsearch
+integration-test-elasticsearch: ## Run Elasticsearch integration tests
+	python -m pytest tests/integration -m elasticsearch
 
 .PHONY: integration-test-influxdb
 integration-test-influxdb: ## Run InfluxDB integration tests

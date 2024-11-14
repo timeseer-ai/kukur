@@ -53,6 +53,7 @@ convention = "google"
 [tool.pytest.ini_options]
 markers = [
     "crate",
+    "elasticsearch",
     "influxdb",
     "kukur",
     "odbc",

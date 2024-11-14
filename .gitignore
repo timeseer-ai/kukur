@@ -14,3 +14,5 @@ docs/out/
 kukur.egg-info/
 dist/
 build/
+
+.DS_Store

@@ -49,9 +49,27 @@ services:
       timeout: 5s
       retries: 18
       start_period: 5s
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+    volumes:
+      - ./elasticsearch/data.ndjson:/data.ndjson
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    environment:
+      - 'discovery.type=single-node'
+      - 'xpack.security.enabled=false'
+      - 'xpack.security.enrollment.enabled=false'
+    ports:
+      - 9200:9200
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:9200"]
+      interval: 5s
+      timeout: 5s
+      retries: 18
+      start_period: 5s
 
 volumes:
     crate-data:
     database-data:
+    elasticsearch-data:
     influx-data:
     postgres-data:

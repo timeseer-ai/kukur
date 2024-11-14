@@ -171,6 +171,7 @@ ifndef::sources[]
 - Binary link:plugin.asciidoc[Plugins]
 - link:csv.asciidoc[CSV] files
 - link:delta.asciidoc[Delta Lake] tables
+- link:elastissearch.asciidoc[Elasticsearch] data sources
 - link:influxdb.asciidoc[InfluxDB] data sources
 - Kukur link:json.asciidoc[JSON] metadata files
 - Other link:kukur.asciidoc[Kukur or Timeseer instances]
