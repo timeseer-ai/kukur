@@ -21,21 +21,14 @@ except ImportError:
     HAS_REQUESTS = False
 
 from kukur import Metadata, SeriesSearch, SeriesSelector, SourceStructure
-from kukur.exceptions import KukurException
+from kukur.exceptions import KukurException, MissingModuleException
 
 
-class InvalidClientConnection(KukurException):
-    """Raised when an error occured when making the connection."""
-
-    def __init__(self, message: str):
-        KukurException.__init__(self, f"Connection error: {message}")
-
-
-class InvalidMetadataError(KukurException):
-    """Raised when the metadata is invalid."""
+class InvalidConfigurationException(KukurException):
+    """Raised when the source configuration is invalid."""
 
     def __init__(self, message: str):
-        KukurException.__init__(self, f"invalid metadata: {message}")
+        KukurException.__init__(self, f"invalid configuration: {message}")
 
 
 def from_config(
@@ -44,6 +37,8 @@ def from_config(
     metadata_value_mapper: MetadataValueMapper,
 ):
     """Create a new Elasticsearch data source."""
+    if not HAS_REQUESTS:
+        raise MissingModuleException("requests")
     credentials = config.get("credentials")
     username = ""
     password = ""
@@ -54,7 +49,7 @@ def from_config(
         api_key = credentials.get("api_key")
 
     configuration = ElasticsearchSourceConfiguration(
-        config.get("scheme", "http://"),
+        config.get("scheme", "http"),
         config.get("host", "localhost"),
         config.get("port"),
         username,
@@ -63,17 +58,23 @@ def from_config(
         config.get("query_timeout_seconds", 60),
     )
 
-    index = config["index"]
+    index = config.get("index")
+    list_query = config.get("list_query")
+    metadata_query = config.get("metadata_query")
+    if index is None and list_query is None and metadata_query is None:
+        InvalidConfigurationException(
+            "No `index`, `list_query` or `metadata_query` is defined"
+        )
     options = ElasticsearchSourceOptions(
         index,
-        config.get("list_index", index),
+        config.get("metadata_index", index),
         config.get("tag_columns", ["series name"]),
         config.get("field_columns", ["value"]),
         config.get("metadata_columns", []),
         config.get("timestamp_column", "ts"),
         config.get("metadata_field_column"),
-        config.get("search_query"),
-        config.get("metadata_query"),
+        list_query,
+        metadata_query,
     )
 
     return ElasticsearchSource(
@@ -98,14 +99,14 @@ class ElasticsearchSourceConfiguration:
 class ElasticsearchSourceOptions:
     """Options for Elasticsearch sources."""
 
-    index: str
-    list_index: str
+    index: Optional[str]
+    metadata_index: Optional[str]
     tag_columns: List[str]
     field_columns: List[str]
     metadata_columns: List[str]
     timestamp_column: str
     metadata_field_column: Optional[str] = None
-    search_query: Optional[str] = None
+    list_query: Optional[str] = None
     metadata_query: Optional[str] = None
 
 
@@ -126,17 +127,17 @@ class ElasticsearchSource:
 
     def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
         """Search for series matching the given selector."""
-        if self.__options.search_query is not None:
-            search_query = {
-                "query": self.__options.search_query,
+        if self.__options.list_query is not None:
+            list_query = {
+                "query": self.__options.list_query,
                 "columnar": True,
             }
-            table = self._search_sql(search_query)
+            table = self._search_sql(list_query)
             for row in table.to_pylist():
                 for metadata in self._get_metadata(selector.source, row):
                     yield metadata
         else:
-            rows = self._search_query_dsl({}, [{"_doc": "asc"}])
+            rows = self._list_query_dsl({}, [{"_doc": "asc"}])
             for row in rows:
                 for metadata in self._get_metadata(selector.source, row["_source"]):
                     yield metadata
@@ -174,17 +175,17 @@ class ElasticsearchSource:
         metadata = Metadata(selector)
         if self.__options.metadata_query is not None:
             params = [
-                _escape(selector.tags[self.__metadata_mapper.from_source(tag_name)])
+                selector.tags[self.__metadata_mapper.from_source(tag_name)]
                 for tag_name in self.__options.tag_columns
             ]
             if self.__options.metadata_field_column is not None:
-                params.append(_escape(selector.field))
-            search_query = {
+                params.append(selector.field)
+            list_query = {
                 "query": self.__options.metadata_query,
                 "params": params,
                 "columnar": True,
             }
-            table = self._search_sql(search_query)
+            table = self._search_sql(list_query)
 
             if table.num_rows == 0:
                 return metadata
@@ -208,7 +209,7 @@ class ElasticsearchSource:
                     + fields
                 }
             }
-            rows = self._search_query_dsl(query, [{"_score": "asc"}])
+            rows = self._list_query_dsl(query, [{"_score": "asc"}])
 
             if len(rows) == 0:
                 return metadata
@@ -235,6 +236,8 @@ class ElasticsearchSource:
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         """Return data for the given time series in the given time period."""
+        if self.__options.index is None:
+            raise KukurException("Define an `index` to fetch data.")
         query = {
             "bool": {
                 "must": [
@@ -284,22 +287,23 @@ class ElasticsearchSource:
         """Return the available tag keys, tag value and tag fields."""
         return None
 
-    def _search_query_dsl(self, search_query: Dict, sort: List) -> List:
+    def _list_query_dsl(self, list_query: Dict, sort: List) -> List:
+        if self.__options.metadata_index is None:
+            raise KukurException("Define a `metadata_index` to search time series.")
         table = []
         search_after = None
         query: Dict = {}
-        if len(search_query) != 0:
-            query["query"] = search_query
+        if len(list_query) != 0:
+            query["query"] = list_query
         query["sort"] = sort
         while True:
             if search_after is not None:
                 query = {}
-                if len(search_query) != 0:
-                    query["query"] = search_query
+                if len(list_query) != 0:
+                    query["query"] = list_query
                 query["search_after"] = search_after
                 query["sort"] = sort
-
-            rows = self._send_query(query, f"{self.__options.list_index}/_search")
+            rows = self._send_query(query, f"{self.__options.metadata_index}/_search")
             table.extend(rows["hits"]["hits"])
             if len(table) >= rows["hits"]["total"]["value"]:
                 break
@@ -338,9 +342,9 @@ class ElasticsearchSource:
         else:
             auth = (self.__configuration.username, self.__configuration.password)
 
-        url = f"{self.__configuration.scheme}{self.__configuration.host}:{self.__configuration.port}/{path}"
+        url = f"{self.__configuration.scheme}://{self.__configuration.host}:{self.__configuration.port}/{path}"
         if self.__configuration.port is None:
-            url = f"{self.__configuration.scheme}{self.__configuration.host}/{path}"
+            url = f"{self.__configuration.scheme}://{self.__configuration.host}/{path}"
         response = requests.post(
             url,
             auth=auth,
@@ -350,13 +354,3 @@ class ElasticsearchSource:
         )
         response.raise_for_status()
         return json.loads(response.content)
-
-
-def _escape(context: Optional[str]) -> str:
-    if context is None:
-        context = "value"
-    if '"' in context:
-        context = context.replace('"', "")
-    if ";" in context:
-        context = context.replace(";", "")
-    return context

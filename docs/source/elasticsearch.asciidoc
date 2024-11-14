@@ -9,30 +9,36 @@ Sources with `type = "elasticsearch"` configure https://www.elastic.co/guide/en/
 ```toml
 [source.<name>]
 type = "elasticsearch"
-scheme = "http://"
+scheme = "http | https"
 host = "localhost"
 port = 9200
 index = ""
-list_index = ""
-tag_columns = []
-field_columns = []
+metadata_index = ""
+list_query = ""
+metadata_query = ""
+tag_columns = ["series name"]
+field_columns = ["value"]
 metadata_columns = []
 metadata_field_column = ""
-timestamp_column = ""
-search_query = ""
-metadata_query = ""
+timestamp_column = "ts"
 metadata_mapping = ""
 metadata_value_mapping = ""
 query_timeout_seconds = 60
 ```
 
-`index` is required.
-It refers to the Elasticsearch index.
+At least one of `index`, `list_query` or `metadata_query` are required.
 
-`list_index` is optional and defaults to `index` if not provided.
+`index` refers to the Elasticsearch index.
+When `index` is provided, the https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl.html[Query DSL] is used to search time series and get data.
+
+`list_query` refers to a SQL query that can be used to search time series.
+When `list_query` is provided the https://www.elastic.co/guide/en/elasticsearch/reference/current/sql-rest.html[Elasticsearch SQL] query is used for search requests.
+
+`metadata_query` refers to a SQL query that can be used to get metadata of a time series.
+When `metadata_query` is provided the https://www.elastic.co/guide/en/elasticsearch/reference/current/sql-rest.html[Elasticsearch SQL] query is used for metadata requests.
+
+`metadata_index` is optional and defaults to `index` if not provided.
 It can be used to refer to a different Elasticsearch index for listing time series and their metadata.
-
-Currently https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl.html[Query DSL] is supported.
 
 `timestamp_column` is an optional parameter used to define the name
 of the database column that contains timestamps for the series.
@@ -126,13 +132,6 @@ password = ""
 api_key = ""
 ```
 
-either username and password needs to be provided or the encoded value of the api key provided by Elasticsearch.
-
-
-`search_query` refers to a SQL query that can be used to search time series.
-When `search_query` is provided the https://www.elastic.co/guide/en/elasticsearch/reference/current/sql-rest.html[Elasticsearch SQL] query is used for search requests.
-
-`metadata_query` refers to a SQL query that can be used to get metadata of a time series.
-When `metadata_query` is provided the https://www.elastic.co/guide/en/elasticsearch/reference/current/sql-rest.html[Elasticsearch SQL] query is used for metadata requests.
+Either username and password needs to be provided or the encoded value of the api key provided by Elasticsearch.
 
 `query_timeout_seconds` configures the timeout of the API request to Elasticsearch.
