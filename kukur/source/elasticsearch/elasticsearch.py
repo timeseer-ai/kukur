@@ -340,7 +340,7 @@ class ElasticsearchSource:
 
         url = f"{self.__configuration.scheme}{self.__configuration.host}:{self.__configuration.port}/{path}"
         if self.__configuration.port is None:
-            url = f"{self.__configuration.scheme}{self.__configuration.host}:{self.__configuration.port}/{path}"
+            url = f"{self.__configuration.scheme}{self.__configuration.host}/{path}"
         response = requests.post(
             url,
             auth=auth,
