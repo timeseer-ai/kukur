@@ -9,6 +9,7 @@ Sources with `type = "elasticsearch"` configure https://www.elastic.co/guide/en/
 ```toml
 [source.<name>]
 type = "elasticsearch"
+scheme = "http://"
 host = "localhost"
 port = 9200
 index = ""
@@ -19,9 +20,10 @@ metadata_columns = []
 metadata_field_column = ""
 timestamp_column = ""
 search_query = ""
+metadata_query = ""
 metadata_mapping = ""
 metadata_value_mapping = ""
-query_timeout = 60
+query_timeout_seconds = 60
 ```
 
 `index` is required.
@@ -127,7 +129,10 @@ api_key = ""
 either username and password needs to be provided or the encoded value of the api key provided by Elasticsearch.
 
 
-`search_query` refers to a SQL query that can be used to search time series and metadata.
-When `search_query` is provided the https://www.elastic.co/guide/en/elasticsearch/reference/current/sql-rest.html[Elasticsearch SQL] query is used.
+`search_query` refers to a SQL query that can be used to search time series.
+When `search_query` is provided the https://www.elastic.co/guide/en/elasticsearch/reference/current/sql-rest.html[Elasticsearch SQL] query is used for search requests.
 
-`query_timeout` configures the timeout of the API request to Elasticsearch.
+`metadata_query` refers to a SQL query that can be used to get metadata of a time series.
+When `metadata_query` is provided the https://www.elastic.co/guide/en/elasticsearch/reference/current/sql-rest.html[Elasticsearch SQL] query is used for metadata requests.
+
+`query_timeout_seconds` configures the timeout of the API request to Elasticsearch.
