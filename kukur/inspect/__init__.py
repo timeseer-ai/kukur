@@ -46,6 +46,7 @@ class ResourceType(Enum):
     NDJSON = "json"
     ORC = "orc"
     PARQUET = "parquet"
+    TABLE = "table"
 
 
 @dataclass
@@ -67,3 +68,12 @@ class InspectOptions:
     column_names: Optional[List[str]] = None
     csv_delimiter: Optional[str] = None
     csv_header_row: bool = True
+
+
+@dataclass
+class Connection:
+    """Defines the connection to a database."""
+
+    connection_type: str
+    connection_string: str
+    path: Optional[str] = None
