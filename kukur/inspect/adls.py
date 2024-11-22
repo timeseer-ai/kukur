@@ -23,10 +23,15 @@ except ImportError:
     HAS_AZURE_FS = False
 
 
-def inspect(blob_uri: ParseResult) -> List[InspectedPath]:
-    """Inspect a path on ADLS Gen 2 storage."""
+def inspect(blob_uri: ParseResult, *, recursive: bool = False) -> List[InspectedPath]:
+    """Inspect a path on ADLS Gen 2 storage.
+
+    Recurses into subdirectories when recursive is True.
+    """
     filesystem, blob_path = _get_filesystem_path(blob_uri)
-    return _remove_container_from_path(blob_uri, inspect_blob(filesystem, blob_path))
+    return _remove_container_from_path(
+        blob_uri, inspect_blob(filesystem, blob_path, recursive=recursive)
+    )
 
 
 def preview(
