@@ -142,3 +142,13 @@ def test_read_filesystem_orc() -> None:
     batches = list(read_filesystem(path))
     assert len(batches) == 1
     assert len(batches[0]) == 47
+
+
+def test_recursive() -> None:
+    path = Path("tests/test_data/csv/recursive")
+    paths = inspect_filesystem(path, recursive=True)
+    assert len(paths) == 4
+    csv_paths = [blob.path for blob in paths if blob.resource_type == ResourceType.CSV]
+    assert len(csv_paths) == 2
+    assert "tests/test_data/csv/recursive/dt=2024-01-01/data.csv" in csv_paths
+    assert "tests/test_data/csv/recursive/dt=2024-01-02/data.csv" in csv_paths

@@ -17,19 +17,21 @@ from kukur.inspect import (
 )
 
 
-def inspect_blob(blob_uri: str) -> List[InspectedPath]:
+def inspect_blob(blob_uri: str, *, recursive: bool = False) -> List[InspectedPath]:
     """Inspect a blob store.
 
     Uses the URI scheme to determine the type of blob store.
 
     s3:// will list contents of S3 buckets
     abfss:// will list contents of Azure Blob Storage Containers.
+
+    Recurses into subdirectores when recursive is True.
     """
     parsed_url = urlparse(blob_uri)
     if parsed_url.scheme == "abfss":
-        return adls.inspect(parsed_url)
+        return adls.inspect(parsed_url, recursive=recursive)
     if parsed_url.scheme == "s3":
-        return s3.inspect(parsed_url)
+        return s3.inspect(parsed_url, recursive=recursive)
 
     raise UnsupportedBlobException(parsed_url.scheme)
 

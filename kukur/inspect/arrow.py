@@ -21,10 +21,17 @@ except ImportError:
     HAS_DELTA_LAKE = False
 
 
-def inspect(filesystem: fs.FileSystem, path: PurePath) -> List[InspectedPath]:
-    """Return the resource type of a path within a filesystem."""
+def inspect(
+    filesystem: fs.FileSystem, path: PurePath, *, recursive: bool
+) -> List[InspectedPath]:
+    """Return the resource type of a path within a filesystem.
+
+    Set recursive to True to recurse into subdirectories.
+    """
     paths = []
-    for sub_path in filesystem.get_file_info(fs.FileSelector(str(path))):
+    for sub_path in filesystem.get_file_info(
+        fs.FileSelector(str(path), recursive=recursive)
+    ):
         resource_type = _get_resource_type(filesystem, sub_path)
         if resource_type is not None:
             paths.append(InspectedPath(resource_type, sub_path.path))

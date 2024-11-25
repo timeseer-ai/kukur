@@ -15,10 +15,15 @@ from kukur.inspect.arrow import BlobResource
 from kukur.inspect.arrow import inspect as inspect_s3
 
 
-def inspect(blob_uri: ParseResult) -> List[InspectedPath]:
-    """Inspect a path in an AWS S3 bucket."""
+def inspect(blob_uri: ParseResult, *, recursive: bool = False) -> List[InspectedPath]:
+    """Inspect a path in an AWS S3 bucket.
+
+    Recurses into subdirectories when recursive is True.
+    """
     blob_path = _get_blob_path(blob_uri)
-    return _remove_bucket_from_path(blob_uri, inspect_s3(S3FileSystem(), blob_path))
+    return _remove_bucket_from_path(
+        blob_uri, inspect_s3(S3FileSystem(), blob_path, recursive=recursive)
+    )
 
 
 def preview(

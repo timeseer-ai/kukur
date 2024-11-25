@@ -13,14 +13,16 @@ from kukur.inspect import InspectedPath, InspectOptions
 from kukur.inspect.arrow import BlobResource, inspect
 
 
-def inspect_filesystem(path: Path) -> List[InspectedPath]:
+def inspect_filesystem(path: Path, *, recursive: bool = False) -> List[InspectedPath]:
     """Inspect a filesystem path.
 
     Lists all files in the path.
     Tries to determine which files are supported by Kukur and returns them.
+
+    Recurses into subdirectories when recursive is True.
     """
     local = fs.LocalFileSystem()
-    return inspect(local, path)
+    return inspect(local, path, recursive=recursive)
 
 
 def preview_filesystem(
