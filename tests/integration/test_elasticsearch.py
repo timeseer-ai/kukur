@@ -80,6 +80,44 @@ def test_data(client: Client):
     assert data["value"][240].as_py() == 6.944541
 
 
+def test_search_minimal(client: Client):
+    many_series = list(client.search(SeriesSearch(suffix_source("noaa-es-minimal"))))
+    assert len(many_series) == 3
+    series = [
+        series
+        for series in many_series
+        if series.series.tags["series name"] == "h2o"
+        and series.series.tags["location"] == "coyote_creek"
+        and series.series.field == "water_level"
+    ][0]
+    assert isinstance(series, Metadata)
+    assert (
+        len([(k, v) for k, v in series.iter_names() if v is not None and v != ""]) == 1
+    )
+    assert series.get_field(fields.Description) == "between 6 and 9 feet"
+    assert series.get_field(fields.LimitLowFunctional) is None
+    assert series.get_field(fields.LimitHighFunctional) is None
+
+
+def test_data_minimal(client: Client):
+    tags = {
+        "series name": "h2o",
+        "location": "coyote_creek",
+    }
+    start_date = datetime.fromisoformat("2024-01-01T00:00:00+00:00")
+    end_date = datetime.fromisoformat("2024-01-02T00:00:00+00:00")
+    data = client.get_data(
+        SeriesSelector.from_tags(suffix_source("noaa-es-minimal"), tags, "water_level"),
+        start_date,
+        end_date,
+    )
+    assert len(data) == 241
+    assert data["ts"][0].as_py() == start_date
+    assert data["value"][0].as_py() == 9.982635
+    assert data["ts"][240].as_py() == end_date
+    assert data["value"][240].as_py() == 6.944541
+
+
 def test_search_sql(client: Client):
     many_series = list(client.search(SeriesSearch(suffix_source("noaa-es-sql"))))
     assert len(many_series) == 3

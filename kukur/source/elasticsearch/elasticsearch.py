@@ -155,20 +155,23 @@ class ElasticsearchSource:
         for field_column in fields:
             series = SeriesSelector(source_name, tags, field_column)
             metadata = Metadata(series)
-            if len(row) == len(tags):
-                yield metadata
-            else:
-                for k, v in row.items():
-                    if k in self.__options.tag_columns:
+            for k, v in row.items():
+                if k in self.__options.tag_columns:
+                    continue
+                if self.__options.metadata_field_column is not None:
+                    if k == self.__options.metadata_field_column:
                         continue
-                    if v is None:
+                if len(self.__options.metadata_columns) > 0:
+                    if k not in self.__options.metadata_columns:
                         continue
-                    name = self.__metadata_mapper.from_source(k)
-                    metadata.coerce_field(
-                        name,
-                        self.__metadata_value_mapper.from_source(name, v),
-                    )
-                yield metadata
+                if v is None:
+                    continue
+                name = self.__metadata_mapper.from_source(k)
+                metadata.coerce_field(
+                    name,
+                    self.__metadata_value_mapper.from_source(name, v),
+                )
+            yield metadata
 
     def get_metadata(self, selector: SeriesSelector) -> Metadata:
         """Read metadata, taking any configured metadata mapping into account."""
