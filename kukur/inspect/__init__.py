@@ -75,5 +75,5 @@ class Connection:
     """Defines the connection to a database."""
 
     connection_type: str
-    connection_string: str
-    path: Optional[str] = None
+    connection_string: Optional[str]
+    connection_options: Optional[dict]
