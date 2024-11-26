@@ -37,7 +37,7 @@ def _get_connection_options() -> dict:
         }
     return {
         "host": "postgres",
-        "port": 5431,
+        "port": 5432,
         "user": "postgres",
         "password": "Timeseer!AI",
     }

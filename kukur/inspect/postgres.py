@@ -88,7 +88,7 @@ class PostgresPg8000:
             column_names = [name for name, in cursor]
         params = column_names + [num_rows]
         columns = ", ".join(["%s"] * len(column_names))
-        query = f"select {columns} from {split_path[0]}.{split_path[1]} limit %s"
+        query = f"select {columns} from {_escape(split_path[0])}.{_escape(split_path[1])} limit %s"
 
         cursor.execute(query, params)
 
@@ -120,7 +120,9 @@ class PostgresPg8000:
             column_names = [name for name, in cursor]
         params = column_names
         columns = ", ".join(["%s"] * len(column_names))
-        query = f"select {columns} from {split_path[0]}.{split_path[1]}"
+        query = (
+            f"select {columns} from {_escape(split_path[0])}.{_escape(split_path[1])}"
+        )
 
         cursor.execute(query, params)
         results = defaultdict(list)
@@ -252,3 +254,13 @@ def get_connection(config: Connection) -> Union[PostgresPg8000, PostgresPsycopg]
     else:
         InvalidSourceException("Missing `connection_options` or `connection_string`")
     return connection
+
+
+def _escape(context: Optional[str]) -> str:
+    if context is None:
+        context = "value"
+    if '"' in context:
+        context = context.replace('"', "")
+    if ";" in context:
+        context = context.replace(";", "")
+    return context
