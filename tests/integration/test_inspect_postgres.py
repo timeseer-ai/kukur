@@ -5,12 +5,16 @@
 
 import os
 
+import pytest
+
 from kukur.inspect import Connection, InspectedPath, InspectOptions, ResourceType
 from kukur.inspect.database import (
     inspect_database,
     preview_database,
     read_database,
 )
+
+pytestmark = pytest.mark.postgresql
 
 
 def _sort_by_path(path: InspectedPath) -> str:
