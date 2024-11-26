@@ -37,11 +37,15 @@ class PostgresPg8000:
     """Inspect class for PG8000 postgres connections."""
 
     def __init__(self, connection_options: dict):
-        self.__connection = pg8000.dbapi.connect(**connection_options)
+        self.__connection_options = connection_options
+
+    def _connect(self) -> pg8000.dbapi.Connection:
+        return pg8000.dbapi.connect(**self.__connection_options)
 
     def inspect_database(self, path: Optional[str] = None) -> List[InspectedPath]:
         """Inspect a database."""
-        cursor = self.__connection.cursor()
+        connection = self._connect()
+        cursor = connection.cursor()
         where = ""
         column = "table_schema"
         params = []
@@ -70,7 +74,8 @@ class PostgresPg8000:
         options: Optional[InspectOptions] = None,
     ) -> Optional[pa.Table]:
         """Preview the contents of a database."""
-        cursor = self.__connection.cursor()
+        connection = self._connect()
+        cursor = connection.cursor()
         split_path = path.split("/")
         if len(split_path) == 1:
             InvalidInspectURI("No schema or table provided.")
@@ -102,7 +107,8 @@ class PostgresPg8000:
         self, path: str, options: Optional[InspectOptions] = None
     ) -> Generator[pa.RecordBatch, None, None]:
         """Iterate over the RecordBatches at the given Connection."""
-        cursor = self.__connection.cursor()
+        connection = self._connect()
+        cursor = connection.cursor()
         split_path = path.split("/")
         if len(split_path) == 1:
             raise InvalidInspectURI("No schema or table provided.")
@@ -136,11 +142,15 @@ class PostgresPsycopg:
     """Inspect class for psycopg postgres connections."""
 
     def __init__(self, connection_string: str):
-        self.__connection = psycopg.connect(connection_string)
+        self.__connection_string = connection_string
+
+    def _connect(self) -> psycopg.Connection:
+        return psycopg.connect(self.__connection_string)
 
     def inspect_database(self, path: Optional[str] = None) -> List[InspectedPath]:
         """Inspect a database."""
-        cursor = self.__connection.cursor()
+        connection = self._connect()
+        cursor = connection.cursor()
         where = ""
         column = "table_schema"
         params = []
@@ -169,7 +179,8 @@ class PostgresPsycopg:
         options: Optional[InspectOptions] = None,
     ) -> Optional[pa.Table]:
         """Preview the contents of a database."""
-        cursor = self.__connection.cursor()
+        connection = self._connect()
+        cursor = connection.cursor()
         split_path = path.split("/")
         if len(split_path) == 1:
             InvalidInspectURI("No schema or table provided.")
@@ -208,7 +219,8 @@ class PostgresPsycopg:
         self, path: str, options: Optional[InspectOptions] = None
     ) -> Generator[pa.RecordBatch, None, None]:
         """Iterate over the RecordBatches at the given Connection."""
-        cursor = self.__connection.cursor()
+        connection = self._connect()
+        cursor = connection.cursor()
         split_path = path.split("/")
         if len(split_path) == 1:
             raise InvalidInspectURI("No schema or table provided.")

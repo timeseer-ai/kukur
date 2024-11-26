@@ -24,7 +24,7 @@ def _sort_by_path(path: InspectedPath) -> str:
 def _get_connection_string() -> str:
     if "KUKUR_INTEGRATION_TARGET" in os.environ:
         return "host=localhost port=5431 user=postgres password=Timeseer!AI"
-    return "host=postgres port=5432 user=postgres password=Timeseer!AI"
+    return "host=localhost port=5431 user=postgres password=Timeseer!AI"
 
 
 def _get_connection_options() -> dict:
@@ -36,8 +36,8 @@ def _get_connection_options() -> dict:
             "password": "Timeseer!AI",
         }
     return {
-        "host": "postgres",
-        "port": 5432,
+        "host": "localhost",
+        "port": 5431,
         "user": "postgres",
         "password": "Timeseer!AI",
     }
