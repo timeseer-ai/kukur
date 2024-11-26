@@ -11,7 +11,7 @@ on:
 jobs:
   lint_and_test:
     name: Lint and Test
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -55,7 +55,7 @@ jobs:
 
   integration_test:
     name: Integration test
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs:
       - lint_and_test
     strategy:
@@ -108,7 +108,7 @@ jobs:
   push_container:
     name: Push tested container
     if: github.ref == 'refs/heads/master'
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs:
       - integration_test
     steps:
