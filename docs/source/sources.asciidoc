@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2021 Timeseer.AI
-//
 // SPDX-License-Identifier: Apache-2.0
+
 == Time Series Sources
 
 Parameters common to all data sources are documented here.
@@ -28,6 +28,7 @@ Valid values are:
 - `cratedb`
 - `csv`
 - `delta`
+- `elasticsearch`
 - `feather`
 - `influxdb`
 - `kukur`
@@ -49,6 +50,7 @@ Valid values are:
 - `cratedb`
 - `csv`
 - `datafusion`
+- `elasticsearch`
 - `json`
 - `kukur`
 - `oledb`
@@ -171,7 +173,7 @@ ifndef::sources[]
 - Binary link:plugin.asciidoc[Plugins]
 - link:csv.asciidoc[CSV] files
 - link:delta.asciidoc[Delta Lake] tables
-- link:elastissearch.asciidoc[Elasticsearch] data sources
+- link:elasticsearch.asciidoc[Elasticsearch] data sources
 - link:influxdb.asciidoc[InfluxDB] data sources
 - Kukur link:json.asciidoc[JSON] metadata files
 - Other link:kukur.asciidoc[Kukur or Timeseer instances]
@@ -194,6 +196,7 @@ ifdef::sources[]
 - <<CrateDB>> databases
 - <<CSV>> files
 - <<Delta Lake>> tables
+- <<Elasticsearch>> databases
 - <<InfluxDB>> databases
 - Kukur <<JSON>> metadata files
 - Other <<Kukur,Kukur or Timeseer instances>>
