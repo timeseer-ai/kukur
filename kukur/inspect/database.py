@@ -27,14 +27,16 @@ def inspect_database(config: Connection) -> List[InspectedPath]:
         cursor = connection.cursor()
         where = ""
         column = "table_schema"
+        params = []
         if config.path is not None:
-            schema = config.path
+            params.append(config.path)
             column = "table_name"
-            where = f"where table_schema = '{schema}'"
+            where = "where table_schema = %s"
         cursor.execute(
             f"""
             select distinct {column} from information_schema.tables {where}
-            """
+            """,
+            params,
         )
         for (name,) in cursor:
             path = name
@@ -56,25 +58,30 @@ def preview_database(
         split_path = config.path.split("/")
         if len(split_path) == 1:
             InvalidInspectURI("No schema or table provided.")
-        schema = split_path[0]
-        table = split_path[1]
 
         if options is not None and options.column_names is not None:
             column_names = options.column_names
         else:
             cursor.execute(
-                f"""
-                select column_name from information_schema.columns
-                    where table_schema = '{schema}'
-                    and table_name = '{table}'
                 """
+                select column_name from information_schema.columns
+                  where table_schema = %s
+                    and table_name = %s
+                """,
+                split_path,
             )
             column_names = [name for name, in cursor]
 
+        query = psycopg.sql.SQL("select {column_names} from {schema}.{table} limit %s").format(
+            column_names=psycopg.sql.SQL(",").join([
+                psycopg.sql.Identifier(column_name)
+            for column_name in column_names]),
+            schema=psycopg.sql.Identifier(split_path[0]),
+            table=psycopg.sql.Identifier(split_path[1])
+        )
         cursor.execute(
-            f"""
-            select {", ".join(column_names)} from {schema}.{table} limit {num_rows}
-            """
+            query,
+            [num_rows]
         )
 
         results = defaultdict(list)
@@ -97,25 +104,29 @@ def read_database(
         split_path = config.path.split("/")
         if len(split_path) == 1:
             raise InvalidInspectURI("No schema or table provided.")
-        schema = split_path[0]
-        table = split_path[1]
 
         if options is not None and options.column_names is not None:
             column_names = options.column_names
         else:
             cursor.execute(
-                f"""
-                select column_name from information_schema.columns
-                    where table_schema = '{schema}'
-                    and table_name = '{table}'
                 """
+                select column_name from information_schema.columns
+                    where table_schema = %s
+                    and table_name = %s
+                """,
+                split_path,
             )
             column_names = [name for name, in cursor]
 
+        query = psycopg.sql.SQL("select {column_names} from {schema}.{table}").format(
+            column_names=psycopg.sql.SQL(",").join([
+                psycopg.sql.Identifier(column_name)
+            for column_name in column_names]),
+            schema=psycopg.sql.Identifier(split_path[0]),
+            table=psycopg.sql.Identifier(split_path[1])
+        )
         cursor.execute(
-            f"""
-            select {", ".join(column_names)} from {schema}.{table}
-            """
+            query,
         )
 
         results = defaultdict(list)
