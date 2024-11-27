@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from collections import defaultdict
-from typing import Generator, List, Optional, Union
+from typing import Generator, List, Optional
 
 from kukur.exceptions import InvalidSourceException, MissingModuleException
 
@@ -62,9 +62,11 @@ class PostgresPg8000:
         results = []
         for (name,) in cursor:
             full_path = name
+            resource_type = ResourceType.DIRECTORY
             if path is not None:
                 full_path = path + f"/{name}"
-            results.append(InspectedPath(ResourceType.TABLE, full_path))
+                resource_type = ResourceType.TABLE
+            results.append(InspectedPath(resource_type, full_path))
         return results
 
     def preview_database(
@@ -91,9 +93,9 @@ class PostgresPg8000:
                 split_path,
             )
             column_names = [name for name, in cursor]
-        params = column_names + [num_rows]
-        columns = ", ".join(["%s"] * len(column_names))
-        query = f"select {columns} from {_escape(split_path[0])}.{_escape(split_path[1])} limit %s"
+        columns = [_escape(column) for column in column_names]
+        params = [num_rows]
+        query = f"select {', '.join(columns)} from {_escape(split_path[0])}.{_escape(split_path[1])} limit %s"
 
         cursor.execute(query, params)
 
@@ -125,11 +127,8 @@ class PostgresPg8000:
             )
             column_names = [name for name, in cursor]
         params = column_names
-        columns = ", ".join(["%s"] * len(column_names))
-        query = (
-            f"select {columns} from {_escape(split_path[0])}.{_escape(split_path[1])}"
-        )
-
+        columns = [_escape(column) for column in column_names]
+        query = f"select {', '.join(columns)} from {_escape(split_path[0])}.{_escape(split_path[1])}"
         cursor.execute(query, params)
         results = defaultdict(list)
         for row in cursor:
@@ -167,9 +166,11 @@ class PostgresPsycopg:
         results = []
         for (name,) in cursor:
             full_path = name
+            resource_type = ResourceType.DIRECTORY
             if path is not None:
                 full_path = path + f"/{name}"
-            results.append(InspectedPath(ResourceType.TABLE, full_path))
+                resource_type = ResourceType.TABLE
+            results.append(InspectedPath(resource_type, full_path))
         return results
 
     def preview_database(
@@ -183,7 +184,7 @@ class PostgresPsycopg:
         cursor = connection.cursor()
         split_path = path.split("/")
         if len(split_path) == 1:
-            InvalidInspectURI("No schema or table provided.")
+            raise InvalidInspectURI("No schema or table provided.")
 
         if options is not None and options.column_names is not None:
             column_names = options.column_names
@@ -252,20 +253,17 @@ class PostgresPsycopg:
         yield pa.RecordBatch.from_pydict(results)
 
 
-def get_connection(config: Connection) -> Union[PostgresPg8000, PostgresPsycopg]:
+def get_connection(config: Connection):
     """Return a postgres connection."""
-    connection: Union[PostgresPg8000, PostgresPsycopg]
     if config.connection_options is not None:
         if not HAS_POSTGRES_8000:
-            MissingModuleException("pg8000")
-        connection = PostgresPg8000(config.connection_options)
-    elif config.connection_string is not None:
+            raise MissingModuleException("pg8000")
+        return PostgresPg8000(config.connection_options)
+    if config.connection_string is not None:
         if not HAS_POSTGRES:
-            MissingModuleException("psycopg")
-        connection = PostgresPsycopg(config.connection_string)
-    else:
-        InvalidSourceException("Missing `connection_options` or `connection_string`")
-    return connection
+            raise MissingModuleException("psycopg")
+        return PostgresPsycopg(config.connection_string)
+    raise InvalidSourceException("Missing `connection_options` or `connection_string`")
 
 
 def _escape(context: Optional[str]) -> str:

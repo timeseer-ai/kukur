@@ -12,6 +12,11 @@ from kukur.inspect import (
     InspectedPath,
     InspectOptions,
 )
+from kukur.inspect.odbc import (
+    inspect_odbc_database,
+    preview_odbc_database,
+    read_odbc_database,
+)
 from kukur.inspect.postgres import get_connection
 
 
@@ -19,12 +24,14 @@ def inspect_database(
     config: Connection, path: Optional[str] = None
 ) -> List[InspectedPath]:
     """Inspect a database."""
-    results = []
     if config.connection_type == "postgres":
         connection = get_connection(config)
-        results = connection.inspect_database(path)
+        return connection.inspect_database(path)
 
-    return results
+    if config.connection_type == "odbc":
+        return inspect_odbc_database(config, path)
+
+    return []
 
 
 def preview_database(
@@ -37,6 +44,9 @@ def preview_database(
     if config.connection_type == "postgres":
         connection = get_connection(config)
         return connection.preview_database(path, num_rows, options)
+
+    if config.connection_type == "odbc":
+        return preview_odbc_database(config, path, num_rows, options)
     return None
 
 
@@ -47,3 +57,5 @@ def read_database(
     if config.connection_type == "postgres":
         connection = get_connection(config)
         yield from connection.read_database(path, options)
+    elif config.connection_type == "odbc":
+        yield from read_odbc_database(config, path, options)
