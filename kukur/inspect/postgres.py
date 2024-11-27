@@ -126,10 +126,9 @@ class PostgresPg8000:
                 split_path,
             )
             column_names = [name for name, in cursor]
-        params = column_names
         columns = [_escape(column) for column in column_names]
         query = f"select {', '.join(columns)} from {_escape(split_path[0])}.{_escape(split_path[1])}"
-        cursor.execute(query, params)
+        cursor.execute(query)
         results = defaultdict(list)
         for row in cursor:
             for index in range(len(row)):

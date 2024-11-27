@@ -3,8 +3,6 @@
 # SPDX-FileCopyrightText: 2024 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-import os
-
 import pytest
 
 from kukur.inspect import Connection, InspectedPath, InspectOptions, ResourceType
@@ -22,19 +20,10 @@ def _sort_by_path(path: InspectedPath) -> str:
 
 
 def _get_connection_string() -> str:
-    if "KUKUR_INTEGRATION_TARGET" in os.environ:
-        return "host=localhost port=5431 user=postgres password=Timeseer!AI"
     return "host=localhost port=5431 user=postgres password=Timeseer!AI"
 
 
 def _get_connection_options() -> dict:
-    if "KUKUR_INTEGRATION_TARGET" in os.environ:
-        return {
-            "host": "localhost",
-            "port": 5431,
-            "user": "postgres",
-            "password": "Timeseer!AI",
-        }
     return {
         "host": "localhost",
         "port": 5431,
@@ -49,11 +38,11 @@ def test_inspect_database_schema() -> None:
     assert len(results) == 3
     results = sorted(results, key=_sort_by_path)
     assert results[0].path == "information_schema"
-    assert results[0].resource_type == ResourceType.TABLE
+    assert results[0].resource_type == ResourceType.DIRECTORY
     assert results[1].path == "pg_catalog"
-    assert results[1].resource_type == ResourceType.TABLE
+    assert results[1].resource_type == ResourceType.DIRECTORY
     assert results[2].path == "public"
-    assert results[2].resource_type == ResourceType.TABLE
+    assert results[2].resource_type == ResourceType.DIRECTORY
 
 
 def test_inspect_database_tables() -> None:
@@ -112,11 +101,11 @@ def test_inspect_database_schema_pg8000() -> None:
     assert len(results) == 3
     results = sorted(results, key=_sort_by_path)
     assert results[0].path == "information_schema"
-    assert results[0].resource_type == ResourceType.TABLE
+    assert results[0].resource_type == ResourceType.DIRECTORY
     assert results[1].path == "pg_catalog"
-    assert results[1].resource_type == ResourceType.TABLE
+    assert results[1].resource_type == ResourceType.DIRECTORY
     assert results[2].path == "public"
-    assert results[2].resource_type == ResourceType.TABLE
+    assert results[2].resource_type == ResourceType.DIRECTORY
 
 
 def test_inspect_database_tables_pg8000() -> None:

@@ -34,7 +34,7 @@ def _get_connection_string() -> str:
                 "UID=sa;PWD=Timeseer!AI;TDS_Version=8.0;ClientCharset=UTF-8"
             )
     return (
-        "Driver={/usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so};Server=sql_server;Port=1433;Database=TestData;"
+        "Driver={/usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so};Server=localhost;Port=1433;Database=TestData;"
         "UID=sa;PWD=Timeseer!AI;TDS_Version=8.0;ClientCharset=UTF-8"
     )
 
@@ -45,7 +45,7 @@ def test_inspect_database_schema() -> None:
     assert len(results) == 1
     results = sorted(results, key=_sort_by_path)
     assert results[0].path == "dbo"
-    assert results[0].resource_type == ResourceType.TABLE
+    assert results[0].resource_type == ResourceType.DIRECTORY
 
 
 def test_inspect_database_tables() -> None:
