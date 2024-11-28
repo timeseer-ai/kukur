@@ -39,7 +39,7 @@ class PostgresPg8000:
     def __init__(self, connection_options: dict):
         self.__connection_options = connection_options
 
-    def _connect(self) -> pg8000.dbapi.Connection:
+    def _connect(self):
         return pg8000.dbapi.connect(**self.__connection_options)
 
     def inspect_database(self, path: Optional[str] = None) -> List[InspectedPath]:
@@ -142,7 +142,7 @@ class PostgresPsycopg:
     def __init__(self, connection_string: str):
         self.__connection_string = connection_string
 
-    def _connect(self) -> psycopg.Connection:
+    def _connect(self):
         return psycopg.connect(self.__connection_string)
 
     def inspect_database(self, path: Optional[str] = None) -> List[InspectedPath]:
