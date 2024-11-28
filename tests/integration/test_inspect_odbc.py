@@ -25,22 +25,22 @@ def _get_connection_string() -> str:
     if "KUKUR_INTEGRATION_TARGET" in os.environ:
         if os.environ["KUKUR_INTEGRATION_TARGET"] == "local":
             return (
-                "Driver={/usr/local/lib/libtdsodbc.so};Server=localhost;Port=1433;Database=TestData;"
+                "Driver={/usr/local/lib/libtdsodbc.so};Server=localhost;Port=1433;"
                 "UID=sa;PWD=Timeseer!AI;TDS_Version=8.0;ClientCharset=UTF-8"
             )
         if os.environ["KUKUR_INTEGRATION_TARGET"] == "linux":
             return (
-                "Driver={/usr/lib/libtdsodbc.so};Server=localhost;Port=1433;Database=TestData;"
+                "Driver={/usr/lib/libtdsodbc.so};Server=localhost;Port=1433;"
                 "UID=sa;PWD=Timeseer!AI;TDS_Version=8.0;ClientCharset=UTF-8"
             )
     return (
-        "Driver={/usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so};Server=localhost;Port=1433;Database=TestData;"
+        "Driver={/usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so};Server=localhost;Port=1433;"
         "UID=sa;PWD=Timeseer!AI;TDS_Version=8.0;ClientCharset=UTF-8"
     )
 
 
 def test_inspect_database_schema() -> None:
-    connection = Connection("odbc", _get_connection_string(), None)
+    connection = Connection("odbc", "TestData", _get_connection_string(), None)
     results = inspect_database(connection)
     assert len(results) == 1
     results = sorted(results, key=_sort_by_path)
@@ -51,6 +51,7 @@ def test_inspect_database_schema() -> None:
 def test_inspect_database_tables() -> None:
     connection = Connection(
         "odbc",
+        "TestData",
         _get_connection_string(),
         None,
     )
@@ -68,6 +69,7 @@ def test_inspect_database_tables() -> None:
 def test_preview_database() -> None:
     connection = Connection(
         "odbc",
+        "TestData",
         _get_connection_string(),
         None,
     )
@@ -77,7 +79,7 @@ def test_preview_database() -> None:
 
 
 def test_preview_database_selected_columns() -> None:
-    connection = Connection("odbc", _get_connection_string(), None)
+    connection = Connection("odbc", "TestData", _get_connection_string(), None)
     results = preview_database(
         connection, "dbo/data", 5000, options=InspectOptions(["ts", "value"])
     )
@@ -87,14 +89,14 @@ def test_preview_database_selected_columns() -> None:
 
 
 def test_preview_database_limit_rows() -> None:
-    connection = Connection("odbc", _get_connection_string(), None)
+    connection = Connection("odbc", "TestData", _get_connection_string(), None)
     results = preview_database(connection, "dbo/data", 10)
     assert results is not None
     assert len(results) == 10
 
 
 def test_read_database() -> None:
-    connection = Connection("odbc", _get_connection_string(), None)
+    connection = Connection("odbc", "TestData", _get_connection_string(), None)
     batches = list(read_database(connection, "dbo/data"))
     assert len(batches) == 1
     assert len(batches[0]) == 17

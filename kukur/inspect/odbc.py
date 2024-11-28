@@ -40,7 +40,7 @@ def inspect_odbc_database(
         where = "where table_schema = ?"
     cursor.execute(
         f"""
-        select distinct {column} from information_schema.tables {where}
+        select distinct {column} from {_escape(config.database)}.information_schema.tables {where}
         """,
         params,
     )
@@ -71,8 +71,8 @@ def preview_odbc_database(
         column_names = options.column_names
     else:
         cursor.execute(
-            """
-            select column_name from information_schema.columns
+            f"""
+            select column_name from {_escape(config.database)}.information_schema.columns
             where table_schema = ?
                 and table_name = ?
             """,
@@ -81,7 +81,10 @@ def preview_odbc_database(
         column_names = [name for name, in cursor]
 
     columns = [_escape(column_name) for column_name in column_names]
-    query = f"select top {num_rows} {', '.join(columns)} from {_escape(split_path[0])}.{_escape(split_path[1])}"
+    query = f"""
+        select top {num_rows} {', '.join(columns)}
+          from {_escape(config.database)}.{_escape(split_path[0])}.{_escape(split_path[1])}
+    """
 
     cursor.execute(query)
 
@@ -105,8 +108,8 @@ def read_odbc_database(
         column_names = options.column_names
     else:
         cursor.execute(
-            """
-            select column_name from information_schema.columns
+            f"""
+            select column_name from {_escape(config.database)}.information_schema.columns
             where table_schema = ?
                 and table_name = ?
             """,
@@ -115,7 +118,7 @@ def read_odbc_database(
         column_names = [name for name, in cursor]
     params = column_names
     columns = ", ".join(["?"] * len(column_names))
-    query = f"select {columns} from {split_path[0]}.{split_path[1]}"
+    query = f"select {columns} from {_escape(config.database)}.{_escape(split_path[0])}.{_escape(split_path[1])}"
 
     cursor.execute(query, params)
     results = defaultdict(list)
