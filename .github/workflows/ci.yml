@@ -99,6 +99,11 @@ jobs:
           sudo apt-get update
           sudo apt-get --yes install libkrb5-dev
 
+      - name: Install specific OS requirements
+        if: matrix.target == 'odbc'
+        run: |
+          sudo apt-get --yes install unixodbc tdsodbc
+
       - name: Install requirements
         run: make deps dev-deps
 
