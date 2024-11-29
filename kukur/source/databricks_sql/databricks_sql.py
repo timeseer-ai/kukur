@@ -61,8 +61,8 @@ def build_connection_string(data: dict) -> str:
             {connection_string}
             AuthMech=11;
             Auth_Flow=1;
-            OAuth2ClientId={data['oauth_client_id']};
-            OAuthClientId={data['oauth_secret']};
+            Auth_Client_ID={data['oauth_client_id']};
+            Auth_Client_Secret={data['oauth_secret']};
         """
     else:
         connection_string = f"{connection_string}AuthMech=11;Auth_Flow=3;"
