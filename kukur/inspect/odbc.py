@@ -83,12 +83,18 @@ def preview_odbc_database(
         column_names = [name for name, in cursor]
 
     columns = [_escape(column_name) for column_name in column_names]
-    query = f"""
-        select top {num_rows} {', '.join(columns)}
-          from {_escape(config.database)}.{_escape(split_path[0])}.{_escape(split_path[1])}
-    """
-
-    cursor.execute(query)
+    if config.limit_specification == "limit":
+        query = f"""
+            select {', '.join(columns)}
+            from {_escape(config.database)}.{_escape(split_path[0])}.{_escape(split_path[1])} limit ?
+        """
+        cursor.execute(query, [num_rows])
+    else:
+        query = f"""
+            select top {num_rows} {', '.join(columns)}
+            from {_escape(config.database)}.{_escape(split_path[0])}.{_escape(split_path[1])}
+        """
+        cursor.execute(query)
 
     results = defaultdict(list)
     for row in cursor:

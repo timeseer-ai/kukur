@@ -40,7 +40,7 @@ def _get_connection_string() -> str:
 
 
 def test_inspect_database_schema() -> None:
-    connection = Connection("odbc", "TestData", _get_connection_string(), None)
+    connection = Connection("odbc", "TestData", _get_connection_string(), None, "top")
     results = inspect_database(connection)
     assert len(results) == 1
     results = sorted(results, key=_sort_by_path)
@@ -54,6 +54,7 @@ def test_inspect_database_tables() -> None:
         "TestData",
         _get_connection_string(),
         None,
+        "top",
     )
     results = inspect_database(connection, "dbo")
     assert len(results) == 3
@@ -72,6 +73,7 @@ def test_preview_database() -> None:
         "TestData",
         _get_connection_string(),
         None,
+        "top",
     )
     results = preview_database(connection, "dbo/Data")
     assert results is not None
@@ -79,7 +81,7 @@ def test_preview_database() -> None:
 
 
 def test_preview_database_selected_columns() -> None:
-    connection = Connection("odbc", "TestData", _get_connection_string(), None)
+    connection = Connection("odbc", "TestData", _get_connection_string(), None, "top")
     results = preview_database(
         connection, "dbo/data", 5000, options=InspectOptions(["ts", "value"])
     )
@@ -89,14 +91,14 @@ def test_preview_database_selected_columns() -> None:
 
 
 def test_preview_database_limit_rows() -> None:
-    connection = Connection("odbc", "TestData", _get_connection_string(), None)
+    connection = Connection("odbc", "TestData", _get_connection_string(), None, "top")
     results = preview_database(connection, "dbo/data", 10)
     assert results is not None
     assert len(results) == 10
 
 
 def test_read_database() -> None:
-    connection = Connection("odbc", "TestData", _get_connection_string(), None)
+    connection = Connection("odbc", "TestData", _get_connection_string(), None, "top")
     batches = list(read_database(connection, "dbo/data"))
     assert len(batches) == 1
     assert len(batches[0]) == 17

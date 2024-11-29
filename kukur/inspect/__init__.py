@@ -78,3 +78,4 @@ class Connection:
     database: Optional[str]
     connection_string: Optional[str]
     connection_options: Optional[dict]
+    limit_specification: Optional[str]
