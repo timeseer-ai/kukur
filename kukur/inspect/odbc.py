@@ -125,11 +125,14 @@ def read_odbc_database(
             split_path,
         )
         column_names = [name for name, in cursor]
-    params = column_names
-    columns = ", ".join(["?"] * len(column_names))
-    query = f"select {columns} from {_escape(config.database)}.{_escape(split_path[0])}.{_escape(split_path[1])}"
 
-    cursor.execute(query, params)
+    columns = [_escape(column_name) for column_name in column_names]
+    query = f"""
+        select {', '.join(columns)}
+        from {_escape(config.database)}.{_escape(split_path[0])}.{_escape(split_path[1])}
+    """
+
+    cursor.execute(query)
     results = defaultdict(list)
     for row in cursor:
         for index in range(len(row)):
@@ -157,4 +160,4 @@ def _escape(context: Optional[str]) -> str:
         context = context.replace('"', "")
     if ";" in context:
         context = context.replace(";", "")
-    return context
+    return f'"{context}"'
