@@ -1,6 +1,6 @@
 """Connections to Databricks SQL data sources from Timeseer."""
 
-# SPDX-FileCopyrightText: 2021 Timeseer.AI
+# SPDX-FileCopyrightText: 2024 Timeseer.AI
 #
 # SPDX-License-Identifier: Apache-2.0
 from .databricks_sql import from_config

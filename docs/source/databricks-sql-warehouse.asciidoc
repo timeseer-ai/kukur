@@ -72,7 +72,7 @@ It is important to set `autocommit = true` since the Spark ODBC driver does not 
 
 Refer to https://learn.microsoft.com/en-us/azure/databricks/integrations/odbc/authentication[Authentication settings for the Databricks ODBC Driver] for alternative authentication options.
 
-Alternatively the `connection_string` can be split and parsed as the individual entries:
+Alternatively the `connection_string` can be split and passed as the individual entries:
 
 ```
 [source.Databricks.connection]
