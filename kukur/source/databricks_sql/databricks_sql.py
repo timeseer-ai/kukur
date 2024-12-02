@@ -47,19 +47,22 @@ class DatabricksSQLSource(ODBCSource):
 
 def build_connection_string(data: dict) -> str:
     """Build the connection string from configuration."""
-    connection_string = ""
-    for key, value in data.items():
-        connection_string = f"{connection_string}{key}={value};"
-    print(connection_string)
-    connection_string = """
+    connection_string = f"""
+        Driver={data['driver']};
+        Host={data['host']};
+        Port={data.get("port", 433)};
+        Azure_workspace_resource_id={data['azure_workspace_resource_id']};
         SSL=1;
         ThriftTransport=2;
+        HTTPPath={data['http_path']};
         """
     if data.get("oauth_client_id") is not None:
         connection_string = f"""
             {connection_string}
             AuthMech=11;
             Auth_Flow=1;
+            Auth_Client_ID={data['oauth_client_id']};
+            Auth_Client_Secret={data['oauth_secret']};
         """
     else:
         connection_string = f"{connection_string}AuthMech=11;Auth_Flow=3;"
