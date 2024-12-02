@@ -42,7 +42,7 @@ A connection is made to the table at `tsaideltalake.poc.tsai_antwerp`.
 
 ```toml
 [source.Databricks]
-type = "odbc"
+type = "databricks-sql"
 connection_string = """
 Driver=/opt/simba/spark/lib/64/libsparkodbc_sb64.so;
 Host=adb-5136731089164599.19.azuredatabricks.net;
@@ -71,3 +71,16 @@ where `series name` = ?
 It is important to set `autocommit = true` since the Spark ODBC driver does not support transactions.
 
 Refer to https://learn.microsoft.com/en-us/azure/databricks/integrations/odbc/authentication[Authentication settings for the Databricks ODBC Driver] for alternative authentication options.
+
+Alternatively the `connection_string` can be split and parsed as the individual entries:
+
+```
+[source.Databricks.connection]
+driver = ""
+host = ""
+port = 443
+HTTPPath = ""
+Azure_workspace_resource_id = "" # Optional, only needed for authentication through managed identity.
+oauth_client_id = "" # Optional, only needed for oauth authentication.
+oauth_secret = "" # Optional, only needed for oauth authentication.
+```
