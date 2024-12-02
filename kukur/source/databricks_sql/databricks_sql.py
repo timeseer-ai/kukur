@@ -48,7 +48,7 @@ class DatabricksSQLSource(ODBCSource):
 def build_connection_string(data: dict) -> str:
     """Build the connection string from configuration."""
     connection_string = f"""
-        Driver={data['driver']};
+        Driver={data.get('driver', "/opt/simba/spark/lib/64/libsparkodbc_sb64.so")};
         Host={data['host']};
         Port={data.get("port", 433)};
         SSL=1;

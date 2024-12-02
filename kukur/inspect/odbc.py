@@ -16,7 +16,6 @@ from kukur.inspect import (
     InvalidInspectURI,
     ResourceType,
 )
-from kukur.source.databricks_sql.databricks_sql import build_connection_string
 
 try:
     import pyodbc
@@ -145,12 +144,9 @@ def _get_connection(config: Connection):
     """Return an ODBC connection."""
     if not HAS_ODBC:
         raise MissingModuleException("pyodbc")
-    connection_string = config.connection_string
     if config.connection_string is None:
-        if config.connection_options is None:
-            raise InvalidSourceException("Missing `connection_string` in configuration")
-        connection_string = build_connection_string(config.connection_options)
-    return pyodbc.connect(connection_string, autocommit=True)
+        raise InvalidSourceException("Missing `connection_string` in configuration")
+    return pyodbc.connect(config.connection_string, autocommit=True)
 
 
 def _escape(context: Optional[str]) -> str:
