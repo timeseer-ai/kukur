@@ -51,7 +51,6 @@ def build_connection_string(data: dict) -> str:
         Driver={data['driver']};
         Host={data['host']};
         Port={data.get("port", 433)};
-        Azure_workspace_resource_id={data['azure_workspace_resource_id']};
         SSL=1;
         ThriftTransport=2;
         HTTPPath={data['http_path']};
@@ -65,5 +64,12 @@ def build_connection_string(data: dict) -> str:
             Auth_Client_Secret={data['oauth_secret']};
         """
     else:
-        connection_string = f"{connection_string}AuthMech=11;Auth_Flow=3;"
+        connection_string = f"""
+            {connection_string}
+            Azure_workspace_resource_id={data['azure_workspace_resource_id']};
+            AuthMech=11;
+            Auth_Flow=3;
+        """
+    if data.get("user_agent_entry") is not None:
+        connection_string = f"{connection_string}UserAgentEntry={data["user_agent_entry"]};"
     return connection_string
