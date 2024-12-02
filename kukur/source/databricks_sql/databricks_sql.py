@@ -70,6 +70,4 @@ def build_connection_string(data: dict) -> str:
             AuthMech=11;
             Auth_Flow=3;
         """
-    if data.get("user_agent_entry") is not None:
-        connection_string = f"{connection_string}UserAgentEntry={data["user_agent_entry"]};"
     return connection_string
