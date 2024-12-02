@@ -27,6 +27,7 @@ Valid values are:
 - `azure-data-explorer`
 - `cratedb`
 - `csv`
+- `databricks-sql`
 - `delta`
 - `elasticsearch`
 - `feather`
@@ -49,6 +50,7 @@ Valid values are:
 - `adodb`
 - `cratedb`
 - `csv`
+- `databricks-sql`
 - `datafusion`
 - `elasticsearch`
 - `json`
@@ -172,6 +174,7 @@ ifndef::sources[]
 - link:azure_data_explorer.asciidoc[Azure Data Explorer] tables
 - Binary link:plugin.asciidoc[Plugins]
 - link:csv.asciidoc[CSV] files
+- link:databricks-sql-warehouse.asciidoc[Databricks SQL Warehouse] connections
 - link:delta.asciidoc[Delta Lake] tables
 - link:elasticsearch.asciidoc[Elasticsearch] data sources
 - link:influxdb.asciidoc[InfluxDB] data sources
@@ -195,6 +198,7 @@ ifdef::sources[]
 - Binary <<Plugin>>s
 - <<CrateDB>> databases
 - <<CSV>> files
+- <<Databricks SQL Warehouse>> connections
 - <<Delta Lake>> tables
 - <<Elasticsearch>> databases
 - <<InfluxDB>> databases
