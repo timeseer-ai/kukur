@@ -12,6 +12,11 @@ from kukur.inspect import (
     InspectedPath,
     InspectOptions,
 )
+from kukur.inspect.databricks_sql import (
+    inspect_databricks_sql_database,
+    preview_databricks_sql_database,
+    read_databricks_sql_database,
+)
 from kukur.inspect.odbc import (
     inspect_odbc_database,
     preview_odbc_database,
@@ -27,6 +32,9 @@ def inspect_database(
     if config.connection_type == "postgres":
         connection = get_connection(config)
         return connection.inspect_database(path)
+
+    if config.connection_type == "databricks-sql":
+        return inspect_databricks_sql_database(config, path)
 
     if config.connection_type == "odbc":
         return inspect_odbc_database(config, path)
@@ -45,6 +53,9 @@ def preview_database(
         connection = get_connection(config)
         return connection.preview_database(path, num_rows, options)
 
+    if config.connection_type == "databricks-sql":
+        return preview_databricks_sql_database(config, path, num_rows, options)
+
     if config.connection_type == "odbc":
         return preview_odbc_database(config, path, num_rows, options)
     return None
@@ -57,5 +68,7 @@ def read_database(
     if config.connection_type == "postgres":
         connection = get_connection(config)
         yield from connection.read_database(path, options)
+    elif config.connection_type == "databricks-sql":
+        yield from read_databricks_sql_database(config, path, options)
     elif config.connection_type == "odbc":
         yield from read_odbc_database(config, path, options)
