@@ -1,4 +1,6 @@
-= Connecting to Databricks SQL Warehouses on Azure using Managed Identities
+== Databricks SQL Warehouse
+
+=== Connecting to Databricks SQL Warehouses on Azure using Managed Identities
 
 Connections to https://learn.microsoft.com/en-us/azure/databricks/compute/sql-warehouse/[Databricks SQL Warehouses] from Kukur are made using the https://www.databricks.com/spark/odbc-drivers-download[Databricks ODBC Driver].
 
@@ -8,7 +10,7 @@ The Managed Identity will be used to connect securely to the SQL Warehouse.
 The first step is to build a container image that includes the ODBC driver.
 An example `Dockerfile` https://github.com/timeseer-ai/kukur/tree/master/docker/spark/Dockerfile[is available].
 
-== Creating a Service Principal in Databricks
+=== Creating a Service Principal in Databricks
 
 The Managed Identity of the VM needs to be defined as a Service Principal in Databricks.
 
@@ -24,7 +26,7 @@ The required steps are:
 - Go to `SQL Warehouses` in the Databricks Workspace. Add `Can use` permissions to the service principal.
 - In the `Catalog`, grant `Data Reader` permissions to the service principal.
 
-== Configuring Kukur
+=== Configuring Kukur
 
 First open the Azure Portal.
 Navigate to the `Properties` of the `Azure Databricks Service`.
