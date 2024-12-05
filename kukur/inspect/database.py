@@ -29,7 +29,7 @@ def inspect_database(
     config: Connection, path: Optional[str] = None
 ) -> List[InspectedPath]:
     """Inspect a database."""
-    if config.connection_type == "postgres":
+    if config.connection_type == "postgresql":
         connection = get_connection(config)
         return connection.inspect_database(path)
 
@@ -49,7 +49,7 @@ def preview_database(
     options: Optional[InspectOptions] = None,
 ) -> Optional[pa.Table]:
     """Preview the contents of a database."""
-    if config.connection_type == "postgres":
+    if config.connection_type == "postgresql":
         connection = get_connection(config)
         return connection.preview_database(path, num_rows, options)
 
@@ -65,7 +65,7 @@ def read_database(
     config: Connection, path: str, options: Optional[InspectOptions] = None
 ) -> Generator[pa.RecordBatch, None, None]:
     """Iterate over the RecordBatches at the given Connection."""
-    if config.connection_type == "postgres":
+    if config.connection_type == "postgresql":
         connection = get_connection(config)
         yield from connection.read_database(path, options)
     elif config.connection_type == "databricks-sql":
