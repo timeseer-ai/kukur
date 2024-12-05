@@ -75,7 +75,7 @@ class Connection:
     """Defines the connection to a database."""
 
     connection_type: str
-    database: Optional[str]
+    catalog: Optional[str]
     connection_string: Optional[str]
     connection_options: Optional[dict]
     limit_specification: Optional[str]
