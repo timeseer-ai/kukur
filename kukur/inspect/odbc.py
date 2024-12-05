@@ -38,9 +38,14 @@ def inspect_odbc_database(
         params.append(path)
         column = "table_name"
         where = "where table_schema = ?"
+
+    catalog = ""
+    if config.catalog is not None:
+        catalog = f"{_escape(config.catalog)}."
+
     cursor.execute(
         f"""
-        select distinct {column} from {_escape(config.database)}.information_schema.tables {where}
+        select distinct {column} from {catalog}information_schema.tables {where}
         """,
         params,
     )
@@ -68,12 +73,17 @@ def preview_odbc_database(
     split_path = path.split("/")
     if len(split_path) == 1:
         InvalidInspectURI("No schema or table provided.")
+
+    catalog = ""
+    if config.catalog is not None:
+        catalog = f"{_escape(config.catalog)}."
+
     if options is not None and options.column_names is not None:
         column_names = options.column_names
     else:
         cursor.execute(
             f"""
-            select column_name from {_escape(config.database)}.information_schema.columns
+            select column_name from {catalog}information_schema.columns
             where table_schema = ?
                 and table_name = ?
             """,
@@ -85,13 +95,13 @@ def preview_odbc_database(
     if config.limit_specification == "limit":
         query = f"""
             select {', '.join(columns)}
-            from {_escape(config.database)}.{_escape(split_path[0])}.{_escape(split_path[1])} limit ?
+            from {catalog}{_escape(split_path[0])}.{_escape(split_path[1])} limit ?
         """
         cursor.execute(query, [num_rows])
     else:
         query = f"""
             select top {num_rows} {', '.join(columns)}
-            from {_escape(config.database)}.{_escape(split_path[0])}.{_escape(split_path[1])}
+            from {catalog}{_escape(split_path[0])}.{_escape(split_path[1])}
         """
         cursor.execute(query)
 
@@ -112,12 +122,17 @@ def read_odbc_database(
     split_path = path.split("/")
     if len(split_path) == 1:
         raise InvalidInspectURI("No schema or table provided.")
+
+    catalog = ""
+    if config.catalog is not None:
+        catalog = f"{_escape(config.catalog)}."
+
     if options is not None and options.column_names is not None:
         column_names = options.column_names
     else:
         cursor.execute(
             f"""
-            select column_name from {_escape(config.database)}.information_schema.columns
+            select column_name from {catalog}information_schema.columns
             where table_schema = ?
                 and table_name = ?
             """,
@@ -128,7 +143,7 @@ def read_odbc_database(
     columns = [_escape(column_name) for column_name in column_names]
     query = f"""
         select {', '.join(columns)}
-        from {_escape(config.database)}.{_escape(split_path[0])}.{_escape(split_path[1])}
+        from {catalog}{_escape(split_path[0])}.{_escape(split_path[1])}
     """
 
     cursor.execute(query)
