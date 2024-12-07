@@ -8,6 +8,11 @@ jobs:
   pypi:
     name: Publish version to PyPI
     runs-on: ubuntu-24.04
+    environment:
+      name: pypi
+      url: https://pypi.org/p/kukur
+    permissions:
+      id-token: write
     steps:
 
     - name: Set up Python
@@ -32,9 +37,6 @@ jobs:
 
     - name: Publish a Python distribution to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        user: __token__
-        password: ${{ secrets.PYPI_KUKUR_API_TOKEN }}
 
   docker_hub:
     name: Publish docker container for this version to Docker Hub
