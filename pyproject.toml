@@ -1,9 +1,81 @@
-[build-system]
-requires = [
-    "setuptools>=42",
-    "wheel"
+[project]
+name = "kukur"
+version = "1.20.0"
+description = "Kukur makes time series data and metadata available to the Apache Arrow ecosystem."
+readme = "README.md"
+licence = "Apache-2.0"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "License :: OSI Approved :: Apache Software License",
 ]
-build-backend = "setuptools.build_meta"
+authors = [{ name = "Timeseer.AI", email = "pypi@timeseer.ai" }]
+requires-python = ">=3.9"
+dependencies = [
+    "pyarrow>=16.0.0",
+    "python-dateutil>=2.8.1",
+    "toml>=0.10.2",
+    "pytz>=2021.1",
+]
+
+[project.urls]
+Homepage = "https://kukur.timeseer.ai/"
+Documentation = "https://kukur.timeseer.ai/"
+Repository = "https://github.com/timeseer-ai/kukur"
+Issues = "https://github.com/timeseer-ai/kukur/issues"
+
+[project.optional-dependencies]
+adodb = ["pywin32; sys_platform == 'win32'"]
+cratedb = ["crate"]
+datafusion = ["datafusion"]
+delta = ["deltalake"]
+influxdb = ["influxdb"]
+kusto = ["azure-identity", "azure-kusto-data"]
+odbc = ["pyodbc"]
+numpy = ["numpy"]
+piwebapi = ["requests", "requests-kerberos"]
+postgresql = ["psycopg[binary]", "pg8000"]
+redshift = ["redshift_connector"]
+
+[dependency-groups]
+windows = [
+    "cx_Freeze==6.5.3; sys_platform == 'win32'",
+    "cx-Logging==3.0; sys_platform == 'win32'",
+]
+dev = [
+    "azure-kusto-data==4.3.1",
+    "black==24.4.0",
+    "crate==0.35.2",
+    "datafusion==36.0.0",
+    "deltalake==0.17.0",
+    "influxdb==5.3.1",
+    "pyodbc==5.1.0",
+    "mypy==1.9.0",
+    "numpy==2.0.2",
+    "requests==2.32.0",
+    "requests-kerberos==0.14.0",
+    "psycopg[binary]==3.1.18",
+    "pg8000==1.31.1",
+    "pytest==8.1.1",
+    "PyYAML==6.0.1",
+    "redshift_connector==2.1.0",
+    "ruff==0.4.1",
+    "types-python-dateutil==2.9.0.20240316",
+    "types-pytz==2024.1.0.20240203",
+    "types-PyYAML==6.0.12.20240311",
+    "types-requests==2.31.0.1",
+    "types-toml==0.10.8.20240310",
+]
+
+[project.scripts]
+kukur = "kukur.cli:_run"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["kukur"]
 
 [tool.ruff]
 target-version = "py38"
@@ -27,35 +99,14 @@ select = [
     "RET",
     "T20",
 ]
-ignore = [
-    "C408",
-    "D105",
-    "D107",
-    "D203",
-    "D213",
-    "RET504",
-]
+ignore = ["C408", "D105", "D107", "D203", "D213", "RET504"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
-"kukur/__init__.py" = [
-    "I001",
-]
-"tests/**.py" = [
-    "ARG001",
-    "ARG002",
-    "D",
-    "PLR",
-]
+"kukur/__init__.py" = ["I001"]
+"tests/**.py" = ["ARG001", "ARG002", "D", "PLR"]
 
 [tool.pytest.ini_options]
-markers = [
-    "crate",
-    "elasticsearch",
-    "influxdb",
-    "kukur",
-    "odbc",
-    "postgresql",
-]
+markers = ["crate", "elasticsearch", "influxdb", "kukur", "odbc", "postgresql"]
