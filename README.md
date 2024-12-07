@@ -74,24 +74,24 @@ limitations under the License.
 
 ## Development
 
+Kukur uses [uv](https://docs.astral.sh/uv/).
+
 Create a virtualenv and install dependencies:
 
 ```bash
-$ python -m venv venv
-$ source venv/bin/activate
-(venv) $ make deps dev-deps
+$ make deps
 ```
 
 Launch Kukur using:
 
 ```bash
-(venv) $ python -m kukur.cli
+$ make run kukur
 ```
 
 Lint and format:
 
 ```bash
-(venv) $ make lint
+$ make lint
 ```
 
 Kukur uses [black](https://github.com/psf/black) to format all code.
@@ -99,7 +99,7 @@ Kukur uses [black](https://github.com/psf/black) to format all code.
 Run unit tests:
 
 ```bash
-(venv) $ make test
+$ make test
 ```
 
 ### Integration Tests
@@ -159,7 +159,7 @@ $ docker-compose -f tests/test_data/docker-compose.yml -f tests/test_data/docker
 Run the tests using:
 
 ```bash
-(venv) $ make integration-test
+$ make integration-test
 ```
 
 Stop all containers:

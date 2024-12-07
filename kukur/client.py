@@ -69,7 +69,7 @@ class Client:
         *,
         port: int = 443,
         api_key: Tuple[str, str] = ("", ""),
-        tls_options: Optional[TLSOptions] = None
+        tls_options: Optional[TLSOptions] = None,
     ) -> "Client":
         """Create a new Client that uses TLS to secure the connection.
 

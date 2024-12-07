@@ -1,2 +1,0 @@
-cx_Freeze==6.5.3
-cx-Logging==3.0
