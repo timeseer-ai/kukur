@@ -42,6 +42,8 @@ class DatabricksSQLSource(ODBCSource):
         metadata_value_mapper: MetadataValueMapper,
         quality_mapper: QualityMapper,
     ):
+        if config.autocommit is None:
+            config.autocommit = True
         super().__init__(config, metadata_value_mapper, quality_mapper)
 
 
