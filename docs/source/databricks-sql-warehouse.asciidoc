@@ -17,6 +17,7 @@ but the `databricks-sql` source provides more convenience by pre-configuring var
 
 Authentication methods supported out-of-the-box are:
 
+* Databricks personal access token
 * OAuth machine-to-machine authentication
 * Azure managed identities authentication
 
@@ -32,9 +33,10 @@ driver = "/opt/simba/spark/lib/64/libsparkodbc_sb64.so"
 host = ""
 port = 443
 http_path = ""
-Azure_workspace_resource_id = "" # Optional, only needed for authentication through managed identity.
-oauth_client_id = "" # Optional, only needed for oauth authentication.
-oauth_secret = "" # Optional, only needed for oauth authentication.
+Azure_workspace_resource_id = "" # Optional, only required for authentication using managed identities.
+oauth_client_id = "" # Optional, only required for OAuth authentication.
+oauth_secret = "" # Optional, only required for OAuth authentication.
+password = "" # Optional, only required for personal access token authentication.
 ```
 
 The example configuration below connects the `tsaideltalake.poc.tsai_antwerp` table using OAuth M2M authentication.
@@ -93,6 +95,19 @@ The required steps are:
 host = "adb-5136731089164599.19.azuredatabricks.net"
 http_path = "/sql/1.0/warehouses/2cf2d4cd375bb81a"
 Azure_workspace_resource_id = "/subscriptions/4eaf5c02-76be-4f45-b92a-d5882e686c95/resourceGroups/rg-kukur/providers/Microsoft.Databricks/workspaces/kukur-demo"
+```
+
+=== Connecting to Databricks SQL Warehouses using a Personal Access Token
+
+Generate a personal access token in 'Settings' - 'Developer' - 'Access tokens'.
+This token will have your permissions.
+Do not use this except for testing or local work.
+
+```toml
+[source.Databricks.connection]
+host = "adb-5136731089164599.19.azuredatabricks.net"
+http_path = "/sql/1.0/warehouses/2cf2d4cd375bb81a"
+password = "verysecuresecret"
 ```
 
 === Using Alternative Authentication Options
