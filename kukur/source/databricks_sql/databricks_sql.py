@@ -52,7 +52,7 @@ def build_connection_string(data: dict) -> str:
     connection_string = f"""
         Driver={data.get('driver', "/opt/simba/spark/lib/64/libsparkodbc_sb64.so")};
         Host={data['host']};
-        Port={data.get("port", 433)};
+        Port={data.get("port", 443)};
         SSL=1;
         ThriftTransport=2;
         HTTPPath={data['http_path']};
