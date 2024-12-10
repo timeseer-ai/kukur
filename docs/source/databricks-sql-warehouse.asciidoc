@@ -1,16 +1,80 @@
 == Databricks SQL Warehouse
 
+Connections to a https://www.databricks.com/product/databricks-sql[Databricks SQL warehouse] use the https://docs.databricks.com/en/integrations/odbc/index.html[Databricks ODBC Driver].
+The driver is included in the container image,
+but needs to be installed separately in other deployments.
+
+All connection options supported in the
+ifdef::sources[]
+<<ODBC, ODBC source>>
+endif::sources[]
+ifndef::sources[]
+link:odbc.asciidoc[ODBC source]
+endif::sources[]
+are supported by the `databricks-sql` source.
+The `odbc` source could be used instead,
+but the `databricks-sql` source provides more convenience by pre-configuring various connection settings.
+
+Authentication methods supported out-of-the-box are:
+
+* Databricks personal access token
+* OAuth machine-to-machine authentication
+* Azure managed identities authentication
+
+Other authentication methods are supported by configuring a `connection_string` with the required https://learn.microsoft.com/en-us/azure/databricks/integrations/odbc/authentication[authentication options].
+
+```toml
+[source.Databricks]
+type = "databricks-sql"
+...
+
+[source.Databricks.connection]
+driver = "/opt/simba/spark/lib/64/libsparkodbc_sb64.so"
+host = ""
+port = 443
+http_path = ""
+Azure_workspace_resource_id = "" # Optional, only required for authentication using managed identities.
+oauth_client_id = "" # Optional, only required for OAuth authentication.
+oauth_secret = "" # Optional, only required for OAuth authentication.
+password = "" # Optional, only required for personal access token authentication.
+```
+
+The example configuration below connects the `tsaideltalake.poc.tsai_antwerp` table using OAuth M2M authentication.
+
+First follow the steps in the https://learn.microsoft.com/en-us/azure/databricks/integrations/odbc/authentication#authentication-m2m[OAuth machine-to-machine authentication documentation].
+
+Then,
+open the SQL Warehouse in the Databricks Workspace.
+Go to `Connection details`.
+
+Copy the `Server hostname` and the `HTTP path`.
+
+```toml
+[source.Databricks]
+type = "databricks-sql"
+list_query = """
+select distinct `series name` from tsdeltalake.poc.tsai_antwerp
+"""
+list_columns = ["series name"]
+data_query = """
+select ts, value
+from tsdeltalake.poc.tsai_antwerp
+where `series name` = ?
+  and ts >= ?
+  and ts < ?
+"""
+
+[source.Databricks.connection]
+host = "adb-5136731089164599.19.azuredatabricks.net"
+http_path = "/sql/1.0/warehouses/2cf2d4cd375bb81a"
+oauth_client_id = "5edbb8d4-9ec4-4313-99bb-28a18982f339"
+oauth_secret = "verysecuresecret"
+```
+
 === Connecting to Databricks SQL Warehouses on Azure using Managed Identities
 
-Connections to https://learn.microsoft.com/en-us/azure/databricks/compute/sql-warehouse/[Databricks SQL Warehouses] from Kukur are made using the https://www.databricks.com/spark/odbc-drivers-download[Databricks ODBC Driver].
-
-This guide assumes Kukur is running as a container on an Azure VM with a System Assigned Managed Identity.
-The Managed Identity will be used to connect securely to the SQL Warehouse.
-
-The first step is to build a container image that includes the ODBC driver.
-An example `Dockerfile` https://github.com/timeseer-ai/kukur/tree/master/docker/spark/Dockerfile[is available].
-
-=== Creating a Service Principal in Databricks
+On Azure,
+using Managed Identities is the preferred authentication method since it avoids having to use and manage secrets.
 
 The Managed Identity of the VM needs to be defined as a Service Principal in Databricks.
 
@@ -26,56 +90,33 @@ The required steps are:
 - Go to `SQL Warehouses` in the Databricks Workspace. Add `Can use` permissions to the service principal.
 - In the `Catalog`, grant `Data Reader` permissions to the service principal.
 
-=== Configuring Kukur
-
-First open the Azure Portal.
-Navigate to the `Properties` of the `Azure Databricks Service`.
-Copy the `Id`.
-
-Open the SQL Warehouse in the Databricks Workspace.
-Go to `Connection details`.
-
-Copy the `Server hostname` and the `HTTP path`.
-
-This example below connects to `adb-5136731089164599.19.azuredatabricks.net` (host) at `/sql/1.0/warehouses/2cf2d4cd375bb81a` (http_path).
-The `Id` of the Workspace is: `/subscriptions/4eaf5c02-76be-4f45-b92a-d5882e686c95/resourceGroups/rg-kukur/providers/Microsoft.Databricks/workspaces/kukur-demo`.
-
-A connection is made to the table at `tsaideltalake.poc.tsai_antwerp`.
-
 ```toml
-[source.Databricks]
-type = "databricks-sql"
-autocommit = true
-list_query = """
-select distinct `series name` from tsdeltalake.poc.tsai_antwerp
-"""
-list_columns = ["series name"]
-data_query = """
-select ts, value
-from tsdeltalake.poc.tsai_antwerp
-where `series name` = ?
-  and ts >= ?
-  and ts < ?
-"""
-
 [source.Databricks.connection]
-driver = "/opt/simba/spark/lib/64/libsparkodbc_sb64.so"
-host = ""
-port = 443
-http_path = ""
-Azure_workspace_resource_id = "" # Optional, only needed for authentication through managed identity.
-oauth_client_id = "" # Optional, only needed for oauth authentication.
-oauth_secret = "" # Optional, only needed for oauth authentication.
-
+host = "adb-5136731089164599.19.azuredatabricks.net"
+http_path = "/sql/1.0/warehouses/2cf2d4cd375bb81a"
+Azure_workspace_resource_id = "/subscriptions/4eaf5c02-76be-4f45-b92a-d5882e686c95/resourceGroups/rg-kukur/providers/Microsoft.Databricks/workspaces/kukur-demo"
 ```
 
-It is important to set `autocommit = true` since the Spark ODBC driver does not support transactions.
+=== Connecting to Databricks SQL Warehouses using a Personal Access Token
+
+Generate a personal access token in 'Settings' - 'Developer' - 'Access tokens'.
+This token will have your permissions.
+Do not use this except for testing or local work.
+
+```toml
+[source.Databricks.connection]
+host = "adb-5136731089164599.19.azuredatabricks.net"
+http_path = "/sql/1.0/warehouses/2cf2d4cd375bb81a"
+password = "verysecuresecret"
+```
+
+=== Using Alternative Authentication Options
 
 Refer to https://learn.microsoft.com/en-us/azure/databricks/integrations/odbc/authentication[Authentication settings for the Databricks ODBC Driver] for alternative authentication options.
 
-Alternatively the `connection_string` can be passed as one string:
+The `connection_string` can be passed as one string:
 
-```
+```toml
 [source.Databricks]
 connection_string = """
 Driver=/opt/simba/spark/lib/64/libsparkodbc_sb64.so;
