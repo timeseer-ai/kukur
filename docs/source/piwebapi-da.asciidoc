@@ -16,7 +16,7 @@ username = "" # optional: username for basic authentication
 password = "" # optional: password for basic authentication
 ```
 
-`source` and `data_archive_uri` are required fields.
+`data_archive_uri` is a required field.
 
 `data_archive_uri` is the URI of the `DataServer` resource in PI Web API that corresponds to the Data Archive.
 
@@ -50,15 +50,6 @@ This limit is applied to the number of time series (PI Points) and to the number
 The default setting is `150000`.
 
 Adapt the number in the Kukur configuration when it has been increased or decreased on the server.
-Since the number of values returned in a data request is also limited by this setting,
-ensure that the `data_query_interval_seconds` option is set to a safe value.
-
-For example,
-a time series that is being recorded at 1 value per second,
-will have 86400 values per day.
-This means a safe value of `data_query_interval_seconds` is `86400` when the default limit of `150000` is in place in PI Web API.
-For a time series that is being recorded at 1 value per minute and can have 44640 values per month,
-`data_query_interval_seconds = 2678400` is a safe value.
 
 Increase `timeout_seconds` when responses could take longer than the already long 2 minutes.
 Use with `query_retry_count` and `query_retry_delay` to work around flaky connections.

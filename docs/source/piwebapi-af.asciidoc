@@ -1,0 +1,95 @@
+// SPDX-FileCopyrightText: 2024 Timeseer.AI
+// SPDX-License-Identifier: Apache-2.0
+
+== PI Asset Framework using Web API
+
+Sources with `type = "piwebapi-af"` configure connections to AVEVA (OSIsoft) PI Asset Framework using the PI Web API.
+
+```toml
+[source.<name>]
+type = "piwebapi-af"
+database_uri = "The self-URI of the database"
+max_returned_items_per_call = 150000
+verify_ssl = true
+timeout_seconds = 60 # The maximum time to wait for a response
+username = "" # optional: username for basic authentication
+password = "" # optional: password for basic authentication
+```
+
+`database_uri` is a required field.
+
+`database_uri` is the URI of the `AssetDatabase` resource in PI Web API that corresponds to the PI AF database.
+
+To get this value,
+open `https://pi.example.org/piwebapi/assetservers`,
+follow the link to the `Databases` on the correct asset server and copy the `Self` link from the response:
+
+```
+{
+  "Links": {},
+  "Items": [
+    {
+      "WebId": "F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI",
+      "Id": "994e1f8d-9f26-4186-9f17-4f6258871a23",
+      "Name": "Timeseer",
+      "Description": "Timeseer.AI Test Database",
+      "Path": "\\\\vm-ts-pi\\Timeseer",
+      "ExtendedProperties": {},
+      "Links": {
+        "Self": "https://pi.timeseer.ai/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI",
+        "Elements": "https://pi.timeseer.ai/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/elements",
+        "ElementTemplates": "https://pi.timeseer.ai/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/elementtemplates",
+        "EventFrames": "https://pi.timeseer.ai/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/eventframes",
+        "AssetServer": "https://pi.timeseer.ai/piwebapi/assetservers/F1RSMyvy4jYfVEyvgGiLVLmYvAVk0tVFMtUEk",
+        "ElementCategories": "https://pi.timeseer.ai/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/elementcategories",
+        "AttributeCategories": "https://pi.timeseer.ai/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/attributecategories",
+        "TableCategories": "https://pi.timeseer.ai/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/tablecategories",
+        "AnalysisCategories": "https://pi.timeseer.ai/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/analysiscategories",
+        "AnalysisTemplates": "https://pi.timeseer.ai/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/analysistemplates",
+        "EnumerationSets": "https://pi.timeseer.ai/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/enumerationsets",
+        "Tables": "https://pi.timeseer.ai/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/tables",
+        "Security": "https://pi.timeseer.ai/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/security",
+        "SecurityEntries": "https://pi.timeseer.ai/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/securityentries"
+      }
+    }
+  ]
+}
+```
+
+The PI Web API configuration limits the https://docs.osisoft.com/bundle/pi-web-api/page/restrictions-on-number-of-items-per-call.html[maximum number of items] returned in a response to one request.
+This limit is applied to the number of time series (PI Points) and to the number of values.
+The default setting is `150000`.
+
+Adapt the number in the Kukur configuration when it has been increased or decreased on the server.
+
+Increase `timeout_seconds` when responses could take longer than the already long 2 minutes.
+Use with `query_retry_count` and `query_retry_delay` to work around flaky connections.
+
+Set `verify_ssl` to `false` when PI Web API uses a self-signed certificate.
+
+By default,
+Kerberos https://docs.osisoft.com/bundle/pi-web-api/page/authentication-methods.html[authentication] is tried.
+When Basic authentication is required,
+set the `username` and `password` fields in the configuration.
+
+For example,
+this defines an `af` source,
+with the Web API running on `pi.example.org`:
+
+```toml
+[source.af]
+type = "piwebapi-af"
+database_uri = "https://pi.timeseer.ai/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI"
+```
+
+When the Web API is using a self-signed certificate and basic authentication,
+the configuration becomes:
+
+```toml
+[source.af]
+type = "piwebapi-af"
+database_uri = "https://pi.timeseer.ai/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI"
+verify_ssl = false
+username = "auser"
+password = "apassword"
+```
