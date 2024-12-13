@@ -194,10 +194,10 @@ class PIWebAPIAssetFrameworkSource:
 
             attributes = attribute_response.json()
             for attribute in attributes["Items"]:
-                tags = {"series name": attribute["Name"], "__id__": attribute["WebId"]}
+                tags = {"series name": element["Name"], "__id__": attribute["WebId"]}
 
                 metadata = _get_metadata(
-                    SeriesSelector(source_name, tags),
+                    SeriesSelector(source_name, tags, attribute["Name"]),
                     element,
                     attribute,
                 )
@@ -205,7 +205,7 @@ class PIWebAPIAssetFrameworkSource:
                     yield metadata
 
             if element.get("HasChildren", False):
-                self._get_elements(
+                yield from self._get_elements(
                     session, source_name, element["Links"]["Elements"], {}
                 )
 
@@ -215,27 +215,29 @@ def _get_metadata(
 ) -> Optional[Metadata]:
     metadata = Metadata(selector)
     metadata.set_field(fields.Description, attribute["Description"])
-    metadata.set_field(fields.Unit, attribute["EngineeringUnits"])
+    metadata.set_field(fields.Unit, attribute["DefaultUnitsNameAbbreviation"])
 
     if attribute["Step"]:
         metadata.set_field(fields.InterpolationType, InterpolationType.STEPPED)
     else:
         metadata.set_field(fields.InterpolationType, InterpolationType.LINEAR)
 
-    metadata.set_field(fields.LimitLowFunctional, attribute["Zero"])
-    metadata.set_field(
-        fields.LimitHighFunctional, attribute["Zero"] + attribute["Span"]
-    )
+    if attribute["Zero"] is not None:
+        metadata.set_field(fields.LimitLowFunctional, attribute["Zero"])
+        if attribute["Span"] is not None:
+            metadata.set_field(
+                fields.LimitHighFunctional, attribute["Zero"] + attribute["Span"]
+            )
 
+    # From https://docs.aveva.com/bundle/pi-web-api-reference/page/help/topics/supported-attribute-data-types.html
     attribute_type = attribute["Type"]
     attribute_types = {
-        "Digital": DataType.DICTIONARY,
-        "Float16": DataType.FLOAT32,
-        "Float32": DataType.FLOAT32,
-        "Float64": DataType.FLOAT64,
+        "Boolean": DataType.CATEGORICAL,
+        "Single": DataType.FLOAT32,
         "Double": DataType.FLOAT64,
         "Int16": DataType.FLOAT32,
         "Int32": DataType.FLOAT64,
+        "Int64": DataType.FLOAT64,
         "String": DataType.STRING,
     }
     if attribute_type not in attribute_types:
