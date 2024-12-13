@@ -201,79 +201,104 @@ class PIWebAPIAssetFrameworkSource:
     def _get_elements(
         self, session, source_name: str, uri: str, extra_metadata: Dict[str, str]
     ) -> Generator[Metadata, None, None]:
-        response = session.get(
-            uri,
-            verify=self.__request_properties.verify_ssl,
-            timeout=self.__request_properties.timeout_seconds,
-            params=dict(
-                maxCount=self.__request_properties.max_returned_items_per_call,
-            ),
-        )
-        response.raise_for_status()
-        elements = response.json()
-
-        for element in elements["Items"]:
-            element_metadata = extra_metadata.copy()
-            if "TemplateName" in element and element["TemplateName"] != "":
-                element_metadata[element["TemplateName"]] = element["Name"]
-
-            data_attributes, metadata_attributes = self._read_child_attributes(
-                session, element["Links"]["Attributes"]
+        next_uri: Optional[str] = uri
+        while next_uri is not None:
+            response = session.get(
+                next_uri,
+                verify=self.__request_properties.verify_ssl,
+                timeout=self.__request_properties.timeout_seconds,
+                params=dict(
+                    maxCount=self.__request_properties.max_returned_items_per_call,
+                ),
             )
+            response.raise_for_status()
+            elements = response.json()
 
-            for attribute in metadata_attributes:
-                attribute_value_response = session.get(
-                    attribute["Links"]["Value"],
-                    verify=self.__request_properties.verify_ssl,
-                    timeout=self.__request_properties.timeout_seconds,
+            next_uri = elements["Links"].get("Next")
+
+            for element in elements["Items"]:
+                element_metadata = extra_metadata.copy()
+                if "TemplateName" in element and element["TemplateName"] != "":
+                    element_metadata[element["TemplateName"]] = element["Name"]
+
+                data_attributes, metadata_attributes = self._read_child_attributes(
+                    session, element["Links"]["Attributes"]
                 )
-                attribute_value_response.raise_for_status()
-                attribute_value = attribute_value_response.json()["Value"]
-                element_metadata[attribute["Name"]] = attribute_value
 
-            for attribute in data_attributes:
-                tags = {"series name": element["Name"], "__id__": attribute["WebId"]}
+                for attribute in metadata_attributes:
+                    attribute_value_response = session.get(
+                        attribute["Links"]["Value"],
+                        verify=self.__request_properties.verify_ssl,
+                        timeout=self.__request_properties.timeout_seconds,
+                    )
+                    attribute_value_response.raise_for_status()
+                    attribute_value = attribute_value_response.json()["Value"]
+                    element_metadata[attribute["Name"]] = attribute_value
 
-                if "DataReferencePlugIn" in attribute:
-                    metadata = _get_metadata(
-                        SeriesSelector(source_name, tags, attribute["Name"]),
-                        attribute,
+                for attribute in data_attributes:
+                    tags = {
+                        "series name": element["Name"],
+                        "__id__": attribute["WebId"],
+                    }
+
+                    if "DataReferencePlugIn" in attribute:
+                        metadata = _get_metadata(
+                            SeriesSelector(source_name, tags, attribute["Name"]),
+                            attribute,
+                            element_metadata,
+                        )
+                        if metadata is not None:
+                            if metadata.get_field(fields.Description) == "":
+                                metadata.set_field(
+                                    fields.Description, element["Description"]
+                                )
+                            yield metadata
+
+                if element.get("HasChildren", False):
+                    yield from self._get_elements(
+                        session,
+                        source_name,
+                        element["Links"]["Elements"],
                         element_metadata,
                     )
-                    if metadata is not None:
-                        if metadata.get_field(fields.Description) == "":
-                            metadata.set_field(
-                                fields.Description, element["Description"]
-                            )
-                        yield metadata
-
-            if element.get("HasChildren", False):
-                yield from self._get_elements(
-                    session, source_name, element["Links"]["Elements"], element_metadata
-                )
 
     def _read_child_attributes(
         self, session, uri: str
     ) -> Tuple[List[Dict], List[Dict]]:
-        attributes_response = session.get(
-            uri,
-            verify=self.__request_properties.verify_ssl,
-            timeout=self.__request_properties.timeout_seconds,
-        )
-        attributes_response.raise_for_status()
+        data_attributes = []
+        metadata_attributes = []
 
-        attributes = attributes_response.json()["Items"]
-        data_attributes, metadata_attributes = _classify_attributes(attributes)
+        next_uri: Optional[str] = uri
+        while next_uri is not None:
+            attributes_response = session.get(
+                next_uri,
+                verify=self.__request_properties.verify_ssl,
+                timeout=self.__request_properties.timeout_seconds,
+                params=dict(
+                    maxCount=self.__request_properties.max_returned_items_per_call,
+                ),
+            )
+            attributes_response.raise_for_status()
+            attributes_data = attributes_response.json()
 
-        for attribute in attributes:
-            if attribute["HasChildren"]:
-                child_data_attributes, child_metadata_attributes = (
-                    self._read_child_attributes(
-                        session, attribute["Links"]["Attributes"]
+            next_uri = attributes_data["Links"].get("Next")
+            attributes = attributes_data["Items"]
+
+            new_data_attributes, new_metadata_attributes = _classify_attributes(
+                attributes
+            )
+            data_attributes.extend(new_data_attributes)
+            metadata_attributes.extend(new_metadata_attributes)
+
+            for attribute in attributes:
+                if attribute["HasChildren"]:
+                    child_data_attributes, child_metadata_attributes = (
+                        self._read_child_attributes(
+                            session, attribute["Links"]["Attributes"]
+                        )
                     )
-                )
-                data_attributes.extend(child_data_attributes)
-                metadata_attributes.extend(child_metadata_attributes)
+                    data_attributes.extend(child_data_attributes)
+                    metadata_attributes.extend(child_metadata_attributes)
 
         return data_attributes, metadata_attributes
 
