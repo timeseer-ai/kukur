@@ -295,6 +295,7 @@ def test_get_data_dates_outside_limits(_) -> None:
     assert data["ts"][0].as_py() == parse_date("2020-01-01T00:00:00Z")
     assert data["ts"][-1].as_py() == parse_date("2020-01-03T10:56:25Z")
 
+
 @patch("requests.Session.get", side_effect=mocked_requests_get)
 def test_search_with_table_lookup_enabled(_) -> None:
     source = from_config(
