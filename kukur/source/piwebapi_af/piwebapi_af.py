@@ -7,7 +7,7 @@ import urllib.parse
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import PurePath
-from typing import Dict, Generator, Optional
+from typing import Dict, Generator, List, Optional, Tuple
 
 import pyarrow as pa
 
@@ -214,37 +214,80 @@ class PIWebAPIAssetFrameworkSource:
 
         for element in elements["Items"]:
             element_metadata = extra_metadata.copy()
-            if "TemplateName" in element:
+            if "TemplateName" in element and element["TemplateName"] != "":
                 element_metadata[element["TemplateName"]] = element["Name"]
 
-            attribute_response = session.get(
-                element["Links"]["Attributes"],
-                verify=self.__request_properties.verify_ssl,
-                timeout=self.__request_properties.timeout_seconds,
-                params=dict(
-                    maxCount=self.__request_properties.max_returned_items_per_call,
-                ),
+            data_attributes, metadata_attributes = self._read_child_attributes(
+                session, element["Links"]["Attributes"]
             )
-            attribute_response.raise_for_status()
 
-            attributes = attribute_response.json()
-            for attribute in attributes["Items"]:
+            for attribute in metadata_attributes:
+                attribute_value_response = session.get(
+                    attribute["Links"]["Value"],
+                    verify=self.__request_properties.verify_ssl,
+                    timeout=self.__request_properties.timeout_seconds,
+                )
+                attribute_value_response.raise_for_status()
+                attribute_value = attribute_value_response.json()["Value"]
+                element_metadata[attribute["Name"]] = attribute_value
+
+            for attribute in data_attributes:
                 tags = {"series name": element["Name"], "__id__": attribute["WebId"]}
 
-                metadata = _get_metadata(
-                    SeriesSelector(source_name, tags, attribute["Name"]),
-                    attribute,
-                    element_metadata,
-                )
-                if metadata is not None:
-                    if metadata.get_field(fields.Description) == "":
-                        metadata.set_field(fields.Description, element["Description"])
-                    yield metadata
+                if "DataReferencePlugIn" in attribute:
+                    metadata = _get_metadata(
+                        SeriesSelector(source_name, tags, attribute["Name"]),
+                        attribute,
+                        element_metadata,
+                    )
+                    if metadata is not None:
+                        if metadata.get_field(fields.Description) == "":
+                            metadata.set_field(
+                                fields.Description, element["Description"]
+                            )
+                        yield metadata
 
             if element.get("HasChildren", False):
                 yield from self._get_elements(
                     session, source_name, element["Links"]["Elements"], element_metadata
                 )
+
+    def _read_child_attributes(
+        self, session, uri: str
+    ) -> Tuple[List[Dict], List[Dict]]:
+        attributes_response = session.get(
+            uri,
+            verify=self.__request_properties.verify_ssl,
+            timeout=self.__request_properties.timeout_seconds,
+        )
+        attributes_response.raise_for_status()
+
+        attributes = attributes_response.json()["Items"]
+        data_attributes, metadata_attributes = _classify_attributes(attributes)
+
+        for attribute in attributes:
+            if attribute["HasChildren"]:
+                child_data_attributes, child_metadata_attributes = (
+                    self._read_child_attributes(
+                        session, attribute["Links"]["Attributes"]
+                    )
+                )
+                data_attributes.extend(child_data_attributes)
+                metadata_attributes.extend(child_metadata_attributes)
+
+        return data_attributes, metadata_attributes
+
+
+def _classify_attributes(attributes: List[Dict]) -> Tuple[List[Dict], List[Dict]]:
+    data_attributes = []
+    metadata_attributes = []
+    for attribute in attributes:
+        if attribute.get("DataReferencePlugIn", "") in ["PI Point", "Formula"]:
+            data_attributes.append(attribute)
+        elif attribute.get("DataReferencePlugIn", "") == "":
+            metadata_attributes.append(attribute)
+
+    return data_attributes, metadata_attributes
 
 
 def _get_metadata(
