@@ -90,24 +90,48 @@ class PIWebAPIAssetFrameworkSource:
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         """Return data for the given time series in the given time period."""
-        session = self._get_session()
         data_url = self._get_data_url(selector)
+        return self._read_data(data_url, start_date, end_date, None)
 
+    def get_plot_data(
+        self,
+        selector: SeriesSelector,
+        start_date: datetime,
+        end_date: datetime,
+        interval_count: int,
+    ):
+        """Return plot data for the given time series in the given time period."""
+        plot_url = self._get_plot_url(selector)
+        return self._read_data(
+            plot_url, start_date, end_date, {"intervals": interval_count}
+        )
+
+    def _read_data(
+        self,
+        data_url: str,
+        start_date: datetime,
+        end_date: datetime,
+        extra_params: Optional[Dict],
+    ):
+        session = self._get_session()
         timestamps = []
         values = []
         quality_flags = []
 
         while True:
+            params = {
+                "maxCount": str(self.__request_properties.max_returned_items_per_call),
+                "startTime": start_date.isoformat(),
+                "endTime": end_date.isoformat(),
+                "selectedFields": "Items.Value;Items.Timestamp;Items.Good",
+            }
+            if extra_params is not None:
+                params.update(extra_params)
             response = session.get(
                 data_url,
                 verify=self.__request_properties.verify_ssl,
                 timeout=self.__request_properties.timeout_seconds,
-                params=dict(
-                    maxCount=str(self.__request_properties.max_returned_items_per_call),
-                    startTime=start_date.isoformat(),
-                    endTime=end_date.isoformat(),
-                    selectedFields="Items.Value;Items.Timestamp;Items.Good",
-                ),
+                params=params,
             )
             response.raise_for_status()
 
@@ -162,10 +186,17 @@ class PIWebAPIAssetFrameworkSource:
             / selector.tags["__id__"]
             / "recorded"
         )
-        stream_uri = urllib.parse.urlunparse(
-            database_uri._replace(path=str(recorded_path))
+        return urllib.parse.urlunparse(database_uri._replace(path=str(recorded_path)))
+
+    def _get_plot_url(self, selector: SeriesSelector) -> str:
+        database_uri = urllib.parse.urlparse(self.__database_uri)
+        recorded_path = (
+            PurePath(database_uri.path).parent.parent
+            / "streams"
+            / selector.tags["__id__"]
+            / "plot"
         )
-        return stream_uri
+        return urllib.parse.urlunparse(database_uri._replace(path=str(recorded_path)))
 
     def _get_elements(
         self, session, source_name: str, uri: str, extra_metadata: Dict[str, str]
@@ -182,6 +213,10 @@ class PIWebAPIAssetFrameworkSource:
         elements = response.json()
 
         for element in elements["Items"]:
+            element_metadata = extra_metadata.copy()
+            if "TemplateName" in element:
+                element_metadata[element["TemplateName"]] = element["Name"]
+
             attribute_response = session.get(
                 element["Links"]["Attributes"],
                 verify=self.__request_properties.verify_ssl,
@@ -198,20 +233,22 @@ class PIWebAPIAssetFrameworkSource:
 
                 metadata = _get_metadata(
                     SeriesSelector(source_name, tags, attribute["Name"]),
-                    element,
                     attribute,
+                    element_metadata,
                 )
                 if metadata is not None:
+                    if metadata.get_field(fields.Description) == "":
+                        metadata.set_field(fields.Description, element["Description"])
                     yield metadata
 
             if element.get("HasChildren", False):
                 yield from self._get_elements(
-                    session, source_name, element["Links"]["Elements"], {}
+                    session, source_name, element["Links"]["Elements"], element_metadata
                 )
 
 
 def _get_metadata(
-    selector: SeriesSelector, asset: Dict, attribute: Dict
+    selector: SeriesSelector, attribute: Dict, extra_metadata: Dict
 ) -> Optional[Metadata]:
     metadata = Metadata(selector)
     metadata.set_field(fields.Description, attribute["Description"])
@@ -245,7 +282,9 @@ def _get_metadata(
     metadata.set_field(fields.DataType, attribute_types[attribute_type])
 
     metadata.set_field_by_name("Path", attribute["Path"])
-    metadata.set_field_by_name(asset["TemplateName"], asset["Name"])
+    for k, v in extra_metadata.items():
+        metadata.set_field_by_name(k, v)
+
     return metadata
 
 
