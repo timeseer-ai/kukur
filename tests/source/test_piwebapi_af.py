@@ -91,6 +91,24 @@ SAMPLE_CHILD_ATTRIBUTES = {
                 "Attributes": f"{_BASE_URL}/empty-attributes",
             },
         },
+        {
+            "WebId": "4",
+            "Name": "Lookup Values",
+            "Description": "Sample description",
+            "Path": "\\\\path\\sample\\Antwerp\\Lookup",
+            "Type": "Double",
+            "DataReferencePlugIn": "Table Lookup",
+            "DefaultUnitsNameAbbreviation": "",
+            "HasChildren": False,
+            "Step": False,
+            "Span": 200.0,
+            "Zero": 0.0,
+            "Links": {
+                "PlotData": f"{_BASE_URL}/streams/4/plot",
+                "Recorded": f"{_BASE_URL}/streams/4/plot",
+                "Attributes": f"{_BASE_URL}/empty-attributes",
+            },
+        },
     ],
 }
 
@@ -276,3 +294,24 @@ def test_get_data_dates_outside_limits(_) -> None:
     assert len(data) == 17
     assert data["ts"][0].as_py() == parse_date("2020-01-01T00:00:00Z")
     assert data["ts"][-1].as_py() == parse_date("2020-01-03T10:56:25Z")
+
+@patch("requests.Session.get", side_effect=mocked_requests_get)
+def test_search_with_table_lookup_enabled(_) -> None:
+    source = from_config(
+        {
+            "database_uri": "https://test_pi.net",
+            "max_returned_items_per_call": 4,
+            "username": "test",
+            "password": "test",
+            "use_table_lookup": "true",
+            "verify_ssl": "false",
+        }
+    )
+    series = list(source.search(SeriesSearch("Test")))
+    assert len(series) == 3
+    assert series[0].series.tags.get("series name") == "Reactor02"
+    assert series[1].series.tags.get("series name") == "Reactor02"
+    assert series[2].series.tags.get("series name") == "Reactor02"
+    assert series[0].series.field == "Active"
+    assert series[1].series.field == "Concentration"
+    assert series[2].series.field == "Lookup Values"

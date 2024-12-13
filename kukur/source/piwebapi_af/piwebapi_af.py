@@ -64,6 +64,8 @@ class PIWebAPIAssetFrameworkSource:
         if not self.__request_properties.verify_ssl:
             urllib3.disable_warnings()
 
+        self.use_table_lookup = config.get("use_table_lookup", False)
+
     def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
         """Return all attributes in the Asset Framework."""
         session = self._get_session()
@@ -284,7 +286,7 @@ class PIWebAPIAssetFrameworkSource:
             next_uri = attributes_data["Links"].get("Next")
             attributes = attributes_data["Items"]
 
-            new_data_attributes, new_metadata_attributes = _classify_attributes(
+            new_data_attributes, new_metadata_attributes = self._classify_attributes(
                 attributes
             )
             data_attributes.extend(new_data_attributes)
@@ -302,17 +304,21 @@ class PIWebAPIAssetFrameworkSource:
 
         return data_attributes, metadata_attributes
 
+    def _classify_attributes(
+        self, attributes: List[Dict]
+    ) -> Tuple[List[Dict], List[Dict]]:
+        data_attributes = []
+        metadata_attributes = []
+        data_reference_plugins = ["PI Point", "Formula"]
+        if self.use_table_lookup:
+            data_reference_plugins.append("Table Lookup")
+        for attribute in attributes:
+            if attribute.get("DataReferencePlugIn", "") in data_reference_plugins:
+                data_attributes.append(attribute)
+            elif attribute.get("DataReferencePlugIn", "") == "":
+                metadata_attributes.append(attribute)
 
-def _classify_attributes(attributes: List[Dict]) -> Tuple[List[Dict], List[Dict]]:
-    data_attributes = []
-    metadata_attributes = []
-    for attribute in attributes:
-        if attribute.get("DataReferencePlugIn", "") in ["PI Point", "Formula"]:
-            data_attributes.append(attribute)
-        elif attribute.get("DataReferencePlugIn", "") == "":
-            metadata_attributes.append(attribute)
-
-    return data_attributes, metadata_attributes
+        return data_attributes, metadata_attributes
 
 
 def _get_metadata(
