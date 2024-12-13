@@ -3,16 +3,21 @@
 # SPDX-FileCopyrightText: 2024 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
+import urllib.parse
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import PurePath
-from typing import Dict, Generator
+from typing import Dict, Generator, Optional
 
 import pyarrow as pa
-import urllib.parse
 
 from kukur import Metadata, SeriesSearch, SeriesSelector
-from kukur.exceptions import InvalidSourceException, MissingModuleException
+from kukur.base import DataType, InterpolationType
+from kukur.exceptions import (
+    InvalidSourceException,
+    MissingModuleException,
+)
+from kukur.metadata import fields
 
 try:
     import urllib3
@@ -64,45 +69,18 @@ class PIWebAPIAssetFrameworkSource:
         session = self._get_session()
 
         response = session.get(
-            self.__data_archive_uri,
+            self.__database_uri,
             verify=self.__request_properties.verify_ssl,
             timeout=self.__request_properties.timeout_seconds,
-            params=dict(selectedFields="Links.Points;Links.EnumerationSets"),
+            params=dict(
+                maxCount=self.__request_properties.max_returned_items_per_call,
+            ),
         )
         response.raise_for_status()
-
-        data_archive = response.json()
-
-        dictionary_lookup = _DictionaryLookup(
-            session, self.__request_properties, data_archive
+        database = response.json()
+        yield from self._get_elements(
+            session, selector.source, database["Links"]["Elements"], {}
         )
-
-        page = 0
-        while True:
-            response = session.get(
-                data_archive["Links"]["Points"],
-                verify=self.__request_properties.verify_ssl,
-                timeout=self.__request_properties.timeout_seconds,
-                params=dict(
-                    maxCount=self.__request_properties.max_returned_items_per_call,
-                    startIndex=page
-                    * self.__request_properties.max_returned_items_per_call,
-                ),
-            )
-            response.raise_for_status()
-            points = response.json().get("Items", [])
-            if len(points) == 0:
-                break
-
-            page = page + 1
-            for point in points:
-                metadata = _get_metadata(
-                    SeriesSelector(selector.source, point["Name"]),
-                    point,
-                    dictionary_lookup,
-                )
-                if metadata is not None:
-                    yield metadata
 
     def get_metadata(self, selector: SeriesSelector) -> Metadata:
         """Return metadata for one tag."""
@@ -113,7 +91,7 @@ class PIWebAPIAssetFrameworkSource:
     ) -> pa.Table:
         """Return data for the given time series in the given time period."""
         session = self._get_session()
-        data_url = self._get_data_url(session, selector)
+        data_url = self._get_data_url(selector)
 
         timestamps = []
         values = []
@@ -176,72 +154,96 @@ class PIWebAPIAssetFrameworkSource:
             session.auth = self.__basic_auth
         return session
 
-    def _get_data_url(self, session, selector: SeriesSelector) -> str:
+    def _get_data_url(self, selector: SeriesSelector) -> str:
         database_uri = urllib.parse.urlparse(self.__database_uri)
-        recorded_path= PurePath(database_uri.path).parent.parent / "streams" / selector.tags["__id__"] / "recorded"
-        stream_uri = urllib.parse.urlunparse(database_uri._replace(path=str(recorded_path)))
-
-        response = session.get(
-            stream_uri,
-            verify=self.__request_properties.verify_ssl,
-            timeout=self.__request_properties.timeout_seconds,
-            params=dict(selectedFields="Links.Points"),
+        recorded_path = (
+            PurePath(database_uri.path).parent.parent
+            / "streams"
+            / selector.tags["__id__"]
+            / "recorded"
         )
-        response.raise_for_status()
+        stream_uri = urllib.parse.urlunparse(
+            database_uri._replace(path=str(recorded_path))
+        )
+        return stream_uri
 
-        data_archive = response.json()
+    def _get_elements(
+        self, session, source_name: str, uri: str, extra_metadata: Dict[str, str]
+    ) -> Generator[Metadata, None, None]:
         response = session.get(
-            data_archive["Links"]["Points"],
+            uri,
             verify=self.__request_properties.verify_ssl,
             timeout=self.__request_properties.timeout_seconds,
             params=dict(
-                maxCount=str(self.__request_properties.max_returned_items_per_call),
-                nameFilter=selector.name,
-                selectedFields="Items.Links.RecordedData",
+                maxCount=self.__request_properties.max_returned_items_per_call,
             ),
         )
         response.raise_for_status()
+        elements = response.json()
 
-        data_points = response.json()["Items"]
-        if len(data_points) == 0:
-            raise InvalidDataError("Series not found")
+        for element in elements["Items"]:
+            attribute_response = session.get(
+                element["Links"]["Attributes"],
+                verify=self.__request_properties.verify_ssl,
+                timeout=self.__request_properties.timeout_seconds,
+                params=dict(
+                    maxCount=self.__request_properties.max_returned_items_per_call,
+                ),
+            )
+            attribute_response.raise_for_status()
 
-        return response.json()["Items"][0]["Links"]["RecordedData"]
+            attributes = attribute_response.json()
+            for attribute in attributes["Items"]:
+                tags = {"series name": attribute["Name"], "__id__": attribute["WebId"]}
+
+                metadata = _get_metadata(
+                    SeriesSelector(source_name, tags),
+                    element,
+                    attribute,
+                )
+                if metadata is not None:
+                    yield metadata
+
+            if element.get("HasChildren", False):
+                self._get_elements(
+                    session, source_name, element["Links"]["Elements"], {}
+                )
 
 
 def _get_metadata(
-    selector: SeriesSelector, point: Dict, dictionary_lookup: _DictionaryLookup
+    selector: SeriesSelector, asset: Dict, attribute: Dict
 ) -> Optional[Metadata]:
-    metadata = Metadata(SeriesSelector(selector.source, point["Name"]))
-    metadata.set_field(fields.Description, point["Descriptor"])
-    metadata.set_field(fields.Unit, point["EngineeringUnits"])
+    metadata = Metadata(selector)
+    metadata.set_field(fields.Description, attribute["Description"])
+    metadata.set_field(fields.Unit, attribute["EngineeringUnits"])
 
-    if point["Step"]:
+    if attribute["Step"]:
         metadata.set_field(fields.InterpolationType, InterpolationType.STEPPED)
     else:
         metadata.set_field(fields.InterpolationType, InterpolationType.LINEAR)
 
-    metadata.set_field(fields.LimitLowFunctional, point["Zero"])
-    metadata.set_field(fields.LimitHighFunctional, point["Zero"] + point["Span"])
+    metadata.set_field(fields.LimitLowFunctional, attribute["Zero"])
+    metadata.set_field(
+        fields.LimitHighFunctional, attribute["Zero"] + attribute["Span"]
+    )
 
-    if len(point["DigitalSetName"]) > 0:
-        dictionary_name = point["DigitalSetName"]
-        metadata.set_field(fields.DictionaryName, dictionary_name)
-        metadata.set_field(fields.Dictionary, dictionary_lookup.get(dictionary_name))
-
-    point_type = point["PointType"]
-    point_types = {
+    attribute_type = attribute["Type"]
+    attribute_types = {
         "Digital": DataType.DICTIONARY,
         "Float16": DataType.FLOAT32,
         "Float32": DataType.FLOAT32,
         "Float64": DataType.FLOAT64,
+        "Double": DataType.FLOAT64,
         "Int16": DataType.FLOAT32,
         "Int32": DataType.FLOAT64,
         "String": DataType.STRING,
     }
-    if point_type not in point_types:
+    if attribute_type not in attribute_types:
         return None
-    metadata.set_field(fields.DataType, point_types[point_type])
+    metadata.set_field(fields.DataType, attribute_types[attribute_type])
+
+    metadata.set_field_by_name("Path", attribute["Path"])
+    metadata.set_field_by_name(asset["TemplateName"], asset["Name"])
     return metadata
 
 
