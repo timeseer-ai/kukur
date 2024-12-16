@@ -747,9 +747,13 @@ include::./source/elasticsearch.asciidoc[leveloffset=+1]
 
 include::./source/influxdb.asciidoc[leveloffset=+1]
 
+include::./source/json.asciidoc[leveloffset=+1]
+
 include::./source/kukur.asciidoc[leveloffset=+1]
 
 include::./source/odbc.asciidoc[leveloffset=+1]
+
+include::./source/piwebapi-af.asciidoc[leveloffset=+1]
 
 include::./source/piwebapi-da.asciidoc[leveloffset=+1]
 
