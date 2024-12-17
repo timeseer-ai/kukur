@@ -9,8 +9,8 @@ from urllib.parse import urlparse
 import pyarrow as pa
 
 from kukur.inspect import (
+    DataOptions,
     InspectedPath,
-    InspectOptions,
     UnsupportedBlobException,
     adls,
     s3,
@@ -37,7 +37,7 @@ def inspect_blob(blob_uri: str, *, recursive: bool = False) -> List[InspectedPat
 
 
 def preview_blob(
-    blob_uri: str, num_rows: int = 5000, options: Optional[InspectOptions] = None
+    blob_uri: str, num_rows: int = 5000, options: Optional[DataOptions] = None
 ) -> Optional[pa.Table]:
     """Preview the contents of a blob."""
     parsed_url = urlparse(blob_uri)
@@ -50,7 +50,7 @@ def preview_blob(
 
 
 def read_blob(
-    blob_uri: str, options: Optional[InspectOptions] = None
+    blob_uri: str, options: Optional[DataOptions] = None
 ) -> Generator[pa.RecordBatch, None, None]:
     """Iterate over the RecordBatches at the given URI."""
     parsed_url = urlparse(blob_uri)

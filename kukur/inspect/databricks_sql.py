@@ -12,8 +12,8 @@ import pyarrow as pa
 
 from kukur.inspect import (
     Connection,
+    DataOptions,
     InspectedPath,
-    InspectOptions,
 )
 from kukur.inspect.odbc import (
     inspect_odbc_database,
@@ -36,7 +36,7 @@ def preview_databricks_sql_database(
     config: Connection,
     path: str,
     num_rows: int = 5000,
-    options: Optional[InspectOptions] = None,
+    options: Optional[DataOptions] = None,
 ) -> Optional[pa.Table]:
     """Preview the contents of a database."""
     if config.connection_string is None and config.connection_options is not None:
@@ -45,7 +45,7 @@ def preview_databricks_sql_database(
 
 
 def read_databricks_sql_database(
-    config: Connection, path: str, options: Optional[InspectOptions] = None
+    config: Connection, path: str, options: Optional[DataOptions] = None
 ) -> Generator[pa.RecordBatch, None, None]:
     """Iterate over the RecordBatches at the given Connection."""
     if config.connection_string is None and config.connection_options is not None:

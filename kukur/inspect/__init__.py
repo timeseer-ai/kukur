@@ -58,8 +58,8 @@ class InspectedPath:
 
 
 @dataclass
-class InspectOptions:
-    """Options for inspect operations.
+class DataOptions:
+    """Options for inspect data fetching operations.
 
     `column_names` restricts preview and data fetching operations to the specified columns only.
     `csv_delimiter` defines the delimiter used to separate columns in CSV files.

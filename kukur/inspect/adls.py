@@ -11,7 +11,7 @@ import pyarrow as pa
 from pyarrow import fs
 
 from kukur.exceptions import MissingModuleException
-from kukur.inspect import InspectedPath, InspectOptions, InvalidInspectURI
+from kukur.inspect import DataOptions, InspectedPath, InvalidInspectURI
 from kukur.inspect.arrow import BlobResource
 from kukur.inspect.arrow import inspect as inspect_blob
 
@@ -35,7 +35,7 @@ def inspect(blob_uri: ParseResult, *, recursive: bool = False) -> List[Inspected
 
 
 def preview(
-    blob_uri: ParseResult, num_rows: int, options: Optional[InspectOptions]
+    blob_uri: ParseResult, num_rows: int, options: Optional[DataOptions]
 ) -> Optional[pa.Table]:
     """Return the first nuw_rows of the blob."""
     resource = _get_resource(blob_uri)
@@ -44,7 +44,7 @@ def preview(
 
 
 def read(
-    blob_uri: ParseResult, options: Optional[InspectOptions]
+    blob_uri: ParseResult, options: Optional[DataOptions]
 ) -> Generator[pa.RecordBatch, None, None]:
     """Iterate over all RecordBatches at the given URI."""
     resource = _get_resource(blob_uri)

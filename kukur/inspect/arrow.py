@@ -10,7 +10,7 @@ from pyarrow import RecordBatch, csv, fs, parquet
 from pyarrow.dataset import CsvFileFormat, Dataset, dataset
 
 from kukur.exceptions import MissingModuleException
-from kukur.inspect import InspectedPath, InspectOptions, ResourceType
+from kukur.inspect import DataOptions, InspectedPath, ResourceType
 from kukur.source.gpx import parse_gpx
 
 try:
@@ -46,7 +46,7 @@ class BlobResource:
         self.__fs = filesystem
         self.__path = path
 
-    def get_data_set(self, options: Optional[InspectOptions]) -> Dataset:
+    def get_data_set(self, options: Optional[DataOptions]) -> Dataset:
         """Return a DataSet for the resource."""
         data_set = get_data_set(self.__fs, self.__path, options)
         if data_set is None:
@@ -56,7 +56,7 @@ class BlobResource:
         return data_set
 
     def read_batches(
-        self, options: Optional[InspectOptions]
+        self, options: Optional[DataOptions]
     ) -> Generator[RecordBatch, None, None]:
         """Iterate over all record batches in a memory-efficient way."""
         if (
@@ -73,7 +73,7 @@ class BlobResource:
             yield from data_set.to_batches(columns=column_names, batch_readahead=1)
 
 
-def _get_column_names(options: Optional[InspectOptions]) -> Optional[List[str]]:
+def _get_column_names(options: Optional[DataOptions]) -> Optional[List[str]]:
     column_names = None
     if options is not None and options.column_names is not None:
         column_names = options.column_names
@@ -81,7 +81,7 @@ def _get_column_names(options: Optional[InspectOptions]) -> Optional[List[str]]:
 
 
 def get_data_set(
-    filesystem: fs.FileSystem, path: PurePath, options: Optional[InspectOptions]
+    filesystem: fs.FileSystem, path: PurePath, options: Optional[DataOptions]
 ) -> Optional[Dataset]:
     """Return a PyArrow dataset for the resources at the given path."""
     resource_type = get_resource_type_from_extension(path.suffix.lstrip("."))

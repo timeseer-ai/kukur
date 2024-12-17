@@ -7,7 +7,7 @@ import os
 
 import pytest
 
-from kukur.inspect import Connection, InspectedPath, InspectOptions, ResourceType
+from kukur.inspect import Connection, DataOptions, InspectedPath, ResourceType
 from kukur.inspect.database import (
     inspect_database,
     preview_database,
@@ -83,7 +83,7 @@ def test_preview_database() -> None:
 def test_preview_database_selected_columns() -> None:
     connection = Connection("odbc", "TestData", _get_connection_string(), None, "top")
     results = preview_database(
-        connection, "dbo/data", 5000, options=InspectOptions(["ts", "value"])
+        connection, "dbo/data", 5000, options=DataOptions(["ts", "value"])
     )
     assert results is not None
     assert len(results) == 17

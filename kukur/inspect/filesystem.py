@@ -9,7 +9,7 @@ from typing import Generator, List, Optional
 import pyarrow as pa
 from pyarrow import fs
 
-from kukur.inspect import InspectedPath, InspectOptions
+from kukur.inspect import DataOptions, InspectedPath
 from kukur.inspect.arrow import BlobResource, inspect
 
 
@@ -26,7 +26,7 @@ def inspect_filesystem(path: Path, *, recursive: bool = False) -> List[Inspected
 
 
 def preview_filesystem(
-    path: Path, num_rows: int = 5000, options: Optional[InspectOptions] = None
+    path: Path, num_rows: int = 5000, options: Optional[DataOptions] = None
 ) -> Optional[pa.Table]:
     """Preview a data file at the specified filesystem location."""
     local = fs.LocalFileSystem()
@@ -36,7 +36,7 @@ def preview_filesystem(
 
 
 def read_filesystem(
-    path: Path, options: Optional[InspectOptions] = None
+    path: Path, options: Optional[DataOptions] = None
 ) -> Generator[pa.RecordBatch, None, None]:
     """Read path as a series of record batches.
 

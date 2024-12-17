@@ -11,8 +11,8 @@ import pyarrow as pa
 from kukur.exceptions import InvalidSourceException, MissingModuleException
 from kukur.inspect import (
     Connection,
+    DataOptions,
     InspectedPath,
-    InspectOptions,
     InvalidInspectURI,
     ResourceType,
 )
@@ -65,7 +65,7 @@ def preview_odbc_database(
     config: Connection,
     path: str,
     num_rows: int = 5000,
-    options: Optional[InspectOptions] = None,
+    options: Optional[DataOptions] = None,
 ) -> Optional[pa.Table]:
     """Preview the contents of a database."""
     connection = _get_connection(config)
@@ -114,7 +114,7 @@ def preview_odbc_database(
 
 
 def read_odbc_database(
-    config: Connection, path: str, options: Optional[InspectOptions] = None
+    config: Connection, path: str, options: Optional[DataOptions] = None
 ) -> Generator[pa.RecordBatch, None, None]:
     """Iterate over the RecordBatches at the given Connection."""
     connection = _get_connection(config)
