@@ -10,6 +10,7 @@ import pyarrow as pa
 
 from kukur.inspect import (
     DataOptions,
+    FileOptions,
     InspectedPath,
     UnsupportedBlobException,
     adls,
@@ -17,21 +18,23 @@ from kukur.inspect import (
 )
 
 
-def inspect_blob(blob_uri: str, *, recursive: bool = False) -> List[InspectedPath]:
+def inspect_blob(
+    blob_uri: str, *, options: Optional[FileOptions] = None
+) -> List[InspectedPath]:
     """Inspect a blob store.
 
     Uses the URI scheme to determine the type of blob store.
 
     s3:// will list contents of S3 buckets
     abfss:// will list contents of Azure Blob Storage Containers.
-
-    Recurses into subdirectores when recursive is True.
     """
+    if options is None:
+        options = FileOptions()
     parsed_url = urlparse(blob_uri)
     if parsed_url.scheme == "abfss":
-        return adls.inspect(parsed_url, recursive=recursive)
+        return adls.inspect(parsed_url, options)
     if parsed_url.scheme == "s3":
-        return s3.inspect(parsed_url, recursive=recursive)
+        return s3.inspect(parsed_url, options)
 
     raise UnsupportedBlobException(parsed_url.scheme)
 

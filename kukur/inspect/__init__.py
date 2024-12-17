@@ -18,7 +18,7 @@ The `kukur.inspect.blob` module supports inspecting blob stores.
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from kukur.exceptions import KukurException
 
@@ -63,11 +63,40 @@ class DataOptions:
 
     `column_names` restricts preview and data fetching operations to the specified columns only.
     `csv_delimiter` defines the delimiter used to separate columns in CSV files.
+    `csv_header_row` indicates that the first row of a CSV file is a header row.
+    `default_resource_type` assumes files without extension are of this type.
     """
 
     column_names: Optional[List[str]] = None
     csv_delimiter: Optional[str] = None
     csv_header_row: bool = True
+    default_resource_type: Optional[ResourceType] = None
+
+
+@dataclass
+class FileOptions:
+    """Options for file based inspect operations.
+
+    `detect_delta`: enable to try to detect Delta tables
+    `default_resource_type`: assume files without extension are of this type.
+    `recursive`: recurse into subdirectories when inspecting directories.
+    """
+
+    detect_delta: bool = False
+    default_resource_type: Optional[ResourceType] = None
+    recursive: bool = False
+
+    @classmethod
+    def from_data(cls, data: Dict) -> "FileOptions":
+        """Read FileOptions from a data dictionary."""
+        options = cls()
+        if "detect_delta" in data:
+            options.detect_delta = data["detect_delta"]
+        if "default_resource_type" in data:
+            options.default_resource_type = ResourceType(data["default_resource_type"])
+        if "recursive" in data:
+            options.recursive = data["recursive"]
+        return options
 
 
 @dataclass

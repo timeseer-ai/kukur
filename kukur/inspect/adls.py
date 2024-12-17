@@ -11,7 +11,7 @@ import pyarrow as pa
 from pyarrow import fs
 
 from kukur.exceptions import MissingModuleException
-from kukur.inspect import DataOptions, InspectedPath, InvalidInspectURI
+from kukur.inspect import DataOptions, FileOptions, InspectedPath, InvalidInspectURI
 from kukur.inspect.arrow import BlobResource
 from kukur.inspect.arrow import inspect as inspect_blob
 
@@ -23,14 +23,11 @@ except ImportError:
     HAS_AZURE_FS = False
 
 
-def inspect(blob_uri: ParseResult, *, recursive: bool = False) -> List[InspectedPath]:
-    """Inspect a path on ADLS Gen 2 storage.
-
-    Recurses into subdirectories when recursive is True.
-    """
+def inspect(blob_uri: ParseResult, options: FileOptions) -> List[InspectedPath]:
+    """Inspect a path on ADLS Gen 2 storage."""
     filesystem, blob_path = _get_filesystem_path(blob_uri)
     return _remove_container_from_path(
-        blob_uri, inspect_blob(filesystem, blob_path, recursive=recursive)
+        blob_uri, inspect_blob(filesystem, blob_path, options)
     )
 
 

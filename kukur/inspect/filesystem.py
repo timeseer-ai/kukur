@@ -9,20 +9,22 @@ from typing import Generator, List, Optional
 import pyarrow as pa
 from pyarrow import fs
 
-from kukur.inspect import DataOptions, InspectedPath
+from kukur.inspect import DataOptions, FileOptions, InspectedPath
 from kukur.inspect.arrow import BlobResource, inspect
 
 
-def inspect_filesystem(path: Path, *, recursive: bool = False) -> List[InspectedPath]:
+def inspect_filesystem(
+    path: Path, *, options: Optional[FileOptions] = None
+) -> List[InspectedPath]:
     """Inspect a filesystem path.
 
     Lists all files in the path.
     Tries to determine which files are supported by Kukur and returns them.
-
-    Recurses into subdirectories when recursive is True.
     """
+    if options is None:
+        options = FileOptions()
     local = fs.LocalFileSystem()
-    return inspect(local, path, recursive=recursive)
+    return inspect(local, path, options)
 
 
 def preview_filesystem(

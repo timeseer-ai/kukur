@@ -8,21 +8,26 @@ from typing import Generator, List, Optional
 from urllib.parse import ParseResult
 
 import pyarrow as pa
-from pyarrow.fs import S3FileSystem
+from pyarrow.fs import S3FileSystem, resolve_s3_region
 
-from kukur.inspect import DataOptions, InspectedPath, InvalidInspectURI
+from kukur.inspect import DataOptions, FileOptions, InspectedPath, InvalidInspectURI
 from kukur.inspect.arrow import BlobResource
 from kukur.inspect.arrow import inspect as inspect_s3
 
 
-def inspect(blob_uri: ParseResult, *, recursive: bool = False) -> List[InspectedPath]:
+def inspect(blob_uri: ParseResult, options: FileOptions) -> List[InspectedPath]:
     """Inspect a path in an AWS S3 bucket.
 
     Recurses into subdirectories when recursive is True.
     """
     blob_path = _get_blob_path(blob_uri)
     return _remove_bucket_from_path(
-        blob_uri, inspect_s3(S3FileSystem(), blob_path, recursive=recursive)
+        blob_uri,
+        inspect_s3(
+            S3FileSystem(region=resolve_s3_region(blob_path.parts[0])),
+            blob_path,
+            options,
+        ),
     )
 
 
@@ -44,8 +49,8 @@ def read(
 
 
 def _get_resource(blob_uri: ParseResult) -> BlobResource:
-    filesystem = S3FileSystem()
     blob_path = _get_blob_path(blob_uri)
+    filesystem = S3FileSystem(region=resolve_s3_region(blob_path.parts[0]))
     return BlobResource(blob_uri.geturl(), filesystem, blob_path)
 
 

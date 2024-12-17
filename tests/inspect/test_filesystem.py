@@ -5,7 +5,7 @@
 
 from pathlib import Path
 
-from kukur.inspect import DataOptions, InspectedPath, ResourceType
+from kukur.inspect import DataOptions, FileOptions, InspectedPath, ResourceType
 from kukur.inspect.filesystem import (
     inspect_filesystem,
     preview_filesystem,
@@ -58,6 +58,16 @@ def test_read_filesystem_series_column() -> None:
     assert (len(results)) == 1
     assert results[0].num_columns == 1
     assert results[0].num_rows == 47
+
+
+def test_inspect_filesystem_detect_delta_table() -> None:
+    path = Path("tests/test_data/delta/")
+
+    results = inspect_filesystem(path, options=FileOptions(detect_delta=True))
+    assert any(result.resource_type == ResourceType.DELTA for result in results)
+
+    results = inspect_filesystem(path)
+    assert not any(result.resource_type == ResourceType.DELTA for result in results)
 
 
 def test_inspect_filesystem_delta_table() -> None:
@@ -146,9 +156,18 @@ def test_read_filesystem_orc() -> None:
 
 def test_recursive() -> None:
     path = Path("tests/test_data/csv/recursive")
-    paths = inspect_filesystem(path, recursive=True)
+    paths = inspect_filesystem(path, options=FileOptions(recursive=True))
     assert len(paths) == 4
     csv_paths = [blob.path for blob in paths if blob.resource_type == ResourceType.CSV]
     assert len(csv_paths) == 2
     assert "tests/test_data/csv/recursive/dt=2024-01-01/data.csv" in csv_paths
     assert "tests/test_data/csv/recursive/dt=2024-01-02/data.csv" in csv_paths
+
+
+def test_default_resource_type() -> None:
+    path = Path("tests/test_data/csv/no_extension")
+    paths = inspect_filesystem(
+        path, options=FileOptions(default_resource_type=ResourceType.CSV)
+    )
+    assert len(paths) == 1
+    assert paths[0].resource_type == ResourceType.CSV
