@@ -1,9 +1,11 @@
+# SPDX-FileCopyrightText: 2024 Timeseer.AI
+# SPDX-License-Identifier: Apache-2.0
+
 [project]
 name = "kukur"
 version = "1.20.0"
 description = "Kukur makes time series data and metadata available to the Apache Arrow ecosystem."
 readme = "README.md"
-licence = "Apache-2.0"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
@@ -17,6 +19,9 @@ dependencies = [
     "toml>=0.10.2",
     "pytz>=2021.1",
 ]
+
+[project.license]
+text = "Apache-2.0"
 
 [project.urls]
 Homepage = "https://kukur.timeseer.ai/"
@@ -38,12 +43,10 @@ postgresql = ["psycopg[binary]", "pg8000"]
 redshift = ["redshift_connector"]
 
 [dependency-groups]
-windows = [
-    "cx_Freeze==6.5.3; sys_platform == 'win32'",
-    "cx-Logging==3.0; sys_platform == 'win32'",
-]
 dev = [
     "black >=24.4.0",
+    "cx_Freeze >=7.2.7; sys_platform == 'win32'",
+    "cx-Logging >=3.0; sys_platform == 'win32'",
     "mypy >=1.9.0,< 2",
     "pytest >=8.1.1,< 9",
     "ruff >=0.8.3,< 0.9",
@@ -97,3 +100,25 @@ convention = "google"
 
 [tool.pytest.ini_options]
 markers = ["crate", "elasticsearch", "influxdb", "kukur", "odbc", "postgresql"]
+
+[[tool.cxfreeze.executables]]
+script = "kukur/cli.py"
+target_name = "kukur.exe"
+
+[[tool.cxfreeze.executables]]
+script = "windows/win_service_config.py"
+base = "Win32Service"
+target_name = "kukur-service.exe"
+
+[tool.cxfreeze.build_exe]
+include_msvcr = true
+includes = ["cx_Logging", "windows.win_service"]
+include_files = [["windows/Kukur-windows.toml", "Kukur-example.toml"]]
+
+[tool.cxfreeze.bdist_msi]
+upgrade_code = "{859ffb57-14ca-4771-8858-ca6ee86c6400}"
+all_users = true
+
+[tool.cxfreeze.bdist_msi.summary_data]
+author = "Timeseer.AI"
+comments = "Kukur"

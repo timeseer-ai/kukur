@@ -1,8 +1,20 @@
 version = 1
 requires-python = ">=3.9"
 resolution-markers = [
-    "python_full_version < '3.10'",
-    "python_full_version >= '3.10'",
+    "(python_full_version < '3.10' and platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or (python_full_version < '3.10' and sys_platform != 'linux')",
+    "python_full_version < '3.10' and platform_machine == 'aarch64' and sys_platform == 'linux'",
+    "python_full_version < '3.10' and platform_machine == 'armv7l' and sys_platform == 'linux'",
+    "python_full_version < '3.10' and platform_machine == 'i686' and sys_platform == 'linux'",
+    "python_full_version < '3.10' and platform_machine == 'ppc64le' and sys_platform == 'linux'",
+    "python_full_version < '3.10' and platform_machine == 's390x' and sys_platform == 'linux'",
+    "python_full_version < '3.10' and platform_machine == 'x86_64' and sys_platform == 'linux'",
+    "(python_full_version >= '3.10' and platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or (python_full_version >= '3.10' and sys_platform != 'linux')",
+    "python_full_version >= '3.10' and platform_machine == 'aarch64' and sys_platform == 'linux'",
+    "python_full_version >= '3.10' and platform_machine == 'armv7l' and sys_platform == 'linux'",
+    "python_full_version >= '3.10' and platform_machine == 'i686' and sys_platform == 'linux'",
+    "python_full_version >= '3.10' and platform_machine == 'ppc64le' and sys_platform == 'linux'",
+    "python_full_version >= '3.10' and platform_machine == 's390x' and sys_platform == 'linux'",
+    "python_full_version >= '3.10' and platform_machine == 'x86_64' and sys_platform == 'linux'",
 ]
 
 [[package]]
@@ -307,7 +319,7 @@ name = "click"
 version = "8.1.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "platform_system == 'Windows'" },
+    { name = "colorama", marker = "(platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64' and platform_system == 'Windows') or (platform_system == 'Windows' and sys_platform != 'linux')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/96/d3/f04c7bfcf5c1862a2a5b845c6b2b360488cf47af55dfa79c98f6a6bf98b5/click-8.1.7.tar.gz", hash = "sha256:ca9853ad459e787e2192211578cc907e7594e294c7ccc834310722b41b9ca6de", size = 336121 }
 wheels = [
@@ -376,25 +388,47 @@ wheels = [
 
 [[package]]
 name = "cx-freeze"
-version = "6.5.3"
+version = "7.2.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "importlib-metadata" },
+    { name = "cx-logging", marker = "sys_platform == 'win32'" },
+    { name = "importlib-metadata", marker = "(python_full_version < '3.10.2' and platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or (python_full_version < '3.10.2' and sys_platform != 'linux')" },
+    { name = "lief", marker = "sys_platform == 'win32'" },
+    { name = "packaging", marker = "(platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or sys_platform != 'linux'" },
+    { name = "setuptools", marker = "(platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or sys_platform != 'linux'" },
+    { name = "tomli", marker = "(python_full_version < '3.11' and platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or (python_full_version < '3.11' and sys_platform != 'linux')" },
+    { name = "typing-extensions", marker = "(python_full_version < '3.10' and platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or (python_full_version < '3.10' and sys_platform != 'linux')" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c9/ef/2d25573afff88e000c84e4e32a594173bb41a80ca38b22d5ce266084affa/cx_Freeze-6.5.3.tar.gz", hash = "sha256:e0d03cabcdf9b9c21354807ed9f06fa9481a8fd5a0838968a830f01a70820ff1", size = 112334 }
+sdist = { url = "https://files.pythonhosted.org/packages/07/22/bdcee73874fbedcdeddb6b492124a29f47721d39ab2981095733e83fdb89/cx_freeze-7.2.7.tar.gz", hash = "sha256:c4d43a4e5357352ac5a89203fda3a8cfadf033d43682f73abbefd3860ce50fb4", size = 3133225 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e2/30/5d3c5abeb9c652d2f0440e71709c481c32305c8e0519b55cad99c4362f63/cx_Freeze-6.5.3-cp39-cp39-win32.whl", hash = "sha256:df3872d8e8f87a3f89e6758bed130b5b95ee7473054e2a7eee5b1a8d1c4ecf9e", size = 253921 },
-    { url = "https://files.pythonhosted.org/packages/6d/14/6d2a2d000f88f590d12d33731c1af292deef9c42d0d43ab14320005929c2/cx_Freeze-6.5.3-cp39-cp39-win_amd64.whl", hash = "sha256:507bbaace2fd27edb0e6b024898ab2e4831d45d7238264f578a5e4fa70f065e5", size = 256933 },
+    { url = "https://files.pythonhosted.org/packages/11/3d/0ccdfb7f7d559bb3c6e67ad6c4c3811343dbb6ec12689ec96be663ce7267/cx_Freeze-7.2.7-cp310-cp310-win32.whl", hash = "sha256:c34a6e85897f5cb1be84a204feef564adb6f1c753626bf0cf7713a8c4809ed27", size = 2045061 },
+    { url = "https://files.pythonhosted.org/packages/c2/dc/7cec5a53e76e4ba77a0bb9f26d842f103699e923a0de616e139e0e4e1dbe/cx_Freeze-7.2.7-cp310-cp310-win_amd64.whl", hash = "sha256:5ea3f05d31a7432b0516a58e4b7301277c0a5ac693597d531d9ca913d79169ce", size = 2048050 },
+    { url = "https://files.pythonhosted.org/packages/c3/fc/7f84ec40ab8b25ccc362e08adfae4ab3c1fe3acac0863f2c1dc6d79fb219/cx_Freeze-7.2.7-cp311-cp311-win32.whl", hash = "sha256:909784281dad31c92c0f402894d99a6188bb81f22b593d9d55fc437d54ab35e0", size = 2141804 },
+    { url = "https://files.pythonhosted.org/packages/b2/6f/c92b2c12c47d388c8f9bcca63d1f823434df98f42633e4d0638424f28dae/cx_Freeze-7.2.7-cp311-cp311-win_amd64.whl", hash = "sha256:8fff35321128f680a825d28074edd14b81bdd68b98128d4fa655c6c8901de3ce", size = 2144806 },
+    { url = "https://files.pythonhosted.org/packages/04/43/09e892796ec99328801906b4297a87b769e6e269183019f65721d5d7ab1d/cx_Freeze-7.2.7-cp312-cp312-win32.whl", hash = "sha256:344276a8354e4688c20dd3cf70c143d7666f1b93f56532ba9549718c2fac4e56", size = 2126907 },
+    { url = "https://files.pythonhosted.org/packages/a6/20/e7c4ab9aac37e885994d8caa15dcb68d4dd0f242694575ad18ec3409eb57/cx_Freeze-7.2.7-cp312-cp312-win_amd64.whl", hash = "sha256:9a727914e702d98648def98626b13864413a4a5d52b8bd7f6f0d8ffaf7b9207f", size = 2129950 },
+    { url = "https://files.pythonhosted.org/packages/65/cb/631364ba01ac4ca27ec78f7a09cb266309cff40fbd239cb8f35faba1f1d4/cx_Freeze-7.2.7-cp313-cp313-win32.whl", hash = "sha256:546192ab868b9a4123c252d2fdd0af349b71242ae9706fff201b1c3dabe928c0", size = 2130288 },
+    { url = "https://files.pythonhosted.org/packages/5e/43/7b39bd3233ce05087dede8c945498658b381552bc9280509298d0224ffe9/cx_Freeze-7.2.7-cp313-cp313-win_amd64.whl", hash = "sha256:a1de14dc9960ae4065d053bcd5a801ef51761c7f92998f5a42810098eb337102", size = 2133336 },
+    { url = "https://files.pythonhosted.org/packages/9c/b3/c1dde4eca91e40250cb5de8f26b15a30e3152b8e8c997d972436174b2bf7/cx_Freeze-7.2.7-cp39-cp39-win32.whl", hash = "sha256:0c8512d24a7dcf3b35bd1e17f9e2d6f6a75e227aff243cd00c1aa4668b64ec01", size = 2042767 },
+    { url = "https://files.pythonhosted.org/packages/60/c4/a2aa2bee72c9f464cf3bbe3a347d0dcaf613f1198070756d01918adcbf81/cx_Freeze-7.2.7-cp39-cp39-win_amd64.whl", hash = "sha256:3b1cdb80b75e142a3e85e71721edd8c423ff41a974dfe9436a09593129446ebf", size = 2045741 },
 ]
 
 [[package]]
 name = "cx-logging"
-version = "3.0"
+version = "3.2.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/61/af/4dd72821ad21c5275ad7c168573bdad0e0f427b9360cd9a78cc572203eca/cx_Logging-3.0.tar.gz", hash = "sha256:ba8a7465facf7b98d8f494030fb481a2e8aeee29dc191e10383bb54ed42bdb34", size = 26176 }
+sdist = { url = "https://files.pythonhosted.org/packages/9d/69/50b0c38e26658072b0221f1ea243c47dd56a9f3f50e5754aa5a39189145c/cx_logging-3.2.1.tar.gz", hash = "sha256:812665ae5012680a6fe47095c3772bce638e47cf05b2c3483db3bdbe6b06da44", size = 26966 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e4/04/79b80b1ab70a6dbbbf4a6388fe317b1a94e51675e2b642c85cb28b88371c/cx_Logging-3.0-cp39-cp39-win32.whl", hash = "sha256:e7cca28e8ee4082654b6062cc4d06f83d48f1a7e2d152bab020c9e3e373afb90", size = 22284 },
-    { url = "https://files.pythonhosted.org/packages/3c/aa/17d70169d743fa47b404ad9cf9b3160459f867fdc7aa20707f47336a5e93/cx_Logging-3.0-cp39-cp39-win_amd64.whl", hash = "sha256:302e9c4f65a936c288a4fa59a90e7e142d9ef994aa29676731acafdcccdbb3f5", size = 26414 },
+    { url = "https://files.pythonhosted.org/packages/65/94/1cf7a9265a11d9a272be881d4a16d2ce974558f1a4b5339d0b81e3935039/cx_Logging-3.2.1-cp310-cp310-win32.whl", hash = "sha256:4fb0d7c6dc9a8c403e4c62a3be87301946102d036fbe7bd66c6851225ac05a2e", size = 22792 },
+    { url = "https://files.pythonhosted.org/packages/59/df/93bdca669af28c4fe0ada18ef5313dece70b5611ee46d90bd2fd156401e3/cx_Logging-3.2.1-cp310-cp310-win_amd64.whl", hash = "sha256:42f48fae8254b6de27710b6bfd34467fde88072d5961f67e88914d7e2bb6c13e", size = 26748 },
+    { url = "https://files.pythonhosted.org/packages/97/5f/0307bd16b05c332611e020d0864c1f7e820a671399a125b08b3762069b3a/cx_Logging-3.2.1-cp311-cp311-win32.whl", hash = "sha256:ef526f0ddeba8611942ee76f2117cebb6319a2413b4077c2c1bf0947a61b9148", size = 22715 },
+    { url = "https://files.pythonhosted.org/packages/64/7b/e2208fa901b3375ed0dada2d03fd8ff78399f3e14dd4b6933d896becb2fd/cx_Logging-3.2.1-cp311-cp311-win_amd64.whl", hash = "sha256:4f6366871aa70439c4e3c25c3bb3dd70e8ee98bc190fd30862d7b199948b26f8", size = 26887 },
+    { url = "https://files.pythonhosted.org/packages/b1/9b/d8babcfafa7233b862b310a6fe630fc5e6ced02453ca4e60b0c819afbaff/cx_Logging-3.2.1-cp312-cp312-win32.whl", hash = "sha256:3f3de06cf09d5986b39e930c213567c340b3237dfce03d8d3bf6099475eaa02e", size = 22869 },
+    { url = "https://files.pythonhosted.org/packages/5c/52/b6bd4f4d51eb4f3523da182cdf5969a560e35f4ef178f34841ba6795addc/cx_Logging-3.2.1-cp312-cp312-win_amd64.whl", hash = "sha256:3452add0544db6ff29116b72a4c48761aaffa9b638728330433853c0c4ad2ea1", size = 26911 },
+    { url = "https://files.pythonhosted.org/packages/e1/78/0ce28b89aedf369b02bb5cb763324e799844144386fba75c03128ea9e2ff/cx_Logging-3.2.1-cp313-cp313-win32.whl", hash = "sha256:330a29030bdca8795c99b678b4f6d87a75fb606eed1da206fdd9fa579a33dc21", size = 22874 },
+    { url = "https://files.pythonhosted.org/packages/cb/23/dab5f561888951ec02843f087f34a59c791e8ac6423c25a412eb49300633/cx_Logging-3.2.1-cp313-cp313-win_amd64.whl", hash = "sha256:e14748b031522a95aa2db4adfc5f2be5f96f4d0fe687da591114f73a09e66926", size = 26916 },
+    { url = "https://files.pythonhosted.org/packages/f6/25/1b2c8983944122cec9484a2d371001e2aa8a34b917aa79b9226bc032e65e/cx_Logging-3.2.1-cp39-cp39-win32.whl", hash = "sha256:8f4d60a1a1508e88f2dab78494a1a8fd417ce335f94c01b0d443560cf8838115", size = 22783 },
+    { url = "https://files.pythonhosted.org/packages/f9/15/da26daacf51d9043b8be3dec15c77e65bea1610f665ea514359d41f0a5ee/cx_Logging-3.2.1-cp39-cp39-win_amd64.whl", hash = "sha256:26b707221077119606195fc14a65df2f21bd7bea78b383528ae8df4ea4298246", size = 26762 },
 ]
 
 [[package]]
@@ -545,7 +579,7 @@ name = "importlib-metadata"
 version = "8.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "zipp" },
+    { name = "zipp", marker = "(platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or sys_platform != 'linux'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/cd/12/33e59336dca5be0c398a7482335911a33aa0e20776128f038019f1a95f1b/importlib_metadata-8.5.0.tar.gz", hash = "sha256:71522656f0abace1d072b9e5481a48f07c138e00f079c38c8f883823f9c26bd7", size = 55304 }
 wheels = [
@@ -656,6 +690,8 @@ redshift = [
 [package.dev-dependencies]
 dev = [
     { name = "black" },
+    { name = "cx-freeze", marker = "sys_platform == 'win32'" },
+    { name = "cx-logging", marker = "sys_platform == 'win32'" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "ruff" },
@@ -665,10 +701,6 @@ dev = [
     { name = "types-requests", version = "2.31.0.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "types-requests", version = "2.32.0.20241016", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "types-toml" },
-]
-windows = [
-    { name = "cx-freeze", marker = "sys_platform == 'win32'" },
-    { name = "cx-logging", marker = "sys_platform == 'win32'" },
 ]
 
 [package.metadata]
@@ -696,6 +728,8 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "black", specifier = ">=24.4.0" },
+    { name = "cx-freeze", marker = "sys_platform == 'win32'", specifier = ">=7.2.7" },
+    { name = "cx-logging", marker = "sys_platform == 'win32'", specifier = ">=3.0" },
     { name = "mypy", specifier = ">=1.9.0,<2" },
     { name = "pytest", specifier = ">=8.1.1,<9" },
     { name = "ruff", specifier = ">=0.8.3,<0.9" },
@@ -705,9 +739,22 @@ dev = [
     { name = "types-requests" },
     { name = "types-toml" },
 ]
-windows = [
-    { name = "cx-freeze", marker = "sys_platform == 'win32'", specifier = "==6.5.3" },
-    { name = "cx-logging", marker = "sys_platform == 'win32'", specifier = "==3.0" },
+
+[[package]]
+name = "lief"
+version = "0.15.1"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b3/73/3d58051ca9997876493f6b68d7f3f75c3835946204f57082222741cd73c2/lief-0.15.1-cp310-cp310-win32.whl", hash = "sha256:38b9cee48f42c355359ad7e3ff18bf1ec95e518238e4e8fb25657a49169dbf4c", size = 2185592 },
+    { url = "https://files.pythonhosted.org/packages/ae/cb/845eda783c36993b5813128f36b2037cdc2211bc61c211ce0e259c497bc6/lief-0.15.1-cp310-cp310-win_amd64.whl", hash = "sha256:ddf2ebd73766169594d631b35f84c49ef42871de552ad49f36002c60164d0aca", size = 2334520 },
+    { url = "https://files.pythonhosted.org/packages/ee/1d/870db82152bcfda4a24e534792a8b7d06faa8230fd226d16ab4a9185daea/lief-0.15.1-cp311-cp311-win32.whl", hash = "sha256:dbdcd70fd23c90017705b7fe6c716f0a69c01d0d0ea7a2ff653d83dc4a61fefb", size = 2185448 },
+    { url = "https://files.pythonhosted.org/packages/29/fe/ac50b4554825884c57e846e236b40b5349bf203c2be6a0da095b00cba86f/lief-0.15.1-cp311-cp311-win_amd64.whl", hash = "sha256:e9b96a37bf11ca777ff305d85d957eabad2a92a6e577b6e2fb3ab79514e5a12e", size = 2334338 },
+    { url = "https://files.pythonhosted.org/packages/d9/94/a1ce1bb89e46c9a95f575ecc344baee9049a81952fb8c8f60c42d93a99b0/lief-0.15.1-cp312-cp312-win32.whl", hash = "sha256:db38619edf70e27fb3686b8c0f0bec63ad494ac88ab51660c5ecd2720b506e41", size = 2189872 },
+    { url = "https://files.pythonhosted.org/packages/18/41/569d821d7b87a8d38c279eddcaf90a782afd7476fa0b1c5f2febc391848a/lief-0.15.1-cp312-cp312-win_amd64.whl", hash = "sha256:28bf0922de5fb74502a29cc47930d3a052df58dc23ab6519fa590e564f194a60", size = 2343019 },
+    { url = "https://files.pythonhosted.org/packages/d2/77/893193b36b30cb2a9f1977994294dd71899015f1078db60e3563b7a175cd/lief-0.15.1-cp313-cp313-win32.whl", hash = "sha256:0d10e5b22e86bbf2d1e3877b604ffd8860c852b6bc00fca681fe1432f5018fe9", size = 2189918 },
+    { url = "https://files.pythonhosted.org/packages/89/2e/41447b878b77d6f1f359888c1babfe5cce8c7525e16f9d847d5522977556/lief-0.15.1-cp313-cp313-win_amd64.whl", hash = "sha256:5af7dcb9c3f44baaf60875df6ba9af6777db94776cc577ee86143bcce105ba2f", size = 2342940 },
+    { url = "https://files.pythonhosted.org/packages/a0/84/e393a3994c2e9acc8477c8515b9bd534d776d3905aad697e620ee7c18290/lief-0.15.1-cp39-cp39-win32.whl", hash = "sha256:4e47324736d6aa559421720758de4ce12d04fb56bdffa3dcc051fe8cdd42ed17", size = 2185910 },
+    { url = "https://files.pythonhosted.org/packages/b5/dd/6a635272c723682b79680275c7c50b8e88f2b4593b5b8620f9261521710e/lief-0.15.1-cp39-cp39-win_amd64.whl", hash = "sha256:382a189514c0e6ebfb41e0db6106936c7ba94d8400651276add2899ff3570585", size = 2334708 },
 ]
 
 [[package]]
@@ -1059,7 +1106,7 @@ name = "portalocker"
 version = "2.10.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pywin32", marker = "platform_system == 'Windows'" },
+    { name = "pywin32", marker = "(platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64' and platform_system == 'Windows') or (platform_system == 'Windows' and sys_platform != 'linux')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/ed/d3/c6c64067759e87af98cc668c1cc75171347d0f1577fab7ca3749134e3cd4/portalocker-2.10.1.tar.gz", hash = "sha256:ef1bf844e878ab08aee7e40184156e1151f228f103aa5c6bd0724cc330960f8f", size = 40891 }
 wheels = [
@@ -1561,7 +1608,13 @@ name = "types-requests"
 version = "2.31.0.6"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version < '3.10'",
+    "(python_full_version < '3.10' and platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or (python_full_version < '3.10' and sys_platform != 'linux')",
+    "python_full_version < '3.10' and platform_machine == 'aarch64' and sys_platform == 'linux'",
+    "python_full_version < '3.10' and platform_machine == 'armv7l' and sys_platform == 'linux'",
+    "python_full_version < '3.10' and platform_machine == 'i686' and sys_platform == 'linux'",
+    "python_full_version < '3.10' and platform_machine == 'ppc64le' and sys_platform == 'linux'",
+    "python_full_version < '3.10' and platform_machine == 's390x' and sys_platform == 'linux'",
+    "python_full_version < '3.10' and platform_machine == 'x86_64' and sys_platform == 'linux'",
 ]
 dependencies = [
     { name = "types-urllib3", marker = "python_full_version < '3.10'" },
@@ -1576,7 +1629,13 @@ name = "types-requests"
 version = "2.32.0.20241016"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.10'",
+    "(python_full_version >= '3.10' and platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or (python_full_version >= '3.10' and sys_platform != 'linux')",
+    "python_full_version >= '3.10' and platform_machine == 'aarch64' and sys_platform == 'linux'",
+    "python_full_version >= '3.10' and platform_machine == 'armv7l' and sys_platform == 'linux'",
+    "python_full_version >= '3.10' and platform_machine == 'i686' and sys_platform == 'linux'",
+    "python_full_version >= '3.10' and platform_machine == 'ppc64le' and sys_platform == 'linux'",
+    "python_full_version >= '3.10' and platform_machine == 's390x' and sys_platform == 'linux'",
+    "python_full_version >= '3.10' and platform_machine == 'x86_64' and sys_platform == 'linux'",
 ]
 dependencies = [
     { name = "urllib3", version = "2.2.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
@@ -1627,7 +1686,13 @@ name = "urllib3"
 version = "1.26.20"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version < '3.10'",
+    "(python_full_version < '3.10' and platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or (python_full_version < '3.10' and sys_platform != 'linux')",
+    "python_full_version < '3.10' and platform_machine == 'aarch64' and sys_platform == 'linux'",
+    "python_full_version < '3.10' and platform_machine == 'armv7l' and sys_platform == 'linux'",
+    "python_full_version < '3.10' and platform_machine == 'i686' and sys_platform == 'linux'",
+    "python_full_version < '3.10' and platform_machine == 'ppc64le' and sys_platform == 'linux'",
+    "python_full_version < '3.10' and platform_machine == 's390x' and sys_platform == 'linux'",
+    "python_full_version < '3.10' and platform_machine == 'x86_64' and sys_platform == 'linux'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/e4/e8/6ff5e6bc22095cfc59b6ea711b687e2b7ed4bdb373f7eeec370a97d7392f/urllib3-1.26.20.tar.gz", hash = "sha256:40c2dc0c681e47eb8f90e7e27bf6ff7df2e677421fd46756da1161c39ca70d32", size = 307380 }
 wheels = [
@@ -1639,7 +1704,13 @@ name = "urllib3"
 version = "2.2.3"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.10'",
+    "(python_full_version >= '3.10' and platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or (python_full_version >= '3.10' and sys_platform != 'linux')",
+    "python_full_version >= '3.10' and platform_machine == 'aarch64' and sys_platform == 'linux'",
+    "python_full_version >= '3.10' and platform_machine == 'armv7l' and sys_platform == 'linux'",
+    "python_full_version >= '3.10' and platform_machine == 'i686' and sys_platform == 'linux'",
+    "python_full_version >= '3.10' and platform_machine == 'ppc64le' and sys_platform == 'linux'",
+    "python_full_version >= '3.10' and platform_machine == 's390x' and sys_platform == 'linux'",
+    "python_full_version >= '3.10' and platform_machine == 'x86_64' and sys_platform == 'linux'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/ed/63/22ba4ebfe7430b76388e7cd448d5478814d3032121827c12a2cc287e2260/urllib3-2.2.3.tar.gz", hash = "sha256:e7d814a81dad81e6caf2ec9fdedb284ecc9c73076b62654547cc64ccdcae26e9", size = 300677 }
 wheels = [

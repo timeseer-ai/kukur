@@ -174,3 +174,11 @@ Stop all containers:
 ```bash
 $ docker-compose -f tests/test_data/docker-compose.yml -f tests/test_data/docker-compose.container.yml down --volumes
 ```
+
+### Windows Builds
+
+Kukur uses [cx_Freeze](https://marcelotduarte.github.io/cx_Freeze/) to generate a Windows MSI.
+
+```
+> uv run cxfreeze build bdist_msi
+```
