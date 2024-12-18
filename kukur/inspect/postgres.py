@@ -26,8 +26,8 @@ import pyarrow as pa
 
 from kukur.inspect import (
     Connection,
+    DataOptions,
     InspectedPath,
-    InspectOptions,
     InvalidInspectURI,
     ResourceType,
 )
@@ -73,7 +73,7 @@ class PostgresPg8000:
         self,
         path: str,
         num_rows: int = 5000,
-        options: Optional[InspectOptions] = None,
+        options: Optional[DataOptions] = None,
     ) -> Optional[pa.Table]:
         """Preview the contents of a database."""
         connection = self._connect()
@@ -106,7 +106,7 @@ class PostgresPg8000:
         return pa.Table.from_pydict(results)
 
     def read_database(
-        self, path: str, options: Optional[InspectOptions] = None
+        self, path: str, options: Optional[DataOptions] = None
     ) -> Generator[pa.RecordBatch, None, None]:
         """Iterate over the RecordBatches at the given Connection."""
         connection = self._connect()
@@ -176,7 +176,7 @@ class PostgresPsycopg:
         self,
         path: str,
         num_rows: int = 5000,
-        options: Optional[InspectOptions] = None,
+        options: Optional[DataOptions] = None,
     ) -> Optional[pa.Table]:
         """Preview the contents of a database."""
         connection = self._connect()
@@ -216,7 +216,7 @@ class PostgresPsycopg:
         return pa.Table.from_pydict(results)
 
     def read_database(
-        self, path: str, options: Optional[InspectOptions] = None
+        self, path: str, options: Optional[DataOptions] = None
     ) -> Generator[pa.RecordBatch, None, None]:
         """Iterate over the RecordBatches at the given Connection."""
         connection = self._connect()

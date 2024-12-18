@@ -5,7 +5,7 @@
 
 from pathlib import Path
 
-from kukur.inspect import InspectedPath, InspectOptions, ResourceType
+from kukur.inspect import DataOptions, FileOptions, InspectedPath, ResourceType
 from kukur.inspect.filesystem import (
     inspect_filesystem,
     preview_filesystem,
@@ -53,11 +53,21 @@ def test_read_filesystem() -> None:
 
 def test_read_filesystem_series_column() -> None:
     path = Path("tests/test_data/feather/row.feather")
-    results = list(read_filesystem(path, InspectOptions(column_names=["series name"])))
+    results = list(read_filesystem(path, DataOptions(column_names=["series name"])))
 
     assert (len(results)) == 1
     assert results[0].num_columns == 1
     assert results[0].num_rows == 47
+
+
+def test_inspect_filesystem_detect_delta_table() -> None:
+    path = Path("tests/test_data/delta/")
+
+    results = inspect_filesystem(path, options=FileOptions(detect_delta=True))
+    assert any(result.resource_type == ResourceType.DELTA for result in results)
+
+    results = inspect_filesystem(path)
+    assert not any(result.resource_type == ResourceType.DELTA for result in results)
 
 
 def test_inspect_filesystem_delta_table() -> None:
@@ -99,7 +109,7 @@ def test_read_filesystem_delta_table() -> None:
 
 def test_read_filesystem_delta_table_series_column() -> None:
     path = Path("tests/test_data/delta/delta-row")
-    results = list(read_filesystem(path, InspectOptions(column_names=["name"])))
+    results = list(read_filesystem(path, DataOptions(column_names=["name"])))
 
     assert len(results) == 1
     assert results[0].num_columns == 1
@@ -108,7 +118,7 @@ def test_read_filesystem_delta_table_series_column() -> None:
 
 def test_read_filesystem_csv_delimiter_semicolon() -> None:
     path = Path("tests/test_data/csv/row-semicolon.csv")
-    results = list(read_filesystem(path, InspectOptions(csv_delimiter=";")))
+    results = list(read_filesystem(path, DataOptions(csv_delimiter=";")))
 
     assert len(results) == 1
     assert results[0].num_columns == 3
@@ -117,7 +127,7 @@ def test_read_filesystem_csv_delimiter_semicolon() -> None:
 
 def test_read_filesystem_csv_no_header_row() -> None:
     path = Path("tests/test_data/csv/dir/test-tag-1.csv")
-    results = list(read_filesystem(path, InspectOptions(csv_header_row=False)))
+    results = list(read_filesystem(path, DataOptions(csv_header_row=False)))
     assert len(results) == 1
     assert results[0].num_columns == 2
     assert results[0].num_rows == 5
@@ -146,9 +156,18 @@ def test_read_filesystem_orc() -> None:
 
 def test_recursive() -> None:
     path = Path("tests/test_data/csv/recursive")
-    paths = inspect_filesystem(path, recursive=True)
+    paths = inspect_filesystem(path, options=FileOptions(recursive=True))
     assert len(paths) == 4
     csv_paths = [blob.path for blob in paths if blob.resource_type == ResourceType.CSV]
     assert len(csv_paths) == 2
     assert "tests/test_data/csv/recursive/dt=2024-01-01/data.csv" in csv_paths
     assert "tests/test_data/csv/recursive/dt=2024-01-02/data.csv" in csv_paths
+
+
+def test_default_resource_type() -> None:
+    path = Path("tests/test_data/csv/no_extension")
+    paths = inspect_filesystem(
+        path, options=FileOptions(default_resource_type=ResourceType.CSV)
+    )
+    assert len(paths) == 1
+    assert paths[0].resource_type == ResourceType.CSV

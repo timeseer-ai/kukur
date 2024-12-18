@@ -9,8 +9,8 @@ import pyarrow as pa
 
 from kukur.inspect import (
     Connection,
+    DataOptions,
     InspectedPath,
-    InspectOptions,
 )
 from kukur.inspect.databricks_sql import (
     inspect_databricks_sql_database,
@@ -46,7 +46,7 @@ def preview_database(
     config: Connection,
     path: str,
     num_rows: int = 5000,
-    options: Optional[InspectOptions] = None,
+    options: Optional[DataOptions] = None,
 ) -> Optional[pa.Table]:
     """Preview the contents of a database."""
     if config.connection_type == "postgresql":
@@ -62,7 +62,7 @@ def preview_database(
 
 
 def read_database(
-    config: Connection, path: str, options: Optional[InspectOptions] = None
+    config: Connection, path: str, options: Optional[DataOptions] = None
 ) -> Generator[pa.RecordBatch, None, None]:
     """Iterate over the RecordBatches at the given Connection."""
     if config.connection_type == "postgresql":

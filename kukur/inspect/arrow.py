@@ -10,7 +10,7 @@ from pyarrow import RecordBatch, csv, fs, parquet
 from pyarrow.dataset import CsvFileFormat, Dataset, dataset
 
 from kukur.exceptions import MissingModuleException
-from kukur.inspect import InspectedPath, InspectOptions, ResourceType
+from kukur.inspect import DataOptions, FileOptions, InspectedPath, ResourceType
 from kukur.source.gpx import parse_gpx
 
 try:
@@ -22,17 +22,14 @@ except ImportError:
 
 
 def inspect(
-    filesystem: fs.FileSystem, path: PurePath, *, recursive: bool
+    filesystem: fs.FileSystem, path: PurePath, options: FileOptions
 ) -> List[InspectedPath]:
-    """Return the resource type of a path within a filesystem.
-
-    Set recursive to True to recurse into subdirectories.
-    """
+    """Return the resource type of a path within a filesystem."""
     paths = []
     for sub_path in filesystem.get_file_info(
-        fs.FileSelector(str(path), recursive=recursive)
+        fs.FileSelector(str(path), recursive=options.recursive)
     ):
-        resource_type = _get_resource_type(filesystem, sub_path)
+        resource_type = _get_resource_type(filesystem, sub_path, options)
         if resource_type is not None:
             paths.append(InspectedPath(resource_type, sub_path.path))
     return paths
@@ -46,7 +43,7 @@ class BlobResource:
         self.__fs = filesystem
         self.__path = path
 
-    def get_data_set(self, options: Optional[InspectOptions]) -> Dataset:
+    def get_data_set(self, options: Optional[DataOptions]) -> Dataset:
         """Return a DataSet for the resource."""
         data_set = get_data_set(self.__fs, self.__path, options)
         if data_set is None:
@@ -56,11 +53,16 @@ class BlobResource:
         return data_set
 
     def read_batches(
-        self, options: Optional[InspectOptions]
+        self, options: Optional[DataOptions]
     ) -> Generator[RecordBatch, None, None]:
         """Iterate over all record batches in a memory-efficient way."""
+        default_resource_type = None
+        if options is not None:
+            default_resource_type = options.default_resource_type
         if (
-            get_resource_type_from_extension(self.__path.suffix.lstrip("."))
+            get_resource_type_from_extension(
+                self.__path.suffix.lstrip("."), default_resource_type
+            )
             == ResourceType.PARQUET
         ):
             stream = self.__fs.open_input_file(str(self.__path))
@@ -73,7 +75,7 @@ class BlobResource:
             yield from data_set.to_batches(columns=column_names, batch_readahead=1)
 
 
-def _get_column_names(options: Optional[InspectOptions]) -> Optional[List[str]]:
+def _get_column_names(options: Optional[DataOptions]) -> Optional[List[str]]:
     column_names = None
     if options is not None and options.column_names is not None:
         column_names = options.column_names
@@ -81,10 +83,15 @@ def _get_column_names(options: Optional[InspectOptions]) -> Optional[List[str]]:
 
 
 def get_data_set(
-    filesystem: fs.FileSystem, path: PurePath, options: Optional[InspectOptions]
+    filesystem: fs.FileSystem, path: PurePath, options: Optional[DataOptions]
 ) -> Optional[Dataset]:
     """Return a PyArrow dataset for the resources at the given path."""
-    resource_type = get_resource_type_from_extension(path.suffix.lstrip("."))
+    default_resource_type = None
+    if options is not None:
+        default_resource_type = options.default_resource_type
+    resource_type = get_resource_type_from_extension(
+        path.suffix.lstrip("."), default_resource_type
+    )
     if resource_type in [
         ResourceType.ARROW,
         ResourceType.PARQUET,
@@ -107,20 +114,31 @@ def get_data_set(
 
 
 def _get_resource_type(
-    filesystem: fs.FileSystem, file_info: fs.FileInfo
+    filesystem: fs.FileSystem, file_info: fs.FileInfo, options: FileOptions
 ) -> Optional[ResourceType]:
     if file_info.type == fs.FileType.Directory:
-        for file_inside in filesystem.get_file_info(fs.FileSelector(file_info.path)):
-            if file_inside.base_name == "_delta_log":
-                return ResourceType.DELTA
+        if options.detect_delta:
+            for file_inside in filesystem.get_file_info(
+                fs.FileSelector(file_info.path)
+            ):
+                if file_inside.base_name == "_delta_log":
+                    return ResourceType.DELTA
         return ResourceType.DIRECTORY
-    return get_resource_type_from_extension(file_info.extension)
+    return get_resource_type_from_extension(
+        file_info.extension, options.default_resource_type
+    )
 
 
 def get_resource_type_from_extension(  # noqa: PLR0911
-    extension: str,
+    extension: str, default_type: Optional[ResourceType]
 ) -> Optional[ResourceType]:
-    """Return the resource type based on a file extension."""
+    """Return the resource type based on a file extension.
+
+    Returns None when the extension is unknown.
+    Returns default_type for files without an extensions.
+    """
+    if extension == "" and default_type is not None:
+        return default_type
     if extension == "parquet":
         return ResourceType.PARQUET
     if extension in ["arrow", "feather"]:
