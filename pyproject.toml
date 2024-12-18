@@ -3,7 +3,7 @@
 
 [project]
 name = "kukur"
-version = "1.20.0"
+version = "1.21.0"
 description = "Kukur makes time series data and metadata available to the Apache Arrow ecosystem."
 readme = "README.md"
 classifiers = [
