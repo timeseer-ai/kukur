@@ -75,13 +75,13 @@ def parse_gpx(readable) -> Table:  # noqa: PLR0912
                                 if element.text is not None:
                                     data[element.tag].append(element.text)
                 else:
-                    for tag in data:
+                    for tag, tag_value in data.items():
                         for field in point.iter():
                             if field.tag == tag:
-                                data[tag].append(field.text)
+                                tag_value.append(field.text)
                                 break
                         else:
-                            data[tag].append(None)
+                            tag_value.append(None)
 
                 required_data["ts"].append(isoparse(ts.text))
 

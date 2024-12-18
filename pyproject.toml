@@ -43,28 +43,15 @@ windows = [
     "cx-Logging==3.0; sys_platform == 'win32'",
 ]
 dev = [
-    "azure-kusto-data==4.3.1",
-    "black==24.4.0",
-    "crate==0.35.2",
-    "datafusion==36.0.0",
-    "deltalake==0.17.0",
-    "influxdb==5.3.1",
-    "pyodbc==5.1.0",
-    "mypy==1.9.0",
-    "numpy==2.0.2",
-    "requests==2.32.0",
-    "requests-kerberos==0.14.0",
-    "psycopg[binary]==3.1.18",
-    "pg8000==1.31.1",
-    "pytest==8.1.1",
-    "PyYAML==6.0.1",
-    "redshift_connector==2.1.0",
-    "ruff==0.4.1",
-    "types-python-dateutil==2.9.0.20240316",
-    "types-pytz==2024.1.0.20240203",
-    "types-PyYAML==6.0.12.20240311",
-    "types-requests==2.31.0.1",
-    "types-toml==0.10.8.20240310",
+    "black >=24.4.0",
+    "mypy >=1.9.0,< 2",
+    "pytest >=8.1.1,< 9",
+    "ruff >=0.8.3,< 0.9",
+    "types-python-dateutil",
+    "types-pytz",
+    "types-PyYAML",
+    "types-requests",
+    "types-toml",
 ]
 
 [project.scripts]
@@ -78,7 +65,7 @@ build-backend = "hatchling.build"
 packages = ["kukur"]
 
 [tool.ruff]
-target-version = "py38"
+target-version = "py39"
 line-length = 120
 
 [tool.ruff.lint]

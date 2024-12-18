@@ -79,7 +79,7 @@ Kukur uses [uv](https://docs.astral.sh/uv/).
 Create a virtualenv and install dependencies:
 
 ```bash
-$ make deps
+$ make dev-deps
 ```
 
 Launch Kukur using:
@@ -100,6 +100,13 @@ Run unit tests:
 
 ```bash
 $ make test
+```
+
+Dependencies are managed in [pyproject.toml](pyproject.toml).
+A `requirements.txt` file is automatically generated for compatibility with Dependabot.
+
+```bash
+$ make update-deps
 ```
 
 ### Integration Tests

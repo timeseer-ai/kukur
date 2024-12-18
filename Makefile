@@ -77,11 +77,16 @@ integration-test-postgres: ## Run PostgreSQL integration tests
 
 .PHONY: deps
 deps: ## Install runtime dependencies
-	uv sync --frozen --no-dev
+	uv sync --frozen --no-dev --all-extras
 
 .PHONY: dev-deps
 dev-deps: ## Install development dependencies
-	uv sync --frozen
+	uv sync --frozen --all-extras
+
+.PHONY: update-deps
+update-deps: ## Update all dependencies to their latest version
+	uv lock --upgrade
+	uv export --all-extras --no-hashes > requirements.txt
 
 .PHONY: format
 format: ## Format the kukur code
