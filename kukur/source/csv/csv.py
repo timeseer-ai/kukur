@@ -126,7 +126,7 @@ class CSVSource:
         self.__options = options
         self.__mappers = mappers
 
-    def search(
+    def search(  # noqa: PLR0912
         self, selector: SeriesSearch
     ) -> Generator[Union[Metadata, SeriesSelector], None, None]:
         """Search for series matching the given selector."""
@@ -184,7 +184,7 @@ class CSVSource:
                     )
                 yield metadata
 
-    def get_metadata(self, selector: SeriesSelector) -> Metadata:
+    def get_metadata(self, selector: SeriesSelector) -> Metadata:  # noqa: PLR0912
         """Read metadata, taking any configured metadata mapping into account."""
         metadata = Metadata(selector)
         if self.__loaders.metadata is None:

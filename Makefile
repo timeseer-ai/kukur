@@ -1,12 +1,11 @@
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
-#
 # SPDX-License-Identifier: Apache-2.0
 
 SHELL=/bin/bash
 
 .PHONY: run
 run: ## Start Kukur
-	python -m kukur.cli
+	uv run kukur
 
 .PHONY: clean
 clean: ## Remove build artifacts
@@ -30,13 +29,13 @@ run-docs: docs ## Run the documentation in a docker container on port 8080
 
 .PHONY: lint
 lint: ## Lint the kukur code
-	black --check kukur/ tests/
-	mypy --ignore-missing-imports kukur/
-	ruff check .
+	uv run black --check kukur/ tests/
+	uv run mypy --ignore-missing-imports kukur/
+	uv run ruff check .
 
 .PHONY: test
 test: ## Run the unit tests
-	python -m pytest --ignore tests/integration
+	uv run pytest --ignore tests/integration
 
 .PHONY: compose
 compose: ## Start all containers needed for integration tests
@@ -50,48 +49,52 @@ compose: ## Start all containers needed for integration tests
 
 .PHONY: integration-test
 integration-test: ## Run all integration tests (this requires a running Kukur)
-	python -m pytest tests/integration
+	uv run pytest tests/integration
 
 .PHONY: integration-test-crate
 integration-test-crate: ## Run CrateDB integration tests
-	python -m pytest tests/integration -m crate
+	uv run pytest tests/integration -m crate
 
 .PHONY: integration-test-elasticsearch
 integration-test-elasticsearch: ## Run Elasticsearch integration tests
-	python -m pytest tests/integration -m elasticsearch
+	uv run pytest tests/integration -m elasticsearch
 
 .PHONY: integration-test-influxdb
 integration-test-influxdb: ## Run InfluxDB integration tests
-	python -m pytest tests/integration -m influxdb
+	uv run pytest tests/integration -m influxdb
 
 .PHONY: integration-test-kukur
 integration-test-kukur: ## Run Kukur (flight) integration tests
-	python -m pytest tests/integration -m kukur
+	uv run pytest tests/integration -m kukur
 
 .PHONY: integration-test-odbc
 integration-test-odbc: ## Run ODBC integration tests
-	python -m pytest tests/integration -m odbc
+	uv run pytest tests/integration -m odbc
 
 .PHONY: integration-test-postgres
 integration-test-postgres: ## Run PostgreSQL integration tests
-	python -m pytest tests/integration -m postgresql
+	uv run pytest tests/integration -m postgresql
 
 .PHONY: deps
 deps: ## Install runtime dependencies
-	pip install -r requirements.txt
+	uv sync --frozen --no-dev --all-extras
 
 .PHONY: dev-deps
 dev-deps: ## Install development dependencies
-	pip install -r requirements-dev.txt -r requirements-python.txt
+	uv sync --frozen --all-extras
+
+.PHONY: update-deps
+update-deps: ## Update all dependencies to their latest version
+	uv lock --upgrade
+	uv export --all-extras --no-hashes > requirements.txt
 
 .PHONY: format
 format: ## Format the kukur code
-	black kukur/ tests/
+	uv run black kukur/ tests/
 
 .PHONY: wheel
 wheel: ## Build a Python wheel in dist/
-	python setup.py bdist_wheel
-
+	uv build
 
 .PHONY: build-docker
 build-docker: ## Build a Docker container

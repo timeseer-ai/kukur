@@ -74,24 +74,24 @@ limitations under the License.
 
 ## Development
 
+Kukur uses [uv](https://docs.astral.sh/uv/).
+
 Create a virtualenv and install dependencies:
 
 ```bash
-$ python -m venv venv
-$ source venv/bin/activate
-(venv) $ make deps dev-deps
+$ make dev-deps
 ```
 
 Launch Kukur using:
 
 ```bash
-(venv) $ python -m kukur.cli
+$ make run kukur
 ```
 
 Lint and format:
 
 ```bash
-(venv) $ make lint
+$ make lint
 ```
 
 Kukur uses [black](https://github.com/psf/black) to format all code.
@@ -99,7 +99,14 @@ Kukur uses [black](https://github.com/psf/black) to format all code.
 Run unit tests:
 
 ```bash
-(venv) $ make test
+$ make test
+```
+
+Dependencies are managed in [pyproject.toml](pyproject.toml).
+A `requirements.txt` file is automatically generated for compatibility with Dependabot.
+
+```bash
+$ make update-deps
 ```
 
 ### Integration Tests
@@ -159,11 +166,19 @@ $ docker-compose -f tests/test_data/docker-compose.yml -f tests/test_data/docker
 Run the tests using:
 
 ```bash
-(venv) $ make integration-test
+$ make integration-test
 ```
 
 Stop all containers:
 
 ```bash
 $ docker-compose -f tests/test_data/docker-compose.yml -f tests/test_data/docker-compose.container.yml down --volumes
+```
+
+### Windows Builds
+
+Kukur uses [cx_Freeze](https://marcelotduarte.github.io/cx_Freeze/) to generate a Windows MSI.
+
+```
+> uv run cxfreeze build bdist_msi
 ```

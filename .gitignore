@@ -1,4 +1,5 @@
 venv/
+.venv/
 __pycache__/
 .mypy_cache/
 .vscode/
@@ -9,7 +10,6 @@ db/
 docs/out/
 
 *.sqlite*
-
 
 kukur.egg-info/
 dist/
