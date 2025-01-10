@@ -16,10 +16,9 @@ from kukur import (
     PlotSource,
     SeriesSearch,
     SeriesSelector,
-    SourceStructure,
-    TagSource,
 )
 from kukur import Source as SourceProtocol
+from kukur.base import DataSelector
 from kukur.exceptions import InvalidSourceException
 from kukur.source import (
     adodb,
@@ -99,7 +98,7 @@ class Source:
     Source keeps them together.
     """
 
-    metadata: Union[SourceProtocol, TagSource]
+    metadata: SourceProtocol
     data: SourceProtocol
 
 
@@ -221,11 +220,11 @@ class SourceWrapper:
         return metadata
 
     def get_data(
-        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
+        self, selector: DataSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         """Return the data for the given series in the given time frame, taking into account the request policy."""
         if start_date == end_date:
-            return pa.Table.from_pydict({"ts": [], "value": [], "quality": []})
+            return pa.Table.from_pydict({"ts": [], "quality": []})
         tables = [
             self._get_data_chunk(selector, start, end)
             for start, end in self.__to_intervals(start_date, end_date)
@@ -248,7 +247,13 @@ class SourceWrapper:
         if start_date == end_date:
             return pa.Table.from_pydict({"ts": [], "value": [], "quality": []})
         if not isinstance(self.__source.data, PlotSource):
-            return self.get_data(selector, start_date, end_date)
+            data = self.get_data(
+                DataSelector(selector.source, selector.tags), start_date, end_date
+            )
+            column_names = ["ts", selector.field]
+            if "quality" in data.column_names:
+                column_names.append("quality")
+            return data.select(column_names)
         query_fn = functools.partial(
             self.__source.data.get_plot_data,
             selector,
@@ -263,24 +268,8 @@ class SourceWrapper:
             f'Plot data query for "{selector.name}" ({selector.source}) ({start_date} to {end_date}) failed',
         )
 
-    def get_source_structure(
-        self, selector: SeriesSelector
-    ) -> Optional[SourceStructure]:
-        """Return the structure of the source for the given series."""
-        if not isinstance(self.__source.metadata, TagSource):
-            return None
-        query_fn = functools.partial(
-            self.__source.metadata.get_source_structure, selector
-        )
-        return _retry(
-            self.__query_retry_count,
-            self.__query_retry_delay,
-            query_fn,
-            f"Source structure query for {selector.source} failed",
-        )
-
     def _get_data_chunk(
-        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
+        self, selector: DataSelector, start_date: datetime, end_date: datetime
     ):
         query_fn = functools.partial(
             self.__source.data.get_data, selector, start_date, end_date
@@ -382,7 +371,7 @@ class SourceFactory:
 
     def _make_source(
         self, source_type: str, source_config: Dict[str, Any]
-    ) -> Union[SourceProtocol, TagSource]:
+    ) -> SourceProtocol:
         metadata_mapper = self._get_metadata_mapper(
             source_config.get("metadata_mapping")
         )
@@ -436,30 +425,29 @@ def concat_tables(tables: List[pa.Table]) -> pa.Table:
     """
     tables = [table for table in tables if len(table) > 0]
     if len(tables) == 0:
-        return pa.Table.from_pydict({"ts": [], "value": [], "quality": []})
+        return pa.Table.from_pydict({"ts": [], "quality": []})
+
+    field_names = []
+    for table in tables:
+        for column_name in table.column_names:
+            if column_name in ["ts", "quality"]:
+                continue
+            if column_name not in field_names:
+                field_names.append(column_name)
 
     schema = pa.schema(
         [
             ("ts", pa.timestamp("us", "UTC")),
-            ("value", pa.float64()),
         ]
     )
 
-    if _has_any_string(tables):
-        schema = pa.schema(
-            [
-                ("ts", pa.timestamp("us", "UTC")),
-                ("value", pa.string()),
-            ]
-        )
-
-    if _is_all_integer(tables):
-        schema = pa.schema(
-            [
-                ("ts", pa.timestamp("us", "UTC")),
-                ("value", pa.int64()),
-            ]
-        )
+    for field_name in field_names:
+        if _has_any_string(tables, field_name):
+            schema = schema.append(pa.field(field_name, pa.string()))
+        elif _is_all_integer(tables, field_name):
+            schema = schema.append(pa.field(field_name, pa.int64()))
+        else:
+            schema = schema.append(pa.field(field_name, pa.float64()))
 
     if _has_quality_data_flag(tables):
         schema = schema.append(pa.field("quality", pa.int8()))
@@ -467,20 +455,20 @@ def concat_tables(tables: List[pa.Table]) -> pa.Table:
     return pa.concat_tables([table.cast(schema) for table in tables])
 
 
-def _has_any_string(tables: List[pa.Table]) -> bool:
+def _has_any_string(tables: List[pa.Table], field_name: str) -> bool:
     string_tables = [
         table
         for table in tables
-        if pyarrow.types.is_string(table.schema.field("value").type)
+        if pyarrow.types.is_string(table.schema.field(field_name).type)
     ]
     return len(string_tables) > 0
 
 
-def _is_all_integer(tables: List[pa.Table]) -> bool:
+def _is_all_integer(tables: List[pa.Table], field_name: str) -> bool:
     integer_tables = [
         table
         for table in tables
-        if pyarrow.types.is_integer(table.schema.field("value").type)
+        if pyarrow.types.is_integer(table.schema.field(field_name).type)
     ]
     return len(integer_tables) == len(tables)
 

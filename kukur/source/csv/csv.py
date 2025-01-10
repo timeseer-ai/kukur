@@ -19,6 +19,7 @@ import pyarrow.compute
 import pyarrow.csv
 
 from kukur import Dictionary, Metadata, SeriesSearch, SeriesSelector
+from kukur.base import DataSelector
 from kukur.exceptions import InvalidDataError, InvalidSourceException, KukurException
 from kukur.loader import Loader
 from kukur.loader import from_config as loader_from_config
@@ -255,7 +256,7 @@ class CSVSource:
             return Dictionary(mapping)
 
     def get_data(
-        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
+        self, selector: DataSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         """Read data in one of the predefined formats.
 
@@ -265,7 +266,8 @@ class CSVSource:
         # pylint: disable=no-member
         on_or_after = pyarrow.compute.greater_equal(data["ts"], pa.scalar(start_date))
         before = pyarrow.compute.less(data["ts"], pa.scalar(end_date))
-        return data.filter(pyarrow.compute.and_(on_or_after, before))
+        result = data.filter(pyarrow.compute.and_(on_or_after, before))
+        return result
 
     def _search_in_data(
         self, search: SeriesSearch
@@ -293,7 +295,7 @@ class CSVSource:
         for name in all_data.column_names[1:]:
             yield SeriesSelector(search.source, name)
 
-    def __read_all_data(self, selector: SeriesSelector) -> pa.Table:
+    def __read_all_data(self, selector: DataSelector) -> pa.Table:
         if self.__loaders.data is None:
             raise InvalidSourceException("No data path configured.")
         if self.__options.data_format == "pivot":
@@ -304,7 +306,7 @@ class CSVSource:
 
         return self._read_row_data(self.__loaders.data, selector)
 
-    def _read_row_data(self, loader: Loader, selector: SeriesSelector) -> pa.Table:
+    def _read_row_data(self, loader: Loader, selector: DataSelector) -> pa.Table:
         row_data = self._open_row_data(loader)
         # pylint: disable=no-member
         for k, v in selector.tags.items():
@@ -312,9 +314,9 @@ class CSVSource:
         data = pa.Table.from_arrays(
             [
                 row_data["ts"],
-                row_data[selector.field],
-            ],
-            ["ts", "value"],
+            ]
+            + [row_data[field_name] for field_name in self.__options.fields],
+            ["ts"] + self.__options.fields,
         )
         if self.__mappers.quality.is_present():
             data = data.set_column(2, "quality", row_data["quality"])

@@ -10,8 +10,9 @@ from typing import Any, Dict, Generator, List, Optional, Union
 
 import pyarrow as pa
 
-from kukur import Metadata, SeriesSearch, SeriesSelector, SourceStructure
+from kukur import Metadata, SeriesSearch, SeriesSelector
 from kukur.api_key.app import ApiKeys
+from kukur.base import DataSelector
 from kukur.exceptions import UnknownSourceException
 from kukur.repository import MigrationRunner, RepositoryRegistry
 from kukur.source import SourceFactory, SourceWrapper
@@ -45,7 +46,7 @@ class Kukur:
         return self._get_source(selector.source).get_metadata(selector)
 
     def get_data(
-        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
+        self, selector: DataSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         """Return data for the given time series in the given time period."""
         return self._get_source(selector.source).get_data(
@@ -66,12 +67,6 @@ class Kukur:
         return self._get_source(selector.source).get_plot_data(
             selector, start_date, end_date, interval_count
         )
-
-    def get_source_structure(
-        self, selector: SeriesSelector
-    ) -> Optional[SourceStructure]:
-        """Return the structure of a source."""
-        return self._get_source(selector.source).get_source_structure(selector)
 
     def get_api_keys(self) -> ApiKeys:
         """Return the api keys."""

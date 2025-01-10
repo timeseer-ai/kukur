@@ -142,6 +142,48 @@ class SeriesSelector(SeriesSearch):
         return f"{series_string}::{self.field}"
 
 
+@dataclass
+class DataSelector:
+    """DataSelector requests data for a combination of tags in a source."""
+
+    source: str
+    tags: Dict[str, str]
+    fields: Optional[List[str]] = None
+
+    @classmethod
+    def from_data(cls, data: Dict[str, Any]) -> "DataSelector":
+        """Create a DataSelector from a dictionary."""
+        return cls(data["source"], data.get("tags", {}))
+
+    def to_data(self) -> Dict[str, Any]:
+        """Convert to JSON object."""
+        return {"source": self.source, "tags": self.tags}
+
+    @property
+    def name(self) -> str:
+        """Return a string representation of the tags."""
+        series_tags: List[str] = []
+        for tag_key, tag_value in self.tags.items():
+            if tag_key == "series name":
+                series_tags.insert(0, tag_value)
+                continue
+            series_tags.append(f"{tag_key}={tag_value}")
+        return ",".join(series_tags)
+
+    @classmethod
+    def from_name(cls, source: str, name: str):
+        """Create a DataSelector from a name."""
+        tags = {}
+        for tag_part in name.split(","):
+            parts = tag_part.split("=", maxsplit=1)
+            if len(parts) == 1:
+                tags["series name"] = parts[0]
+            else:
+                tags[parts[0]] = parts[1]
+
+        return cls(source, tags)
+
+
 class InterpolationType(Enum):
     """InterpolationType describes how the value of a series evolves between data points."""
 
@@ -164,23 +206,3 @@ class DataType(Enum):
     STRING = "STRING"
     DICTIONARY = "DICTIONARY"
     CATEGORICAL = "CATEGORICAL"
-
-
-@dataclass
-class SourceStructure:
-    """The SourceStructure defines the fields and tags that are present in the source."""
-
-    fields: List[str]
-    tag_keys: List[str]
-    tag_values: List[dict]
-
-    @classmethod
-    def from_data(cls, data: Dict[str, Any]) -> "SourceStructure":
-        """Create a SourceStructure from a dictionary."""
-        return cls(data["fields"], data["tagKeys"], data["tagValues"])
-
-    def to_data(self):
-        """Convert to JSON object."""
-        return dict(
-            fields=self.fields, tagKeys=self.tag_keys, tagValues=self.tag_values
-        )

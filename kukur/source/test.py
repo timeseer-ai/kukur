@@ -13,7 +13,14 @@ from typing import Any, Generator, List
 from dateutil.tz import tzlocal
 from pyarrow import Table
 
-from kukur import Metadata, PlotSource, SeriesSearch, SeriesSelector, Source
+from kukur import (
+    DataSelector,
+    Metadata,
+    PlotSource,
+    SeriesSearch,
+    SeriesSelector,
+    Source,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +74,7 @@ def data(
     )
 
     table = source.get_data(
-        SeriesSelector.from_name(source_name, series_name),
+        DataSelector.from_name(source_name, series_name),
         start_date,
         end_date,
     )
@@ -120,9 +127,6 @@ def _make_aware(timestamp: datetime) -> datetime:
 
 
 def _yield_table(table: Table) -> Generator[List[Any], None, None]:
-    if "quality" in table.column_names:
-        for ts, value, quality in zip(table["ts"], table["value"], table["quality"]):
-            yield [ts.as_py().isoformat(), value.as_py(), quality.as_py()]
-    else:
-        for ts, value in zip(table["ts"], table["value"]):
-            yield [ts.as_py().isoformat(), value.as_py()]
+    yield table.column_names
+    for row in zip(*table.columns, strict=True):
+        yield [row[0].as_py().isoformat()] + [value.as_py() for value in row[1:]]

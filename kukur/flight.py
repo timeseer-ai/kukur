@@ -9,7 +9,7 @@ from typing import Any, Callable, Dict, Generator, List
 import pyarrow.flight as fl
 from dateutil.parser import parse as parse_date
 
-from kukur import PlotSource, SeriesSelector, Source, TagSource
+from kukur import PlotSource, SeriesSelector, Source
 from kukur.app import Kukur
 from kukur.exceptions import InvalidSourceException
 
@@ -111,17 +111,6 @@ class KukurFlightServer:
             selector, start_date, end_date, interval_count
         )
         return fl.RecordBatchStream(data)
-
-    def get_source_structure(self, _, action: fl.Action) -> List[bytes]:
-        """Return the structure of a source for the given time series as JSON."""
-        request = json.loads(action.body.to_pybytes())
-        selector = SeriesSelector.from_data(request)
-        if not isinstance(self.__source, TagSource):
-            raise InvalidSourceException("get_source_structure not supported by source")
-        source_structure = self.__source.get_source_structure(selector)
-        if source_structure is None:
-            return [json.dumps(source_structure).encode()]
-        return [json.dumps(source_structure.to_data()).encode()]
 
 
 class KukurServerAuthHandler(fl.ServerAuthHandler):

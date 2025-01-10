@@ -1,0 +1,18 @@
+ts,location,reactor,temperature,level,quality
+2024-01-01T00:00:00Z,Antwerp,Reactor 01,100,60,1
+2024-01-02T00:00:00Z,Antwerp,Reactor 01,101,59,1
+2024-01-03T00:00:00Z,Antwerp,Reactor 01,102,58,1
+2024-01-04T00:00:00Z,Antwerp,Reactor 01,101,59,1
+2024-01-05T00:00:00Z,Antwerp,Reactor 01,100,60,1
+2024-01-06T00:00:00Z,Antwerp,Reactor 01,99,61,1
+2024-01-07T00:00:00Z,Antwerp,Reactor 01,100,60,1
+2024-01-08T00:00:00Z,Antwerp,Reactor 01,101,59,1
+2024-01-09T00:00:00Z,Antwerp,Reactor 01,102,58,1
+2024-01-01T00:00:00Z,Antwerp,Reactor 02,99,61,1
+2024-01-02T00:00:00Z,Antwerp,Reactor 02,98,62,1
+2024-01-03T00:00:00Z,Antwerp,Reactor 02,97,63,1
+2024-01-04T00:00:00Z,Antwerp,Reactor 02,96,64,1
+2024-01-06T00:00:00Z,Antwerp,Reactor 02,100,60,1
+2024-01-07T00:00:00Z,Antwerp,Reactor 02,102,58,1
+2024-01-08T00:00:00Z,Antwerp,Reactor 02,104,56,1
+2024-01-09T00:00:00Z,Antwerp,Reactor 02,106,54,1

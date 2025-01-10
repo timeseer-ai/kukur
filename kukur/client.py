@@ -13,7 +13,7 @@ from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 import pyarrow as pa
 import pyarrow.flight as fl
 
-from kukur import Metadata, SeriesSearch, SeriesSelector, SourceStructure
+from kukur import Metadata, SeriesSearch, SeriesSelector
 
 
 @dataclass
@@ -197,25 +197,6 @@ class Client:
         results = list(self._get_client().do_action(("list_sources")))
         data = json.loads(results[0].body.to_pybytes())
         return data
-
-    def get_source_structure(
-        self, selector: SeriesSelector
-    ) -> Optional[SourceStructure]:
-        """List all tags and fields from a source.
-
-        Returns:
-            A list of tag keys, tag values and fields that are configured in the source.
-        """
-        body = selector.to_data()
-        results = list(
-            self._get_client().do_action(
-                ("get_source_structure", json.dumps(body).encode())
-            )
-        )
-        data = json.loads(results[0].body.to_pybytes())
-        if data is None:
-            return None
-        return SourceStructure.from_data(data)
 
     def _get_client(self) -> Any:
         if self._client is None:
