@@ -20,7 +20,7 @@ try:
 except ImportError:
     HAS_REQUESTS = False
 
-from kukur import Metadata, SeriesSearch, SeriesSelector, SourceStructure
+from kukur import Metadata, SeriesSearch, SeriesSelector
 from kukur.exceptions import KukurException, MissingModuleException
 
 
@@ -285,10 +285,6 @@ class ElasticsearchSource:
                 break
 
         return pa.Table.from_pydict({"ts": timestamps, "value": values})
-
-    def get_source_structure(self, _: SeriesSelector) -> Optional[SourceStructure]:
-        """Return the available tag keys, tag value and tag fields."""
-        return None
 
     def _list_query_dsl(self, list_query: Dict, sort: List) -> List:
         if self.__options.metadata_index is None:

@@ -25,7 +25,7 @@ except ImportError:
     HAS_KUSTO = False
 
 
-from kukur import Metadata, SeriesSearch, SeriesSelector, SourceStructure
+from kukur import Metadata, SeriesSearch, SeriesSelector
 from kukur.exceptions import (
     KukurException,
     MissingModuleException,
@@ -220,34 +220,6 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
                 values.append(row[selector.field])
 
         return pa.Table.from_pydict({"ts": timestamps, "value": values})
-
-    def get_source_structure(self, _: SeriesSelector) -> Optional[SourceStructure]:
-        """Return the available tag keys, tag values and tag fields."""
-        all_columns = {_escape(column) for column in self._get_table_columns()}
-        fields = (
-            all_columns
-            - {self.__timestamp_column}
-            - set(self.__tags)
-            - set(self.__metadata_columns)
-            - set(self.__ignored_columns)
-        )
-        tag_keys = set(self.__tags)
-        tag_values = []
-
-        for tag_key in tag_keys:
-            query = f"""['{self.__table}']
-                    | distinct ['{tag_key}']
-            """
-            result = self.__client.execute(self.__database, query)
-            if result is not None and len(result.primary_results) > 0:
-                tag_values.extend(
-                    [
-                        {"key": tag_key, "value": row[0]}
-                        for row in result.primary_results[0]
-                    ]
-                )
-
-        return SourceStructure(list(fields), list(tag_keys), tag_values)
 
     def _get_table_columns(self) -> List[str]:
         query = f".show table ['{self.__table}'] schema as json"

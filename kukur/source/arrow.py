@@ -15,7 +15,7 @@ import pyarrow.compute
 import pyarrow.types
 
 from kukur import Metadata, SeriesSelector
-from kukur.base import SeriesSearch
+from kukur.base import DataSelector, SeriesSearch
 from kukur.exceptions import InvalidDataError, InvalidSourceException
 from kukur.loader import Loader
 from kukur.source.quality import QualityMapper
@@ -130,7 +130,7 @@ class BaseArrowSource(ABC):
         return Metadata(selector)
 
     def get_data(
-        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
+        self, selector: DataSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         """Read data in one of the predefined formats.
 

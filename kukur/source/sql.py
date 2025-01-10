@@ -14,7 +14,7 @@ from typing import Dict, Generator, List, Optional, Tuple, Union
 import dateutil.parser
 import pyarrow as pa
 
-from kukur import Dictionary, Metadata, SeriesSearch, SeriesSelector
+from kukur import DataSelector, Dictionary, Metadata, SeriesSearch, SeriesSelector
 from kukur.exceptions import KukurException
 from kukur.metadata import fields
 from kukur.source.metadata import MetadataValueMapper
@@ -180,7 +180,7 @@ class BaseSQLSource(ABC):
         return metadata
 
     def get_data(  # noqa: PLR0912, PLR0915
-        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
+        self, selector: DataSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         """Return data using the specified DB-API query."""
         if self._config.data_query is None:

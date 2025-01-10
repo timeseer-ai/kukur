@@ -5,17 +5,17 @@
 
 import typing
 from datetime import datetime
-from typing import Generator, Optional, Protocol, Union
+from typing import Generator, Protocol, Union
 
 import pyarrow as pa
 
 from .base import (
+    DataSelector,
     DataType,
     Dictionary,
     InterpolationType,
     SeriesSearch,
     SeriesSelector,
-    SourceStructure,
 )
 from .exceptions import KukurException  # noqa
 from .metadata import Metadata
@@ -37,20 +37,9 @@ class Source(Protocol):
         ...
 
     def get_data(
-        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
+        self, selector: DataSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         """Return data for the given time series in the given time period."""
-        ...
-
-
-@typing.runtime_checkable
-class TagSource(Source, Protocol):
-    """TagSource is the interface that Kukur data sources that support tags and fields need to implement."""
-
-    def get_source_structure(
-        self, selector: SeriesSelector
-    ) -> Optional[SourceStructure]:
-        """Return the available tag keys and tag values and fields of a source."""
         ...
 
 
@@ -86,6 +75,7 @@ class SignalGenerator(Protocol):
 
 __all__ = [
     "Client",
+    "DataSelector",
     "DataType",
     "Dictionary",
     "InterpolationType",
