@@ -250,10 +250,12 @@ class SourceWrapper:
             data = self.get_data(
                 DataSelector(selector.source, selector.tags), start_date, end_date
             )
+            if len(data) == 0:
+                return data
             column_names = ["ts", selector.field]
             if "quality" in data.column_names:
                 column_names.append("quality")
-            return data.select(column_names)
+            return data.select(column_names).rename_columns({selector.field: "value"})
         query_fn = functools.partial(
             self.__source.data.get_plot_data,
             selector,

@@ -319,7 +319,8 @@ class CSVSource:
             ["ts"] + self.__options.fields,
         )
         if self.__mappers.quality.is_present():
-            data = data.set_column(2, "quality", row_data["quality"])
+            quality_index = len(data.columns)
+            data = data.set_column(quality_index, "quality", row_data["quality"])
         return data
 
     def _open_row_data(self, loader: Loader) -> pa.Table:
