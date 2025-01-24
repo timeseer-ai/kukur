@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 class _RequestProperties:
     verify_ssl: bool
     timeout_seconds: float
-    data_request_timeout_seconds: float
+    metadata_request_timeout_seconds: float
     max_returned_items_per_call: int
     max_recursion: Optional[int]
 
@@ -56,8 +56,10 @@ class PIWebAPIAssetFrameworkSource:
     def __init__(self, config: Dict):
         self.__request_properties = _RequestProperties(
             verify_ssl=config.get("verify_ssl", True),
-            timeout_seconds=config.get("timeout_seconds", 10),
-            data_request_timeout_seconds=config.get("data_request_timeout_seconds", 60),
+            timeout_seconds=config.get("timeout_seconds", 60),
+            metadata_request_timeout_seconds=config.get(
+                "metadata_request_timeout_seconds", 10
+            ),
             max_returned_items_per_call=config.get(
                 "max_returned_items_per_call", 150000
             ),
@@ -81,7 +83,7 @@ class PIWebAPIAssetFrameworkSource:
         response = session.get(
             self.__database_uri,
             verify=self.__request_properties.verify_ssl,
-            timeout=self.__request_properties.timeout_seconds,
+            timeout=self.__request_properties.metadata_request_timeout_seconds,
             params=dict(
                 maxCount=self.__request_properties.max_returned_items_per_call,
             ),
@@ -140,7 +142,7 @@ class PIWebAPIAssetFrameworkSource:
             response = session.get(
                 data_url,
                 verify=self.__request_properties.verify_ssl,
-                timeout=self.__request_properties.data_request_timeout_seconds,
+                timeout=self.__request_properties.timeout_seconds,
                 params=params,
             )
             response.raise_for_status()
@@ -216,7 +218,7 @@ class PIWebAPIAssetFrameworkSource:
             response = session.get(
                 next_uri,
                 verify=self.__request_properties.verify_ssl,
-                timeout=self.__request_properties.timeout_seconds,
+                timeout=self.__request_properties.metadata_request_timeout_seconds,
                 params=dict(
                     maxCount=self.__request_properties.max_returned_items_per_call,
                 ),
@@ -241,7 +243,7 @@ class PIWebAPIAssetFrameworkSource:
                             attribute_value_response = session.get(
                                 attribute["Links"]["Value"],
                                 verify=self.__request_properties.verify_ssl,
-                                timeout=self.__request_properties.timeout_seconds,
+                                timeout=self.__request_properties.metadata_request_timeout_seconds,
                             )
                             attribute_value_response.raise_for_status()
                         except Exception as exc:
@@ -297,7 +299,7 @@ class PIWebAPIAssetFrameworkSource:
             attributes_response = session.get(
                 next_uri,
                 verify=self.__request_properties.verify_ssl,
-                timeout=self.__request_properties.timeout_seconds,
+                timeout=self.__request_properties.metadata_request_timeout_seconds,
                 params=dict(
                     maxCount=self.__request_properties.max_returned_items_per_call,
                 ),
