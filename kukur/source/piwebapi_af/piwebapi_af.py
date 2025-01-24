@@ -271,7 +271,6 @@ class PIWebAPIAssetFrameworkSource:
                                 yield metadata
 
                     if element.get("HasChildren", False):
-
                         yield from self._get_elements(
                             session,
                             source_name,
