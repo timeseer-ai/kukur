@@ -97,5 +97,5 @@ username = "auser"
 password = "apassword"
 ```
 
-Add a `max_recursion` if limitation on the recursion depth of the child attributes are necessary.
+Add a `max_recursion` if limiting the recursion depth of child attributes is necessary.
 By default, all the child attributes are fetched.
