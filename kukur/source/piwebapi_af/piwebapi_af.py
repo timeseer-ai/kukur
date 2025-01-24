@@ -3,6 +3,7 @@
 # SPDX-FileCopyrightText: 2024 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
+import logging
 import urllib.parse
 from dataclasses import dataclass
 from datetime import datetime
@@ -37,11 +38,16 @@ except ImportError:
     HAS_REQUESTS_KERBEROS = False
 
 
+logger = logging.getLogger(__name__)
+
+
 @dataclass
 class _RequestProperties:
     verify_ssl: bool
     timeout_seconds: float
+    data_request_timeout_seconds: float
     max_returned_items_per_call: int
+    max_recursion: Optional[int]
 
 
 class PIWebAPIAssetFrameworkSource:
@@ -50,10 +56,12 @@ class PIWebAPIAssetFrameworkSource:
     def __init__(self, config: Dict):
         self.__request_properties = _RequestProperties(
             verify_ssl=config.get("verify_ssl", True),
-            timeout_seconds=config.get("timeout_seconds", 60),
+            timeout_seconds=config.get("timeout_seconds", 10),
+            data_request_timeout_seconds=config.get("data_request_timeout_seconds", 60),
             max_returned_items_per_call=config.get(
                 "max_returned_items_per_call", 150000
             ),
+            max_recursion=config.get("max_recursion"),
         )
         self.__database_uri = config["database_uri"]
 
@@ -132,7 +140,7 @@ class PIWebAPIAssetFrameworkSource:
             response = session.get(
                 data_url,
                 verify=self.__request_properties.verify_ssl,
-                timeout=self.__request_properties.timeout_seconds,
+                timeout=self.__request_properties.data_request_timeout_seconds,
                 params=params,
             )
             response.raise_for_status()
@@ -214,61 +222,76 @@ class PIWebAPIAssetFrameworkSource:
                 ),
             )
             response.raise_for_status()
-            elements = response.json()
 
+            elements = response.json()
             next_uri = elements["Links"].get("Next")
 
             for element in elements["Items"]:
-                element_metadata = extra_metadata.copy()
-                if "TemplateName" in element and element["TemplateName"] != "":
-                    element_metadata[element["TemplateName"]] = element["Name"]
+                try:
+                    element_metadata = extra_metadata.copy()
+                    if "TemplateName" in element and element["TemplateName"] != "":
+                        element_metadata[element["TemplateName"]] = element["Name"]
 
-                data_attributes, metadata_attributes = self._read_child_attributes(
-                    session, element["Links"]["Attributes"]
-                )
-
-                for attribute in metadata_attributes:
-                    attribute_value_response = session.get(
-                        attribute["Links"]["Value"],
-                        verify=self.__request_properties.verify_ssl,
-                        timeout=self.__request_properties.timeout_seconds,
+                    data_attributes, metadata_attributes = self._read_child_attributes(
+                        session, element["Links"]["Attributes"], 0
                     )
-                    attribute_value_response.raise_for_status()
-                    attribute_value = attribute_value_response.json()["Value"]
-                    element_metadata[attribute["Name"]] = attribute_value
 
-                for attribute in data_attributes:
-                    tags = {
-                        "series name": element["Name"],
-                        "__id__": attribute["WebId"],
-                    }
+                    for attribute in metadata_attributes:
+                        try:
+                            attribute_value_response = session.get(
+                                attribute["Links"]["Value"],
+                                verify=self.__request_properties.verify_ssl,
+                                timeout=self.__request_properties.timeout_seconds,
+                            )
+                            attribute_value_response.raise_for_status()
+                        except Exception as exc:
+                            logger.error(exc)
+                            continue
 
-                    if "DataReferencePlugIn" in attribute:
-                        metadata = _get_metadata(
-                            SeriesSelector(source_name, tags, attribute["Name"]),
-                            attribute,
+                        attribute_value = attribute_value_response.json()["Value"]
+                        element_metadata[attribute["Name"]] = attribute_value
+
+                    for attribute in data_attributes:
+                        tags = {
+                            "series name": element["Name"],
+                            "__id__": attribute["WebId"],
+                        }
+
+                        if "DataReferencePlugIn" in attribute:
+                            metadata = _get_metadata(
+                                SeriesSelector(source_name, tags, attribute["Name"]),
+                                attribute,
+                                element_metadata,
+                            )
+                            if metadata is not None:
+                                if metadata.get_field(fields.Description) == "":
+                                    metadata.set_field(
+                                        fields.Description, element["Description"]
+                                    )
+                                yield metadata
+
+                    if element.get("HasChildren", False):
+
+                        yield from self._get_elements(
+                            session,
+                            source_name,
+                            element["Links"]["Elements"],
                             element_metadata,
                         )
-                        if metadata is not None:
-                            if metadata.get_field(fields.Description) == "":
-                                metadata.set_field(
-                                    fields.Description, element["Description"]
-                                )
-                            yield metadata
-
-                if element.get("HasChildren", False):
-                    yield from self._get_elements(
-                        session,
-                        source_name,
-                        element["Links"]["Elements"],
-                        element_metadata,
-                    )
+                except Exception as exc:
+                    logger.error(exc)
+                    continue
 
     def _read_child_attributes(
-        self, session, uri: str
+        self, session, uri: str, current_recursion: int
     ) -> Tuple[List[Dict], List[Dict]]:
-        data_attributes = []
-        metadata_attributes = []
+        data_attributes: List[Dict] = []
+        metadata_attributes: List[Dict] = []
+        if (
+            self.__request_properties.max_recursion is not None
+            and current_recursion > self.__request_properties.max_recursion
+        ):
+            return data_attributes, metadata_attributes
 
         next_uri: Optional[str] = uri
         while next_uri is not None:
@@ -293,14 +316,20 @@ class PIWebAPIAssetFrameworkSource:
             metadata_attributes.extend(new_metadata_attributes)
 
             for attribute in attributes:
-                if attribute["HasChildren"]:
-                    child_data_attributes, child_metadata_attributes = (
-                        self._read_child_attributes(
-                            session, attribute["Links"]["Attributes"]
+                try:
+                    if attribute["HasChildren"]:
+                        child_data_attributes, child_metadata_attributes = (
+                            self._read_child_attributes(
+                                session,
+                                attribute["Links"]["Attributes"],
+                                current_recursion + 1,
+                            )
                         )
-                    )
-                    data_attributes.extend(child_data_attributes)
-                    metadata_attributes.extend(child_metadata_attributes)
+                        data_attributes.extend(child_data_attributes)
+                        metadata_attributes.extend(child_metadata_attributes)
+                except Exception as exc:
+                    logger.error(exc)
+                    continue
 
         return data_attributes, metadata_attributes
 
