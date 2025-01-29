@@ -148,6 +148,7 @@ class PIWebAPIAssetFrameworkSource:
                 params=params,
             )
             if response.status_code == NOT_FOUND:
+                logger.warning(f"No data found for {data_url}")
                 return pa.Table.from_pydict({"ts": [], "value": [], "quality": []})
 
             response.raise_for_status()
