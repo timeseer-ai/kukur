@@ -40,6 +40,8 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+NOT_FOUND = 404
+
 
 @dataclass
 class _RequestProperties:
@@ -145,6 +147,9 @@ class PIWebAPIAssetFrameworkSource:
                 timeout=self.__request_properties.timeout_seconds,
                 params=params,
             )
+            if response.status_code == NOT_FOUND:
+                return pa.Table.from_pydict({"ts": [], "value": [], "quality": []})
+
             response.raise_for_status()
 
             data_points = response.json()["Items"]
