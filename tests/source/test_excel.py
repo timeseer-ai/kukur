@@ -8,7 +8,7 @@ from pathlib import Path
 from kukur.source.excel import parse_excel
 
 
-def test_gpx() -> None:
+def test_excel() -> None:
     path = Path("tests/test_data/excel/data.xlsx").resolve()
     table = parse_excel(path)
     assert len(table) == 251
