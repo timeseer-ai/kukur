@@ -6,12 +6,12 @@
 from pathlib import PurePath
 from typing import Generator, List, Optional
 
-from kukur.source.excel import parse_excel
 from pyarrow import RecordBatch, csv, fs, parquet
 from pyarrow.dataset import CsvFileFormat, Dataset, dataset
 
 from kukur.exceptions import MissingModuleException
 from kukur.inspect import DataOptions, FileOptions, InspectedPath, ResourceType
+from kukur.source.excel import parse_excel
 from kukur.source.gpx import parse_gpx
 
 try:

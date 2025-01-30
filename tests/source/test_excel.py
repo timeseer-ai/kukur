@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from pathlib import Path
+
 from kukur.source.excel import parse_excel
 
 

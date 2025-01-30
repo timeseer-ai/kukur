@@ -1,6 +1,5 @@
 """Read Excel files to Apache Arrow tables."""
 
-from pathlib import PurePath
 import pyarrow as pa
 
 try:
@@ -13,7 +12,7 @@ except ImportError:
 
 try:
 
-    import openpyxl
+    import openpyxl  # noqa: F401
 
     HAS_PYOPENXL = True
 
@@ -41,10 +40,12 @@ def parse_excel(readable) -> pa.Table:
     if not HAS_PYOPENXL:
         raise MissingModuleException("openpyxl", "excel")
 
-    df = pd.read_excel(readable, dtype_backend="pyarrow", engine="openpyxl")
+    excel_df = pd.read_excel(readable, dtype_backend="pyarrow", engine="openpyxl")
 
-    numeric_columns = df.select_dtypes(include=["int", "float"]).columns
+    numeric_columns = excel_df.select_dtypes(include=["int", "float"]).columns
 
-    df[numeric_columns] = df[numeric_columns].apply(pd.to_numeric, errors="coerce")
+    excel_df[numeric_columns] = excel_df[numeric_columns].apply(
+        pd.to_numeric, errors="coerce"
+    )
 
-    return pa.Table.from_pandas(df, preserve_index=False)
+    return pa.Table.from_pandas(excel_df, preserve_index=False)
