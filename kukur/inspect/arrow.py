@@ -6,6 +6,7 @@
 from pathlib import PurePath
 from typing import Generator, List, Optional
 
+from kukur.source.excel import parse_excel
 from pyarrow import RecordBatch, csv, fs, parquet
 from pyarrow.dataset import CsvFileFormat, Dataset, dataset
 
@@ -110,6 +111,8 @@ def get_data_set(
         return dataset(str(path), format=format, filesystem=filesystem)
     if resource_type == ResourceType.GPX:
         return dataset(parse_gpx(filesystem.open_input_file(str(path))))
+    if resource_type == ResourceType.EXCEL:
+        return dataset(parse_excel(filesystem.open_input_file(str(path))))
     return None
 
 
@@ -149,6 +152,8 @@ def get_resource_type_from_extension(  # noqa: PLR0911
         return ResourceType.CSV
     if extension in ["gpx"]:
         return ResourceType.GPX
+    if extension in ["xls", "xlsx"]:
+        return ResourceType.EXCEL
     if extension in ["ndjson", "json"]:
         return ResourceType.NDJSON
     if extension in ["orc"]:

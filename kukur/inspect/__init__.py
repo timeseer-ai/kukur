@@ -47,6 +47,7 @@ class ResourceType(Enum):
     ORC = "orc"
     PARQUET = "parquet"
     TABLE = "table"
+    EXCEL = "excel"
 
 
 @dataclass
