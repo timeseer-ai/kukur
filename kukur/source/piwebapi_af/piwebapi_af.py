@@ -49,7 +49,6 @@ class _RequestProperties:
     timeout_seconds: float
     metadata_request_timeout_seconds: float
     max_returned_items_per_call: int
-    max_recursion: Optional[int]
 
 
 @dataclass
@@ -77,7 +76,6 @@ class PIWebAPIAssetFrameworkSource:
             max_returned_items_per_call=config.get(
                 "max_returned_items_per_call", 150000
             ),
-            max_recursion=config.get("max_recursion"),
         )
         self.__database_uri = config["database_uri"]
 
@@ -296,37 +294,6 @@ class PIWebAPIAssetFrameworkSource:
                     extra_metadata[parent_element.template] = parent_element.name
         return extra_metadata
 
-    def _assign_metadata_to_elements(
-        self, session, metadata_attributes: list[Dict], elements: List[Element]
-    ):
-        element_lookup = {element.path: element for element in elements}
-        for attribute in sorted(
-            metadata_attributes, key=lambda attribute: len(attribute["Path"])
-        ):
-            attribute_value = self._get_attribute_value(session, attribute)
-            if attribute_value is None:
-                continue
-            parent_path = attribute["Path"].split("|", 1)[0]
-            if parent_path in element_lookup:
-                element_lookup[parent_path].metadata[
-                    attribute["Name"]
-                ] = attribute_value
-
-    def _get_attribute_value(self, session, attribute: Dict) -> Optional[Any]:
-        try:
-            attribute_value_response = session.get(
-                attribute["Links"]["Value"],
-                verify=self.__request_properties.verify_ssl,
-                timeout=self.__request_properties.metadata_request_timeout_seconds,
-            )
-            attribute_value_response.raise_for_status()
-        except Exception as exc:
-            logger.warning("Failed to get value for attribute %s", attribute["Path"])
-            logger.error(exc)
-            return None
-
-        return attribute_value_response.json()["Value"]
-
     def _get_all_attributes(self, session) -> Tuple[List[Dict], List[Dict]]:
         data_attributes: List[Dict] = []
         metadata_attributes: List[Dict] = []
@@ -361,6 +328,37 @@ class PIWebAPIAssetFrameworkSource:
         attributes_path = PurePath(database_uri.path) / "elementattributes"
         return urllib.parse.urlunparse(database_uri._replace(path=str(attributes_path)))
 
+    def _assign_metadata_to_elements(
+        self, session, metadata_attributes: list[Dict], elements: List[Element]
+    ):
+        element_lookup = {element.path: element for element in elements}
+        for attribute in sorted(
+            metadata_attributes, key=lambda attribute: len(attribute["Path"])
+        ):
+            attribute_value = self._get_attribute_value(session, attribute)
+            if attribute_value is None:
+                continue
+            element_path = attribute["Path"].split("|", 1)[0]
+            if element_path in element_lookup:
+                element_lookup[element_path].metadata[
+                    attribute["Name"]
+                ] = attribute_value
+
+    def _get_attribute_value(self, session, attribute: Dict) -> Optional[Any]:
+        try:
+            attribute_value_response = session.get(
+                attribute["Links"]["Value"],
+                verify=self.__request_properties.verify_ssl,
+                timeout=self.__request_properties.metadata_request_timeout_seconds,
+            )
+            attribute_value_response.raise_for_status()
+        except Exception as exc:
+            logger.warning("Failed to get value for attribute %s", attribute["Path"])
+            logger.error(exc)
+            return None
+
+        return attribute_value_response.json()["Value"]
+
     def _build_metadata(
         self, source_name: str, data_attributes: List[Dict], elements: List[Element]
     ) -> Generator[Metadata, None, None]:
@@ -369,7 +367,9 @@ class PIWebAPIAssetFrameworkSource:
             # Find matching element
             element_path = attribute["Path"].split("|")[0]
             element = element_lookup[element_path]
+
             element_metadata = element.metadata.copy()
+            element_metadata["Paths"] = ";".join(element.paths)
             for parent_path in _get_parent_paths(element_path):
                 if parent_path in element_lookup:
                     parent_element = element_lookup[parent_path]
@@ -379,7 +379,7 @@ class PIWebAPIAssetFrameworkSource:
 
             tags = {
                 "series name": element.name,
-                "__id__": attribute["WebId"],  # Include all paths when enabled.
+                "__id__": attribute["WebId"],
             }
 
             if "DataReferencePlugIn" in attribute:
