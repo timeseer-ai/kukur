@@ -52,6 +52,18 @@ class _RequestProperties:
     max_recursion: Optional[int]
 
 
+@dataclass
+class Element:
+    """A PI AF Element."""
+
+    path: str
+    name: str
+    description: str
+    template: Optional[str]
+    metadata: Dict[str, str]
+    paths: List[str]
+
+
 class PIWebAPIAssetFrameworkSource:
     """Connect to PI AF using the PI Web API."""
 
@@ -92,9 +104,20 @@ class PIWebAPIAssetFrameworkSource:
         )
         response.raise_for_status()
         database = response.json()
-        yield from self._get_elements(
-            session, selector.source, database["Links"]["Elements"], {}
-        )
+
+        # Find all elements
+        all_elements = self._get_all_elements(session, database["Links"]["Elements"])
+        # Add extra templates to all elements
+        # Find all data and metadata attributes
+        data_attributes, metadata_attributes = self._get_all_attributes(session)
+        # Add metadata attributes to all elements to have full metadata
+        # Add full metadata to all data attributes
+        yield from self._build_metadata(selector.source, data_attributes, all_elements)
+        
+
+        # yield from self._get_elements(
+        #     session, selector.source, database["Links"]["Elements"], {}
+        # )
 
     def get_metadata(self, selector: SeriesSelector) -> Metadata:
         """Return metadata for one tag."""
@@ -215,6 +238,115 @@ class PIWebAPIAssetFrameworkSource:
             / "plot"
         )
         return urllib.parse.urlunparse(database_uri._replace(path=str(recorded_path)))
+
+    def _get_all_elements(self, session, uri: str) -> List[Element]:
+        all_elements: List[Element] = []
+
+        next_uri: Optional[str] = uri
+        while next_uri is not None:
+            response = session.get(
+                next_uri,
+                verify=self.__request_properties.verify_ssl,
+                timeout=self.__request_properties.metadata_request_timeout_seconds,
+                params={
+                    "searchFullHierarchy": "true",
+                    "associations": "paths",
+                    "maxCount": self.__request_properties.max_returned_items_per_call,
+                },
+            )
+            response.raise_for_status()
+
+            elements = response.json()
+            next_uri = elements["Links"].get("Next")
+
+            for element_data in elements["Items"]:
+                template_name: Optional[str] = None
+                element_metadata = {}
+                if (
+                    "TemplateName" in element_data
+                    and element_data["TemplateName"] != ""
+                ):
+                    template_name = element_data["TemplateName"]
+                    element_metadata[element_data["TemplateName"]] = element_data[
+                        "Name"
+                    ]
+                all_elements.append(
+                    Element(
+                        element_data["Path"],
+                        element_data["Name"],
+                        element_data["Description"],
+                        template_name,
+                        element_metadata,
+                        element_data["Paths"],
+                    )
+                )
+
+        return all_elements
+
+    def _get_all_attributes(
+        self, session
+    ) -> Tuple[List[Dict], List[Dict]]:
+        data_attributes: List[Dict] = []
+        metadata_attributes: List[Dict] = []
+
+        next_uri: Optional[str] = self._get_element_attributes_url()
+        while next_uri is not None:
+            attributes_response = session.get(
+                next_uri,
+                verify=self.__request_properties.verify_ssl,
+                timeout=self.__request_properties.metadata_request_timeout_seconds,
+                params={
+                    "searchFullHierarchy": "true",
+                    "maxCount": self.__request_properties.max_returned_items_per_call,
+                },
+            )
+            attributes_response.raise_for_status()
+            attributes_data = attributes_response.json()
+
+            next_uri = attributes_data["Links"].get("Next")
+            attributes = attributes_data["Items"]
+
+            new_data_attributes, new_metadata_attributes = self._classify_attributes(
+                attributes
+            )
+            data_attributes.extend(new_data_attributes)
+            metadata_attributes.extend(new_metadata_attributes)
+
+        return data_attributes, metadata_attributes
+
+
+    def _get_element_attributes_url(self) -> str:
+        database_uri = urllib.parse.urlparse(self.__database_uri)
+        attributes_path = (
+            PurePath(database_uri.path)
+            / "elementattributes"
+        )
+        return urllib.parse.urlunparse(database_uri._replace(path=str(attributes_path)))
+
+    def _build_metadata(self, source_name: str, data_attributes: List[Dict], elements: List[Element]) -> Generator[Metadata, None, None]:
+        element_lookup = {element.path: element for element in elements}
+        for attribute in data_attributes:
+            # Find matching element
+            element_path = attribute["Path"].split("|")[0]
+            element = element_lookup[element_path]
+
+            tags = {
+                "series name": element.name,
+                "__id__": attribute["WebId"], # Include all paths when enabled.
+            }
+
+            if "DataReferencePlugIn" in attribute:
+                metadata = _get_metadata(
+                    SeriesSelector(source_name, tags, attribute["Name"]),
+                    attribute,
+                    element.metadata,
+                )
+                if metadata is not None:
+                    if metadata.get_field(fields.Description) == "":
+                        metadata.set_field(
+                            fields.Description, element.description
+                        )
+                    yield metadata
 
     def _get_elements(
         self, session, source_name: str, uri: str, extra_metadata: Dict[str, str]
