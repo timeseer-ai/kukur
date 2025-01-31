@@ -108,12 +108,13 @@ class PIWebAPIAssetFrameworkSource:
         # Find all elements
         all_elements = self._get_all_elements(session, database["Links"]["Elements"])
         # Add extra templates to all elements
+        all_elements = self._add_extra_templates(all_elements)
+
         # Find all data and metadata attributes
         data_attributes, metadata_attributes = self._get_all_attributes(session)
         # Add metadata attributes to all elements to have full metadata
         # Add full metadata to all data attributes
         yield from self._build_metadata(selector.source, data_attributes, all_elements)
-        
 
         # yield from self._get_elements(
         #     session, selector.source, database["Links"]["Elements"], {}
@@ -283,9 +284,33 @@ class PIWebAPIAssetFrameworkSource:
 
         return all_elements
 
-    def _get_all_attributes(
-        self, session
-    ) -> Tuple[List[Dict], List[Dict]]:
+    def _add_extra_templates(self, elements: List[Element]) -> List[Element]:
+        element_lookup: Dict[str, Element] = {
+            element.path: element
+            for element in elements
+            if element.template is not None
+        }
+        for element in elements:
+            extra_metadata = self._get_parents_template(element.path, element_lookup)
+            element.metadata.update(extra_metadata)
+
+        return elements
+
+    def _get_parents_template(
+        self, path: str, element_lookup: Dict[str, Element]
+    ) -> dict[str, str]:
+        parent_parts = path.split("\\")
+        extra_metadata = {}
+        for i in range(1, len(parent_parts)):
+            parts = parent_parts[0 : len(parent_parts) - i]
+            parent_path = "\\".join(parts)
+            if parent_path in element_lookup:
+                parent_element = element_lookup[parent_path]
+                if parent_element.template is not None:
+                    extra_metadata[parent_element.template] = parent_element.name
+        return extra_metadata
+
+    def _get_all_attributes(self, session) -> Tuple[List[Dict], List[Dict]]:
         data_attributes: List[Dict] = []
         metadata_attributes: List[Dict] = []
 
@@ -314,16 +339,14 @@ class PIWebAPIAssetFrameworkSource:
 
         return data_attributes, metadata_attributes
 
-
     def _get_element_attributes_url(self) -> str:
         database_uri = urllib.parse.urlparse(self.__database_uri)
-        attributes_path = (
-            PurePath(database_uri.path)
-            / "elementattributes"
-        )
+        attributes_path = PurePath(database_uri.path) / "elementattributes"
         return urllib.parse.urlunparse(database_uri._replace(path=str(attributes_path)))
 
-    def _build_metadata(self, source_name: str, data_attributes: List[Dict], elements: List[Element]) -> Generator[Metadata, None, None]:
+    def _build_metadata(
+        self, source_name: str, data_attributes: List[Dict], elements: List[Element]
+    ) -> Generator[Metadata, None, None]:
         element_lookup = {element.path: element for element in elements}
         for attribute in data_attributes:
             # Find matching element
@@ -332,7 +355,7 @@ class PIWebAPIAssetFrameworkSource:
 
             tags = {
                 "series name": element.name,
-                "__id__": attribute["WebId"], # Include all paths when enabled.
+                "__id__": attribute["WebId"],  # Include all paths when enabled.
             }
 
             if "DataReferencePlugIn" in attribute:
@@ -343,9 +366,7 @@ class PIWebAPIAssetFrameworkSource:
                 )
                 if metadata is not None:
                     if metadata.get_field(fields.Description) == "":
-                        metadata.set_field(
-                            fields.Description, element.description
-                        )
+                        metadata.set_field(fields.Description, element.description)
                     yield metadata
 
     def _get_elements(
