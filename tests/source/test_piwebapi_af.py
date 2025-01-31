@@ -22,36 +22,25 @@ SAMPLE_SITES = {
     "Items": [
         {
             "Name": "Antwerp",
+            "Description": "Antwerp Site",
             "TemplateName": "Site",
-            "HasChildren": True,
-            "Links": {
-                "Attributes": f"{_BASE_URL}/empty-attributes",
-                "Elements": f"{_BASE_URL}/elements/1/elements",
-            },
+            "Path": "\\\\path\\sample\\Antwerp",
+            "Paths": ["\\\\path\\sample\\Antwerp"],
         },
-    ],
-}
-
-SAMPLE_CHILD_ELEMENTS = {
-    "Links": {},
-    "Items": [
         {
             "WebId": "1",
             "Id": "776a75c2-b946-11ef-889f-6045bd94f59b",
             "Name": "Reactor02",
             "Description": "",
             "Path": "\\\\path\\sample\\Antwerp\\Active",
+            "Paths": ["\\\\path\\sample\\Antwerp\\Active"],
             "TemplateName": "Reactor",
-            "HasChildren": False,
             "CategoryNames": [],
             "ExtendedProperties": {},
-            "Links": {
-                "Attributes": f"{_BASE_URL}/elements/1/attributes",
-            },
-        }
+        },
     ],
 }
-SAMPLE_EMPTY_ATTRIBUTES = {"Links": {}, "Items": []}
+
 SAMPLE_CHILD_ATTRIBUTES = {
     "Links": {},
     "Items": [
@@ -62,7 +51,7 @@ SAMPLE_CHILD_ATTRIBUTES = {
             "HasChildren": False,
             "Step": False,
             "Type": "Double",
-            "Path": "\\\\path\\sample\\Antwerp\\Active",
+            "Path": "\\\\path\\sample\\Antwerp|Active",
             "DataReferencePlugIn": "PI Point",
             "DefaultUnitsNameAbbreviation": "",
             "Span": 200.0,
@@ -77,7 +66,7 @@ SAMPLE_CHILD_ATTRIBUTES = {
             "WebId": "3",
             "Name": "Concentration",
             "Description": "Sample description",
-            "Path": "\\\\path\\sample\\Antwerp\\Concentration",
+            "Path": "\\\\path\\sample\\Antwerp|Concentration",
             "Type": "Double",
             "DataReferencePlugIn": "PI Point",
             "DefaultUnitsNameAbbreviation": "",
@@ -95,7 +84,7 @@ SAMPLE_CHILD_ATTRIBUTES = {
             "WebId": "4",
             "Name": "Lookup Values",
             "Description": "Sample description",
-            "Path": "\\\\path\\sample\\Antwerp\\Lookup",
+            "Path": "\\\\path\\sample\\Antwerp|Lookup",
             "Type": "Double",
             "DataReferencePlugIn": "Table Lookup",
             "DefaultUnitsNameAbbreviation": "",
@@ -161,16 +150,8 @@ def mocked_requests_get(*args, **kwargs):
         response = SAMPLE_SITES
         return MockResponse(response, 200)
 
-    if args[0] == f"{_BASE_URL}/elements/1/elements":
-        response = SAMPLE_CHILD_ELEMENTS
-        return MockResponse(response, 200)
-
-    if args[0] == f"{_BASE_URL}/elements/1/attributes":
+    if args[0] == f"{_BASE_URL}/elementattributes":
         response = SAMPLE_CHILD_ATTRIBUTES
-        return MockResponse(response, 200)
-
-    if args[0] == f"{_BASE_URL}/empty-attributes":
-        response = SAMPLE_EMPTY_ATTRIBUTES
         return MockResponse(response, 200)
 
     if args[0] == f"{_BASE_URL}/streams/2/plot":
@@ -227,8 +208,8 @@ def test_search(_) -> None:
     )
     series = list(source.search(SeriesSearch("Test")))
     assert len(series) == 2
-    assert series[0].series.tags.get("series name") == "Reactor02"
-    assert series[1].series.tags.get("series name") == "Reactor02"
+    assert series[0].series.tags.get("series name") == "Antwerp"
+    assert series[1].series.tags.get("series name") == "Antwerp"
     assert series[0].series.field == "Active"
     assert series[1].series.field == "Concentration"
 
@@ -310,9 +291,9 @@ def test_search_with_table_lookup_enabled(_) -> None:
     )
     series = list(source.search(SeriesSearch("Test")))
     assert len(series) == 3
-    assert series[0].series.tags.get("series name") == "Reactor02"
-    assert series[1].series.tags.get("series name") == "Reactor02"
-    assert series[2].series.tags.get("series name") == "Reactor02"
+    assert series[0].series.tags.get("series name") == "Antwerp"
+    assert series[1].series.tags.get("series name") == "Antwerp"
+    assert series[2].series.tags.get("series name") == "Antwerp"
     assert series[0].series.field == "Active"
     assert series[1].series.field == "Concentration"
     assert series[2].series.field == "Lookup Values"
