@@ -16,7 +16,6 @@ timeout_seconds = 60 # The maximum time to wait for a response for a data reques
 metadata_request_timeout_seconds = 10 # The maximum time to wait for a response for a metadata request
 username = "" # optional: username for basic authentication
 password = "" # optional: password for basic authentication
-max_recursion = # optional: max recursion depth for child attributes
 ```
 
 `database_uri` is a required field.
@@ -96,6 +95,3 @@ verify_ssl = false
 username = "auser"
 password = "apassword"
 ```
-
-Add a `max_recursion` if limiting the recursion depth of child attributes is necessary.
-By default, all the child attributes are fetched.
