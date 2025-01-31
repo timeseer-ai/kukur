@@ -104,8 +104,14 @@ class PIWebAPIAssetFrameworkSource:
         database = response.json()
 
         all_elements = self._get_all_elements(session, database["Links"]["Elements"])
+        logger.info("Found %s elements", len(all_elements))
         self._add_extra_templates(all_elements)
         data_attributes, metadata_attributes = self._get_all_attributes(session)
+        logger.info(
+            "Found %s data attributes, %s metadata attributes",
+            len(data_attributes),
+            len(metadata_attributes),
+        )
         self._assign_metadata_to_elements(session, metadata_attributes, all_elements)
         yield from self._build_metadata(selector.source, data_attributes, all_elements)
 
