@@ -256,26 +256,31 @@ class PIWebAPIAssetFrameworkSource:
             next_uri = elements["Links"].get("Next")
 
             for element_data in elements["Items"]:
-                template_name: Optional[str] = None
-                element_metadata = {}
-                if (
-                    "TemplateName" in element_data
-                    and element_data["TemplateName"] != ""
-                ):
-                    template_name = element_data["TemplateName"]
-                    element_metadata[element_data["TemplateName"]] = element_data[
-                        "Name"
-                    ]
-                all_elements.append(
-                    Element(
-                        element_data["Path"],
-                        element_data["Name"],
-                        element_data["Description"],
-                        template_name,
-                        element_metadata,
-                        element_data["Paths"],
+                try:
+                    template_name: Optional[str] = None
+                    element_metadata = {}
+                    if (
+                        "TemplateName" in element_data
+                        and element_data["TemplateName"] != ""
+                    ):
+                        template_name = element_data["TemplateName"]
+                        element_metadata[element_data["TemplateName"]] = element_data[
+                            "Name"
+                        ]
+                    all_elements.append(
+                        Element(
+                            element_data["Path"],
+                            element_data["Name"],
+                            element_data["Description"],
+                            template_name,
+                            element_metadata,
+                            element_data["Paths"],
+                        )
                     )
-                )
+                except Exception as err:
+                    logger.warning("Failed to process element %s", element_data["Path"])
+                    logger.exception(err)
+                    continue
 
         return all_elements
 
