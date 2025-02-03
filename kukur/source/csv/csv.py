@@ -191,7 +191,12 @@ class CSVSource:
             return metadata
 
         with self.__loaders.metadata.open() as metadata_file:
-            reader = csv.DictReader(metadata_file)
+            if self.__options.data_column_separator is not None:
+                reader = csv.DictReader(
+                    metadata_file, delimiter=self.__options.data_column_separator
+                )
+            else:
+                reader = csv.DictReader(metadata_file)
             for row in reader:
                 skip_row = False
                 for tag in self.__options.tags:
