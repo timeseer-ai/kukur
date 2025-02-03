@@ -453,6 +453,14 @@ def test_dir_semicolon_separator_search() -> None:
     assert len(many_series) == 2
 
 
+def test_dir_semicolon_separator_metadata() -> None:
+    metadata = get_source("dir_semicolon_separator").get_metadata(
+        SeriesSelector("dir_semicolon_separator", "test-tag-1")
+    )
+
+    assert metadata.get_field(fields.Accuracy) == approx(0.1)
+
+
 def test_dir_semicolon_separator_data() -> None:
     selector = SeriesSelector("dir_semicolon_separator", "test-tag-1")
     data = get_source(selector.source).get_data(selector, START_DATE, END_DATE)
