@@ -3,6 +3,7 @@
 # SPDX-FileCopyrightText: 2024 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
+import os
 from pathlib import PurePath
 from typing import Generator, List, Optional
 
@@ -11,7 +12,7 @@ from pyarrow.dataset import CsvFileFormat, Dataset, dataset
 
 from kukur.exceptions import MissingModuleException
 from kukur.inspect import DataOptions, FileOptions, InspectedPath, ResourceType
-from kukur.source.excel import parse_excel
+from kukur.source.excel import list_sheets, parse_excel
 from kukur.source.gpx import parse_gpx
 
 try:
@@ -26,14 +27,10 @@ def inspect(
     filesystem: fs.FileSystem, path: PurePath, options: FileOptions
 ) -> List[InspectedPath]:
     """Return the resource type of a path within a filesystem."""
-    paths = []
-    for sub_path in filesystem.get_file_info(
-        fs.FileSelector(str(path), recursive=options.recursive)
-    ):
-        resource_type = _get_resource_type(filesystem, sub_path, options)
-        if resource_type is not None:
-            paths.append(InspectedPath(resource_type, sub_path.path))
-    return paths
+    info = filesystem.get_file_info(str(path))
+    if info.type == fs.FileType.File:
+        return _inspect_excel_workbook(filesystem, path)
+    return _inspect_folder(filesystem, path, options)
 
 
 class BlobResource:
@@ -90,8 +87,9 @@ def get_data_set(
     default_resource_type = None
     if options is not None:
         default_resource_type = options.default_resource_type
+    file_extension = _get_file_extension(str(path))
     resource_type = get_resource_type_from_extension(
-        path.suffix.lstrip("."), default_resource_type
+        file_extension, default_resource_type
     )
     if resource_type in [
         ResourceType.ARROW,
@@ -111,8 +109,11 @@ def get_data_set(
         return dataset(str(path), format=format, filesystem=filesystem)
     if resource_type == ResourceType.GPX:
         return dataset(parse_gpx(filesystem.open_input_file(str(path))))
-    if resource_type == ResourceType.EXCEL:
-        return dataset(parse_excel(filesystem.open_input_file(str(path))))
+    if resource_type in [ResourceType.EXCEL_WORKBOOK, ResourceType.EXCEL_WORKSHEET]:
+        file_path, sheet_name = str(path).rsplit("@", 1)
+        return dataset(
+            parse_excel(filesystem.open_input_file(file_path), sheet_name, options)
+        )
     return None
 
 
@@ -153,9 +154,37 @@ def get_resource_type_from_extension(  # noqa: PLR0911
     if extension in ["gpx"]:
         return ResourceType.GPX
     if extension in ["xls", "xlsx"]:
-        return ResourceType.EXCEL
+        return ResourceType.EXCEL_WORKBOOK
     if extension in ["ndjson", "json"]:
         return ResourceType.NDJSON
     if extension in ["orc"]:
         return ResourceType.ORC
     return None
+
+
+def _inspect_excel_workbook(
+    filesystem: fs.FileSystem, path: PurePath
+) -> List[InspectedPath]:
+
+    return [
+        InspectedPath(ResourceType.EXCEL_WORKSHEET, sheet)
+        for sheet in list_sheets(filesystem.open_input_file(str(path)))
+    ]
+
+
+def _inspect_folder(
+    filesystem: fs.FileSystem, path: PurePath, options: FileOptions
+) -> List[InspectedPath]:
+    paths = []
+    for sub_path in filesystem.get_file_info(
+        fs.FileSelector(str(path), recursive=options.recursive)
+    ):
+        resource_type = _get_resource_type(filesystem, sub_path, options)
+        if resource_type is not None:
+            paths.append(InspectedPath(resource_type, sub_path.path))
+    return paths
+
+
+def _get_file_extension(path: str) -> str:
+    file_path = path.rsplit("@", 1)[0] if "@" in path else path
+    return os.path.splitext(file_path)[1].lstrip(".")
