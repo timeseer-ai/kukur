@@ -240,17 +240,22 @@ class PIWebAPIAssetFrameworkSource:
 
         next_uri: Optional[str] = uri
         while next_uri is not None:
-            response = session.get(
-                next_uri,
-                verify=self.__request_properties.verify_ssl,
-                timeout=self.__request_properties.metadata_request_timeout_seconds,
-                params={
-                    "searchFullHierarchy": "true",
-                    "associations": "paths",
-                    "maxCount": self.__request_properties.max_returned_items_per_call,
-                },
-            )
-            response.raise_for_status()
+            try:
+                response = session.get(
+                    next_uri,
+                    verify=self.__request_properties.verify_ssl,
+                    timeout=self.__request_properties.metadata_request_timeout_seconds,
+                    params={
+                        "searchFullHierarchy": "true",
+                        "associations": "paths",
+                        "maxCount": self.__request_properties.max_returned_items_per_call,
+                    },
+                )
+                response.raise_for_status()
+            except Exception as err:
+                logger.warning("Failed to fetch all elements for %s", next_uri)
+                logger.exception(err)
+                continue
 
             elements = response.json()
             next_uri = elements["Links"].get("Next")
@@ -311,16 +316,21 @@ class PIWebAPIAssetFrameworkSource:
 
         next_uri: Optional[str] = self._get_element_attributes_url()
         while next_uri is not None:
-            attributes_response = session.get(
-                next_uri,
-                verify=self.__request_properties.verify_ssl,
-                timeout=self.__request_properties.metadata_request_timeout_seconds,
-                params={
-                    "searchFullHierarchy": "true",
-                    "maxCount": self.__request_properties.max_returned_items_per_call,
-                },
-            )
-            attributes_response.raise_for_status()
+            try:
+                attributes_response = session.get(
+                    next_uri,
+                    verify=self.__request_properties.verify_ssl,
+                    timeout=self.__request_properties.metadata_request_timeout_seconds,
+                    params={
+                        "searchFullHierarchy": "true",
+                        "maxCount": self.__request_properties.max_returned_items_per_call,
+                    },
+                )
+                attributes_response.raise_for_status()
+            except Exception as err:
+                logger.warning("Failed to fetch all attributes for %s", next_uri)
+                logger.exception(err)
+                continue
             attributes_data = attributes_response.json()
 
             next_uri = attributes_data["Links"].get("Next")
@@ -356,6 +366,7 @@ class PIWebAPIAssetFrameworkSource:
                 ] = attribute_value
 
     def _get_attribute_value(self, session, attribute: Dict) -> Optional[Any]:
+        logger.debug("Fetching attribute value for %s", attribute["Name"])
         try:
             attribute_value_response = session.get(
                 attribute["Links"]["Value"],
@@ -375,6 +386,7 @@ class PIWebAPIAssetFrameworkSource:
     ) -> Generator[Metadata, None, None]:
         element_lookup = {element.path: element for element in elements}
         for attribute in data_attributes:
+            logger.debug("Build metadata for attribute %s", attribute["Name"])
             # Find matching element
             element_path = attribute["Path"].split("|")[0]
             element = element_lookup[element_path]
