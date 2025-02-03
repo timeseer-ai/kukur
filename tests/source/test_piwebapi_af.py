@@ -28,12 +28,23 @@ SAMPLE_SITES = {
             "Paths": ["\\\\path\\sample\\Antwerp"],
         },
         {
-            "WebId": "1",
+            "WebId": "E1",
             "Id": "776a75c2-b946-11ef-889f-6045bd94f59b",
             "Name": "Reactor02",
             "Description": "",
-            "Path": "\\\\path\\sample\\Antwerp\\Active",
-            "Paths": ["\\\\path\\sample\\Antwerp\\Active"],
+            "Path": "\\\\path\\sample\\Antwerp\\Reactor02",
+            "Paths": ["\\\\path\\sample\\Antwerp\\Reactor02"],
+            "TemplateName": "Reactor",
+            "CategoryNames": [],
+            "ExtendedProperties": {},
+        },
+        {
+            "WebId": "E2",
+            "Id": "776a75c2-b946-11ef-889f-6045bd94f59c",
+            "Name": "Reactor03",
+            "Description": "",
+            "Path": "\\\\path\\sample\\Antwerp\\Reactor03",
+            "Paths": ["\\\\path\\sample\\Antwerp\\Reactor03"],
             "TemplateName": "Reactor",
             "CategoryNames": [],
             "ExtendedProperties": {},
@@ -45,28 +56,28 @@ SAMPLE_CHILD_ATTRIBUTES = {
     "Links": {},
     "Items": [
         {
-            "WebId": "2",
+            "WebId": "A2",
             "Name": "Active",
             "Description": "Sample",
             "HasChildren": False,
             "Step": False,
             "Type": "Double",
-            "Path": "\\\\path\\sample\\Antwerp|Active",
+            "Path": "\\\\path\\sample\\Antwerp\\Reactor02|Active",
             "DataReferencePlugIn": "PI Point",
             "DefaultUnitsNameAbbreviation": "",
             "Span": 200.0,
             "Zero": 0.0,
             "Links": {
-                "PlotData": f"{_BASE_URL}/streams/2/plot",
-                "Recorded": f"{_BASE_URL}/streams/2/plot",
+                "PlotData": f"{_BASE_URL}/streams/A2/plot",
+                "Recorded": f"{_BASE_URL}/streams/A2/recorded",
                 "Attributes": f"{_BASE_URL}/empty-attributes",
             },
         },
         {
-            "WebId": "3",
+            "WebId": "A3",
             "Name": "Concentration",
             "Description": "Sample description",
-            "Path": "\\\\path\\sample\\Antwerp|Concentration",
+            "Path": "\\\\path\\sample\\Antwerp\\Reactor02|Concentration",
             "Type": "Double",
             "DataReferencePlugIn": "PI Point",
             "DefaultUnitsNameAbbreviation": "",
@@ -75,16 +86,16 @@ SAMPLE_CHILD_ATTRIBUTES = {
             "Span": 200.0,
             "Zero": 0.0,
             "Links": {
-                "PlotData": f"{_BASE_URL}/streams/3/plot",
-                "Recorded": f"{_BASE_URL}/streams/3/plot",
+                "PlotData": f"{_BASE_URL}/streams/A3/plot",
+                "Recorded": f"{_BASE_URL}/streams/A3/recorded",
                 "Attributes": f"{_BASE_URL}/empty-attributes",
             },
         },
         {
-            "WebId": "4",
+            "WebId": "A4",
             "Name": "Lookup Values",
             "Description": "Sample description",
-            "Path": "\\\\path\\sample\\Antwerp|Lookup",
+            "Path": "\\\\path\\sample\\Antwerp\\Reactor02|Lookup",
             "Type": "Double",
             "DataReferencePlugIn": "Table Lookup",
             "DefaultUnitsNameAbbreviation": "",
@@ -93,13 +104,60 @@ SAMPLE_CHILD_ATTRIBUTES = {
             "Span": 200.0,
             "Zero": 0.0,
             "Links": {
-                "PlotData": f"{_BASE_URL}/streams/4/plot",
-                "Recorded": f"{_BASE_URL}/streams/4/plot",
+                "PlotData": f"{_BASE_URL}/streams/A4/plot",
+                "Recorded": f"{_BASE_URL}/streams/A4/recorded",
                 "Attributes": f"{_BASE_URL}/empty-attributes",
             },
         },
+        {
+            "WebId": "A5",
+            "Name": "Location",
+            "Description": "Sample description",
+            "Path": "\\\\path\\sample\\Antwerp\\Reactor02|Location",
+            "Type": "Double",
+            "DataReferencePlugIn": "",
+            "DefaultUnitsNameAbbreviation": "",
+            "HasChildren": False,
+            "Step": False,
+            "Span": None,
+            "Zero": None,
+            "Links": {
+                "Value": f"{_BASE_URL}/attributes/A5/value",
+            },
+        },
+        {
+            "WebId": "A6",
+            "Name": "Location",
+            "Description": "Sample description",
+            "Path": "\\\\path\\sample\\Antwerp|Location",
+            "Type": "Double",
+            "DataReferencePlugIn": "",
+            "DefaultUnitsNameAbbreviation": "",
+            "HasChildren": False,
+            "Step": False,
+            "Span": None,
+            "Zero": None,
+            "Links": {
+                "Value": f"{_BASE_URL}/attributes/A6/value",
+            },
+        },
+        {
+            "WebId": "A7",
+            "Name": "Level",
+            "Description": "Sample description",
+            "Path": "\\\\path\\sample\\Antwerp\\Reactor03|Level",
+            "Type": "Double",
+            "DataReferencePlugIn": "PI Point",
+            "DefaultUnitsNameAbbreviation": "",
+            "HasChildren": False,
+            "Step": False,
+            "Span": None,
+            "Zero": None,
+            "Links": {},
+        },
     ],
 }
+
 
 SAMPLE_DATA_POINTS = [
     {"Timestamp": "2020-01-01T00:00:00Z", "Value": 81.83204, "Good": True},
@@ -154,7 +212,19 @@ def mocked_requests_get(*args, **kwargs):
         response = SAMPLE_CHILD_ATTRIBUTES
         return MockResponse(response, 200)
 
-    if args[0] == f"{_BASE_URL}/streams/2/plot":
+    if args[0] == f"{_BASE_URL}/attributes/A5/value":
+        response = {
+            "Value": "Antwerp",
+        }
+        return MockResponse(response, 200)
+
+    if args[0] == f"{_BASE_URL}/attributes/A6/value":
+        response = {
+            "Value": "Antwerp (Berchem)",
+        }
+        return MockResponse(response, 200)
+
+    if args[0] == f"{_BASE_URL}/streams/A2/plot":
         params = kwargs.get("params", {})
         start_index = int(params.get("startIndex", 0))
 
@@ -163,7 +233,7 @@ def mocked_requests_get(*args, **kwargs):
             response["Items"] = []
         return MockResponse(response, 200)
 
-    if args[0] == f"{_BASE_URL}/streams/2/recorded":
+    if args[0] == f"{_BASE_URL}/streams/A2/recorded":
         response = SAMPLE_DATA_POINTS
         params = kwargs.get("params", {})
         start_date = parse_date(params["startTime"])
@@ -173,7 +243,7 @@ def mocked_requests_get(*args, **kwargs):
         response = {"Items": _get_data(start_date, end_date, max_count)}
         return MockResponse(response, 200)
 
-    if args[0] == f"{_BASE_URL}/streams/3/plot":
+    if args[0] == f"{_BASE_URL}/streams/A3/plot":
         params = kwargs.get("params", {})
         start_index = int(params.get("startIndex", 0))
 
@@ -182,7 +252,7 @@ def mocked_requests_get(*args, **kwargs):
             response["Items"] = []
         return MockResponse(response, 200)
 
-    if args[0] == f"{_BASE_URL}/streams/3/recorded":
+    if args[0] == f"{_BASE_URL}/streams/A3/recorded":
         response = SAMPLE_DATA_POINTS
         params = kwargs.get("params", {})
         start_date = parse_date(params["startTime"])
@@ -207,11 +277,15 @@ def test_search(_) -> None:
         }
     )
     series = list(source.search(SeriesSearch("Test")))
-    assert len(series) == 2
-    assert series[0].series.tags.get("series name") == "Antwerp"
-    assert series[1].series.tags.get("series name") == "Antwerp"
+    assert len(series) == 3
+    assert series[0].series.tags.get("series name") == "Reactor02"
+    assert series[1].series.tags.get("series name") == "Reactor02"
+    assert series[2].series.tags.get("series name") == "Reactor03"
     assert series[0].series.field == "Active"
     assert series[1].series.field == "Concentration"
+    assert series[2].series.field == "Level"
+    assert series[0].get_field_by_name("Location") == "Antwerp"
+    assert series[2].get_field_by_name("Location") == "Antwerp (Berchem)"
 
 
 @patch("requests.Session.get", side_effect=mocked_requests_get)
@@ -228,7 +302,7 @@ def test_get_data_without_limits(_) -> None:
     start_date = parse_date("2020-01-01T00:00:00Z")
     end_date = parse_date("2020-01-02T00:00:00Z")
     data = source.get_data(
-        SeriesSelector("Test", {"__id__": "2"}), start_date, end_date
+        SeriesSelector("Test", {"__id__": "A2"}), start_date, end_date
     )
     assert len(data) == 8
 
@@ -248,7 +322,7 @@ def test_get_data_multiple_requests(_) -> None:
     end_date = parse_date("2020-01-02T10:56:25Z")
 
     data = source.get_data(
-        SeriesSelector("Test", {"__id__": "2"}), start_date, end_date
+        SeriesSelector("Test", {"__id__": "A2"}), start_date, end_date
     )
     assert len(data) == 12
     assert data["ts"][0].as_py() == parse_date("2020-01-01T00:00:00Z")
@@ -270,7 +344,7 @@ def test_get_data_dates_outside_limits(_) -> None:
     end_date = parse_date("2020-02-01T10:56:25Z")
 
     data = source.get_data(
-        SeriesSelector("Test", {"__id__": "2"}), start_date, end_date
+        SeriesSelector("Test", {"__id__": "A2"}), start_date, end_date
     )
     assert len(data) == 17
     assert data["ts"][0].as_py() == parse_date("2020-01-01T00:00:00Z")
@@ -290,10 +364,12 @@ def test_search_with_table_lookup_enabled(_) -> None:
         }
     )
     series = list(source.search(SeriesSearch("Test")))
-    assert len(series) == 3
-    assert series[0].series.tags.get("series name") == "Antwerp"
-    assert series[1].series.tags.get("series name") == "Antwerp"
-    assert series[2].series.tags.get("series name") == "Antwerp"
+    assert len(series) == 4
+    assert series[0].series.tags.get("series name") == "Reactor02"
+    assert series[1].series.tags.get("series name") == "Reactor02"
+    assert series[2].series.tags.get("series name") == "Reactor02"
+    assert series[3].series.tags.get("series name") == "Reactor03"
     assert series[0].series.field == "Active"
     assert series[1].series.field == "Concentration"
     assert series[2].series.field == "Lookup Values"
+    assert series[3].series.field == "Level"
