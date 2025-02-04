@@ -4,6 +4,8 @@ Connections to a https://www.databricks.com/product/databricks-sql[Databricks SQ
 The driver is included in the container image,
 but needs to be installed separately in other deployments.
 
+Databricks recommends using serverless SQL warehouses when available.
+
 All connection options supported in the
 ifdef::sources[]
 <<ODBC, ODBC source>>
