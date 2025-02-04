@@ -10,6 +10,7 @@ Sources with `type = "piwebapi-af"` configure connections to AVEVA (OSIsoft) PI 
 type = "piwebapi-af"
 database_uri = "The self-URI of the database"
 max_returned_items_per_call = 150000
+max_returned_metadata_items_per_call = 150
 verify_ssl = true
 use_table_lookup = false # Use Table Lookup attributes
 timeout_seconds = 60 # The maximum time to wait for a response for a data request

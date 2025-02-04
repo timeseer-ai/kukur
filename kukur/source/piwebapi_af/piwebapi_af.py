@@ -49,6 +49,7 @@ class _RequestProperties:
     timeout_seconds: float
     metadata_request_timeout_seconds: float
     max_returned_items_per_call: int
+    max_returned_metadata_items_per_call: int
 
 
 @dataclass
@@ -76,6 +77,9 @@ class PIWebAPIAssetFrameworkSource:
             max_returned_items_per_call=config.get(
                 "max_returned_items_per_call", 150000
             ),
+            max_returned_metadata_items_per_call=config.get(
+                "max_returned_metadata_items_per_call", 150
+            ),
         )
         self.__database_uri = config["database_uri"]
 
@@ -96,9 +100,9 @@ class PIWebAPIAssetFrameworkSource:
             self.__database_uri,
             verify=self.__request_properties.verify_ssl,
             timeout=self.__request_properties.metadata_request_timeout_seconds,
-            params=dict(
-                maxCount=self.__request_properties.max_returned_items_per_call,
-            ),
+            params={
+                "maxCount": self.__request_properties.max_returned_metadata_items_per_call,
+            },
         )
         response.raise_for_status()
         database = response.json()
@@ -248,7 +252,7 @@ class PIWebAPIAssetFrameworkSource:
                     params={
                         "searchFullHierarchy": "true",
                         "associations": "paths",
-                        "maxCount": self.__request_properties.max_returned_items_per_call,
+                        "maxCount": self.__request_properties.max_returned_metadata_items_per_call,
                     },
                 )
                 response.raise_for_status()
@@ -301,7 +305,7 @@ class PIWebAPIAssetFrameworkSource:
 
     def _get_parents_template(
         self, path: str, element_lookup: Dict[str, Element]
-    ) -> dict[str, str]:
+    ) -> Dict[str, str]:
         extra_metadata = {}
         for parent_path in _get_parent_paths(path)[1:]:
             if parent_path in element_lookup:
@@ -323,7 +327,7 @@ class PIWebAPIAssetFrameworkSource:
                     timeout=self.__request_properties.metadata_request_timeout_seconds,
                     params={
                         "searchFullHierarchy": "true",
-                        "maxCount": self.__request_properties.max_returned_items_per_call,
+                        "maxCount": self.__request_properties.max_returned_metadata_items_per_call,
                     },
                 )
                 attributes_response.raise_for_status()
