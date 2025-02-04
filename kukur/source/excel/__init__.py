@@ -1,7 +1,7 @@
+"""Read Excel files to Apache Arrow tables."""
+
 # SPDX-FileCopyrightText: 2025 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
-
-"""Read Excel files to Apache Arrow tables."""
 
 from typing import List, Optional
 
