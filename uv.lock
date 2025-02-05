@@ -8,13 +8,27 @@ resolution-markers = [
     "python_full_version < '3.10' and platform_machine == 'ppc64le' and sys_platform == 'linux'",
     "python_full_version < '3.10' and platform_machine == 's390x' and sys_platform == 'linux'",
     "python_full_version < '3.10' and platform_machine == 'x86_64' and sys_platform == 'linux'",
-    "(python_full_version >= '3.10' and platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or (python_full_version >= '3.10' and sys_platform != 'linux')",
-    "python_full_version >= '3.10' and platform_machine == 'aarch64' and sys_platform == 'linux'",
-    "python_full_version >= '3.10' and platform_machine == 'armv7l' and sys_platform == 'linux'",
-    "python_full_version >= '3.10' and platform_machine == 'i686' and sys_platform == 'linux'",
-    "python_full_version >= '3.10' and platform_machine == 'ppc64le' and sys_platform == 'linux'",
-    "python_full_version >= '3.10' and platform_machine == 's390x' and sys_platform == 'linux'",
-    "python_full_version >= '3.10' and platform_machine == 'x86_64' and sys_platform == 'linux'",
+    "(python_full_version >= '3.12' and platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or (python_full_version >= '3.12' and sys_platform != 'linux')",
+    "(python_full_version == '3.11.*' and platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or (python_full_version == '3.11.*' and sys_platform != 'linux')",
+    "(python_full_version == '3.10.*' and platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or (python_full_version == '3.10.*' and sys_platform != 'linux')",
+    "python_full_version >= '3.12' and platform_machine == 'aarch64' and sys_platform == 'linux'",
+    "python_full_version == '3.11.*' and platform_machine == 'aarch64' and sys_platform == 'linux'",
+    "python_full_version == '3.10.*' and platform_machine == 'aarch64' and sys_platform == 'linux'",
+    "python_full_version >= '3.12' and platform_machine == 'armv7l' and sys_platform == 'linux'",
+    "python_full_version == '3.11.*' and platform_machine == 'armv7l' and sys_platform == 'linux'",
+    "python_full_version == '3.10.*' and platform_machine == 'armv7l' and sys_platform == 'linux'",
+    "python_full_version >= '3.12' and platform_machine == 'i686' and sys_platform == 'linux'",
+    "python_full_version == '3.11.*' and platform_machine == 'i686' and sys_platform == 'linux'",
+    "python_full_version == '3.10.*' and platform_machine == 'i686' and sys_platform == 'linux'",
+    "python_full_version >= '3.12' and platform_machine == 'ppc64le' and sys_platform == 'linux'",
+    "python_full_version == '3.11.*' and platform_machine == 'ppc64le' and sys_platform == 'linux'",
+    "python_full_version == '3.10.*' and platform_machine == 'ppc64le' and sys_platform == 'linux'",
+    "python_full_version >= '3.12' and platform_machine == 's390x' and sys_platform == 'linux'",
+    "python_full_version == '3.11.*' and platform_machine == 's390x' and sys_platform == 'linux'",
+    "python_full_version == '3.10.*' and platform_machine == 's390x' and sys_platform == 'linux'",
+    "python_full_version >= '3.12' and platform_machine == 'x86_64' and sys_platform == 'linux'",
+    "python_full_version == '3.11.*' and platform_machine == 'x86_64' and sys_platform == 'linux'",
+    "python_full_version == '3.10.*' and platform_machine == 'x86_64' and sys_platform == 'linux'",
 ]
 
 [[package]]
@@ -319,7 +333,7 @@ name = "click"
 version = "8.1.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "(platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64' and platform_system == 'Windows') or (platform_system == 'Windows' and sys_platform != 'linux')" },
+    { name = "colorama", marker = "sys_platform == 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/96/d3/f04c7bfcf5c1862a2a5b845c6b2b360488cf47af55dfa79c98f6a6bf98b5/click-8.1.7.tar.gz", hash = "sha256:ca9853ad459e787e2192211578cc907e7594e294c7ccc834310722b41b9ca6de", size = 336121 }
 wheels = [
@@ -474,6 +488,15 @@ wheels = [
 ]
 
 [[package]]
+name = "et-xmlfile"
+version = "2.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d3/38/af70d7ab1ae9d4da450eeec1fa3918940a5fafb9055e934af8d6eb0c2313/et_xmlfile-2.0.0.tar.gz", hash = "sha256:dab3f4764309081ce75662649be815c4c9081e88f0837825f90fd28317d4da54", size = 17234 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c1/8b/5fe2cc11fee489817272089c4203e679c63b570a5aaeb18d852ae3cbba6a/et_xmlfile-2.0.0-py3-none-any.whl", hash = "sha256:7a91720bc756843502c3b7504c77b8fe44217c85c537d85037f0f536151b2caa", size = 18059 },
+]
+
+[[package]]
 name = "exceptiongroup"
 version = "1.2.2"
 source = { registry = "https://pypi.org/simple" }
@@ -579,7 +602,7 @@ name = "importlib-metadata"
 version = "8.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "zipp", marker = "(platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or sys_platform != 'linux'" },
+    { name = "zipp", marker = "(python_full_version < '3.11' and platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or (python_full_version < '3.11' and sys_platform != 'linux')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/cd/12/33e59336dca5be0c398a7482335911a33aa0e20776128f038019f1a95f1b/importlib_metadata-8.5.0.tar.gz", hash = "sha256:71522656f0abace1d072b9e5481a48f07c138e00f079c38c8f883823f9c26bd7", size = 55304 }
 wheels = [
@@ -662,6 +685,9 @@ datafusion = [
 delta = [
     { name = "deltalake" },
 ]
+excel = [
+    { name = "openpyxl" },
+]
 influxdb = [
     { name = "influxdb" },
 ]
@@ -712,6 +738,7 @@ requires-dist = [
     { name = "deltalake", marker = "extra == 'delta'" },
     { name = "influxdb", marker = "extra == 'influxdb'" },
     { name = "numpy", marker = "extra == 'numpy'" },
+    { name = "openpyxl", marker = "extra == 'excel'" },
     { name = "pg8000", marker = "extra == 'postgresql'" },
     { name = "psycopg", extras = ["binary"], marker = "extra == 'postgresql'" },
     { name = "pyarrow", specifier = ">=16.0.0" },
@@ -1053,6 +1080,18 @@ wheels = [
 ]
 
 [[package]]
+name = "openpyxl"
+version = "3.1.5"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "et-xmlfile" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3d/f9/88d94a75de065ea32619465d2f77b29a0469500e99012523b91cc4141cd1/openpyxl-3.1.5.tar.gz", hash = "sha256:cf0e3cf56142039133628b5acffe8ef0c12bc902d2aadd3e0fe5878dc08d1050", size = 186464 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c0/da/977ded879c29cbd04de313843e76868e6e13408a94ed6b987245dc7c8506/openpyxl-3.1.5-py2.py3-none-any.whl", hash = "sha256:5282c12b107bffeef825f4617dc029afaf41d0ea60823bbb665ef3079dc79de2", size = 250910 },
+]
+
+[[package]]
 name = "packaging"
 version = "24.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1106,7 +1145,7 @@ name = "portalocker"
 version = "2.10.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pywin32", marker = "(platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64' and platform_system == 'Windows') or (platform_system == 'Windows' and sys_platform != 'linux')" },
+    { name = "pywin32", marker = "sys_platform == 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/ed/d3/c6c64067759e87af98cc668c1cc75171347d0f1577fab7ca3749134e3cd4/portalocker-2.10.1.tar.gz", hash = "sha256:ef1bf844e878ab08aee7e40184156e1151f228f103aa5c6bd0724cc330960f8f", size = 40891 }
 wheels = [
@@ -1629,13 +1668,27 @@ name = "types-requests"
 version = "2.32.0.20241016"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "(python_full_version >= '3.10' and platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or (python_full_version >= '3.10' and sys_platform != 'linux')",
-    "python_full_version >= '3.10' and platform_machine == 'aarch64' and sys_platform == 'linux'",
-    "python_full_version >= '3.10' and platform_machine == 'armv7l' and sys_platform == 'linux'",
-    "python_full_version >= '3.10' and platform_machine == 'i686' and sys_platform == 'linux'",
-    "python_full_version >= '3.10' and platform_machine == 'ppc64le' and sys_platform == 'linux'",
-    "python_full_version >= '3.10' and platform_machine == 's390x' and sys_platform == 'linux'",
-    "python_full_version >= '3.10' and platform_machine == 'x86_64' and sys_platform == 'linux'",
+    "(python_full_version >= '3.12' and platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or (python_full_version >= '3.12' and sys_platform != 'linux')",
+    "(python_full_version == '3.11.*' and platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or (python_full_version == '3.11.*' and sys_platform != 'linux')",
+    "(python_full_version == '3.10.*' and platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or (python_full_version == '3.10.*' and sys_platform != 'linux')",
+    "python_full_version >= '3.12' and platform_machine == 'aarch64' and sys_platform == 'linux'",
+    "python_full_version == '3.11.*' and platform_machine == 'aarch64' and sys_platform == 'linux'",
+    "python_full_version == '3.10.*' and platform_machine == 'aarch64' and sys_platform == 'linux'",
+    "python_full_version >= '3.12' and platform_machine == 'armv7l' and sys_platform == 'linux'",
+    "python_full_version == '3.11.*' and platform_machine == 'armv7l' and sys_platform == 'linux'",
+    "python_full_version == '3.10.*' and platform_machine == 'armv7l' and sys_platform == 'linux'",
+    "python_full_version >= '3.12' and platform_machine == 'i686' and sys_platform == 'linux'",
+    "python_full_version == '3.11.*' and platform_machine == 'i686' and sys_platform == 'linux'",
+    "python_full_version == '3.10.*' and platform_machine == 'i686' and sys_platform == 'linux'",
+    "python_full_version >= '3.12' and platform_machine == 'ppc64le' and sys_platform == 'linux'",
+    "python_full_version == '3.11.*' and platform_machine == 'ppc64le' and sys_platform == 'linux'",
+    "python_full_version == '3.10.*' and platform_machine == 'ppc64le' and sys_platform == 'linux'",
+    "python_full_version >= '3.12' and platform_machine == 's390x' and sys_platform == 'linux'",
+    "python_full_version == '3.11.*' and platform_machine == 's390x' and sys_platform == 'linux'",
+    "python_full_version == '3.10.*' and platform_machine == 's390x' and sys_platform == 'linux'",
+    "python_full_version >= '3.12' and platform_machine == 'x86_64' and sys_platform == 'linux'",
+    "python_full_version == '3.11.*' and platform_machine == 'x86_64' and sys_platform == 'linux'",
+    "python_full_version == '3.10.*' and platform_machine == 'x86_64' and sys_platform == 'linux'",
 ]
 dependencies = [
     { name = "urllib3", version = "2.2.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
@@ -1704,13 +1757,27 @@ name = "urllib3"
 version = "2.2.3"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "(python_full_version >= '3.10' and platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or (python_full_version >= '3.10' and sys_platform != 'linux')",
-    "python_full_version >= '3.10' and platform_machine == 'aarch64' and sys_platform == 'linux'",
-    "python_full_version >= '3.10' and platform_machine == 'armv7l' and sys_platform == 'linux'",
-    "python_full_version >= '3.10' and platform_machine == 'i686' and sys_platform == 'linux'",
-    "python_full_version >= '3.10' and platform_machine == 'ppc64le' and sys_platform == 'linux'",
-    "python_full_version >= '3.10' and platform_machine == 's390x' and sys_platform == 'linux'",
-    "python_full_version >= '3.10' and platform_machine == 'x86_64' and sys_platform == 'linux'",
+    "(python_full_version >= '3.12' and platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or (python_full_version >= '3.12' and sys_platform != 'linux')",
+    "(python_full_version == '3.11.*' and platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or (python_full_version == '3.11.*' and sys_platform != 'linux')",
+    "(python_full_version == '3.10.*' and platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or (python_full_version == '3.10.*' and sys_platform != 'linux')",
+    "python_full_version >= '3.12' and platform_machine == 'aarch64' and sys_platform == 'linux'",
+    "python_full_version == '3.11.*' and platform_machine == 'aarch64' and sys_platform == 'linux'",
+    "python_full_version == '3.10.*' and platform_machine == 'aarch64' and sys_platform == 'linux'",
+    "python_full_version >= '3.12' and platform_machine == 'armv7l' and sys_platform == 'linux'",
+    "python_full_version == '3.11.*' and platform_machine == 'armv7l' and sys_platform == 'linux'",
+    "python_full_version == '3.10.*' and platform_machine == 'armv7l' and sys_platform == 'linux'",
+    "python_full_version >= '3.12' and platform_machine == 'i686' and sys_platform == 'linux'",
+    "python_full_version == '3.11.*' and platform_machine == 'i686' and sys_platform == 'linux'",
+    "python_full_version == '3.10.*' and platform_machine == 'i686' and sys_platform == 'linux'",
+    "python_full_version >= '3.12' and platform_machine == 'ppc64le' and sys_platform == 'linux'",
+    "python_full_version == '3.11.*' and platform_machine == 'ppc64le' and sys_platform == 'linux'",
+    "python_full_version == '3.10.*' and platform_machine == 'ppc64le' and sys_platform == 'linux'",
+    "python_full_version >= '3.12' and platform_machine == 's390x' and sys_platform == 'linux'",
+    "python_full_version == '3.11.*' and platform_machine == 's390x' and sys_platform == 'linux'",
+    "python_full_version == '3.10.*' and platform_machine == 's390x' and sys_platform == 'linux'",
+    "python_full_version >= '3.12' and platform_machine == 'x86_64' and sys_platform == 'linux'",
+    "python_full_version == '3.11.*' and platform_machine == 'x86_64' and sys_platform == 'linux'",
+    "python_full_version == '3.10.*' and platform_machine == 'x86_64' and sys_platform == 'linux'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/ed/63/22ba4ebfe7430b76388e7cd448d5478814d3032121827c12a2cc287e2260/urllib3-2.2.3.tar.gz", hash = "sha256:e7d814a81dad81e6caf2ec9fdedb284ecc9c73076b62654547cc64ccdcae26e9", size = 300677 }
 wheels = [

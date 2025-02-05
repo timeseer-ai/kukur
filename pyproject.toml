@@ -41,6 +41,7 @@ numpy = ["numpy"]
 piwebapi = ["requests", "requests-kerberos"]
 postgresql = ["psycopg[binary]", "pg8000"]
 redshift = ["redshift_connector"]
+excel = ["openpyxl"]
 
 [dependency-groups]
 dev = [

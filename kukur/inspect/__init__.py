@@ -47,6 +47,8 @@ class ResourceType(Enum):
     ORC = "orc"
     PARQUET = "parquet"
     TABLE = "table"
+    EXCEL_WORKBOOK = "excel-workbook"  # acts as a folder
+    EXCEL_WORKSHEET = "excel-worksheet"
 
 
 @dataclass
@@ -70,6 +72,7 @@ class DataOptions:
     column_names: Optional[List[str]] = None
     csv_delimiter: Optional[str] = None
     csv_header_row: bool = True
+    excel_header_row: bool = True
     default_resource_type: Optional[ResourceType] = None
 
 
