@@ -356,10 +356,28 @@ class PIWebAPIAssetFrameworkSource:
     def _assign_metadata_to_elements(
         self, session, metadata_attributes: list[Dict], elements: List[Element]
     ):
+        attribute_types = {
+            "Boolean",
+            "Single",
+            "Double",
+            "Int16",
+            "Int32",
+            "Int64",
+            "String",
+            "DateTime",
+        }
+
         element_lookup = {element.path: element for element in elements}
         for attribute in sorted(
             metadata_attributes, key=lambda attribute: len(attribute["Path"])
         ):
+            if attribute["Type"] not in attribute_types:
+                logger.debug(
+                    "Skipping attribute %s of type %s",
+                    attribute["Path"],
+                    attribute["Type"],
+                )
+                continue
             attribute_value = self._get_attribute_value(session, attribute)
             if attribute_value is None:
                 continue
