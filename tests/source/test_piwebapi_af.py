@@ -155,6 +155,22 @@ SAMPLE_CHILD_ATTRIBUTES = {
             "Zero": None,
             "Links": {},
         },
+        {
+            "WebId": "A8",
+            "Name": "Enumeration",
+            "Description": "Invalid data type",
+            "Path": "\\\\path\\sample\\Antwerp|Enumeration",
+            "Type": "EnumerationValue",
+            "DataReferencePlugIn": "",
+            "DefaultUnitsNameAbbreviation": "",
+            "HasChildren": False,
+            "Step": False,
+            "Span": None,
+            "Zero": None,
+            "Links": {
+                "Value": f"{_BASE_URL}/attributes/A8/value",
+            },
+        },
     ],
 }
 
@@ -224,6 +240,12 @@ def mocked_requests_get(*args, **kwargs):
         }
         return MockResponse(response, 200)
 
+    if args[0] == f"{_BASE_URL}/attributes/A8/value":
+        response = {
+            "Value": {"Value": "ERROR"},
+        }
+        return MockResponse(response, 200)
+
     if args[0] == f"{_BASE_URL}/streams/A2/plot":
         params = kwargs.get("params", {})
         start_index = int(params.get("startIndex", 0))
@@ -286,6 +308,7 @@ def test_search(_) -> None:
     assert series[2].series.field == "Level"
     assert series[0].get_field_by_name("Location") == "Antwerp"
     assert series[2].get_field_by_name("Location") == "Antwerp (Berchem)"
+    assert series[0].get_field_by_name("Enumeration") is None
 
 
 @patch("requests.Session.get", side_effect=mocked_requests_get)
