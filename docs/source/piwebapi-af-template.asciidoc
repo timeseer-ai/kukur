@@ -9,7 +9,7 @@ only elements of a given Element Template will be returned.
 
 ```toml
 [source.<name>]
-type = "piwebapi-af"
+type = "piwebapi-af-template"
 web_api_uri = "" # Required: the URI of PI Web API
 root_uri = "" # The URI of the root element to start the search
 element_template = "" # The name of the template
