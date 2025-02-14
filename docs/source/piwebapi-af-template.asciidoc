@@ -1,31 +1,37 @@
-// SPDX-FileCopyrightText: 2024 Timeseer.AI
+// SPDX-FileCopyrightText: 2025 Timeseer.AI
 // SPDX-License-Identifier: Apache-2.0
 
-== PI Asset Framework using Web API
+== PI Asset Framework Element Template using Web API
 
-Sources with `type = "piwebapi-af"` configure connections to AVEVA (OSIsoft) PI Asset Framework using the PI Web API.
+Sources with `type = "piwebapi-af-template"` configure connections to AVEVA (OSIsoft) PI Asset Framework using the PI Web API.
+Inside the Asset Framework,
+only elements of a given Element Template will be returned.
 
 ```toml
 [source.<name>]
 type = "piwebapi-af"
-database_uri = "The self-URI of the database"
+web_api_uri = "" # Required: the URI of PI Web API
+root_uri = "" # The URI of the root element to start the search
+element_template = "" # The name of the template
+element_category = "" # optional: return only attributes of elements with this category
+attribute_names = [] # optional: return only these attributes
+attribute_category = "" # optional: return only attributes with this category
 max_returned_items_per_call = 150000
-max_returned_metadata_items_per_call = 150
 verify_ssl = true
-use_table_lookup = false # Use Table Lookup attributes
-timeout_seconds = 60 # The maximum time to wait for a response for a data request
-metadata_request_timeout_seconds = 10 # The maximum time to wait for a response for a metadata request
+timeout_seconds = 60 # The maximum time to wait for a response
 username = "" # optional: username for basic authentication
 password = "" # optional: password for basic authentication
 ```
 
-`database_uri` is a required field.
+`web_api_uri` is a required field.
+It is the URI of PI Web API, for example: `https://pi.example.org/piwebapi/`
 
-`database_uri` is the URI of the `AssetDatabase` resource in PI Web API that corresponds to the PI AF database.
+`root_uri` is the URI of an element resource in a PI Web API database.
+This can be either the URI of the full list of elements in a database or the URI of the child elements of an element in the structure.
 
 To get this value,
 open `https://pi.example.org/piwebapi/assetservers`,
-follow the link to the `Databases` on the correct asset server and copy the `Self` link from the response:
+follow the link to the `Databases` on the correct asset server and copy the `Elements` link from the response:
 
 ```
 {
@@ -59,6 +65,17 @@ follow the link to the `Databases` on the correct asset server and copy the `Sel
 }
 ```
 
+`attribute_names` allows selecting a subset of (child) attributes of an element.
+
+For example:
+
+```toml
+attribute_names = [
+    "Status|Active",
+    "Level",
+]
+```
+
 The PI Web API configuration limits the https://docs.osisoft.com/bundle/pi-web-api/page/restrictions-on-number-of-items-per-call.html[maximum number of items] returned in a response to one request.
 This limit is applied to the number of time series (PI Points) and to the number of values.
 The default setting is `150000`.
@@ -76,13 +93,17 @@ When Basic authentication is required,
 set the `username` and `password` fields in the configuration.
 
 For example,
-this defines an `af` source,
-with the Web API running on `pi.example.org`:
+this defines an `af-template` source,
+with the Web API running on `pi.example.org`.
+
+All attributes of the `Reactor` template will be made available.
 
 ```toml
-[source.af]
-type = "piwebapi-af"
-database_uri = "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI"
+[source.af-template]
+type = "piwebapi-af-template"
+web_api_uri = "https://pi.example.org"
+root_uri = "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/elements"
+template_name = "Reactor"
 ```
 
 When the Web API is using a self-signed certificate and basic authentication,
@@ -90,9 +111,12 @@ the configuration becomes:
 
 ```toml
 [source.af]
-type = "piwebapi-af"
-database_uri = "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI"
+type = "piwebapi-af-template"
+web_api_uri = "https://pi.example.org"
 verify_ssl = false
 username = "auser"
 password = "apassword"
+root_uri = "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/elements"
+template_name = "Reactor"
 ```
+

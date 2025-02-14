@@ -211,7 +211,10 @@ class PIWebAPIAssetFrameworkSource:
                     "__id__": attribute["WebId"],
                 }
 
-                if "DataReferencePlugIn" in attribute:
+                if (
+                    "DataReferencePlugIn" in attribute
+                    and attribute["DataReferencePlugIn"] == "PI Point"
+                ):
                     metadata = _get_metadata(
                         SeriesSelector(selector.source, tags, attribute["Name"]),
                         attribute,
