@@ -163,6 +163,11 @@ class PIWebAPIAssetFrameworkSource:
         for i, element in enumerate(result["GetElements"]["Content"].get("Items")):
             attributes = result["GetAttributes"]["Content"]["Items"][i]
             for attribute in attributes["Content"].get("Items"):
+                if self.__config.attribute_names is not None:
+                    attribute_path = attribute["Path"].split("|", maxsplit=1)[1]
+                    if attribute_path not in self.__config.attribute_names:
+                        continue
+
                 tags = {
                     "series name": element["Name"],
                     "__id__": attribute["WebId"],
@@ -297,18 +302,6 @@ class PIWebAPIAssetFrameworkSource:
             PurePath(web_api_uri.path) / "streams" / selector.tags["__id__"] / "plot"
         )
         return urllib.parse.urlunparse(web_api_uri._replace(path=str(recorded_path)))
-
-
-def _get_parent_paths(path: str) -> list[str]:
-    paths = []
-
-    parent_parts = path.split("\\")
-    for i in range(0, len(parent_parts)):
-        parts = parent_parts[0 : len(parent_parts) - i]
-        parent_path = "\\".join(parts)
-        paths.append(parent_path)
-
-    return paths
 
 
 def _get_metadata(
