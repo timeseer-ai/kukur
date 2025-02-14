@@ -20,6 +20,11 @@ from kukur.exceptions import (
     MissingModuleException,
 )
 from kukur.metadata import fields
+from kukur.source.piwebapi_af.piwebapi_af import (
+    DataRequest,
+    RequestProperties,
+    read_data,
+)
 
 try:
     import urllib3
@@ -28,8 +33,6 @@ try:
     HAS_REQUESTS = True
 except ImportError:
     HAS_REQUESTS = False
-
-from dateutil.parser import isoparse as parse_date
 
 try:
     from requests_kerberos import HTTPKerberosAuth
@@ -47,15 +50,6 @@ HTTP_NOT_FOUND = 404
 
 class MetadataSearchFailedException(KukurException):
     """Raised when the metadata search failed."""
-
-
-@dataclass
-class _RequestProperties:
-    verify_ssl: bool
-    timeout_seconds: float
-    metadata_request_timeout_seconds: float
-    max_returned_items_per_call: int
-    max_returned_metadata_items_per_call: int
 
 
 @dataclass
@@ -86,7 +80,7 @@ class PIWebAPIAssetFrameworkSource:
     """Connect to PI AF using the PI Web API."""
 
     def __init__(self, config: Dict):
-        self.__request_properties = _RequestProperties(
+        self.__request_properties = RequestProperties(
             verify_ssl=config.get("verify_ssl", True),
             timeout_seconds=config.get("timeout_seconds", 60),
             metadata_request_timeout_seconds=config.get(
@@ -236,7 +230,11 @@ class PIWebAPIAssetFrameworkSource:
     ) -> pa.Table:
         """Return data for the given time series in the given time period."""
         data_url = self._get_data_url(selector)
-        return self._read_data(data_url, start_date, end_date, None)
+        return read_data(
+            self._get_session(),
+            self.__request_properties,
+            DataRequest(data_url, start_date, end_date, None),
+        )
 
     def get_plot_data(
         self,
@@ -247,74 +245,10 @@ class PIWebAPIAssetFrameworkSource:
     ):
         """Return plot data for the given time series in the given time period."""
         plot_url = self._get_plot_url(selector)
-        return self._read_data(
-            plot_url, start_date, end_date, {"intervals": interval_count}
-        )
-
-    def _read_data(
-        self,
-        data_url: str,
-        start_date: datetime,
-        end_date: datetime,
-        extra_params: Optional[Dict],
-    ):
-        session = self._get_session()
-        timestamps = []
-        values = []
-        quality_flags = []
-
-        while True:
-            params = {
-                "maxCount": str(self.__request_properties.max_returned_items_per_call),
-                "startTime": start_date.isoformat(),
-                "endTime": end_date.isoformat(),
-                "selectedFields": "Items.Value;Items.Timestamp;Items.Good",
-            }
-            if extra_params is not None:
-                params.update(extra_params)
-            response = session.get(
-                data_url,
-                verify=self.__request_properties.verify_ssl,
-                timeout=self.__request_properties.timeout_seconds,
-                params=params,
-            )
-            if response.status_code == HTTP_NOT_FOUND:
-                logger.warning("No data found for %s", data_url)
-                return pa.Table.from_pydict({"ts": [], "value": [], "quality": []})
-
-            response.raise_for_status()
-
-            data_points = response.json()["Items"]
-
-            for data_point in data_points:
-                timestamp = parse_date(data_point["Timestamp"])
-                value = data_point["Value"]
-                if isinstance(value, dict):
-                    if value.get("IsSystem", False):
-                        continue
-                    values.append(value["Value"])
-                else:
-                    values.append(value)
-                timestamps.append(timestamp)
-                if data_point["Good"]:
-                    quality_flags.append(1)
-                else:
-                    quality_flags.append(0)
-
-            if (
-                len(data_points)
-                != self.__request_properties.max_returned_items_per_call
-            ):
-                break
-
-            start_date = timestamps[-1]
-            while timestamps[-1] == start_date:
-                timestamps.pop()
-                values.pop()
-                quality_flags.pop()
-
-        return pa.Table.from_pydict(
-            {"ts": timestamps, "value": values, "quality": quality_flags}
+        return read_data(
+            self._get_session(),
+            self.__request_properties,
+            DataRequest(plot_url, start_date, end_date, interval_count),
         )
 
     def _get_session(self):
