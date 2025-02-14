@@ -195,26 +195,27 @@ class PIWebAPIAssetFrameworkSource:
         all_elements: List[Element] = []
 
         next_uri: Optional[str] = uri
+        params = {
+            "searchFullHierarchy": "true",
+            "associations": "paths",
+            "maxCount": self.__request_properties.max_returned_metadata_items_per_call,
+        }
         while next_uri is not None:
             try:
                 response = session.get(
                     next_uri,
                     verify=self.__request_properties.verify_ssl,
                     timeout=self.__request_properties.metadata_request_timeout_seconds,
-                    params={
-                        "searchFullHierarchy": "true",
-                        "associations": "paths",
-                        "maxCount": self.__request_properties.max_returned_metadata_items_per_call,
-                    },
+                    params=params,
                 )
                 response.raise_for_status()
             except Exception as err:
                 logger.warning("Failed to fetch all elements for %s", next_uri)
-                logger.exception(err)
-                continue
+                raise err
 
             elements = response.json()
             next_uri = elements["Links"].get("Next")
+            params = {}
 
             for element_data in elements["Items"]:
                 try:
@@ -271,25 +272,26 @@ class PIWebAPIAssetFrameworkSource:
         metadata_attributes: List[Dict] = []
 
         next_uri: Optional[str] = self._get_element_attributes_url()
+        params = {
+            "searchFullHierarchy": "true",
+            "maxCount": self.__request_properties.max_returned_metadata_items_per_call,
+        }
         while next_uri is not None:
             try:
                 attributes_response = session.get(
                     next_uri,
                     verify=self.__request_properties.verify_ssl,
                     timeout=self.__request_properties.metadata_request_timeout_seconds,
-                    params={
-                        "searchFullHierarchy": "true",
-                        "maxCount": self.__request_properties.max_returned_metadata_items_per_call,
-                    },
+                    params=params,
                 )
                 attributes_response.raise_for_status()
             except Exception as err:
                 logger.warning("Failed to fetch all attributes for %s", next_uri)
-                logger.exception(err)
-                continue
+                raise err
             attributes_data = attributes_response.json()
 
             next_uri = attributes_data["Links"].get("Next")
+            params = {}
             attributes = attributes_data["Items"]
 
             new_data_attributes, new_metadata_attributes = self._classify_attributes(
