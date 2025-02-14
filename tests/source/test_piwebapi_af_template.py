@@ -358,6 +358,34 @@ ELEMENTS_RESPONSE = {
     ]
 }
 
+ELEMENT_CATEGORIES_RESPONSE = {
+    "Links": {},
+    "Items": [
+        {
+            "Name": "Production",
+            "Description": "",
+        },
+        {
+            "Name": "Test",
+            "Description": "",
+        },
+    ],
+}
+
+ATTRIBUTE_CATEGORIES_RESPONSE = {
+    "Links": {},
+    "Items": [
+        {
+            "Name": "Measurement",
+            "Description": "",
+        },
+        {
+            "Name": "Status",
+            "Description": "",
+        },
+    ],
+}
+
 
 class MockResponse:
     def __init__(self, json_data, status_code):
@@ -428,6 +456,14 @@ def mocked_requests_get(*args, **kwargs):
 
     if args[0] == f"{WEB_API_URI}elements/A1_1/elements":
         response = ELEMENTS_RESPONSE
+        return MockResponse(response, 200)
+
+    if args[0] == f"{DATABASE_URI}/elementcategories":
+        response = ELEMENT_CATEGORIES_RESPONSE
+        return MockResponse(response, 200)
+
+    if args[0] == f"{DATABASE_URI}/attributecategories":
+        response = ATTRIBUTE_CATEGORIES_RESPONSE
         return MockResponse(response, 200)
 
     raise Exception(args[0])
@@ -602,3 +638,31 @@ def test_get_element_template_request_error(_) -> None:
     )
     with pytest.raises(ElementTemplateQueryFailedException):
         source.list_element_templates()
+
+
+@patch("requests.Session.get", side_effect=mocked_requests_get)
+def test_get_element_categories(_) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "element_template": "Reactor",
+        }
+    )
+    element_categories = source.list_element_categories()
+    assert len(element_categories) == 2
+    assert element_categories[0].name == "Production"
+    assert element_categories[1].name == "Test"
+
+
+@patch("requests.Session.get", side_effect=mocked_requests_get)
+def test_get_attribute_categories(_) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "element_template": "Reactor",
+        }
+    )
+    attribute_categories = source.list_attribute_categories()
+    assert len(attribute_categories) == 2
+    assert attribute_categories[0].name == "Measurement"
+    assert attribute_categories[1].name == "Status"

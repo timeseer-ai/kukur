@@ -103,6 +103,22 @@ class ElementTemplate:
     attribute_templates: list[str]
 
 
+@dataclass
+class ElementCategory:
+    """An element category definition in a PI AF structure."""
+
+    name: str
+    description: str
+
+
+@dataclass
+class AttributeCategory:
+    """An attribute category definition in a PI AF structure."""
+
+    name: str
+    description: str
+
+
 class PIWebAPIAssetFrameworkTemplateSource:
     """Connect to PI AF using the PI Web API."""
 
@@ -396,6 +412,64 @@ class PIWebAPIAssetFrameworkTemplateSource:
             )
 
         return element_templates
+
+    def list_element_categories(self) -> List[ElementCategory]:
+        """Return all element categories in the database."""
+        session = self._get_session()
+        url = f"{self.__config.database_uri}/elementcategories"
+
+        response = session.get(
+            url,
+            verify=self.__request_properties.verify_ssl,
+            timeout=self.__request_properties.metadata_request_timeout_seconds,
+            params={
+                "selectedFields": ";".join(
+                    [
+                        "Items.Name",
+                        "Items.Description",
+                    ]
+                ),
+            },
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        return [
+            ElementCategory(
+                item["Name"],
+                item["Description"],
+            )
+            for item in data["Items"]
+        ]
+
+    def list_attribute_categories(self) -> List[AttributeCategory]:
+        """Return all attribute categories in the database."""
+        session = self._get_session()
+        url = f"{self.__config.database_uri}/attributecategories"
+
+        response = session.get(
+            url,
+            verify=self.__request_properties.verify_ssl,
+            timeout=self.__request_properties.metadata_request_timeout_seconds,
+            params={
+                "selectedFields": ";".join(
+                    [
+                        "Items.Name",
+                        "Items.Description",
+                    ]
+                ),
+            },
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        return [
+            AttributeCategory(
+                item["Name"],
+                item["Description"],
+            )
+            for item in data["Items"]
+        ]
 
     def _get_session(self):
         session = Session()
