@@ -52,6 +52,10 @@ class MetadataSearchFailedException(KukurException):
     """Raised when the metadata search failed."""
 
 
+class ElementTemplateQueryFailedException(KukurException):
+    """Raised when element template query failed."""
+
+
 class ElementInOtherDatabaseException(KukurException):
     """Raised when an element is in another AF database."""
 
@@ -86,7 +90,17 @@ class Element:
 
     web_id: str
     name: str
+    description: str
     has_children: bool
+
+
+@dataclass
+class ElementTemplate:
+    """One element template in a PI AF structure."""
+
+    name: str
+    description: str
+    attribute_templates: list[str]
 
 
 class PIWebAPIAssetFrameworkTemplateSource:
@@ -284,6 +298,7 @@ class PIWebAPIAssetFrameworkTemplateSource:
                     [
                         "Items.WebId",
                         "Items.Name",
+                        "Items.Description",
                         "Items.HasChildren",
                     ]
                 ),
@@ -296,10 +311,91 @@ class PIWebAPIAssetFrameworkTemplateSource:
             Element(
                 item["WebId"],
                 item["Name"],
+                item["Description"],
                 item["HasChildren"],
             )
             for item in data["Items"]
         ]
+
+    def list_element_templates(self) -> List[ElementTemplate]:
+        """Return all element templates on the database."""
+        session = self._get_session()
+
+        element_template_params = {
+            "selectedFields": ";".join(
+                [
+                    "Items.Name",
+                    "Items.Description",
+                    "Items.Links.AttributeTemplates",
+                ]
+            ),
+        }
+        attribute_template_params = {
+            "selectedFields": ";".join(
+                [
+                    "Items.Name",
+                    "Items.Description",
+                ]
+            ),
+        }
+
+        batch_query = {
+            "GetElementTemplates": {
+                "Method": "GET",
+                "Resource": add_query_params(
+                    f"{self.__config.database_uri}/elementtemplates",
+                    element_template_params,
+                ),
+            },
+            "GetAttributeTemplates": {
+                "Method": "GET",
+                "RequestTemplate": {
+                    "Resource": "{0}?"
+                    + urllib.parse.urlencode(
+                        attribute_template_params,
+                        doseq=True,
+                    ),
+                },
+                "Parameters": [
+                    "$.GetElementTemplates.Content.Items[*].Links.AttributeTemplates"
+                ],
+                "ParentIds": ["GetElementTemplates"],
+            },
+        }
+
+        response = session.post(
+            self._get_batch_url(),
+            verify=self.__request_properties.verify_ssl,
+            timeout=self.__request_properties.metadata_request_timeout_seconds,
+            headers={"X-Requested-With": "Kukur"},
+            json=batch_query,
+        )
+        response.raise_for_status()
+        result = response.json()
+
+        if result["GetElementTemplates"]["Status"] != HTTP_OK:
+            raise ElementTemplateQueryFailedException(
+                ";".join(
+                    result["GetElementTemplates"]["Content"].get(
+                        "Errors", ["unknown error"]
+                    )
+                )
+            )
+
+        element_templates = []
+        for i, element_template in enumerate(
+            result["GetElementTemplates"]["Content"].get("Items")
+        ):
+            attributes = result["GetAttributeTemplates"]["Content"]["Items"][i]
+            element_templates.append(
+                ElementTemplate(
+                    element_template["Name"],
+                    element_template["Description"],
+                    [item["Name"] for item in attributes["Content"].get("Items")],
+                )
+            )
+
+        return element_templates
 
     def _get_session(self):
         session = Session()

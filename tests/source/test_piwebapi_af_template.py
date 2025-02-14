@@ -11,6 +11,7 @@ from kukur.exceptions import KukurException
 from kukur.source.piwebapi_af_template import from_config
 from kukur.source.piwebapi_af_template.piwebapi_af_template import (
     ElementInOtherDatabaseException,
+    ElementTemplateQueryFailedException,
 )
 
 WEB_API_URI = "https://pi.example.org/piwebapi/"
@@ -227,6 +228,61 @@ BATCH_RESPONSE = {
     },
 }
 
+BATCH_ELEMENT_TEMPLATES_RESPONSE = {
+    "GetAttributeTemplates": {
+        "Status": 207,
+        "Content": {
+            "Total": 2,
+            "Items": [
+                {
+                    "Status": 200,
+                    "Headers": {"Content-Type": "application/json; charset=utf-8"},
+                    "Content": {
+                        "Items": [
+                            {
+                                "Name": "Reactor",
+                                "Description": "",
+                            },
+                            {
+                                "Name": "Sites",
+                                "Description": "",
+                            },
+                        ]
+                    },
+                },
+                {
+                    "Status": 200,
+                    "Headers": {"Content-Type": "application/json; charset=utf-8"},
+                    "Content": {"Items": []},
+                },
+            ],
+        },
+    },
+    "GetElementTemplates": {
+        "Status": 200,
+        "Headers": {},
+        "Content": {
+            "Total": 2,
+            "Items": [
+                {
+                    "Name": "A1",
+                    "Description": "",
+                    "Links": {
+                        "AttributeTemplates": "https://pi.example.org/piwebapi/elements/A1/attributetemplates"
+                    },
+                },
+                {
+                    "Name": "A2",
+                    "Description": "",
+                    "Links": {
+                        "AttributeTemplates": "https://pi.example.org/piwebapi/elements/A2/attributetemplates"
+                    },
+                },
+            ],
+        },
+    },
+}
+
 BATCH_ERROR = {
     "GetAttributes": {
         "Status": 409,
@@ -244,28 +300,43 @@ BATCH_ERROR = {
     },
 }
 
+BATCH_ERROR_TEMPLATES = {
+    "GetAttributeTemplates": {
+        "Status": 409,
+        "Headers": {},
+        "Content": "The following ParentIds did not complete successfully: GetElements.",
+    },
+    "GetElementTemplates": {
+        "Status": 400,
+        "Headers": {"Content-Type": "application/json; charset=utf-8"},
+        "Content": {
+            "Errors": [
+                "The specified element category was not found in the specified Asset Database."
+            ]
+        },
+    },
+}
+
 
 MAIN_ELEMENTS_RESPONSE = {
     "Items": [
         {
             "WebId": "A1_1",
             "Name": "Reactors",
+            "Description": "Reactors",
             "HasChildren": True,
         },
         {
             "WebId": "A1_2",
             "Name": "Sites",
+            "Description": "Sites",
             "HasChildren": False,
         },
         {
             "WebId": "A1_3",
             "Name": "Test",
+            "Description": "",
             "HasChildren": True,
-        },
-        {
-            "WebId": "A1_4",
-            "Name": "DB",
-            "HasChildren": False,
         },
     ]
 }
@@ -275,11 +346,13 @@ ELEMENTS_RESPONSE = {
         {
             "WebId": "A2_1",
             "Name": "Reactor 1",
+            "Description": "First reactor",
             "HasChildren": True,
         },
         {
             "WebId": "A2_2",
             "Name": "Reactor 2",
+            "Description": "Second reactor",
             "HasChildren": False,
         },
     ]
@@ -302,6 +375,10 @@ def mocked_requests_post(*args, **kwargs):
     if args[0] == f"{WEB_API_URI}batch":
         assert "X-Requested-With" in kwargs["headers"]
 
+        if "GetElementTemplates" in kwargs["json"]:
+            response = BATCH_ELEMENT_TEMPLATES_RESPONSE
+            return MockResponse(response, 200)
+
         if "categoryName=Invalid" in kwargs["json"]["GetElements"]["Resource"]:
             return MockResponse(BATCH_ERROR, 200)
 
@@ -309,6 +386,13 @@ def mocked_requests_post(*args, **kwargs):
             response = BATCH_RESPONSE
             return MockResponse(response, 200)
 
+    raise Exception(args[0])
+
+
+def mocked_requests_batch_error_templates(*args, **kwargs):
+    if args[0] == f"{WEB_API_URI}batch":
+        assert "X-Requested-With" in kwargs["headers"]
+        return MockResponse(BATCH_ERROR_TEMPLATES, 200)
     raise Exception(args[0])
 
 
@@ -462,7 +546,7 @@ def test_get_elements(_) -> None:
         }
     )
     elements = list(source.list_elements(None))
-    assert len(elements) == 4
+    assert len(elements) == 3
     assert elements[0].name == "Reactors"
 
 
@@ -492,3 +576,29 @@ def test_get_elements_for_ivalid_element(_) -> None:
     element_web_id = "B1_1"
     with pytest.raises(ElementInOtherDatabaseException):
         list(source.list_elements(element_web_id))
+
+
+@patch("requests.Session.post", side_effect=mocked_requests_post)
+def test_get_element_templates(_) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "element_template": "Reactor",
+        }
+    )
+    element_templates = source.list_element_templates()
+    assert len(element_templates) == 2
+    assert len(element_templates[0].attribute_templates) == 2
+    assert len(element_templates[1].attribute_templates) == 0
+
+
+@patch("requests.Session.post", side_effect=mocked_requests_batch_error_templates)
+def test_get_element_template_request_error(_) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "element_template": "Reactor",
+        }
+    )
+    with pytest.raises(ElementTemplateQueryFailedException):
+        source.list_element_templates()
