@@ -67,6 +67,7 @@ class AFTemplateSourceConfiguration:
     element_template: str
     element_category: Optional[str]
     attribute_names: Optional[List[str]]
+    attribute_category: Optional[str]
 
     @classmethod
     def from_data(cls, config: Dict) -> "AFTemplateSourceConfiguration":
@@ -77,6 +78,7 @@ class AFTemplateSourceConfiguration:
             config["element_template"],
             config.get("element_category"),
             config.get("attribute_names"),
+            config.get("attribute_category"),
         )
 
 
@@ -117,11 +119,40 @@ class PIWebAPIAssetFrameworkSource:
         element_params = {
             "templateName": self.__config.element_template,
             "searchFullHierarchy": "true",
-            "selectedFields": "Items.Name;Items.WebId;Items.Description;Items.Links.Attributes",
+            "selectedFields": ";".join(
+                [
+                    "Items.Name",
+                    "Items.WebId",
+                    "Items.Description",
+                    "Items.CategoryNames",
+                    "Items.Links.Attributes",
+                ]
+            ),
             "maxCount": self.__request_properties.max_returned_items_per_call,
         }
         if self.__config.element_category is not None:
             element_params["categoryName"] = self.__config.element_category
+        attribute_params = {
+            "searchFullHierarchy": "true",
+            "selectedFields": ";".join(
+                [
+                    "Items.WebId",
+                    "Items.Name",
+                    "Items.Description",
+                    "Items.Path",
+                    "Items.CategoryNames",
+                    "Items.DataReferencePlugin",
+                    "Items.Type",
+                    "Items.DefaultUnitsNameAbbreviation",
+                    "Items.Step",
+                    "Items.Span",
+                    "Items.Zero",
+                ]
+            ),
+            "maxCount": self.__request_properties.max_returned_items_per_call,
+        }
+        if self.__config.attribute_category is not None:
+            attribute_params["categoryName"] = self.__config.attribute_category
         batch_query = {
             "GetElements": {
                 "Method": "GET",
@@ -135,24 +166,7 @@ class PIWebAPIAssetFrameworkSource:
                 "RequestTemplate": {
                     "Resource": "{0}?"
                     + urllib.parse.urlencode(
-                        {
-                            "searchFullHierarchy": "true",
-                            "selectedFields": ";".join(
-                                [
-                                    "Items.WebId",
-                                    "Items.Name",
-                                    "Items.Description",
-                                    "Items.Path",
-                                    "Items.DataReferencePlugin",
-                                    "Items.Type",
-                                    "Items.DefaultUnitsNameAbbreviation",
-                                    "Items.Step",
-                                    "Items.Span",
-                                    "Items.Zero",
-                                ]
-                            ),
-                            "maxCount": self.__request_properties.max_returned_items_per_call,
-                        },
+                        attribute_params,
                         doseq=True,
                     ),
                 },
@@ -179,6 +193,12 @@ class PIWebAPIAssetFrameworkSource:
             )
 
         for i, element in enumerate(result["GetElements"]["Content"].get("Items")):
+            element_metadata = {self.__config.element_template: element["Name"]}
+            if len(element["CategoryNames"]) > 0:
+                element_metadata["Element category"] = ";".join(
+                    element["CategoryNames"]
+                )
+
             attributes = result["GetAttributes"]["Content"]["Items"][i]
             for attribute in attributes["Content"].get("Items"):
                 if self.__config.attribute_names is not None:
@@ -195,7 +215,7 @@ class PIWebAPIAssetFrameworkSource:
                     metadata = _get_metadata(
                         SeriesSelector(selector.source, tags, attribute["Name"]),
                         attribute,
-                        {self.__config.element_template: element["Name"]},
+                        element_metadata,
                     )
                     if metadata is not None:
                         if metadata.get_field(fields.Description) == "":
@@ -355,6 +375,11 @@ def _get_metadata(
     if attribute_type not in attribute_types:
         return None
     metadata.set_field(fields.DataType, attribute_types[attribute_type])
+
+    if len(attribute["CategoryNames"]) > 0:
+        metadata.set_field_by_name(
+            "Attribute category", ";".join(attribute["CategoryNames"])
+        )
 
     metadata.set_field_by_name("Path", attribute["Path"])
     for k, v in extra_metadata.items():
