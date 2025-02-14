@@ -11,7 +11,8 @@ from kukur.exceptions import KukurException
 from kukur.source.piwebapi_af_template import from_config
 
 WEB_API_URI = "https://pi.example.org/piwebapi/"
-ROOT_URI = "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/elements"
+DATABASE_URI = f"{WEB_API_URI}/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI"
+ROOT_URI = f"{DATABASE_URI}/elements"
 
 BATCH_RESPONSE = {
     "GetAttributes": {
@@ -270,7 +271,7 @@ def mocked_requests_post(*args, **kwargs):
 def test_search(_) -> None:
     source = from_config(
         {
-            "web_api_uri": WEB_API_URI,
+            "database_uri": DATABASE_URI,
             "root_uri": ROOT_URI,
             "element_template": "Reactor",
         }
@@ -307,7 +308,7 @@ def test_search(_) -> None:
 def test_search_attribute_filter(_) -> None:
     source = from_config(
         {
-            "web_api_uri": WEB_API_URI,
+            "database_uri": DATABASE_URI,
             "root_uri": ROOT_URI,
             "element_template": "Reactor",
             "attribute_names": ["Level", "Status|Active"],
@@ -326,7 +327,7 @@ def test_search_attribute_filter(_) -> None:
 def test_search_invalid_category(_) -> None:
     source = from_config(
         {
-            "web_api_uri": WEB_API_URI,
+            "database_uri": DATABASE_URI,
             "root_uri": ROOT_URI,
             "element_template": "Reactor",
             "element_category": "Invalid",

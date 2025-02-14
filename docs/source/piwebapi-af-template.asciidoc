@@ -10,7 +10,7 @@ only elements of a given Element Template will be returned.
 ```toml
 [source.<name>]
 type = "piwebapi-af-template"
-web_api_uri = "" # Required: the URI of PI Web API
+database_uri = "" # Required: the PI Web API self URI of the AF database
 root_uri = "" # The URI of the root element to start the search
 element_template = "" # The name of the template
 element_category = "" # optional: return only attributes of elements with this category
@@ -23,8 +23,8 @@ username = "" # optional: username for basic authentication
 password = "" # optional: password for basic authentication
 ```
 
-`web_api_uri` is a required field.
-It is the URI of PI Web API, for example: `https://pi.example.org/piwebapi/`
+`database_uri` is a required field.
+It is the `self` URI of a database in PI Web API, for example: `https://pi.example.org/piwebapi/assetdatabases/ABC`.
 
 `root_uri` is the URI of an element resource in a PI Web API database.
 This can be either the URI of the full list of elements in a database or the URI of the child elements of an element in the structure.
@@ -101,7 +101,7 @@ All attributes of the `Reactor` template will be made available.
 ```toml
 [source.af-template]
 type = "piwebapi-af-template"
-web_api_uri = "https://pi.example.org"
+database_uri = "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI"
 root_uri = "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/elements"
 template_name = "Reactor"
 ```
@@ -112,7 +112,7 @@ the configuration becomes:
 ```toml
 [source.af]
 type = "piwebapi-af-template"
-web_api_uri = "https://pi.example.org"
+database_uri = "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI"
 verify_ssl = false
 username = "auser"
 password = "apassword"

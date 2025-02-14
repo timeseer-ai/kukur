@@ -56,7 +56,7 @@ class MetadataSearchFailedException(KukurException):
 class AFTemplateSourceConfiguration:
     """Configuration to find PI AF attributes of a template."""
 
-    web_api_uri: str
+    database_uri: str
     root_uri: str
     element_template: str
     element_category: Optional[str]
@@ -67,7 +67,7 @@ class AFTemplateSourceConfiguration:
     def from_data(cls, config: Dict) -> "AFTemplateSourceConfiguration":
         """Create an object from a configuration dict."""
         return cls(
-            config["web_api_uri"],
+            config["database_uri"],
             config["root_uri"],
             config["element_template"],
             config.get("element_category"),
@@ -76,7 +76,7 @@ class AFTemplateSourceConfiguration:
         )
 
 
-class PIWebAPIAssetFrameworkSource:
+class PIWebAPIAssetFrameworkTemplateSource:
     """Connect to PI AF using the PI Web API."""
 
     def __init__(self, config: Dict):
@@ -170,7 +170,7 @@ class PIWebAPIAssetFrameworkSource:
         }
 
         response = session.post(
-            urllib.parse.urljoin(self.__config.web_api_uri, "batch"),
+            self._get_batch_url(),
             verify=self.__request_properties.verify_ssl,
             timeout=self.__request_properties.metadata_request_timeout_seconds,
             headers={"X-Requested-With": "Kukur"},
@@ -261,22 +261,30 @@ class PIWebAPIAssetFrameworkSource:
             session.auth = self.__basic_auth
         return session
 
+    def _get_batch_url(self) -> str:
+        database_uri = urllib.parse.urlparse(self.__config.database_uri)
+        batch_path = PurePath(database_uri.path).parent.parent / "batch"
+        return urllib.parse.urlunparse(database_uri._replace(path=str(batch_path)))
+
     def _get_data_url(self, selector: SeriesSelector) -> str:
-        web_api_uri = urllib.parse.urlparse(self.__config.web_api_uri)
+        database_uri = urllib.parse.urlparse(self.__config.database_uri)
         recorded_path = (
-            PurePath(web_api_uri.path)
+            PurePath(database_uri.path).parent.parent
             / "streams"
             / selector.tags["__id__"]
             / "recorded"
         )
-        return urllib.parse.urlunparse(web_api_uri._replace(path=str(recorded_path)))
+        return urllib.parse.urlunparse(database_uri._replace(path=str(recorded_path)))
 
     def _get_plot_url(self, selector: SeriesSelector) -> str:
-        web_api_uri = urllib.parse.urlparse(self.__config.web_api_uri)
-        recorded_path = (
-            PurePath(web_api_uri.path) / "streams" / selector.tags["__id__"] / "plot"
+        database_uri = urllib.parse.urlparse(self.__config.database_uri)
+        plot_path = (
+            PurePath(database_uri.path).parent.parent
+            / "streams"
+            / selector.tags["__id__"]
+            / "plot"
         )
-        return urllib.parse.urlunparse(web_api_uri._replace(path=str(recorded_path)))
+        return urllib.parse.urlunparse(database_uri._replace(path=str(plot_path)))
 
 
 def _get_metadata(
@@ -324,15 +332,15 @@ def _get_metadata(
     return metadata
 
 
-def from_config(config: Dict) -> PIWebAPIAssetFrameworkSource:
+def from_config(config: Dict) -> PIWebAPIAssetFrameworkTemplateSource:
     """Create a new PIWebAPIAssetFrameworkSource."""
-    if "web_api_uri" not in config:
+    if "database_uri" not in config:
         raise InvalidSourceException(
-            'piwebapi-af sources require a "web_api_uri" entry'
+            'piwebapi-af-template sources require a "database_uri" entry'
         )
     if not HAS_REQUESTS:
         raise MissingModuleException("requests", "piwebapi-af")
-    return PIWebAPIAssetFrameworkSource(config)
+    return PIWebAPIAssetFrameworkTemplateSource(config)
 
 
 def add_query_params(url: str, params: Dict) -> str:
