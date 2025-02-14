@@ -245,6 +245,47 @@ BATCH_ERROR = {
 }
 
 
+MAIN_ELEMENTS_RESPONSE = {
+    "Items": [
+        {
+            "WebId": "A1_1",
+            "Name": "Reactors",
+            "HasChildren": True,
+        },
+        {
+            "WebId": "A1_2",
+            "Name": "Sites",
+            "HasChildren": False,
+        },
+        {
+            "WebId": "A1_3",
+            "Name": "Test",
+            "HasChildren": True,
+        },
+        {
+            "WebId": "A1_4",
+            "Name": "DB",
+            "HasChildren": False,
+        },
+    ]
+}
+
+ELEMENTS_RESPONSE = {
+    "Items": [
+        {
+            "WebId": "A2_1",
+            "Name": "Reactor 1",
+            "HasChildren": True,
+        },
+        {
+            "WebId": "A2_2",
+            "Name": "Reactor 2",
+            "HasChildren": False,
+        },
+    ]
+}
+
+
 class MockResponse:
     def __init__(self, json_data, status_code):
         self.json_data = json_data
@@ -274,6 +315,36 @@ def mocked_requests_post(*args, **kwargs):
 def mocked_requests_get(*args, **kwargs):
     if args[0] == f"{ROOT_URI}":
         return MockResponse({"Links": {"Database": DATABASE_URI}}, 200)
+
+    if args[0] == f"{DATABASE_URI}/elements":
+        response = MAIN_ELEMENTS_RESPONSE
+        return MockResponse(response, 200)
+
+    if args[0] == f"{WEB_API_URI}elements/A1_1":
+        response = {
+            "WebId": "A1_1",
+            "Name": "Reactors",
+            "HasChildren": True,
+            "Links": {
+                "Database": DATABASE_URI,
+            },
+        }
+        return MockResponse(response, 200)
+
+    if args[0] == f"{WEB_API_URI}elements/B1_1":
+        response = {
+            "WebId": "A1_1",
+            "Name": "Reactors",
+            "HasChildren": True,
+            "Links": {
+                "Database": "https://pi.example.org/piwebapi/hacker",
+            },
+        }
+        return MockResponse(response, 200)
+
+    if args[0] == f"{WEB_API_URI}elements/A1_1/elements":
+        response = ELEMENTS_RESPONSE
+        return MockResponse(response, 200)
 
     raise Exception(args[0])
 
@@ -380,3 +451,44 @@ def test_search_invalid_root_uri(_post, _get) -> None:
     )
     with pytest.raises(ElementInOtherDatabaseException):
         list(source.search(SeriesSearch("Test")))
+
+
+@patch("requests.Session.get", side_effect=mocked_requests_get)
+def test_get_elements(_) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "element_template": "Reactor",
+        }
+    )
+    elements = list(source.list_elements(None))
+    assert len(elements) == 4
+    assert elements[0].name == "Reactors"
+
+
+@patch("requests.Session.get", side_effect=mocked_requests_get)
+def test_get_elements_for_element(_) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "element_template": "Reactor",
+        }
+    )
+    element_web_id = "A1_1"
+    elements = list(source.list_elements(element_web_id))
+    assert len(elements) == 2
+    assert elements[0].name == "Reactor 1"
+    assert elements[1].name == "Reactor 2"
+
+
+@patch("requests.Session.get", side_effect=mocked_requests_get)
+def test_get_elements_for_ivalid_element(_) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "element_template": "Reactor",
+        }
+    )
+    element_web_id = "B1_1"
+    with pytest.raises(ElementInOtherDatabaseException):
+        list(source.list_elements(element_web_id))
