@@ -9,10 +9,13 @@ from kukur import DataType
 from kukur.base import SeriesSearch
 from kukur.exceptions import KukurException
 from kukur.source.piwebapi_af_template import from_config
+from kukur.source.piwebapi_af_template.piwebapi_af_template import (
+    ElementInOtherDatabaseException,
+)
 
 WEB_API_URI = "https://pi.example.org/piwebapi/"
 DATABASE_URI = f"{WEB_API_URI}/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI"
-ROOT_URI = f"{DATABASE_URI}/elements"
+ROOT_URI = f"{WEB_API_URI}/elements/F1EmMyvy4jYfVEyvgGiLVLmYvAe-IYOLTf7xGIoGBFvZT1mwVk0tVFMtUElcVElNRVNFRVJcUkVBQ1RPUlM"
 
 BATCH_RESPONSE = {
     "GetAttributes": {
@@ -242,18 +245,19 @@ BATCH_ERROR = {
 }
 
 
+class MockResponse:
+    def __init__(self, json_data, status_code):
+        self.json_data = json_data
+        self.status_code = status_code
+
+    def raise_for_status(self):
+        return
+
+    def json(self):
+        return self.json_data
+
+
 def mocked_requests_post(*args, **kwargs):
-    class MockResponse:
-        def __init__(self, json_data, status_code):
-            self.json_data = json_data
-            self.status_code = status_code
-
-        def raise_for_status(self):
-            return
-
-        def json(self):
-            return self.json_data
-
     if args[0] == f"{WEB_API_URI}batch":
         assert "X-Requested-With" in kwargs["headers"]
 
@@ -267,12 +271,27 @@ def mocked_requests_post(*args, **kwargs):
     raise Exception(args[0])
 
 
+def mocked_requests_get(*args, **kwargs):
+    if args[0] == f"{ROOT_URI}":
+        return MockResponse({"Links": {"Database": DATABASE_URI}}, 200)
+
+    raise Exception(args[0])
+
+
+def mocked_requests_get_invalid_database(*args, **kwargs):
+    if args[0] == f"{ROOT_URI}":
+        return MockResponse(
+            {"Links": {"Database": "https://pi.example.org/piwebapi/hacker"}}, 200
+        )
+
+    raise Exception(args[0])
+
+
 @patch("requests.Session.post", side_effect=mocked_requests_post)
-def test_search(_) -> None:
+def test_search(_post) -> None:
     source = from_config(
         {
             "database_uri": DATABASE_URI,
-            "root_uri": ROOT_URI,
             "element_template": "Reactor",
         }
     )
@@ -305,11 +324,10 @@ def test_search(_) -> None:
 
 
 @patch("requests.Session.post", side_effect=mocked_requests_post)
-def test_search_attribute_filter(_) -> None:
+def test_search_attribute_filter(_post) -> None:
     source = from_config(
         {
             "database_uri": DATABASE_URI,
-            "root_uri": ROOT_URI,
             "element_template": "Reactor",
             "attribute_names": ["Level", "Status|Active"],
         }
@@ -324,14 +342,41 @@ def test_search_attribute_filter(_) -> None:
 
 
 @patch("requests.Session.post", side_effect=mocked_requests_post)
-def test_search_invalid_category(_) -> None:
+def test_search_invalid_category(_post) -> None:
     source = from_config(
         {
             "database_uri": DATABASE_URI,
-            "root_uri": ROOT_URI,
             "element_template": "Reactor",
             "element_category": "Invalid",
         }
     )
     with pytest.raises(KukurException):
+        list(source.search(SeriesSearch("Test")))
+
+
+@patch("requests.Session.post", side_effect=mocked_requests_post)
+@patch("requests.Session.get", side_effect=mocked_requests_get)
+def test_search_root_uri(_post, _get) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "root_uri": ROOT_URI,
+            "element_template": "Reactor",
+        }
+    )
+    series_metadata = list(source.search(SeriesSearch("Test")))
+    assert len(series_metadata) == 10
+
+
+@patch("requests.Session.post", side_effect=mocked_requests_post)
+@patch("requests.Session.get", side_effect=mocked_requests_get_invalid_database)
+def test_search_invalid_root_uri(_post, _get) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "root_uri": ROOT_URI,
+            "element_template": "Reactor",
+        }
+    )
+    with pytest.raises(ElementInOtherDatabaseException):
         list(source.search(SeriesSearch("Test")))

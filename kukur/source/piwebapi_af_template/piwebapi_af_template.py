@@ -52,12 +52,16 @@ class MetadataSearchFailedException(KukurException):
     """Raised when the metadata search failed."""
 
 
+class ElementInOtherDatabaseException(KukurException):
+    """Raised when an element is in another AF database."""
+
+
 @dataclass
 class AFTemplateSourceConfiguration:
     """Configuration to find PI AF attributes of a template."""
 
     database_uri: str
-    root_uri: str
+    root_uri: Optional[str]
     element_template: str
     element_category: Optional[str]
     attribute_names: Optional[List[str]]
@@ -68,12 +72,21 @@ class AFTemplateSourceConfiguration:
         """Create an object from a configuration dict."""
         return cls(
             config["database_uri"],
-            config["root_uri"],
+            config.get("root_uri"),
             config["element_template"],
             config.get("element_category"),
             config.get("attribute_names"),
             config.get("attribute_category"),
         )
+
+
+@dataclass
+class Element:
+    """One element in a PI AF structure."""
+
+    web_id: str
+    name: str
+    has_children: bool
 
 
 class PIWebAPIAssetFrameworkTemplateSource:
@@ -151,7 +164,7 @@ class PIWebAPIAssetFrameworkTemplateSource:
             "GetElements": {
                 "Method": "GET",
                 "Resource": add_query_params(
-                    urllib.parse.urljoin(self.__config.root_uri, "elements"),
+                    self._get_element_search_url(session),
                     element_params,
                 ),
             },
@@ -251,6 +264,43 @@ class PIWebAPIAssetFrameworkTemplateSource:
             DataRequest(plot_url, start_date, end_date, interval_count),
         )
 
+    def list_elements(self, element_id: Optional[str]) -> List[Element]:
+        """Return all direct child elements."""
+        session = self._get_session()
+        if element_id is None:
+            url = f"{self.__config.database_uri}/elements"
+        else:
+            self._verify_element_in_database(
+                session, f"{self._get_elements_url()}/{element_id}"
+            )
+
+            url = f"{self._get_elements_url()}/{element_id}/elements"
+        response = session.get(
+            url,
+            verify=self.__request_properties.verify_ssl,
+            timeout=self.__request_properties.metadata_request_timeout_seconds,
+            params={
+                "selectedFields": ";".join(
+                    [
+                        "Items.WebId",
+                        "Items.Name",
+                        "Items.HasChildren",
+                    ]
+                ),
+            },
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        return [
+            Element(
+                item["WebId"],
+                item["Name"],
+                item["HasChildren"],
+            )
+            for item in data["Items"]
+        ]
+
     def _get_session(self):
         session = Session()
         if self.__basic_auth is None and HAS_REQUESTS_KERBEROS:
@@ -264,6 +314,11 @@ class PIWebAPIAssetFrameworkTemplateSource:
     def _get_batch_url(self) -> str:
         database_uri = urllib.parse.urlparse(self.__config.database_uri)
         batch_path = PurePath(database_uri.path).parent.parent / "batch"
+        return urllib.parse.urlunparse(database_uri._replace(path=str(batch_path)))
+
+    def _get_elements_url(self) -> str:
+        database_uri = urllib.parse.urlparse(self.__config.database_uri)
+        batch_path = PurePath(database_uri.path).parent.parent / "elements"
         return urllib.parse.urlunparse(database_uri._replace(path=str(batch_path)))
 
     def _get_data_url(self, selector: SeriesSelector) -> str:
@@ -285,6 +340,34 @@ class PIWebAPIAssetFrameworkTemplateSource:
             / "plot"
         )
         return urllib.parse.urlunparse(database_uri._replace(path=str(plot_path)))
+
+    def _get_element_search_url(self, session) -> str:
+        elements_uri = self._get_elements_url()
+        if self.__config.root_uri is not None:
+            self._verify_element_in_database(session, self.__config.root_uri)
+            elements_uri = f"{self.__config.root_uri}/elements"
+        return elements_uri
+
+    def _verify_element_in_database(self, session, url: str):
+        """Raise an exception when an element is not in the configured database."""
+        response = session.get(
+            url,
+            verify=self.__request_properties.verify_ssl,
+            timeout=self.__request_properties.metadata_request_timeout_seconds,
+            params={
+                "selectedFields": ";".join(
+                    [
+                        "Links.Database",
+                    ]
+                ),
+            },
+        )
+        response.raise_for_status()
+        data = response.json()
+        if data["Links"]["Database"] != self.__config.database_uri:
+            raise ElementInOtherDatabaseException(
+                f"element {url} is not in configured database"
+            )
 
 
 def _get_metadata(

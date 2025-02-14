@@ -11,7 +11,7 @@ only elements of a given Element Template will be returned.
 [source.<name>]
 type = "piwebapi-af-template"
 database_uri = "" # Required: the PI Web API self URI of the AF database
-root_uri = "" # The URI of the root element to start the search
+root_uri = "" # optional: the URI of the root element to start the search
 element_template = "" # The name of the template
 element_category = "" # optional: return only attributes of elements with this category
 attribute_names = [] # optional: return only these attributes
@@ -26,12 +26,13 @@ password = "" # optional: password for basic authentication
 `database_uri` is a required field.
 It is the `self` URI of a database in PI Web API, for example: `https://pi.example.org/piwebapi/assetdatabases/ABC`.
 
+Elements with the provided `element_template` will be searched in the full database unless `root_uri` is provided.
 `root_uri` is the URI of an element resource in a PI Web API database.
-This can be either the URI of the full list of elements in a database or the URI of the child elements of an element in the structure.
+This should be the `Self` URI of an Element in the Asset Framework.
 
 To get this value,
 open `https://pi.example.org/piwebapi/assetservers`,
-follow the link to the `Databases` on the correct asset server and copy the `Elements` link from the response:
+follow the link to the `Databases` on the correct asset server and copy the `Self` link from the response:
 
 ```
 {
@@ -102,7 +103,7 @@ All attributes of the `Reactor` template will be made available.
 [source.af-template]
 type = "piwebapi-af-template"
 database_uri = "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI"
-root_uri = "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/elements"
+root_uri = "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI"
 template_name = "Reactor"
 ```
 
@@ -116,7 +117,7 @@ database_uri = "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvg
 verify_ssl = false
 username = "auser"
 password = "apassword"
-root_uri = "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/elements"
+root_uri = "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI"
 template_name = "Reactor"
 ```
 
