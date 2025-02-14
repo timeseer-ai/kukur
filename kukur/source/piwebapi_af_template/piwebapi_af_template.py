@@ -16,6 +16,7 @@ from kukur import Metadata, SeriesSearch, SeriesSelector
 from kukur.base import DataType, InterpolationType
 from kukur.exceptions import (
     InvalidSourceException,
+    KukurException,
     MissingModuleException,
 )
 from kukur.metadata import fields
@@ -40,7 +41,12 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-NOT_FOUND = 404
+HTTP_OK = 200
+HTTP_NOT_FOUND = 404
+
+
+class MetadataSearchFailedException(KukurException):
+    """Raised when the metadata search failed."""
 
 
 @dataclass
@@ -59,6 +65,7 @@ class AFTemplateSourceConfiguration:
     web_api_uri: str
     root_uri: str
     element_template: str
+    element_category: Optional[str]
     attribute_names: Optional[List[str]]
 
     @classmethod
@@ -68,6 +75,7 @@ class AFTemplateSourceConfiguration:
             config["web_api_uri"],
             config["root_uri"],
             config["element_template"],
+            config.get("element_category"),
             config.get("attribute_names"),
         )
 
@@ -106,17 +114,20 @@ class PIWebAPIAssetFrameworkSource:
 
         session = self._get_session()
 
+        element_params = {
+            "templateName": self.__config.element_template,
+            "searchFullHierarchy": "true",
+            "selectedFields": "Items.Name;Items.WebId;Items.Description;Items.Links.Attributes",
+            "maxCount": self.__request_properties.max_returned_items_per_call,
+        }
+        if self.__config.element_category is not None:
+            element_params["categoryName"] = self.__config.element_category
         batch_query = {
             "GetElements": {
                 "Method": "GET",
                 "Resource": add_query_params(
                     urllib.parse.urljoin(self.__config.root_uri, "elements"),
-                    {
-                        "templateName": self.__config.element_template,
-                        "searchFullHierarchy": "true",
-                        "selectedFields": "Items.Name;Items.WebId;Items.Description;Items.Links.Attributes",
-                        "maxCount": self.__request_properties.max_returned_items_per_call,
-                    },
+                    element_params,
                 ),
             },
             "GetAttributes": {
@@ -159,6 +170,13 @@ class PIWebAPIAssetFrameworkSource:
         )
         response.raise_for_status()
         result = response.json()
+
+        if result["GetElements"]["Status"] != HTTP_OK:
+            raise MetadataSearchFailedException(
+                ";".join(
+                    result["GetElements"]["Content"].get("Errors", ["unknown error"])
+                )
+            )
 
         for i, element in enumerate(result["GetElements"]["Content"].get("Items")):
             attributes = result["GetAttributes"]["Content"]["Items"][i]
@@ -237,7 +255,7 @@ class PIWebAPIAssetFrameworkSource:
                 timeout=self.__request_properties.timeout_seconds,
                 params=params,
             )
-            if response.status_code == NOT_FOUND:
+            if response.status_code == HTTP_NOT_FOUND:
                 logger.warning("No data found for %s", data_url)
                 return pa.Table.from_pydict({"ts": [], "value": [], "quality": []})
 
