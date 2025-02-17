@@ -69,14 +69,14 @@ setuptools==75.8.0
 six==1.17.0
 soupsieve==2.6
 sspilib==0.2.0 ; sys_platform == 'win32'
-toml==0.10.2
+toml==0.10.2 ; python_full_version < '3.11'
 tomli==2.2.1 ; python_full_version < '3.11'
 types-python-dateutil==2.9.0.20241206
 types-pytz==2025.1.0.20250204
 types-pyyaml==6.0.12.20241230
 types-requests==2.31.0.6 ; python_full_version < '3.10'
 types-requests==2.32.0.20241016 ; python_full_version >= '3.10'
-types-toml==0.10.8.20240310
+types-toml==0.10.8.20240310 ; python_full_version < '3.11'
 types-urllib3==1.26.25.14 ; python_full_version < '3.10'
 typing-extensions==4.12.2
 tzdata==2025.1 ; sys_platform == 'win32'
