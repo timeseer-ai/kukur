@@ -46,20 +46,20 @@ follow the link to the `Databases` on the correct asset server and copy the `Sel
       "Path": "\\\\vm-ts-pi\\Timeseer",
       "ExtendedProperties": {},
       "Links": {
-        "Self": "https://pi.timeseer.ai/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI",
-        "Elements": "https://pi.timeseer.ai/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/elements",
-        "ElementTemplates": "https://pi.timeseer.ai/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/elementtemplates",
-        "EventFrames": "https://pi.timeseer.ai/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/eventframes",
-        "AssetServer": "https://pi.timeseer.ai/piwebapi/assetservers/F1RSMyvy4jYfVEyvgGiLVLmYvAVk0tVFMtUEk",
-        "ElementCategories": "https://pi.timeseer.ai/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/elementcategories",
-        "AttributeCategories": "https://pi.timeseer.ai/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/attributecategories",
-        "TableCategories": "https://pi.timeseer.ai/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/tablecategories",
-        "AnalysisCategories": "https://pi.timeseer.ai/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/analysiscategories",
-        "AnalysisTemplates": "https://pi.timeseer.ai/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/analysistemplates",
-        "EnumerationSets": "https://pi.timeseer.ai/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/enumerationsets",
-        "Tables": "https://pi.timeseer.ai/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/tables",
-        "Security": "https://pi.timeseer.ai/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/security",
-        "SecurityEntries": "https://pi.timeseer.ai/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/securityentries"
+        "Self": "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI",
+        "Elements": "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/elements",
+        "ElementTemplates": "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/elementtemplates",
+        "EventFrames": "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/eventframes",
+        "AssetServer": "https://pi.example.org/piwebapi/assetservers/F1RSMyvy4jYfVEyvgGiLVLmYvAVk0tVFMtUEk",
+        "ElementCategories": "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/elementcategories",
+        "AttributeCategories": "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/attributecategories",
+        "TableCategories": "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/tablecategories",
+        "AnalysisCategories": "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/analysiscategories",
+        "AnalysisTemplates": "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/analysistemplates",
+        "EnumerationSets": "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/enumerationsets",
+        "Tables": "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/tables",
+        "Security": "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/security",
+        "SecurityEntries": "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/securityentries"
       }
     }
   ]
@@ -120,4 +120,3 @@ password = "apassword"
 root_uri = "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI"
 template_name = "Reactor"
 ```
-
