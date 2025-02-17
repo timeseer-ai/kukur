@@ -334,7 +334,7 @@ class PIWebAPIAssetFrameworkTemplateSource:
         ]
 
     def list_element_templates(self) -> List[ElementTemplate]:
-        """Return all element templates on the database."""
+        """Return all element templates in the database."""
         session = self._get_session()
 
         element_template_params = {

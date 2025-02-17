@@ -462,7 +462,7 @@ def _get_metadata(
     return metadata
 
 
-def read_data(  # noqa: PLR0913
+def read_data(
     session, request_properties: RequestProperties, data_request: DataRequest
 ):
     """Read AF data.
