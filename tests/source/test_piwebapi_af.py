@@ -4,6 +4,7 @@
 from datetime import datetime
 from unittest.mock import patch
 
+import pytest
 from dateutil.parser import parse as parse_date
 
 from kukur import SeriesSelector
@@ -17,8 +18,8 @@ SAMPLE_DATABASE = {
     },
 }
 
-SAMPLE_SITES = {
-    "Links": {},
+SAMPLE_SITES_1 = {
+    "Links": {"Next": f"{_BASE_URL}/db/elements?startIndex=2"},
     "Items": [
         {
             "Name": "Antwerp",
@@ -38,6 +39,12 @@ SAMPLE_SITES = {
             "CategoryNames": [],
             "ExtendedProperties": {},
         },
+    ],
+}
+
+SAMPLE_SITES_2 = {
+    "Links": {},
+    "Items": [
         {
             "WebId": "E2",
             "Id": "776a75c2-b946-11ef-889f-6045bd94f59c",
@@ -52,8 +59,10 @@ SAMPLE_SITES = {
     ],
 }
 
-SAMPLE_CHILD_ATTRIBUTES = {
-    "Links": {},
+SAMPLE_CHILD_ATTRIBUTES_1 = {
+    "Links": {
+        "Next": f"{_BASE_URL}/elementattributes?startIndex=3",
+    },
     "Items": [
         {
             "WebId": "A2",
@@ -109,6 +118,12 @@ SAMPLE_CHILD_ATTRIBUTES = {
                 "Attributes": f"{_BASE_URL}/empty-attributes",
             },
         },
+    ],
+}
+
+SAMPLE_CHILD_ATTRIBUTES_2 = {
+    "Links": {},
+    "Items": [
         {
             "WebId": "A5",
             "Name": "Location",
@@ -204,28 +219,37 @@ def _get_data(start_date: datetime, end_date: datetime, limit: int):
     return list(filter(between_dates, SAMPLE_DATA_POINTS))[:limit]
 
 
+class MockResponse:
+    def __init__(self, json_data, status_code):
+        self.json_data = json_data
+        self.status_code = status_code
+
+    def raise_for_status(self):
+        return
+
+    def json(self):
+        return self.json_data
+
+
 def mocked_requests_get(*args, **kwargs):
-    class MockResponse:
-        def __init__(self, json_data, status_code):
-            self.json_data = json_data
-            self.status_code = status_code
-
-        def raise_for_status(self):
-            return
-
-        def json(self):
-            return self.json_data
-
     if args[0] == _BASE_URL:
         response = SAMPLE_DATABASE
         return MockResponse(response, 200)
 
     if args[0] == f"{_BASE_URL}/db/elements":
-        response = SAMPLE_SITES
+        response = SAMPLE_SITES_1
+        return MockResponse(response, 200)
+
+    if args[0] == f"{_BASE_URL}/db/elements?startIndex=2":
+        response = SAMPLE_SITES_2
         return MockResponse(response, 200)
 
     if args[0] == f"{_BASE_URL}/elementattributes":
-        response = SAMPLE_CHILD_ATTRIBUTES
+        response = SAMPLE_CHILD_ATTRIBUTES_1
+        return MockResponse(response, 200)
+
+    if args[0] == f"{_BASE_URL}/elementattributes?startIndex=3":
+        response = SAMPLE_CHILD_ATTRIBUTES_2
         return MockResponse(response, 200)
 
     if args[0] == f"{_BASE_URL}/attributes/A5/value":
@@ -285,6 +309,40 @@ def mocked_requests_get(*args, **kwargs):
         return MockResponse(response, 200)
 
     raise Exception(args[0])
+
+
+def fail_element_timeout(*args, **kwargs):
+    if args[0] == _BASE_URL:
+        response = SAMPLE_DATABASE
+        return MockResponse(response, 200)
+
+    if args[0] == f"{_BASE_URL}/db/elements":
+        response = SAMPLE_SITES_1
+        return MockResponse(response, 200)
+
+    if args[0] == f"{_BASE_URL}/db/elements?startIndex=2":
+        raise TimeoutError()
+
+    return None
+
+
+def fail_attribute_timeout(*args, **kwargs):
+    if args[0] == _BASE_URL:
+        response = SAMPLE_DATABASE
+        return MockResponse(response, 200)
+
+    if args[0] == f"{_BASE_URL}/db/elements":
+        response = SAMPLE_SITES_1
+        return MockResponse(response, 200)
+
+    if args[0] == f"{_BASE_URL}/db/elements?startIndex=2":
+        response = SAMPLE_SITES_2
+        return MockResponse(response, 200)
+
+    if args[0] == f"{_BASE_URL}/elementattributes":
+        raise TimeoutError()
+
+    return None
 
 
 @patch("requests.Session.get", side_effect=mocked_requests_get)
@@ -396,3 +454,27 @@ def test_search_with_table_lookup_enabled(_) -> None:
     assert series[1].series.field == "Concentration"
     assert series[2].series.field == "Lookup Values"
     assert series[3].series.field == "Level"
+
+
+@patch("requests.Session.get", side_effect=fail_element_timeout)
+def test_search_element_failure(_) -> None:
+    source = from_config(
+        {
+            "database_uri": "https://test_pi.net",
+            "max_returned_items_per_call": 4,
+        }
+    )
+    with pytest.raises(TimeoutError):
+        list(source.search(SeriesSearch("Test")))
+
+
+@patch("requests.Session.get", side_effect=fail_attribute_timeout)
+def test_search_attribute_failure(_) -> None:
+    source = from_config(
+        {
+            "database_uri": "https://test_pi.net",
+            "max_returned_items_per_call": 4,
+        }
+    )
+    with pytest.raises(TimeoutError):
+        list(source.search(SeriesSearch("Test")))

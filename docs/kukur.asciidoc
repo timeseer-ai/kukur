@@ -755,6 +755,8 @@ include::./source/odbc.asciidoc[leveloffset=+1]
 
 include::./source/piwebapi-af.asciidoc[leveloffset=+1]
 
+include::./source/piwebapi-af-template.asciidoc[leveloffset=+1]
+
 include::./source/piwebapi-da.asciidoc[leveloffset=+1]
 
 include::./source/plugin.asciidoc[leveloffset=+1]
