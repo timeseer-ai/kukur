@@ -36,6 +36,7 @@ Valid values are:
 - `oledb`
 - `parquet`
 - `piwebapi-af`
+- `piwebapi-af-template`
 - `piwebapi-da`
 - `plugin`
 - `postgresql`
@@ -57,7 +58,6 @@ Valid values are:
 - `json`
 - `kukur`
 - `oledb`
-- `piwebapi-af`
 - `piwebapi-da`
 - `plugin`
 - `postgresql`

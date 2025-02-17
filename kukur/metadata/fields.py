@@ -226,7 +226,7 @@ def _dictionary_to_json(
 
 
 def _dictionary_from_json(
-    dictionary: Optional[List[Tuple[int, str]]]
+    dictionary: Optional[List[Tuple[int, str]]],
 ) -> Optional[KukurDictionary]:
     if dictionary is None:
         return None

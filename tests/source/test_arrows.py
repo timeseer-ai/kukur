@@ -1,4 +1,4 @@
-"""Test reading the Arrow IPC Streaming Format """
+"""Test reading the Arrow IPC Streaming Format"""
 
 # SPDX-FileCopyrightText: 2023 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
