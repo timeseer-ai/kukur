@@ -15,8 +15,8 @@ from kukur.source.piwebapi_af_template.piwebapi_af_template import (
 )
 
 WEB_API_URI = "https://pi.example.org/piwebapi/"
-DATABASE_URI = f"{WEB_API_URI}/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI"
-ROOT_URI = f"{WEB_API_URI}/elements/F1EmMyvy4jYfVEyvgGiLVLmYvAe-IYOLTf7xGIoGBFvZT1mwVk0tVFMtUElcVElNRVNFRVJcUkVBQ1RPUlM"
+DATABASE_URI = f"{WEB_API_URI}assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI"
+ROOT_URI = f"{WEB_API_URI}elements/F1EmMyvy4jYfVEyvgGiLVLmYvAe-IYOLTf7xGIoGBFvZT1mwVk0tVFMtUElcVElNRVNFRVJcUkVBQ1RPUlM"
 
 BATCH_RESPONSE = {
     "GetAttributes": {
@@ -412,6 +412,10 @@ def mocked_requests_post(*args, **kwargs):
 
         if "templateName=Reactor" in kwargs["json"]["GetElements"]["Resource"]:
             response = BATCH_RESPONSE
+            uri = kwargs["json"]["GetElements"]["Resource"]
+            assert uri.startswith(f"{DATABASE_URI}/elements") or uri.startswith(
+                f"{ROOT_URI}/elements"
+            )
             return MockResponse(response, 200)
 
     raise Exception(args[0])

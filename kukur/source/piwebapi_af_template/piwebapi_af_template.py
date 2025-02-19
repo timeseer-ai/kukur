@@ -486,10 +486,15 @@ class PIWebAPIAssetFrameworkTemplateSource:
         batch_path = PurePath(database_uri.path).parent.parent / "batch"
         return urllib.parse.urlunparse(database_uri._replace(path=str(batch_path)))
 
+    def _get_database_elements_url(self) -> str:
+        database_uri = urllib.parse.urlparse(self.__config.database_uri)
+        elements_path = PurePath(database_uri.path) / "elements"
+        return urllib.parse.urlunparse(database_uri._replace(path=str(elements_path)))
+
     def _get_elements_url(self) -> str:
         database_uri = urllib.parse.urlparse(self.__config.database_uri)
-        batch_path = PurePath(database_uri.path).parent.parent / "elements"
-        return urllib.parse.urlunparse(database_uri._replace(path=str(batch_path)))
+        elements_path = PurePath(database_uri.path).parent.parent / "elements"
+        return urllib.parse.urlunparse(database_uri._replace(path=str(elements_path)))
 
     def _get_data_url(self, selector: SeriesSelector) -> str:
         database_uri = urllib.parse.urlparse(self.__config.database_uri)
@@ -512,7 +517,7 @@ class PIWebAPIAssetFrameworkTemplateSource:
         return urllib.parse.urlunparse(database_uri._replace(path=str(plot_path)))
 
     def _get_element_search_url(self, session) -> str:
-        elements_uri = self._get_elements_url()
+        elements_uri = self._get_database_elements_url()
         if self.__config.root_uri is not None:
             self._verify_element_in_database(session, self.__config.root_uri)
             elements_uri = f"{self.__config.root_uri}/elements"
