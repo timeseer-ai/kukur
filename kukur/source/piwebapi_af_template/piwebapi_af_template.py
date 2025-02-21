@@ -66,7 +66,7 @@ class AFTemplateSourceConfiguration:
 
     database_uri: str
     root_uri: Optional[str]
-    element_template: str
+    element_template: Optional[str]
     element_category: Optional[str]
     attribute_names: Optional[List[str]]
     attribute_category: Optional[str]
@@ -77,7 +77,7 @@ class AFTemplateSourceConfiguration:
         return cls(
             config["database_uri"],
             config.get("root_uri"),
-            config["element_template"],
+            config.get("element_template"),
             config.get("element_category"),
             config.get("attribute_names"),
             config.get("attribute_category"),
@@ -148,7 +148,10 @@ class PIWebAPIAssetFrameworkTemplateSource:
 
     def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
         """Return all attributes in the Asset Framework."""
-        if self.__config.element_template.strip() == "":
+        if (
+            self.__config.element_template is None
+            or self.__config.element_template.strip() == ""
+        ):
             raise InvalidSourceException("element template required")
 
         session = self._get_session()

@@ -7,7 +7,7 @@ import pytest
 
 from kukur import DataType
 from kukur.base import SeriesSearch
-from kukur.exceptions import KukurException
+from kukur.exceptions import InvalidSourceException, KukurException
 from kukur.source.piwebapi_af_template import from_config
 from kukur.source.piwebapi_af_template.piwebapi_af_template import (
     ElementInOtherDatabaseException,
@@ -516,6 +516,16 @@ def test_search(_post) -> None:
     assert metadata.get_field_by_name("data type") == DataType.FLOAT64
     assert metadata.get_field_by_name("Element category") == "Production"
     assert metadata.get_field_by_name("Attribute category") == "Measurement"
+
+
+def test_search_missing_element_template() -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+        }
+    )
+    with pytest.raises(InvalidSourceException):
+        list(source.search(SeriesSearch("Test")))
 
 
 @patch("requests.Session.post", side_effect=mocked_requests_post)
