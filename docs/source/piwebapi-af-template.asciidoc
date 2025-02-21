@@ -11,7 +11,7 @@ only elements of a given Element Template will be returned.
 [source.<name>]
 type = "piwebapi-af-template"
 database_uri = "" # Required: the PI Web API self URI of the AF database
-root_uri = "" # optional: the URI of the root element to start the search
+root_id = "" # optional: the webid of the root element to start the search
 element_template = "" # The name of the template
 element_category = "" # optional: return only attributes of elements with this category
 attribute_names = [] # optional: return only these attributes
@@ -62,9 +62,8 @@ follow the link to the `Databases` on the correct asset server and copy the `Sel
 }
 ```
 
-Elements with the provided `element_template` will be searched in the full database unless `root_uri` is provided.
-`root_uri` is the URI of an element resource in a PI Web API database.
-This should be the `Self` URI of an Element in the Asset Framework.
+Elements with the provided `element_template` will be searched in the full database unless `root_id` is provided.
+`root_id` is the https://docs.aveva.com/bundle/pi-web-api-reference/page/help/topics/webid-type.html[WebID] of an element resource in a PI Web API database.
 
 `attribute_names` allows selecting a subset of (child) attributes of an element.
 

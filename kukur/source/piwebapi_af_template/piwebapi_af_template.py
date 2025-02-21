@@ -65,8 +65,8 @@ class AFTemplateSourceConfiguration:
     """Configuration to find PI AF attributes of a template."""
 
     database_uri: str
-    root_uri: Optional[str]
-    element_template: str
+    root_id: Optional[str]
+    element_template: Optional[str]
     element_category: Optional[str]
     attribute_names: Optional[List[str]]
     attribute_category: Optional[str]
@@ -76,8 +76,8 @@ class AFTemplateSourceConfiguration:
         """Create an object from a configuration dict."""
         return cls(
             config["database_uri"],
-            config.get("root_uri"),
-            config["element_template"],
+            config.get("root_id"),
+            config.get("element_template"),
             config.get("element_category"),
             config.get("attribute_names"),
             config.get("attribute_category"),
@@ -95,12 +95,21 @@ class Element:
 
 
 @dataclass
+class AttributeTemplate:
+    """One attribute template of an element template."""
+
+    name: str
+    description: str
+    categories: List[str]
+
+
+@dataclass
 class ElementTemplate:
     """One element template in a PI AF structure."""
 
     name: str
     description: str
-    attribute_templates: list[str]
+    attribute_templates: List[AttributeTemplate]
 
 
 @dataclass
@@ -148,7 +157,10 @@ class PIWebAPIAssetFrameworkTemplateSource:
 
     def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
         """Return all attributes in the Asset Framework."""
-        if self.__config.element_template.strip() == "":
+        if (
+            self.__config.element_template is None
+            or self.__config.element_template.strip() == ""
+        ):
             raise InvalidSourceException("element template required")
 
         session = self._get_session()
@@ -349,10 +361,13 @@ class PIWebAPIAssetFrameworkTemplateSource:
         attribute_template_params = {
             "selectedFields": ";".join(
                 [
-                    "Items.Name",
+                    "Items.Path",
                     "Items.Description",
+                    "Items.DataReferencePlugIn",
+                    "Items.CategoryNames",
                 ]
             ),
+            "showDescendants": "true",
         }
 
         batch_query = {
@@ -400,14 +415,22 @@ class PIWebAPIAssetFrameworkTemplateSource:
 
         element_templates = []
         for i, element_template in enumerate(
-            result["GetElementTemplates"]["Content"].get("Items")
+            result["GetElementTemplates"]["Content"].get("Items", [])
         ):
             attributes = result["GetAttributeTemplates"]["Content"]["Items"][i]
             element_templates.append(
                 ElementTemplate(
                     element_template["Name"],
                     element_template["Description"],
-                    [item["Name"] for item in attributes["Content"].get("Items")],
+                    [
+                        AttributeTemplate(
+                            item["Path"].split("|", maxsplit=1)[1],
+                            item["Description"],
+                            item["CategoryNames"],
+                        )
+                        for item in attributes["Content"].get("Items", [])
+                        if item["DataReferencePlugIn"] == "PI Point"
+                    ],
                 )
             )
 
@@ -518,9 +541,13 @@ class PIWebAPIAssetFrameworkTemplateSource:
 
     def _get_element_search_url(self, session) -> str:
         elements_uri = self._get_database_elements_url()
-        if self.__config.root_uri is not None:
-            self._verify_element_in_database(session, self.__config.root_uri)
-            elements_uri = f"{self.__config.root_uri}/elements"
+        if self.__config.root_id is not None:
+            element_id = self.__config.root_id
+            self._verify_element_in_database(
+                session, f"{self._get_elements_url()}/{element_id}"
+            )
+
+            elements_uri = f"{self._get_elements_url()}/{element_id}/elements"
         return elements_uri
 
     def _verify_element_in_database(self, session, url: str):
