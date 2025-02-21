@@ -16,7 +16,8 @@ from kukur.source.piwebapi_af_template.piwebapi_af_template import (
 
 WEB_API_URI = "https://pi.example.org/piwebapi/"
 DATABASE_URI = f"{WEB_API_URI}assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI"
-ROOT_URI = f"{WEB_API_URI}elements/F1EmMyvy4jYfVEyvgGiLVLmYvAe-IYOLTf7xGIoGBFvZT1mwVk0tVFMtUElcVElNRVNFRVJcUkVBQ1RPUlM"
+ROOT_ID = "F1EmMyvy4jYfVEyvgGiLVLmYvAe-IYOLTf7xGIoGBFvZT1mwVk0tVFMtUElcVElNRVNFRVJcUkVBQ1RPUlM"
+ROOT_URI = f"{WEB_API_URI}elements/{ROOT_ID}"
 
 BATCH_RESPONSE = {
     "GetAttributes": {
@@ -228,6 +229,122 @@ BATCH_RESPONSE = {
     },
 }
 
+BATCH_FILTER_ROOT_RESPONSE = {
+    "GetAttributes": {
+        "Status": 207,
+        "Headers": {},
+        "Content": {
+            "Total": 1,
+            "Items": [
+                {
+                    "Status": 200,
+                    "Headers": {"Content-Type": "application/json; charset=utf-8"},
+                    "Content": {
+                        "Items": [
+                            {
+                                "WebId": "A2_1",
+                                "Name": "Active",
+                                "Description": "",
+                                "Path": "\\\\vm-ts-pi\\Timeseer\\TSAI Antwerp\\Reactor02|Status|Active",
+                                "Type": "Double",
+                                "DefaultUnitsNameAbbreviation": "",
+                                "DataReferencePlugIn": "PI Point",
+                                "CategoryNames": ["Status"],
+                                "Step": True,
+                                "Span": 1.0,
+                                "Zero": 0.0,
+                            },
+                            {
+                                "WebId": "A2_2",
+                                "Name": "Concentration",
+                                "Description": "",
+                                "Path": "\\\\vm-ts-pi\\Timeseer\\TSAI Antwerp\\Reactor02|Concentration",
+                                "Type": "Double",
+                                "DefaultUnitsNameAbbreviation": "",
+                                "DataReferencePlugIn": "PI Point",
+                                "CategoryNames": ["Measurement"],
+                                "Step": False,
+                                "Span": 200.0,
+                                "Zero": 0.0,
+                            },
+                            {
+                                "WebId": "A2_3",
+                                "Name": "Level",
+                                "Description": "",
+                                "Path": "\\\\vm-ts-pi\\Timeseer\\TSAI Antwerp\\Reactor02|Level",
+                                "Type": "Double",
+                                "DefaultUnitsNameAbbreviation": "",
+                                "DataReferencePlugIn": "PI Point",
+                                "CategoryNames": ["Measurement"],
+                                "Step": False,
+                                "Span": 100.0,
+                                "Zero": 0.0,
+                            },
+                            {
+                                "WebId": "A2_4",
+                                "Name": "Phase",
+                                "Description": "",
+                                "Path": "\\\\vm-ts-pi\\Timeseer\\TSAI Antwerp\\Reactor02|Status|Phase",
+                                "Type": "Double",
+                                "DefaultUnitsNameAbbreviation": "",
+                                "DataReferencePlugIn": "PI Point",
+                                "CategoryNames": ["Status"],
+                                "Step": True,
+                                "Span": 7.0,
+                                "Zero": 0.0,
+                            },
+                            {
+                                "WebId": "A2_5",
+                                "Name": "Status",
+                                "Description": "",
+                                "Path": "\\\\vm-ts-pi\\Timeseer\\TSAI Antwerp\\Reactor02|Status",
+                                "Type": "Double",
+                                "DefaultUnitsNameAbbreviation": "",
+                                "DataReferencePlugIn": "",
+                                "CategoryNames": [],
+                                "Step": True,
+                                "Span": None,
+                                "Zero": None,
+                            },
+                            {
+                                "WebId": "A2_6",
+                                "Name": "Temperature",
+                                "Description": "",
+                                "Path": "\\\\vm-ts-pi\\Timeseer\\TSAI Antwerp\\Reactor02|Temperature",
+                                "Type": "Double",
+                                "DefaultUnitsNameAbbreviation": "",
+                                "DataReferencePlugIn": "PI Point",
+                                "CategoryNames": ["Measurement"],
+                                "Step": False,
+                                "Span": 100.0,
+                                "Zero": 0.0,
+                            },
+                        ]
+                    },
+                },
+            ],
+        },
+    },
+    "GetElements": {
+        "Status": 200,
+        "Headers": {"Content-Type": "application/json; charset=utf-8"},
+        "Content": {
+            "Items": [
+                {
+                    "WebId": "R2",
+                    "Name": "Reactor02",
+                    "Description": "Reactor Antwerp",
+                    "CategoryNames": ["Test"],
+                    "Links": {
+                        "Attributes": "https://pi.example.org/piwebapi/elements/R2/attributes"
+                    },
+                },
+            ]
+        },
+    },
+}
+
+
 BATCH_ELEMENT_TEMPLATES_RESPONSE = {
     "GetAttributeTemplates": {
         "Status": 207,
@@ -409,12 +526,14 @@ def mocked_requests_post(*args, **kwargs):
             return MockResponse(BATCH_ERROR, 200)
 
         if "templateName=Reactor" in kwargs["json"]["GetElements"]["Resource"]:
-            response = BATCH_RESPONSE
             uri = kwargs["json"]["GetElements"]["Resource"]
             assert uri.startswith(f"{DATABASE_URI}/elements") or uri.startswith(
                 f"{ROOT_URI}/elements"
             )
-            return MockResponse(response, 200)
+            if uri.startswith(f"{DATABASE_URI}/elements"):
+                return MockResponse(BATCH_RESPONSE, 200)
+            if uri.startswith(f"{ROOT_URI}/elements"):
+                return MockResponse(BATCH_FILTER_ROOT_RESPONSE, 200)
 
     raise Exception(args[0])
 
@@ -563,12 +682,12 @@ def test_search_root_uri(_post, _get) -> None:
     source = from_config(
         {
             "database_uri": DATABASE_URI,
-            "root_uri": ROOT_URI,
+            "root_id": ROOT_ID,
             "element_template": "Reactor",
         }
     )
     series_metadata = list(source.search(SeriesSearch("Test")))
-    assert len(series_metadata) == 10
+    assert len(series_metadata) == 5
 
 
 @patch("requests.Session.post", side_effect=mocked_requests_post)
@@ -577,7 +696,7 @@ def test_search_invalid_root_uri(_post, _get) -> None:
     source = from_config(
         {
             "database_uri": DATABASE_URI,
-            "root_uri": ROOT_URI,
+            "root_id": ROOT_ID,
             "element_template": "Reactor",
         }
     )

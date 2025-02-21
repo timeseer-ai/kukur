@@ -65,7 +65,7 @@ class AFTemplateSourceConfiguration:
     """Configuration to find PI AF attributes of a template."""
 
     database_uri: str
-    root_uri: Optional[str]
+    root_id: Optional[str]
     element_template: Optional[str]
     element_category: Optional[str]
     attribute_names: Optional[List[str]]
@@ -76,7 +76,7 @@ class AFTemplateSourceConfiguration:
         """Create an object from a configuration dict."""
         return cls(
             config["database_uri"],
-            config.get("root_uri"),
+            config.get("root_id"),
             config.get("element_template"),
             config.get("element_category"),
             config.get("attribute_names"),
@@ -536,9 +536,13 @@ class PIWebAPIAssetFrameworkTemplateSource:
 
     def _get_element_search_url(self, session) -> str:
         elements_uri = self._get_database_elements_url()
-        if self.__config.root_uri is not None:
-            self._verify_element_in_database(session, self.__config.root_uri)
-            elements_uri = f"{self.__config.root_uri}/elements"
+        if self.__config.root_id is not None:
+            element_id = self.__config.root_id
+            self._verify_element_in_database(
+                session, f"{self._get_elements_url()}/{element_id}"
+            )
+
+            elements_uri = f"{self._get_elements_url()}/{element_id}/elements"
         return elements_uri
 
     def _verify_element_in_database(self, session, url: str):
