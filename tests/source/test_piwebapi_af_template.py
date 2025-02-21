@@ -357,11 +357,23 @@ BATCH_ELEMENT_TEMPLATES_RESPONSE = {
                     "Content": {
                         "Items": [
                             {
-                                "Name": "Temperature",
+                                "Path": "\\\\vm-ts-pi\\Timeseer\\ElementTemplates[Reactor]|Temperature",
                                 "Description": "",
+                                "DataReferencePlugIn": "PI Point",
                                 "CategoryNames": ["Measurement"],
                             },
-                            {"Name": "Status", "Description": "", "CategoryNames": []},
+                            {
+                                "Path": "\\\\vm-ts-pi\\Timeseer\\ElementTemplates[Reactor]|Status",
+                                "DataReferencePlugIn": "",
+                                "Description": "",
+                                "CategoryNames": [],
+                            },
+                            {
+                                "Path": "\\\\vm-ts-pi\\Timeseer\\ElementTemplates[Reactor]|Status|Active",
+                                "DataReferencePlugIn": "PI Point",
+                                "Description": "",
+                                "CategoryNames": [],
+                            },
                         ]
                     },
                 },
@@ -778,7 +790,7 @@ def test_get_element_templates(_) -> None:
     status_template = [
         attribute
         for attribute in reactor_template.attribute_templates
-        if attribute.name == "Status"
+        if attribute.name == "Status|Active"
     ][0]
     assert len(status_template.categories) == 0
 

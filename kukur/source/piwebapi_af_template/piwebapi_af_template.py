@@ -361,8 +361,9 @@ class PIWebAPIAssetFrameworkTemplateSource:
         attribute_template_params = {
             "selectedFields": ";".join(
                 [
-                    "Items.Name",
+                    "Items.Path",
                     "Items.Description",
+                    "Items.DataReferencePlugIn",
                     "Items.CategoryNames",
                 ]
             ),
@@ -414,7 +415,7 @@ class PIWebAPIAssetFrameworkTemplateSource:
 
         element_templates = []
         for i, element_template in enumerate(
-            result["GetElementTemplates"]["Content"].get("Items")
+            result["GetElementTemplates"]["Content"].get("Items", [])
         ):
             attributes = result["GetAttributeTemplates"]["Content"]["Items"][i]
             element_templates.append(
@@ -423,9 +424,12 @@ class PIWebAPIAssetFrameworkTemplateSource:
                     element_template["Description"],
                     [
                         AttributeTemplate(
-                            item["Name"], item["Description"], item["CategoryNames"]
+                            item["Path"].split("|", maxsplit=1)[1],
+                            item["Description"],
+                            item["CategoryNames"],
                         )
-                        for item in attributes["Content"].get("Items")
+                        for item in attributes["Content"].get("Items", [])
+                        if item["DataReferencePlugIn"] == "PI Point"
                     ],
                 )
             )
