@@ -519,6 +519,13 @@ def mocked_requests_post(*args, **kwargs):
         assert "X-Requested-With" in kwargs["headers"]
 
         if "GetElementTemplates" in kwargs["json"]:
+            assert (
+                "showDescendants=true"
+                in kwargs["json"]["GetAttributeTemplates"]["RequestTemplate"][
+                    "Resource"
+                ]
+            )
+
             response = BATCH_ELEMENT_TEMPLATES_RESPONSE
             return MockResponse(response, 200)
 

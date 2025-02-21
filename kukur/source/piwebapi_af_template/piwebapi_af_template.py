@@ -366,6 +366,7 @@ class PIWebAPIAssetFrameworkTemplateSource:
                     "Items.CategoryNames",
                 ]
             ),
+            "showDescendants": "true",
         }
 
         batch_query = {
