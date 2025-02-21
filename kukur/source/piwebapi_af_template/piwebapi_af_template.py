@@ -95,12 +95,21 @@ class Element:
 
 
 @dataclass
+class AttributeTemplate:
+    """One attribute template of an element template."""
+
+    name: str
+    description: str
+    categories: List[str]
+
+
+@dataclass
 class ElementTemplate:
     """One element template in a PI AF structure."""
 
     name: str
     description: str
-    attribute_templates: list[str]
+    attribute_templates: List[AttributeTemplate]
 
 
 @dataclass
@@ -354,6 +363,7 @@ class PIWebAPIAssetFrameworkTemplateSource:
                 [
                     "Items.Name",
                     "Items.Description",
+                    "Items.CategoryNames",
                 ]
             ),
         }
@@ -410,7 +420,12 @@ class PIWebAPIAssetFrameworkTemplateSource:
                 ElementTemplate(
                     element_template["Name"],
                     element_template["Description"],
-                    [item["Name"] for item in attributes["Content"].get("Items")],
+                    [
+                        AttributeTemplate(
+                            item["Name"], item["Description"], item["CategoryNames"]
+                        )
+                        for item in attributes["Content"].get("Items")
+                    ],
                 )
             )
 

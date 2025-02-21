@@ -240,13 +240,11 @@ BATCH_ELEMENT_TEMPLATES_RESPONSE = {
                     "Content": {
                         "Items": [
                             {
-                                "Name": "Reactor",
+                                "Name": "Temperature",
                                 "Description": "",
+                                "CategoryNames": ["Measurement"],
                             },
-                            {
-                                "Name": "Sites",
-                                "Description": "",
-                            },
+                            {"Name": "Status", "Description": "", "CategoryNames": []},
                         ]
                     },
                 },
@@ -265,17 +263,17 @@ BATCH_ELEMENT_TEMPLATES_RESPONSE = {
             "Total": 2,
             "Items": [
                 {
-                    "Name": "A1",
+                    "Name": "Reactor",
                     "Description": "",
                     "Links": {
-                        "AttributeTemplates": "https://pi.example.org/piwebapi/elements/A1/attributetemplates"
+                        "AttributeTemplates": "https://pi.example.org/piwebapi/elements/Reactor/attributetemplates"
                     },
                 },
                 {
-                    "Name": "A2",
+                    "Name": "Site",
                     "Description": "",
                     "Links": {
-                        "AttributeTemplates": "https://pi.example.org/piwebapi/elements/A2/attributetemplates"
+                        "AttributeTemplates": "https://pi.example.org/piwebapi/elements/Sites/attributetemplates"
                     },
                 },
             ],
@@ -616,7 +614,7 @@ def test_get_elements_for_element(_) -> None:
 
 
 @patch("requests.Session.get", side_effect=mocked_requests_get)
-def test_get_elements_for_ivalid_element(_) -> None:
+def test_get_elements_for_invalid_element(_) -> None:
     source = from_config(
         {
             "database_uri": DATABASE_URI,
@@ -633,13 +631,30 @@ def test_get_element_templates(_) -> None:
     source = from_config(
         {
             "database_uri": DATABASE_URI,
-            "element_template": "Reactor",
         }
     )
     element_templates = source.list_element_templates()
     assert len(element_templates) == 2
-    assert len(element_templates[0].attribute_templates) == 2
-    assert len(element_templates[1].attribute_templates) == 0
+    assert "Reactor" in [template.name for template in element_templates]
+    reactor_template = [
+        template for template in element_templates if template.name == "Reactor"
+    ][0]
+    assert len(reactor_template.attribute_templates) == 2
+    assert "Temperature" in [
+        attribute.name for attribute in reactor_template.attribute_templates
+    ]
+    temperature_template = [
+        attribute
+        for attribute in reactor_template.attribute_templates
+        if attribute.name == "Temperature"
+    ][0]
+    assert temperature_template.categories == ["Measurement"]
+    status_template = [
+        attribute
+        for attribute in reactor_template.attribute_templates
+        if attribute.name == "Status"
+    ][0]
+    assert len(status_template.categories) == 0
 
 
 @patch("requests.Session.post", side_effect=mocked_requests_batch_error_templates)
