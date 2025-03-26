@@ -249,7 +249,7 @@ class PIWebAPIAssetFrameworkTemplateSource:
                 )
 
             attributes = result["GetAttributes"]["Content"]["Items"][i]
-            for attribute in attributes["Content"].get("Items"):
+            for attribute in attributes["Content"].get("Items", []):
                 if self.__config.attribute_names is not None:
                     attribute_path = attribute["Path"].split("|", maxsplit=1)[1]
                     if attribute_path not in self.__config.attribute_names:
