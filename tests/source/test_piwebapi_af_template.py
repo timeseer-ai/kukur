@@ -344,6 +344,40 @@ BATCH_FILTER_ROOT_RESPONSE = {
     },
 }
 
+BATCH_EMPTY_ATTRIBUTES_RESPONSE = {
+    "GetAttributes": {
+        "Status": 207,
+        "Headers": {},
+        "Content": {
+            "Total": 1,
+            "Items": [
+                {
+                    "Status": 200,
+                    "Headers": {"Content-Type": "application/json; charset=utf-8"},
+                    "Content": {},
+                },
+            ],
+        },
+    },
+    "GetElements": {
+        "Status": 200,
+        "Headers": {"Content-Type": "application/json; charset=utf-8"},
+        "Content": {
+            "Items": [
+                {
+                    "WebId": "R1",
+                    "Name": "Reactor01",
+                    "Description": "Reactor Houston",
+                    "CategoryNames": ["Production"],
+                    "Links": {
+                        "Attributes": "https://pi.example.org/piwebapi/elements/R1/attributes"
+                    },
+                },
+            ]
+        },
+    },
+}
+
 
 BATCH_ELEMENT_TEMPLATES_RESPONSE = {
     "GetAttributeTemplates": {
@@ -564,6 +598,17 @@ def mocked_requests_batch_error_templates(*args, **kwargs):
     raise Exception(args[0])
 
 
+def mocked_requests_empty_attributes(*args, **kwargs):
+    if args[0] == f"{WEB_API_URI}batch":
+        assert "X-Requested-With" in kwargs["headers"]
+
+        if "GetElements" in kwargs["json"]:
+            response = BATCH_EMPTY_ATTRIBUTES_RESPONSE
+            return MockResponse(response, 200)
+
+    raise Exception(args[0])
+
+
 def mocked_requests_get(*args, **kwargs):
     if args[0] == f"{ROOT_URI}":
         return MockResponse({"Links": {"Database": DATABASE_URI}}, 200)
@@ -721,6 +766,18 @@ def test_search_invalid_root_uri(_post, _get) -> None:
     )
     with pytest.raises(ElementInOtherDatabaseException):
         list(source.search(SeriesSearch("Test")))
+
+
+@patch("requests.Session.post", side_effect=mocked_requests_empty_attributes)
+def test_search_no_attributes(_) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "element_template": "Reactor",
+        }
+    )
+    series = list(source.search(SeriesSearch("Test")))
+    assert len(series) == 0
 
 
 @patch("requests.Session.get", side_effect=mocked_requests_get)
