@@ -142,7 +142,7 @@ class SeriesSelector(SeriesSearch):
         return f"{series_string}::{self.field}"
 
 
-@dataclass
+@dataclass(frozen=True)
 class DataSelector:
     """DataSelector requests data for a combination of tags in a source.
 
