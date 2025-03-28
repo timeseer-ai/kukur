@@ -46,6 +46,7 @@ from kukur.source import (
 )
 from kukur.source import json as json_source
 from kukur.source import kukur as kukur_source
+from kukur.source.arrow import empty_table
 from kukur.source.quality import QualityMapper
 
 from .metadata import MetadataMapper, MetadataValueMapper
@@ -224,7 +225,7 @@ class SourceWrapper:
     ) -> pa.Table:
         """Return the data for the given series in the given time frame, taking into account the request policy."""
         if start_date == end_date:
-            return pa.Table.from_pydict({"ts": [], "quality": []})
+            return empty_table(selector.fields)
         tables = [
             self._get_data_chunk(selector, start, end)
             for start, end in self.__to_intervals(start_date, end_date)
@@ -248,7 +249,9 @@ class SourceWrapper:
             return pa.Table.from_pydict({"ts": [], "value": [], "quality": []})
         if not isinstance(self.__source.data, PlotSource):
             data = self.get_data(
-                DataSelector(selector.source, selector.tags), start_date, end_date
+                DataSelector(selector.source, selector.tags, [selector.field]),
+                start_date,
+                end_date,
             )
             if len(data) == 0:
                 return data
@@ -418,7 +421,9 @@ class SourceFactory:
         return QualityMapper.from_config(self.__config["quality_mapping"][name])
 
 
-def concat_tables(tables: List[pa.Table]) -> pa.Table:
+def concat_tables(
+    tables: List[pa.Table], *, field_names: Optional[List[str]] = None
+) -> pa.Table:
     """Safely concatenate multiple pyarrow.Table's.
 
     If any of the given tables contains strings, the result will contain a
@@ -427,15 +432,16 @@ def concat_tables(tables: List[pa.Table]) -> pa.Table:
     """
     tables = [table for table in tables if len(table) > 0]
     if len(tables) == 0:
-        return pa.Table.from_pydict({"ts": [], "quality": []})
+        return empty_table(field_names)
 
-    field_names = []
-    for table in tables:
-        for column_name in table.column_names:
-            if column_name in ["ts", "quality"]:
-                continue
-            if column_name not in field_names:
-                field_names.append(column_name)
+    if field_names is None:
+        field_names = []
+        for table in tables:
+            for column_name in table.column_names:
+                if column_name in ["ts", "quality"]:
+                    continue
+                if column_name not in field_names:
+                    field_names.append(column_name)
 
     schema = pa.schema(
         [

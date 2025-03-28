@@ -142,7 +142,7 @@ class BaseArrowSource(ABC):
 
         return filter_by_timerange(data, start_date, end_date)
 
-    def __read_all_data(self, selector: SeriesSelector) -> pa.Table:
+    def __read_all_data(self, selector: DataSelector) -> pa.Table:
         if self.__options.data_format == "pivot":
             all_data = self._read_pivot_data()
             return filter_pivot_data(all_data, selector)
@@ -187,11 +187,7 @@ class BaseArrowSource(ABC):
             for field_name in self.__options.field_columns:
                 yield SeriesSelector(source_name, tags, field_name)
 
-    def _read_directory_data(self, selector: SeriesSelector) -> pa.Table:
-        columns = ["ts", "value"]
-        if self.__quality_mapper.is_present():
-            columns.append("quality")
-
+    def _read_directory_data(self, selector: DataSelector) -> pa.Table:
         if self.__options.partitions is None:
             raise InvalidSourceException(
                 'Sources with `format = "dir"` require at least one partition'
@@ -213,31 +209,20 @@ class BaseArrowSource(ABC):
         )
 
         data = _map_columns(self.__options.column_mapping, data)
-        data = data.rename_columns(columns)
+        if selector.fields is not None:
+            keep_columns = ["ts"] + selector.fields
+            if self.__quality_mapper.is_present():
+                keep_columns.append("quality")
+            columns_to_drop: List[str] = []
+            for column_name in data.column_names:
+                if column_name not in keep_columns:
+                    columns_to_drop.append(column_name)
+            data = data.drop_columns(columns_to_drop)
+
         data = cast_ts_column(
             data, self.__options.data_datetime_format, self.__options.data_timezone
         )
-        schema = pa.schema(
-            [
-                ("ts", pa.timestamp("us", "UTC")),
-                ("value", get_value_schema_type(data)),
-            ]
-        )
-        if self.__quality_mapper.is_present():
-            schema = schema.append(pa.field("quality", pa.int8()))
-            data = data.set_column(
-                2, "quality", _map_quality(data["quality"], self.__quality_mapper)
-            )
-        return data.cast(schema)
-
-
-def get_value_schema_type(data: pa.Table):
-    """Get the type of the value column."""
-    value_type = pa.float64()
-    if len(data) > 0:
-        if pa.types.is_string(data["value"][0].type):
-            value_type = pa.string()
-    return value_type
+        return conform_to_schema(data, self.__quality_mapper)
 
 
 def map_pivot_columns(column_mapping: Dict[str, str], data: pa.Table) -> pa.Table:
@@ -279,50 +264,50 @@ def cast_timestamp(
     return array
 
 
-def filter_pivot_data(all_data: pa.Table, selector: SeriesSelector) -> pa.Table:
+def filter_pivot_data(all_data: pa.Table, selector: DataSelector) -> pa.Table:
     """Filter resulting pivot data based on selector tags and field."""
-    if selector.name not in all_data.column_names:
-        raise InvalidDataError(f'column "{selector.name}" not found')
-    data = all_data.select([0, selector.name]).rename_columns(["ts", "value"])
-    schema = pa.schema(
-        [
-            ("ts", pa.timestamp("us", "UTC")),
-            ("value", get_value_schema_type(data)),
-        ]
+    column_names = all_data.column_names[1:]
+    if selector.fields is not None:
+        for field_name in selector.fields:
+            if field_name not in all_data.column_names:
+                raise InvalidDataError(f'column "{field_name}" not found')
+        column_names = selector.fields
+    data = all_data.select([0] + column_names).rename_columns(
+        {all_data.column_names[0], "ts"}
     )
-    return data.cast(schema)
+
+    return data.cast(determine_schema(data, include_quality=False))
 
 
 def filter_row_data(
-    all_data: pa.Table, selector: SeriesSelector, quality_mapper: QualityMapper
+    all_data: pa.Table, selector: DataSelector, quality_mapper: QualityMapper
 ) -> pa.Table:
     """Filter resulting row data based on selector tags and field."""
     for k, v in selector.tags.items():
         all_data = all_data.filter(pyarrow.compute.equal(all_data[k], pa.scalar(v)))
-    filtered_data = pa.Table.from_arrays(
-        [
-            all_data["ts"],
-            all_data[selector.field],
-        ],
-        ["ts", "value"],
-    )
+    data = {"ts": all_data["ts"]}
+    if selector.fields is not None:
+        for column_name in selector.fields:
+            data[column_name] = all_data[column_name]
+    else:
+        for column_name in all_data.column_names:
+            if column_name not in ["ts", "quality"]:
+                data[column_name] = all_data[column_name]
     if quality_mapper.is_present():
-        filtered_data = filtered_data.set_column(2, "quality", all_data["quality"])
+        data["quality"] = all_data["quality"]
+
+    filtered_data = pa.Table.from_pydict(data)
     return conform_to_schema(filtered_data, quality_mapper)
 
 
 def conform_to_schema(table: pa.Table, quality_mapper: QualityMapper) -> pa.Table:
     """Conform the table to the schema expected in Kukur."""
-    schema = pa.schema(
-        [
-            ("ts", pa.timestamp("us", "UTC")),
-            ("value", get_value_schema_type(table)),
-        ]
-    )
+    schema = determine_schema(table, include_quality=quality_mapper.is_present())
     if quality_mapper.is_present():
-        schema = schema.append(pa.field("quality", pa.int8()))
         table = table.set_column(
-            2, "quality", _map_quality(table["quality"], quality_mapper)
+            table.schema.get_field_index("quality"),
+            "quality",
+            _map_quality(table["quality"], quality_mapper),
         )
 
     return table.cast(schema)
@@ -372,3 +357,39 @@ def filter_by_timerange(
     on_or_after = pyarrow.compute.greater_equal(all_data["ts"], pa.scalar(start_date))
     before = pyarrow.compute.less(all_data["ts"], pa.scalar(end_date))
     return all_data.filter(pyarrow.compute.and_(on_or_after, before))
+
+
+def empty_table(
+    field_names: Optional[List[str]] = None, *, include_quality: bool = True
+) -> pa.Table:
+    """Return an empty table with a column for each data field."""
+    data: Dict[str, List] = {
+        "ts": [],
+    }
+    if field_names is not None:
+        for field_name in field_names:
+            data[field_name] = []
+    if include_quality:
+        data["quality"] = []
+    return pa.Table.from_pydict(data)
+
+
+def determine_schema(data: pa.Table, *, include_quality: bool = True) -> pa.Schema:
+    """Determine a schema for data type casting to supported data types."""
+    schema_data = [
+        ("ts", pa.timestamp("us", "UTC")),
+    ]
+    for column_name in data.column_names[1:]:
+        schema_data.append((column_name, get_value_schema_type(data[column_name])))
+    if include_quality:
+        schema_data.append(("quality", pa.int8()))
+    return pa.schema(schema_data)
+
+
+def get_value_schema_type(column: pa.Array):
+    """Get the type of a value column."""
+    value_type = pa.float64()
+    if len(column) > 0:
+        if pa.types.is_string(column[0].type):
+            value_type = pa.string()
+    return value_type

@@ -374,10 +374,8 @@ class CSVSource:
                     )
         return all_data
 
-    def _read_directory_data(
-        self, loader: Loader, selector: SeriesSelector
-    ) -> pa.Table:
-        columns = ["ts", "value"]
+    def _read_directory_data(self, loader: Loader, selector: DataSelector) -> pa.Table:
+        columns = ["ts"] + self.__options.fields
         timestamp_column = "ts"
         if "ts" in self.__options.column_mapping:
             timestamp_column = self.__options.column_mapping["ts"]
@@ -420,14 +418,30 @@ class CSVSource:
                 self.__options.data_timezone,
             )
         if self.__mappers.quality.is_present():
-            return data.set_column(2, "quality", self._map_quality(data["quality"]))
+            data = data.set_column(
+                data.schema.get_field_index("quality"),
+                "quality",
+                self._map_quality(data["quality"]),
+            )
+        if selector.fields is not None:
+            keep_columns = ["ts"] + selector.fields
+            if self.__mappers.quality.is_present():
+                keep_columns.append("quality")
+            columns_to_drop: List[str] = []
+            for column_name in data.column_names:
+                if column_name not in keep_columns:
+                    columns_to_drop.append(column_name)
+            data = data.drop_columns(columns_to_drop)
         return data
 
-    def _read_pivot_data(self, loader: Loader, selector: SeriesSelector) -> pa.Table:
+    def _read_pivot_data(self, loader: Loader, selector: DataSelector) -> pa.Table:
         all_data = self._open_pivot_data(loader)
-        if selector.name not in all_data.column_names:
-            raise InvalidDataError(f'column "{selector.name}" not found')
-        return all_data.select(["ts", selector.name]).rename_columns(["ts", "value"])
+        if selector.fields is not None:
+            for column_name in selector.fields:
+                if column_name not in all_data.column_names:
+                    raise InvalidDataError(f'column "{column_name}" not found')
+            all_data = all_data.select(["ts"] + selector.fields)
+        return all_data
 
     def _open_pivot_data(self, loader: Loader) -> pa.Table:
         timestamp_column = "ts"

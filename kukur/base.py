@@ -144,7 +144,10 @@ class SeriesSelector(SeriesSearch):
 
 @dataclass
 class DataSelector:
-    """DataSelector requests data for a combination of tags in a source."""
+    """DataSelector requests data for a combination of tags in a source.
+
+    When `fields` is `None`, all fields are returned.
+    """
 
     source: str
     tags: Dict[str, str]

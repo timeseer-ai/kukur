@@ -259,14 +259,11 @@ class BaseSQLSource(ABC):
         return pa.Table.from_pydict({"ts": timestamps, "value": values})
 
     def __prepare_data_query(
-        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
+        self, selector: DataSelector, start_date: datetime, end_date: datetime
     ) -> Tuple[str, List]:
         assert self._config.data_query is not None
 
-        try:
-            query = self._config.data_query.format(field=selector.field)
-        except (TypeError, IndexError):
-            query = self._config.data_query
+        query = self._config.data_query
         if self._config.data_query_tags is None:
             params = [selector.tags[tag_name] for tag_name in self._config.tag_columns]
         else:
