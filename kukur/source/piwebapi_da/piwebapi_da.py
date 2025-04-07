@@ -41,6 +41,8 @@ from kukur.exceptions import (
 )
 from kukur.metadata import fields
 
+NOT_FOUND = 404
+
 
 @dataclass
 class _RequestProperties:
@@ -224,6 +226,10 @@ class PIWebAPIDataArchiveSource:
                     selectedFields="Items.Value;Items.Timestamp;Items.Good",
                 ),
             )
+
+            if response.status_code == NOT_FOUND:
+                raise InvalidDataError(f"Data not found for {data_url}")
+
             response.raise_for_status()
 
             data_points = response.json()["Items"]
