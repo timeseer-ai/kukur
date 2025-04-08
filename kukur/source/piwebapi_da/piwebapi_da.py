@@ -35,6 +35,7 @@ from kukur import (
     SeriesSelector,
 )
 from kukur.exceptions import (
+    DataNotFoundException,
     InvalidDataError,
     InvalidSourceException,
     MissingModuleException,
@@ -228,7 +229,7 @@ class PIWebAPIDataArchiveSource:
             )
 
             if response.status_code == NOT_FOUND:
-                raise InvalidDataError(f"Data not found for {data_url}")
+                raise DataNotFoundException(f"Data not found for {data_url}")
 
             response.raise_for_status()
 

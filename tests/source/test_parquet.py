@@ -11,7 +11,7 @@ from dateutil.parser import parse as parse_date
 
 import kukur.config
 from kukur import SeriesSearch, SeriesSelector, Source
-from kukur.exceptions import InvalidDataError
+from kukur.exceptions import InvalidPathException
 from kukur.source import SourceFactory
 
 START_DATE = parse_date("2020-01-01T00:00:00Z")
@@ -249,7 +249,7 @@ def test_partitions_string():
 
 
 def test_partitions_traversal() -> None:
-    with pytest.raises(InvalidDataError):
+    with pytest.raises(InvalidPathException):
         get_source("partitioned-parquet").get_data(
             make_series(
                 "partitioned-parquet",

@@ -17,6 +17,20 @@ class InvalidDataError(KukurException):
         KukurException.__init__(self, f"invalid data: {message}")
 
 
+class InvalidPathException(KukurException):
+    """Raised when the path to the data is invalid."""
+
+    def __init__(self, message: str):
+        KukurException.__init__(self, f"invalid path: {message}")
+
+
+class DataNotFoundException(KukurException):
+    """Raised when the requested data is not found."""
+
+    def __init__(self, message: str):
+        KukurException.__init__(self, f"data not found: {message}")
+
+
 class InvalidSourceException(KukurException):
     """Raised when the source configuration is invalid."""
 
