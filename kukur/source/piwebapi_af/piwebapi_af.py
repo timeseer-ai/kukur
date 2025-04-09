@@ -15,6 +15,7 @@ import pyarrow as pa
 from kukur import Metadata, SeriesSearch, SeriesSelector
 from kukur.base import DataType, InterpolationType
 from kukur.exceptions import (
+    DataNotFoundException,
     InvalidSourceException,
     MissingModuleException,
 )
@@ -491,8 +492,7 @@ def read_data(
             params=params,
         )
         if response.status_code == NOT_FOUND:
-            logger.warning("No data found for %s", data_request.url)
-            return pa.Table.from_pydict({"ts": [], "value": [], "quality": []})
+            raise DataNotFoundException(f"Data not found for {data_request.url}")
 
         response.raise_for_status()
 

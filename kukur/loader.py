@@ -24,7 +24,12 @@ try:
 except ImportError:
     HAS_AZURE_STORAGE_BLOB = False
 
-from kukur.exceptions import InvalidDataError, KukurException, MissingModuleException
+from kukur.exceptions import (
+    DataNotFoundException,
+    InvalidDataError,
+    KukurException,
+    MissingModuleException,
+)
 
 
 class UnknownLoaderError(KukurException):
@@ -90,7 +95,7 @@ class FileLoader:
             raise InvalidDataError(f'"{self.__path}" is not a directory')
         path = self.__path / name
         if not path.exists():
-            raise InvalidDataError(f"'{path}' does not exist")
+            raise DataNotFoundException(f"'{path}' does not exist")
         try:
             self.__path.joinpath(name).resolve().relative_to(self.__path.resolve())
         except ValueError:
