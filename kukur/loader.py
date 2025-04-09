@@ -74,7 +74,7 @@ class FileLoader:
         If files_as_path is True, return the path.
         """
         if not self.__path.exists():
-            raise DataNotFoundException(f"'{self.__path}' does not exist")
+            raise InvalidDataError(f"'{self.__path}' does not exist")
         if self.__files_as_path:
             return self.__path
         return self.__path.open(mode=self.__mode, encoding=self.__encoding)
@@ -82,7 +82,7 @@ class FileLoader:
     def has_child(self, name: str) -> bool:
         """Test if the file <name> is in the directory pointed to by <path>."""
         if not self.__path.is_dir():
-            raise DataNotFoundException(f'"{self.__path}" is not a directory')
+            raise InvalidDataError(f'"{self.__path}" is not a directory')
         path = self.__path / name
         return path.exists()
 
@@ -99,7 +99,7 @@ class FileLoader:
         try:
             self.__path.joinpath(name).resolve().relative_to(self.__path.resolve())
         except ValueError:
-            raise DataNotFoundException("Trying to access path outside root.") from None
+            raise InvalidDataError("Trying to access path outside root.") from None
         if self.__files_as_path:
             return path
         return path.open(mode=self.__mode, encoding=self.__encoding)
