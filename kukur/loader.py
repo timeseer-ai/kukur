@@ -25,7 +25,7 @@ except ImportError:
     HAS_AZURE_STORAGE_BLOB = False
 
 from kukur.exceptions import (
-    InvalidPathException,
+    DataNotFoundException,
     KukurException,
     MissingModuleException,
 )
@@ -73,7 +73,7 @@ class FileLoader:
         If files_as_path is True, return the path.
         """
         if not self.__path.exists():
-            raise InvalidPathException(f"'{self.__path}' does not exist")
+            raise DataNotFoundException(f"'{self.__path}' does not exist")
         if self.__files_as_path:
             return self.__path
         return self.__path.open(mode=self.__mode, encoding=self.__encoding)
@@ -81,7 +81,7 @@ class FileLoader:
     def has_child(self, name: str) -> bool:
         """Test if the file <name> is in the directory pointed to by <path>."""
         if not self.__path.is_dir():
-            raise InvalidPathException(f'"{self.__path}" is not a directory')
+            raise DataNotFoundException(f'"{self.__path}" is not a directory')
         path = self.__path / name
         return path.exists()
 
@@ -91,14 +91,14 @@ class FileLoader:
         If files_as_path is True, return the path of the child.
         """
         if not self.__path.is_dir():
-            raise InvalidPathException(f'"{self.__path}" is not a directory')
+            raise DataNotFoundException(f'"{self.__path}" is not a directory')
         path = self.__path / name
         if not path.exists():
-            raise InvalidPathException(f"'{path}' does not exist")
+            raise DataNotFoundException(f"'{path}' does not exist")
         try:
             self.__path.joinpath(name).resolve().relative_to(self.__path.resolve())
         except ValueError:
-            raise InvalidPathException("Trying to access path outside root.") from None
+            raise DataNotFoundException("Trying to access path outside root.") from None
         if self.__files_as_path:
             return path
         return path.open(mode=self.__mode, encoding=self.__encoding)
