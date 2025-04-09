@@ -26,6 +26,7 @@ except ImportError:
 
 from kukur.exceptions import (
     DataNotFoundException,
+    InvalidDataError,
     KukurException,
     MissingModuleException,
 )
@@ -91,7 +92,7 @@ class FileLoader:
         If files_as_path is True, return the path of the child.
         """
         if not self.__path.is_dir():
-            raise DataNotFoundException(f'"{self.__path}" is not a directory')
+            raise InvalidDataError(f'"{self.__path}" is not a directory')
         path = self.__path / name
         if not path.exists():
             raise DataNotFoundException(f"'{path}' does not exist")
