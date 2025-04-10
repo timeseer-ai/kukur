@@ -59,3 +59,10 @@ class InvalidLogLevelException(KukurException):
 
     def __init__(self):
         super().__init__("Configured log level unknown.")
+
+
+class InvalidSinkException(KukurException):
+    """Raised when the sink configuration is invalid."""
+
+    def __init__(self, message: str):
+        KukurException.__init__(self, f"invalid sink: {message}")
