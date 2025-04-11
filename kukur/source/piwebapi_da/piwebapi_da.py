@@ -110,7 +110,7 @@ class PIWebAPIDataArchiveSource:
     """Connect to PI Data Archives using the PI Web API."""
 
     def __init__(self, config: Dict):
-        self.__request_properties = _RequestProperties(
+        self._request_properties = _RequestProperties(
             verify_ssl=config.get("verify_ssl", True),
             timeout_seconds=config.get("timeout_seconds", 60),
             max_returned_items_per_call=config.get(
@@ -123,7 +123,7 @@ class PIWebAPIDataArchiveSource:
         if "username" in config and "password" in config:
             self.__basic_auth = (config["username"], config["password"])
 
-        if not self.__request_properties.verify_ssl:
+        if not self._request_properties.verify_ssl:
             urllib3.disable_warnings()
 
     def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
@@ -132,8 +132,8 @@ class PIWebAPIDataArchiveSource:
 
         response = session.get(
             self.__data_archive_uri,
-            verify=self.__request_properties.verify_ssl,
-            timeout=self.__request_properties.timeout_seconds,
+            verify=self._request_properties.verify_ssl,
+            timeout=self._request_properties.timeout_seconds,
             params=dict(selectedFields="Links.Points;Links.EnumerationSets"),
         )
         response.raise_for_status()
@@ -141,19 +141,19 @@ class PIWebAPIDataArchiveSource:
         data_archive = response.json()
 
         dictionary_lookup = _DictionaryLookup(
-            session, self.__request_properties, data_archive
+            session, self._request_properties, data_archive
         )
 
         page = 0
         while True:
             response = session.get(
                 data_archive["Links"]["Points"],
-                verify=self.__request_properties.verify_ssl,
-                timeout=self.__request_properties.timeout_seconds,
+                verify=self._request_properties.verify_ssl,
+                timeout=self._request_properties.timeout_seconds,
                 params=dict(
-                    maxCount=self.__request_properties.max_returned_items_per_call,
+                    maxCount=self._request_properties.max_returned_items_per_call,
                     startIndex=page
-                    * self.__request_properties.max_returned_items_per_call,
+                    * self._request_properties.max_returned_items_per_call,
                 ),
             )
             response.raise_for_status()
@@ -176,8 +176,8 @@ class PIWebAPIDataArchiveSource:
         session = self._get_session()
         response = session.get(
             self.__data_archive_uri,
-            verify=self.__request_properties.verify_ssl,
-            timeout=self.__request_properties.timeout_seconds,
+            verify=self._request_properties.verify_ssl,
+            timeout=self._request_properties.timeout_seconds,
             params=dict(selectedFields="Links.Points;Links.EnumerationSets"),
         )
         response.raise_for_status()
@@ -185,14 +185,14 @@ class PIWebAPIDataArchiveSource:
         data_archive = response.json()
         response = session.get(
             data_archive["Links"]["Points"],
-            verify=self.__request_properties.verify_ssl,
-            timeout=self.__request_properties.timeout_seconds,
+            verify=self._request_properties.verify_ssl,
+            timeout=self._request_properties.timeout_seconds,
             params=dict(nameFilter=selector.name),
         )
         response.raise_for_status()
 
         dictionary_lookup = _DictionaryLookup(
-            session, self.__request_properties, data_archive
+            session, self._request_properties, data_archive
         )
 
         items = response.json()["Items"]
@@ -218,10 +218,10 @@ class PIWebAPIDataArchiveSource:
         while True:
             response = session.get(
                 data_url,
-                verify=self.__request_properties.verify_ssl,
-                timeout=self.__request_properties.timeout_seconds,
+                verify=self._request_properties.verify_ssl,
+                timeout=self._request_properties.timeout_seconds,
                 params=dict(
-                    maxCount=str(self.__request_properties.max_returned_items_per_call),
+                    maxCount=str(self._request_properties.max_returned_items_per_call),
                     startTime=start_date.isoformat(),
                     endTime=end_date.isoformat(),
                     selectedFields="Items.Value;Items.Timestamp;Items.Good",
@@ -252,7 +252,7 @@ class PIWebAPIDataArchiveSource:
 
             if (
                 len(data_points)
-                != self.__request_properties.max_returned_items_per_call
+                != self._request_properties.max_returned_items_per_call
             ):
                 break
 
@@ -279,8 +279,8 @@ class PIWebAPIDataArchiveSource:
     def _get_data_url(self, session, selector: SeriesSelector) -> str:
         response = session.get(
             self.__data_archive_uri,
-            verify=self.__request_properties.verify_ssl,
-            timeout=self.__request_properties.timeout_seconds,
+            verify=self._request_properties.verify_ssl,
+            timeout=self._request_properties.timeout_seconds,
             params=dict(selectedFields="Links.Points"),
         )
         response.raise_for_status()
@@ -288,10 +288,10 @@ class PIWebAPIDataArchiveSource:
         data_archive = response.json()
         response = session.get(
             data_archive["Links"]["Points"],
-            verify=self.__request_properties.verify_ssl,
-            timeout=self.__request_properties.timeout_seconds,
+            verify=self._request_properties.verify_ssl,
+            timeout=self._request_properties.timeout_seconds,
             params=dict(
-                maxCount=str(self.__request_properties.max_returned_items_per_call),
+                maxCount=str(self._request_properties.max_returned_items_per_call),
                 nameFilter=selector.name,
                 selectedFields="Items.Links.RecordedData",
             ),
