@@ -161,7 +161,8 @@ class PIWebAPIAssetFrameworkTemplateSource:
             self.__config.element_template is None
             or self.__config.element_template.strip() == ""
         ):
-            raise InvalidSourceException("element template required")
+            logger.info("Cannot search in element template source without template")
+            return
 
         session = self._get_session()
 
