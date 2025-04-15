@@ -7,7 +7,7 @@ import pytest
 
 from kukur import DataType
 from kukur.base import SeriesSearch
-from kukur.exceptions import InvalidSourceException, KukurException
+from kukur.exceptions import KukurException
 from kukur.source.piwebapi_af_template import from_config
 from kukur.source.piwebapi_af_template.piwebapi_af_template import (
     ElementInOtherDatabaseException,
@@ -705,8 +705,8 @@ def test_search_missing_element_template() -> None:
             "database_uri": DATABASE_URI,
         }
     )
-    with pytest.raises(InvalidSourceException):
-        list(source.search(SeriesSearch("Test")))
+    empty = list(source.search(SeriesSearch("Test")))
+    assert len(empty) == 0
 
 
 @patch("requests.Session.post", side_effect=mocked_requests_post)
