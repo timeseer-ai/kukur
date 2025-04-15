@@ -81,7 +81,7 @@ class PIWebAPIAssetFrameworkSource:
     """Connect to PI AF using the PI Web API."""
 
     def __init__(self, config: Dict):
-        self.__request_properties = RequestProperties(
+        self._request_properties = RequestProperties(
             verify_ssl=config.get("verify_ssl", True),
             timeout_seconds=config.get("timeout_seconds", 60),
             metadata_request_timeout_seconds=config.get(
@@ -100,7 +100,7 @@ class PIWebAPIAssetFrameworkSource:
         if "username" in config and "password" in config:
             self.__basic_auth = (config["username"], config["password"])
 
-        if not self.__request_properties.verify_ssl:
+        if not self._request_properties.verify_ssl:
             urllib3.disable_warnings()
 
         self.use_table_lookup = config.get("use_table_lookup", False)
@@ -111,10 +111,10 @@ class PIWebAPIAssetFrameworkSource:
 
         response = session.get(
             self.__database_uri,
-            verify=self.__request_properties.verify_ssl,
-            timeout=self.__request_properties.metadata_request_timeout_seconds,
+            verify=self._request_properties.verify_ssl,
+            timeout=self._request_properties.metadata_request_timeout_seconds,
             params={
-                "maxCount": self.__request_properties.max_returned_metadata_items_per_call,
+                "maxCount": self._request_properties.max_returned_metadata_items_per_call,
             },
         )
         response.raise_for_status()
@@ -143,7 +143,7 @@ class PIWebAPIAssetFrameworkSource:
         data_url = self._get_data_url(selector)
         return read_data(
             self._get_session(),
-            self.__request_properties,
+            self._request_properties,
             DataRequest(data_url, start_date, end_date, None),
         )
 
@@ -158,7 +158,7 @@ class PIWebAPIAssetFrameworkSource:
         plot_url = self._get_plot_url(selector)
         return read_data(
             self._get_session(),
-            self.__request_properties,
+            self._request_properties,
             DataRequest(plot_url, start_date, end_date, interval_count),
         )
 
@@ -199,14 +199,14 @@ class PIWebAPIAssetFrameworkSource:
         params = {
             "searchFullHierarchy": "true",
             "associations": "paths",
-            "maxCount": self.__request_properties.max_returned_metadata_items_per_call,
+            "maxCount": self._request_properties.max_returned_metadata_items_per_call,
         }
         while next_uri is not None:
             try:
                 response = session.get(
                     next_uri,
-                    verify=self.__request_properties.verify_ssl,
-                    timeout=self.__request_properties.metadata_request_timeout_seconds,
+                    verify=self._request_properties.verify_ssl,
+                    timeout=self._request_properties.metadata_request_timeout_seconds,
                     params=params,
                 )
                 response.raise_for_status()
@@ -275,14 +275,14 @@ class PIWebAPIAssetFrameworkSource:
         next_uri: Optional[str] = self._get_element_attributes_url()
         params = {
             "searchFullHierarchy": "true",
-            "maxCount": self.__request_properties.max_returned_metadata_items_per_call,
+            "maxCount": self._request_properties.max_returned_metadata_items_per_call,
         }
         while next_uri is not None:
             try:
                 attributes_response = session.get(
                     next_uri,
-                    verify=self.__request_properties.verify_ssl,
-                    timeout=self.__request_properties.metadata_request_timeout_seconds,
+                    verify=self._request_properties.verify_ssl,
+                    timeout=self._request_properties.metadata_request_timeout_seconds,
                     params=params,
                 )
                 attributes_response.raise_for_status()
@@ -347,8 +347,8 @@ class PIWebAPIAssetFrameworkSource:
         try:
             attribute_value_response = session.get(
                 attribute["Links"]["Value"],
-                verify=self.__request_properties.verify_ssl,
-                timeout=self.__request_properties.metadata_request_timeout_seconds,
+                verify=self._request_properties.verify_ssl,
+                timeout=self._request_properties.metadata_request_timeout_seconds,
             )
             attribute_value_response.raise_for_status()
         except Exception as exc:
