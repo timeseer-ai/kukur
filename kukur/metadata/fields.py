@@ -84,6 +84,8 @@ Unit = MetadataField[str]("unit", default="", serialized_name="unit")
 def _parse_float(number: Optional[Any]) -> Optional[float]:
     if number is None:
         return None
+    if _is_empty_string(number):
+        return None
     return float(number)
 
 
@@ -155,6 +157,8 @@ Accuracy = MetadataField[Optional[float]](
 def _parse_accuracy_percentage_float(number: Optional[Any]) -> Optional[float]:
     if number is None:
         return None
+    if _is_empty_string(number):
+        return None
     return float(number)
 
 
@@ -179,6 +183,8 @@ def _interpolation_type_from_json(
 ) -> Optional[KukurInterpolationType]:
     if interpolation_type is None:
         return None
+    if _is_empty_string(interpolation_type):
+        return None
     return KukurInterpolationType(interpolation_type)
 
 
@@ -199,6 +205,8 @@ def _data_type_to_json(data_type: Optional[KukurDataType]) -> Optional[str]:
 
 def _data_type_from_json(data_type: Optional[str]) -> Optional[KukurDataType]:
     if data_type is None:
+        return None
+    if _is_empty_string(data_type):
         return None
     return KukurDataType(data_type)
 
@@ -240,6 +248,10 @@ Dictionary = MetadataField[Optional[KukurDictionary]](
     serialize=_dictionary_to_json,
     deserialize=_dictionary_from_json,
 )
+
+
+def _is_empty_string(value: Any) -> bool:
+    return isinstance(value, str) and value.strip() == ""
 
 
 def register_default_fields(cls) -> None:
