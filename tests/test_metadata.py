@@ -111,6 +111,12 @@ def test_physical_limit_low_coerce() -> None:
     assert metadata.get_field(fields.LimitLowPhysical) == 0
 
 
+def test_physical_limit_low_coerce_empty() -> None:
+    metadata = Metadata(SERIES)
+    metadata.coerce_field("physical lower limit", " ")
+    assert metadata.get_field(fields.LimitLowPhysical) is None
+
+
 def test_physical_limit_high() -> None:
     metadata = Metadata(SERIES)
     assert metadata.get_field(fields.LimitHighPhysical) is None
@@ -203,6 +209,12 @@ def test_accuracy_coerce() -> None:
     assert metadata.get_field(fields.Accuracy) == 0.2
 
 
+def test_accuracy_coerce_empty() -> None:
+    metadata = Metadata(SERIES)
+    metadata.coerce_field("accuracy", " ")
+    assert metadata.get_field(fields.Accuracy) is None
+
+
 def test_accuracy_percentage() -> None:
     metadata = Metadata(SERIES)
     assert metadata.get_field(fields.Accuracy) is None
@@ -212,6 +224,18 @@ def test_accuracy_percentage() -> None:
     metadata.set_field(fields.LimitHighPhysical, 10)
     assert metadata.get_field(fields.Accuracy) == 0.2
     assert metadata.get_field(fields.AccuracyPercentage) == 2
+
+
+def test_accuracy_percentage_coerce() -> None:
+    metadata = Metadata(SERIES)
+    metadata.coerce_field("accuracy percentage", "2")
+    assert metadata.get_field(fields.AccuracyPercentage) == 2
+
+
+def test_accuracy_percentage_coerce_empty() -> None:
+    metadata = Metadata(SERIES)
+    metadata.coerce_field("accuracy percentage", " ")
+    assert metadata.get_field(fields.AccuracyPercentage) is None
 
 
 def test_accuracy_percentage_outside_range() -> None:
@@ -360,6 +384,12 @@ def test_interpolation_type_coerce() -> None:
     assert metadata.get_field(fields.InterpolationType) == InterpolationType.STEPPED
 
 
+def test_interpolation_type_coerce_empty() -> None:
+    metadata = Metadata(SERIES)
+    metadata.coerce_field("interpolation type", " ")
+    assert metadata.get_field(fields.InterpolationType) is None
+
+
 def test_data_type() -> None:
     metadata = Metadata(SERIES)
     assert metadata.get_field(fields.DataType) is None
@@ -381,6 +411,12 @@ def test_data_type_coerce() -> None:
     metadata = Metadata(SERIES)
     metadata.coerce_field("data type", "DICTIONARY")
     assert metadata.get_field(fields.DataType) == DataType.DICTIONARY
+
+
+def test_data_type_coerce_empty() -> None:
+    metadata = Metadata(SERIES)
+    metadata.coerce_field("data type", " ")
+    assert metadata.get_field(fields.DataType) is None
 
 
 def test_dictionary_name() -> None:
