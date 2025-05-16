@@ -397,6 +397,12 @@ BATCH_ELEMENT_TEMPLATES_RESPONSE = {
                                 "CategoryNames": ["Measurement"],
                             },
                             {
+                                "Path": "\\\\vm-ts-pi\\Timeseer\\ElementTemplates[Reactor]|TemperatureKelvin",
+                                "Description": "",
+                                "DataReferencePlugIn": "Formula",
+                                "CategoryNames": ["Measurement"],
+                            },
+                            {
                                 "Path": "\\\\vm-ts-pi\\Timeseer\\ElementTemplates[Reactor]|Status",
                                 "DataReferencePlugIn": "",
                                 "Description": "",
@@ -862,6 +868,23 @@ def test_get_element_template_request_error(_) -> None:
     )
     with pytest.raises(ElementTemplateQueryFailedException):
         source.list_element_templates()
+
+
+@patch("requests.Session.post", side_effect=mocked_requests_post)
+def test_get_element_templates_formulat(_) -> None:
+    source = from_config(
+        {"database_uri": DATABASE_URI, "allowed_data_references": ["Formula"]}
+    )
+    element_templates = source.list_element_templates()
+    assert len(element_templates) == 2
+    assert "Reactor" in [template.name for template in element_templates]
+    reactor_template = [
+        template for template in element_templates if template.name == "Reactor"
+    ][0]
+    assert len(reactor_template.attribute_templates) == 1
+    assert "TemperatureKelvin" in [
+        attribute.name for attribute in reactor_template.attribute_templates
+    ]
 
 
 @patch("requests.Session.get", side_effect=mocked_requests_get)

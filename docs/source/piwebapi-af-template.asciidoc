@@ -16,6 +16,7 @@ element_template = "" # The name of the template
 element_category = "" # optional: return only attributes of elements with this category
 attribute_names = [] # optional: return only these attributes
 attribute_category = "" # optional: return only attributes with this category
+allowed_data_references = ["PI Point"] # optional: include attributes other than PI Points
 max_returned_items_per_call = 150000
 verify_ssl = true
 timeout_seconds = 60 # The maximum time to wait for a response
@@ -96,13 +97,23 @@ For example,
 this defines an `af-template` source,
 with the Web API running on `pi.example.org`.
 
-All attributes of the `Reactor` template will be made available.
+All `PI Point` attributes of the `Reactor` template will be made available.
 
 ```toml
 [source.af-template]
 type = "piwebapi-af-template"
 database_uri = "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI"
 element_template = "Reactor"
+```
+
+To include `Formula` attributes as well:
+
+```toml
+[source.af-template]
+type = "piwebapi-af-template"
+database_uri = "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI"
+element_template = "Reactor"
+allowed_data_references = ["PI Point", "Formula"]
 ```
 
 When the Web API is using a self-signed certificate and basic authentication,
