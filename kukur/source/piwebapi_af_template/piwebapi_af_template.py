@@ -70,6 +70,7 @@ class AFTemplateSourceConfiguration:
     element_category: Optional[str]
     attribute_names: Optional[List[str]]
     attribute_category: Optional[str]
+    allowed_data_references: List[str]
 
     @classmethod
     def from_data(cls, config: Dict) -> "AFTemplateSourceConfiguration":
@@ -81,6 +82,7 @@ class AFTemplateSourceConfiguration:
             config.get("element_category"),
             config.get("attribute_names"),
             config.get("attribute_category"),
+            config.get("allowed_data_references", ["PI Point"]),
         )
 
 
@@ -263,7 +265,8 @@ class PIWebAPIAssetFrameworkTemplateSource:
 
                 if (
                     "DataReferencePlugIn" in attribute
-                    and attribute["DataReferencePlugIn"] == "PI Point"
+                    and attribute["DataReferencePlugIn"]
+                    in self.__config.allowed_data_references
                 ):
                     metadata = _get_metadata(
                         SeriesSelector(selector.source, tags, attribute["Name"]),
@@ -430,7 +433,8 @@ class PIWebAPIAssetFrameworkTemplateSource:
                             item["CategoryNames"],
                         )
                         for item in attributes["Content"].get("Items", [])
-                        if item["DataReferencePlugIn"] == "PI Point"
+                        if item["DataReferencePlugIn"]
+                        in self.__config.allowed_data_references
                     ],
                 )
             )
