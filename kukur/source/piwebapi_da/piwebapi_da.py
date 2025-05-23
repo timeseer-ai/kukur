@@ -297,7 +297,9 @@ class PIWebAPIDataArchiveSource:
 
         data_points = response.json()["Items"]
         if len(data_points) == 0:
-            raise DataNotFoundException("Could not fetch series data link")
+            raise DataNotFoundException(
+                f"no RecordedData link for series '{selector.name}'"
+            )
 
         return response.json()["Items"][0]["Links"]["RecordedData"]
 
