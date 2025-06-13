@@ -155,6 +155,7 @@ class PIWebAPIAssetFrameworkTemplateSource:
         if "username" in config and "password" in config:
             self.__basic_auth = (config["username"], config["password"])
 
+        self.__bearer_token = None
         if (
             (client_id := config.get("client_id"))
             and (client_secret := config.get("client_secret"))
