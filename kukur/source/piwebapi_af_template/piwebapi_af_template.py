@@ -13,6 +13,7 @@ from typing import Dict, Generator, List, Optional
 import pyarrow as pa
 
 from kukur import Metadata, SeriesSearch, SeriesSelector
+from kukur.auth import OIDCConfig
 from kukur.base import DataType, InterpolationType
 from kukur.exceptions import (
     InvalidSourceException,
@@ -41,6 +42,12 @@ try:
 except ImportError:
     HAS_REQUESTS_KERBEROS = False
 
+try:
+    from kukur.auth import OIDCBearerAuth
+
+    HAS_OIDC_AUTH = True
+except ImportError:
+    HAS_OIDC_AUTH = False
 
 logger = logging.getLogger(__name__)
 
@@ -153,6 +160,14 @@ class PIWebAPIAssetFrameworkTemplateSource:
         self.__basic_auth = None
         if "username" in config and "password" in config:
             self.__basic_auth = (config["username"], config["password"])
+
+        self.__oidc_config = None
+        if (
+            (client_id := config.get("client_id"))
+            and (client_secret := config.get("client_secret"))
+            and (oidc_token_url := config.get("oidc_token_url"))
+        ):
+            self.__oidc_config = OIDCConfig(client_id, client_secret, oidc_token_url)
 
         if not self.__request_properties.verify_ssl:
             urllib3.disable_warnings()
@@ -501,7 +516,9 @@ class PIWebAPIAssetFrameworkTemplateSource:
 
     def _get_session(self):
         session = Session()
-        if self.__basic_auth is None and HAS_REQUESTS_KERBEROS:
+        if self.__oidc_config is not None and HAS_OIDC_AUTH:
+            session.auth = OIDCBearerAuth(self.__oidc_config)
+        elif self.__basic_auth is None and HAS_REQUESTS_KERBEROS:
             session.auth = HTTPKerberosAuth(
                 mutual_authentication="REQUIRED", sanitize_mutual_error_response=False
             )
