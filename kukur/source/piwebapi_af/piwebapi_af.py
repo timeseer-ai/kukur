@@ -13,6 +13,7 @@ from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 import pyarrow as pa
 
 from kukur import Metadata, SeriesSearch, SeriesSelector
+from kukur.auth import get_oidc_token
 from kukur.base import DataType, InterpolationType
 from kukur.exceptions import (
     DataNotFoundException,
@@ -100,6 +101,16 @@ class PIWebAPIAssetFrameworkSource:
         if "username" in config and "password" in config:
             self.__basic_auth = (config["username"], config["password"])
 
+        self.__bearer_token = None
+        if (
+            (client_id := config.get("client_id"))
+            and (client_secret := config.get("client_secret"))
+            and (oidc_token_url := config.get("oidc_token_url"))
+        ):
+            self.__bearer_token = get_oidc_token(
+                client_id, client_secret, oidc_token_url
+            )
+
         if not self._request_properties.verify_ssl:
             urllib3.disable_warnings()
 
@@ -164,12 +175,15 @@ class PIWebAPIAssetFrameworkSource:
 
     def _get_session(self):
         session = Session()
-        if self.__basic_auth is None and HAS_REQUESTS_KERBEROS:
+        if self.__bearer_token is not None:
+            session.headers.update({"Authorization": f"Bearer {self.__bearer_token}"})
+        elif self.__basic_auth is None and HAS_REQUESTS_KERBEROS:
             session.auth = HTTPKerberosAuth(
                 mutual_authentication="REQUIRED", sanitize_mutual_error_response=False
             )
         elif self.__basic_auth is not None:
             session.auth = self.__basic_auth
+
         return session
 
     def _get_data_url(self, selector: SeriesSelector) -> str:
