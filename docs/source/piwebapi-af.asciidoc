@@ -77,7 +77,7 @@ By default,
 Kerberos https://docs.osisoft.com/bundle/pi-web-api/page/authentication-methods.html[authentication] is tried.
 When Basic authentication is required,
 set the `username` and `password` fields in the configuration.
-To use OIDC Bearer token authorization, set the `oidc_token_url`,
+To use OpenID Connect Bearer token authentication, set the `oidc_token_url`,
 `client_id` and `client_secret` fields in the configuration.
 
 For example,

@@ -108,13 +108,7 @@ class PIWebAPIAssetFrameworkSource:
         if "username" in config and "password" in config:
             self.__basic_auth = (config["username"], config["password"])
 
-        self.__oidc_config = None
-        if (
-            (client_id := config.get("client_id"))
-            and (client_secret := config.get("client_secret"))
-            and (oidc_token_url := config.get("oidc_token_url"))
-        ):
-            self.__oidc_config = OIDCConfig(client_id, client_secret, oidc_token_url)
+        self.__oidc_config = OIDCConfig.from_config(config)
 
         if not self._request_properties.verify_ssl:
             urllib3.disable_warnings()
