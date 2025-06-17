@@ -271,6 +271,8 @@ def cast_timestamp(
 
     if data_timezone is not None:
         # pylint: disable=no-member
+        if not pa.types.is_timestamp(array.type):
+            array = pyarrow.compute.cast(array, pa.timestamp("us", None))
         array = pa.compute.assume_timezone(array, data_timezone)
 
     if not pa.types.is_timestamp(array.type):

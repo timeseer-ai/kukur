@@ -106,6 +106,11 @@ type = "feather"
 path = "tests/test_data/feather/row-timestamp-naive.feather"
 data_timezone = "America/Sao_Paulo"
 
+[source.row-feather-timestamp-string-naive-us]
+type = "feather"
+path = "tests/test_data/feather/row-timestamp-string-naive-us.feather"
+data_timezone = "UTC"
+
 [source.row-feather-tags]
 type = "feather"
 path = "tests/test_data/feather/row-tags.feather"
