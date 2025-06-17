@@ -61,7 +61,7 @@ def has_kerberos_auth() -> bool:
     return HAS_REQUESTS_KERBEROS
 
 
-def get_kerberos_auth() -> HTTPKerberosAuth:
+def get_kerberos_auth():
     """Return a requests authentication module for Kerberos."""
     if not HAS_REQUESTS_KERBEROS:
         raise MissingModuleException("requests-kerberos")
