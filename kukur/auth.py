@@ -8,6 +8,8 @@ import time
 from dataclasses import dataclass
 from typing import Optional
 
+from kukur.exceptions import MissingModuleException
+
 try:
     import requests
     from requests.auth import AuthBase
@@ -15,6 +17,13 @@ try:
     HAS_OIDC_AUTH = True
 except ImportError:
     HAS_OIDC_AUTH = False
+
+try:
+    from requests_kerberos import HTTPKerberosAuth
+
+    HAS_REQUESTS_KERBEROS = True
+except ImportError:
+    HAS_REQUESTS_KERBEROS = False
 
 
 @dataclass
@@ -40,6 +49,25 @@ class OIDCConfig:
             )
 
         return None
+
+
+def get_oidc_auth(config: OIDCConfig):  # noqa: ARG001
+    """Return a requests authentication module for OpenID Connect."""
+    raise MissingModuleException("requests")
+
+
+def has_kerberos_auth() -> bool:
+    """Check if requests-kerberos is available."""
+    return HAS_REQUESTS_KERBEROS
+
+
+def get_kerberos_auth() -> HTTPKerberosAuth:
+    """Return a requests authentication module for Kerberos."""
+    if not HAS_REQUESTS_KERBEROS:
+        raise MissingModuleException("requests-kerberos")
+    return HTTPKerberosAuth(
+        mutual_authentication="REQUIRED", sanitize_mutual_error_response=False
+    )
 
 
 if HAS_OIDC_AUTH:
@@ -80,3 +108,7 @@ if HAS_OIDC_AUTH:
                 self._refresh_token()
             r.headers["Authorization"] = f"Bearer {self._access_token}"
             return r
+
+    def get_oidc_auth(config: OIDCConfig):
+        """Return a requests authentication module for OpenID Connect."""
+        return OIDCBearerAuth(config)

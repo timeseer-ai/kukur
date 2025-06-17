@@ -9,7 +9,7 @@ from typing import Dict, Generator, Optional
 
 import pyarrow as pa
 
-from kukur.auth import OIDCConfig
+from kukur.auth import OIDCConfig, get_kerberos_auth, get_oidc_auth, has_kerberos_auth
 
 try:
     import urllib3
@@ -20,21 +20,6 @@ except ImportError:
     HAS_REQUESTS = False
 
 from dateutil.parser import isoparse as parse_date
-
-try:
-    from requests_kerberos import HTTPKerberosAuth
-
-    HAS_REQUESTS_KERBEROS = True
-except ImportError:
-    HAS_REQUESTS_KERBEROS = False
-
-
-try:
-    from kukur.auth import OIDCBearerAuth
-
-    HAS_OIDC_AUTH = True
-except ImportError:
-    HAS_OIDC_AUTH = False
 
 from kukur import (
     DataType,
@@ -277,14 +262,12 @@ class PIWebAPIDataArchiveSource:
 
     def _get_session(self):
         session = Session()
-        if self.__oidc_config is not None and HAS_OIDC_AUTH:
-            session.auth = OIDCBearerAuth(self.__oidc_config)
-        elif self.__basic_auth is None and HAS_REQUESTS_KERBEROS:
-            session.auth = HTTPKerberosAuth(
-                mutual_authentication="REQUIRED", sanitize_mutual_error_response=False
-            )
+        if self.__oidc_config is not None:
+            session.auth = get_oidc_auth(self.__oidc_config)
         elif self.__basic_auth is not None:
             session.auth = self.__basic_auth
+        elif has_kerberos_auth():
+            session.auth = get_kerberos_auth()
         return session
 
     def _get_data_url(self, session, selector: SeriesSelector) -> str:
