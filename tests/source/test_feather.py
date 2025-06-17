@@ -224,6 +224,16 @@ def test_row_data_timezone_timestamp_naive():
     assert start_date.tzinfo == pytz.UTC
 
 
+def test_row_data_timezone_timestamp_naive_string_microseconds():
+    table = get_source("row-feather-timestamp-string-naive-us").get_data(
+        make_series("row-feather-timestamp-string-naive-us"), START_DATE, END_DATE
+    )
+    assert len(table) == 5
+    start_date = table["ts"][0].as_py()
+    assert start_date == START_DATE
+    assert start_date.tzinfo == pytz.UTC
+
+
 def test_row_tags_search():
     series = list(
         get_source("row-feather-tags").search(SeriesSearch("row-feather-tags"))
