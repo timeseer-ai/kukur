@@ -17,6 +17,9 @@ timeout_seconds = 60 # The maximum time to wait for a response for a data reques
 metadata_request_timeout_seconds = 10 # The maximum time to wait for a response for a metadata request
 username = "" # optional: username for basic authentication
 password = "" # optional: password for basic authentication
+oidc_token_url = "" # optional: URL for OIDC token request
+client_id = "" # optional: OIDC cliend_id
+client_secret = "" # optional: OIDC client_secret
 ```
 
 `database_uri` is a required field.
@@ -74,6 +77,8 @@ By default,
 Kerberos https://docs.osisoft.com/bundle/pi-web-api/page/authentication-methods.html[authentication] is tried.
 When Basic authentication is required,
 set the `username` and `password` fields in the configuration.
+To use OpenID Connect Bearer token authentication, set the `oidc_token_url`,
+`client_id` and `client_secret` fields in the configuration.
 
 For example,
 this defines an `af` source,
