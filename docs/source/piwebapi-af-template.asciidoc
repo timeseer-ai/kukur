@@ -20,6 +20,7 @@ allowed_data_references = ["PI Point"] # optional: include attributes other than
 max_returned_items_per_call = 150000
 verify_ssl = true
 timeout_seconds = 60 # The maximum time to wait for a response
+metadata_request_timeout_seconds = 10 # The maximum time to wait for a response for a metadata request
 username = "" # optional: username for basic authentication
 password = "" # optional: password for basic authentication
 oidc_token_url = "" # optional: URL for OIDC token request
