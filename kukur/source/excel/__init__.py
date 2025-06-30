@@ -27,7 +27,7 @@ def parse_excel(readable, sheet_name: str, options: Optional[DataOptions]) -> pa
     if not HAS_OPENPYXL:
         raise MissingModuleException("openpyxl", "excel")
 
-    workbook = openpyxl.load_workbook(readable, data_only=True)
+    workbook = openpyxl.load_workbook(readable, data_only=True, read_only=True)
     worksheet = workbook[sheet_name]
 
     data = list(worksheet.values)
@@ -49,9 +49,10 @@ def list_sheets(readable) -> List[str]:
     """List the sheets in the Excel file."""
     if not HAS_OPENPYXL:
         raise MissingModuleException("openpyxl", "excel")
-
-    workbook = openpyxl.load_workbook(readable)
-    return workbook.sheetnames
+    workbook = openpyxl.load_workbook(readable, read_only=True)
+    sheetnames = workbook.sheetnames
+    workbook.close()
+    return sheetnames
 
 
 def _to_pyarrow(headers: List[str], rows: List[List]) -> pa.Table:
