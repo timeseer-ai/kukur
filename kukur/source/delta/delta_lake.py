@@ -212,7 +212,7 @@ class DeltaLakeSource:
         }
 
         delta_table = DeltaTable(self.__options.uri)
-        schema = delta_table.schema().to_pyarrow()
+        schema = pa.schema(delta_table.schema().to_arrow())
         is_timestamp = False
         if pa.types.is_timestamp(schema.field(effective_column_mapping["ts"]).type):
             is_timestamp = True
