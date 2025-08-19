@@ -24,7 +24,7 @@ class MetadataFields:
     """
 
     _fields: List[MetadataField] = []
-    __values: Dict[Union[str, MetadataField], Any]
+    _values: Dict[Union[str, MetadataField], Any]
 
     def __init__(
         self,
@@ -32,19 +32,19 @@ class MetadataFields:
         values: Optional[Dict[MetadataField, Any]] = None,
     ):
         self._fields = fields
-        self.__values = {k: k.default() for k in self._fields}
+        self._values = {k: k.default() for k in self._fields}
         if values is not None:
             for field, value in values.items():
-                self.__values[field] = value
+                self._values[field] = value
 
     def iter_fields(self) -> Generator[Tuple[MetadataField, Any], None, None]:
         """Iterate over all typed metadata fields and their values."""
         for field in self._fields:
-            yield (field, field.calculated_value(self, self.__values.get(field)))
+            yield (field, field.calculated_value(self, self._values.get(field)))
 
     def iter_names(self) -> Generator[Tuple[str, Any], None, None]:
         """Iterate over all metadata fields (typed and untyped) and return their names and values."""
-        for field, value in self.__values.items():
+        for field, value in self._values.items():
             if isinstance(field, MetadataField):
                 yield (field.name(), field.calculated_value(self, value))
             else:
@@ -52,7 +52,7 @@ class MetadataFields:
 
     def iter_serialized(self) -> Generator[Tuple[str, Any], None, None]:
         """Iterate over all metadata fields, but use the human readable names and serialized values."""
-        for field, value in self.__values.items():
+        for field, value in self._values.items():
             if isinstance(field, MetadataField):
                 yield (
                     field.name(),
@@ -75,15 +75,15 @@ class MetadataFields:
         """Set the given field to the specified value."""
         if field not in self._fields:
             raise AttributeError()
-        self.__values[field] = value
+        self._values[field] = value
 
     def set_field_by_name(self, field_name: str, value: Any):
         """Set the field of the given name to the corresponding value."""
         field = self._find_field(field_name)
         if field is None:
-            self.__values[field_name] = value
+            self._values[field_name] = value
         else:
-            self.__values[field] = value
+            self._values[field] = value
 
     def coerce_field(self, field_name: str, value: Any):
         """Set the field of the given name to the corresponding value.
@@ -92,15 +92,15 @@ class MetadataFields:
         """
         field = self._find_field(field_name)
         if field is not None:
-            self.__values[field] = field.deserialize(value)
+            self._values[field] = field.deserialize(value)
         else:
-            self.__values[field_name] = value
+            self._values[field_name] = value
 
     def get_field(self, field: MetadataField[T]) -> T:
         """Return the value of the given field."""
         if field not in self._fields:
             raise AttributeError()
-        return field.calculated_value(self, self.__values[field])
+        return field.calculated_value(self, self._values[field])
 
     def get_field_by_name(self, field_name: str) -> Any:
         """Return the value of the given field.
@@ -109,15 +109,15 @@ class MetadataFields:
         """
         field = self._find_field(field_name)
         if field is None:
-            if field_name not in self.__values:
+            if field_name not in self._values:
                 return None
-            return self.__values[field_name]
+            return self._values[field_name]
         return self.get_field(field)
 
     def to_data(self) -> Dict[str, Any]:
         """Convert the metadata to a Dictionary with camelcase keys as expected in JSON."""
         data = {}
-        for field, value in self.__values.items():
+        for field, value in self._values.items():
             if isinstance(field, MetadataField):
                 data[field.serialized_name()] = field.serialize(value)
             else:
