@@ -70,7 +70,10 @@ class SeriesSearch:
 
     def to_data(self) -> Dict[str, Any]:
         """Convert to JSON object."""
-        return dict(source=self.source, tags=self.tags, field=self.field)
+        data = dict(source=self.source, tags=self.tags)
+        if self.field is not None:
+            data["field"] = self.field
+        return data
 
 
 @dataclass
