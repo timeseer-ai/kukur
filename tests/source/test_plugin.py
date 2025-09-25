@@ -6,13 +6,13 @@
 import sys
 from datetime import datetime
 
-from kukur import Source
+from kukur import PlotSource
 from kukur.base import SeriesSearch, SeriesSelector
 from kukur.metadata import Metadata
 from kukur.source import SourceFactory
 
 
-def get_source() -> Source:
+def get_source() -> PlotSource:
     source = SourceFactory(
         {
             "source": {
@@ -20,6 +20,7 @@ def get_source() -> Source:
                     "type": "plugin",
                     "cmd": [sys.executable, "tests/test_data/plugin/plugin.py"],
                     "quality_mapping": "plugin_quality",
+                    "features": {"plot": True},
                 }
             },
             "quality_mapping": {
@@ -62,4 +63,20 @@ def test_data() -> None:
     assert data["quality"][0].as_py() == 0
     assert data["ts"][1].as_py() == end_date
     assert data["value"][1].as_py() == 42
+    assert data["quality"][1].as_py() == 1
+
+
+def test_plot_data() -> None:
+    source = get_source()
+    start_date = datetime.fromisoformat("2022-01-01T00:00:00+00:00")
+    end_date = datetime.fromisoformat("2022-01-02T00:00:00+00:00")
+    data = source.get_plot_data(
+        SeriesSelector("Plugin", "test"), start_date, end_date, 200
+    )
+    assert len(data) == 2
+    assert data["ts"][0].as_py() == start_date
+    assert data["value"][0].as_py() == 0
+    assert data["quality"][0].as_py() == 0
+    assert data["ts"][1].as_py() == end_date
+    assert data["value"][1].as_py() == 47
     assert data["quality"][1].as_py() == 1

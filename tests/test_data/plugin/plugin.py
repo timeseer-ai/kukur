@@ -18,6 +18,8 @@ def _run() -> None:
         _metadata()
     if sys.argv[1] == "data":
         _data()
+    if sys.argv[1] == "plot":
+        _plot_data()
     sys.exit(0)
 
 
@@ -53,6 +55,18 @@ def _data() -> None:
     end_date = datetime.fromisoformat(query["data"]["endDate"])
     table = Table.from_pydict(
         {"ts": [start_date, end_date], "value": [0, 42], "quality": ["BAD", "GOOD"]}
+    )
+    with ipc.new_stream(sys.stdout.buffer, table.schema) as writer:
+        writer.write_table(table)
+
+
+def _plot_data() -> None:
+    """Return Arrow IPC with that for the time series received on stdin."""
+    query = json.load(sys.stdin)
+    start_date = datetime.fromisoformat(query["data"]["startDate"])
+    end_date = datetime.fromisoformat(query["data"]["endDate"])
+    table = Table.from_pydict(
+        {"ts": [start_date, end_date], "value": [0, 47], "quality": ["BAD", "GOOD"]}
     )
     with ipc.new_stream(sys.stdout.buffer, table.schema) as writer:
         writer.write_table(table)

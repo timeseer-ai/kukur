@@ -70,6 +70,32 @@ class PluginSource:
             table = reader.read_all()
             return conform_to_schema(table, self.__quality_mapper)
 
+    def get_plot_data(
+        self,
+        selector: SeriesSelector,
+        start_date: datetime,
+        end_date: datetime,
+        interval_count: int,
+    ) -> Table:
+        """Get data from the Flight service."""
+        data = {
+            "config": self.__config,
+            "data": {
+                "series": selector.to_data(),
+                "startDate": start_date.isoformat(),
+                "endDate": end_date.isoformat(),
+                "intervalCount": interval_count,
+            },
+        }
+        if self.__config.get("features", {}).get("plot", False):
+            data["data"]["intervalCount"] = interval_count
+            result = self._run(selector.source, "plot", data)
+        else:
+            result = self._run(selector.source, "data", data)
+        with ipc.open_stream(result) as reader:
+            table = reader.read_all()
+            return conform_to_schema(table, self.__quality_mapper)
+
     def _run(self, name: str, action: str, data: dict) -> bytes:
         try:
             output = subprocess.run(
