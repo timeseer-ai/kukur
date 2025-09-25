@@ -10,6 +10,9 @@ Sources with `type = "plugin"` call out to a separate binary that implements all
 type = "plugin"
 cmd = ["/path/to/binary"]
 extra = "foo"
+
+[source.<name>.features]
+plot = false
 ```
 
 `cmd` is a required field.
@@ -17,11 +20,15 @@ All other fields are passed to the binary as provided.
 
 `cmd` can be either a simple string or a list of strings.
 
+`features` is an optional parameter with following option:
+- `plot` when the binary has a separate plot data function defined.
+
 The binary will be called with one extra argument:
 
 - `search` to list time series or metadata
 - `metadata` to get metadata for one time series
 - `data` to return Arrow data
+- `plot` optional argument to return interpolated Arrow data
 
 Input is sent on standard input.
 Output is expected on standard output.
@@ -153,7 +160,7 @@ the binary will receive JSON on standard input.
 
 `"config"` contains the source configuration.
 
-`"metadata"` contains the `"series"` to return metadata for.
+`"data"` contains the `"series"` to return data for.
 
 The `"startDate"` and `"endDate"` fields are formatted per https://datatracker.ietf.org/doc/html/rfc3339#section-5.6[RFC3339].
 
@@ -179,6 +186,44 @@ ifndef::sources[]
 link:sources.asciidoc#Quality[source documentation]
 endif::sources[]
 .
+
+
+=== Plot
+
+When the `plot` feature is enabled a plot argument can be used.
+When called with the `plot` argument,
+the binary will receive JSON on standard input.
+
+```json
+{
+    "config": {},
+    "data": {
+        "series": {
+            "source": "<source name>",
+            "tags": {
+                "tag-1": "tag-1-value",
+                "tag-2": "tag-2-value"
+            },
+            "field": "optional-field"
+        },
+        "startDate": "YYYY-MM-DDTHH:MM:SS+00:00",
+        "endDate": "YYYY-MM-DDTHH:MM:SS+00:00",
+        "intervalCount": 200,
+    }
+}
+```
+
+`"config"` contains the source configuration.
+
+`"data"` contains the `"series"` to return data for.
+
+The `"startDate"` and `"endDate"` fields are formatted per https://datatracker.ietf.org/doc/html/rfc3339#section-5.6[RFC3339].
+
+`"intervalCount"` the number of intervals included in the plot.
+
+The response written to standard output should be in the Apache Arrow https://arrow.apache.org/docs/format/Columnar.html#ipc-streaming-format[IPC Streaming Format].
+
+The schema of the record batches will be similar to the binary with the `data` argument.
 
 === Example
 
