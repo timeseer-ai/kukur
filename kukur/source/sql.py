@@ -416,5 +416,5 @@ def _coerce_types(values: list[Union[float, str]], detected_type: str):
             if value is not None and type(value) in [str, Decimal, float]:
                 values[i] = str(value)
         elif detected_type == "number":
-            if value is None or type(value) not in [Decimal, float]:
+            if value is None or type(value) not in [Decimal, float, int]:
                 values[i] = float("nan")

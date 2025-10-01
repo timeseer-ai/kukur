@@ -766,3 +766,40 @@ def test_numbers_inside_string_column():
     assert [value.as_py() for value in data["value"]] == ["string-value"] * 5 + [
         "42"
     ] + ["string-value"] * 5
+
+
+def test_integer_data() -> None:
+    config = SQLConfig(
+        ":memory:",
+        data_query="select ts, value from Data where series_name = ? and ts between ? and ?",
+        tag_columns=["series name"],
+    )
+    source = DummySQLSource(config, MetadataValueMapper(), QualityMapper())
+    source.db.execute(
+        """
+        create table Data (
+            ts datetime,
+            series_name text,
+            value int
+        );
+        """
+    )
+    for i in range(5):
+        source.db.execute(
+            "insert into Data (ts, series_name, value) values (?, ?, ?)",
+            [
+                datetime.fromisoformat("2021-01-01T00:00:00+00:00")
+                + timedelta(minutes=i),
+                "series",
+                i,
+            ],
+        )
+
+    data = source.get_data(
+        SeriesSelector.from_tags("dummy", {"series name": "series"}),
+        datetime.fromisoformat("2021-01-01T00:00:00+00:00"),
+        datetime.fromisoformat("2021-01-03T00:00:00+00:00"),
+    )
+
+    assert len(data) == 5
+    assert data["value"].to_pylist() == [0, 1, 2, 3, 4]
