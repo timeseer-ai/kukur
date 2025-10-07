@@ -18,6 +18,9 @@ WEB_API_URI = "https://pi.example.org/piwebapi/"
 DATABASE_URI = f"{WEB_API_URI}assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI"
 ROOT_ID = "F1EmMyvy4jYfVEyvgGiLVLmYvAe-IYOLTf7xGIoGBFvZT1mwVk0tVFMtUElcVElNRVNFRVJcUkVBQ1RPUlM"
 ROOT_URI = f"{WEB_API_URI}elements/{ROOT_ID}"
+PHASES_ID = "F1MSRMyvy4jYfVEyvgGiLVLmYvA69wQlmWrDESLkkfNAL9XiAVk0tVFMtUElcVElNRVNFRVJcRU5VTUVSQVRJT05TRVRTW1BIQVNFU10"
+PHASES_URI = f"{WEB_API_URI}enumerationsets/{PHASES_ID}/enumerationvalues"
+
 
 BATCH_RESPONSE = {
     "GetAttributes": {
@@ -75,13 +78,15 @@ BATCH_RESPONSE = {
                                 "Name": "Phase",
                                 "Description": "",
                                 "Path": "\\\\vm-ts-pi\\Timeseer\\TSAI Houston\\Reactor01|Status|Phase",
-                                "Type": "Double",
+                                "Type": "EnumerationValue",
+                                "TypeQualifier": "Phases",
                                 "DefaultUnitsNameAbbreviation": "",
                                 "DataReferencePlugIn": "PI Point",
                                 "CategoryNames": ["Status"],
                                 "Step": True,
                                 "Span": 7.0,
                                 "Zero": 0.0,
+                                "Links": {"EnumerationValues": PHASES_URI},
                             },
                             {
                                 "WebId": "A1_5",
@@ -554,6 +559,20 @@ ATTRIBUTE_CATEGORIES_RESPONSE = {
 }
 
 
+PHASES_RESPONSE = {
+    "Items": [
+        {
+            "Name": "Phase1",
+            "Value": 0,
+        },
+        {
+            "Name": "Phase2",
+            "Value": 1,
+        },
+    ]
+}
+
+
 class MockResponse:
     def __init__(self, json_data, status_code):
         self.json_data = json_data
@@ -593,7 +612,6 @@ def mocked_requests_post(*args, **kwargs):
                 return MockResponse(BATCH_RESPONSE, 200)
             if uri.startswith(f"{ROOT_URI}/elements"):
                 return MockResponse(BATCH_FILTER_ROOT_RESPONSE, 200)
-
     raise Exception(args[0])
 
 
@@ -657,6 +675,9 @@ def mocked_requests_get(*args, **kwargs):
         response = ATTRIBUTE_CATEGORIES_RESPONSE
         return MockResponse(response, 200)
 
+    if args[0] == PHASES_URI:
+        return MockResponse(PHASES_RESPONSE, 200)
+
     raise Exception(args[0])
 
 
@@ -670,7 +691,8 @@ def mocked_requests_get_invalid_database(*args, **kwargs):
 
 
 @patch("requests.Session.post", side_effect=mocked_requests_post)
-def test_search(_post) -> None:
+@patch("requests.Session.get", side_effect=mocked_requests_get)
+def test_search(_post, _get) -> None:
     source = from_config(
         {
             "database_uri": DATABASE_URI,
@@ -784,6 +806,40 @@ def test_search_no_attributes(_) -> None:
     )
     series = list(source.search(SeriesSearch("Test")))
     assert len(series) == 0
+
+
+@patch("requests.Session.post", side_effect=mocked_requests_post)
+@patch("requests.Session.get", side_effect=mocked_requests_get)
+def test_search_dictionary(_post, _get) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "element_template": "Reactor",
+        }
+    )
+    series_metadata = list(source.search(SeriesSearch("Test")))
+    assert len(series_metadata) == 10
+
+    phases = [
+        metadata for metadata in series_metadata if metadata.series.field == "Phase"
+    ]
+    assert len(phases) == 2
+
+    templates = [metadata.get_field_by_name("Reactor") for metadata in phases]
+    assert "Reactor01" in templates
+    assert "Reactor02" in templates
+
+    metadata = [
+        metadata
+        for metadata in phases
+        if metadata.get_field_by_name("Reactor") == "Reactor01"
+    ][0]
+
+    assert metadata.get_field_by_name("data type") == DataType.DICTIONARY
+    assert metadata.get_field_by_name("dictionary").mapping == {
+        0: "Phase1",
+        1: "Phase2",
+    }
 
 
 @patch("requests.Session.get", side_effect=mocked_requests_get)
