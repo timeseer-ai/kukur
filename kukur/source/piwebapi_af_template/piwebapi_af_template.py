@@ -14,7 +14,7 @@ import pyarrow as pa
 
 from kukur import Metadata, SeriesSearch, SeriesSelector
 from kukur.auth import OIDCConfig, get_kerberos_auth, get_oidc_auth, has_kerberos_auth
-from kukur.base import DataType, InterpolationType
+from kukur.base import DataType, Dictionary, InterpolationType
 from kukur.exceptions import (
     InvalidSourceException,
     KukurException,
@@ -190,10 +190,12 @@ class PIWebAPIAssetFrameworkTemplateSource:
                     "Items.CategoryNames",
                     "Items.DataReferencePlugin",
                     "Items.Type",
+                    "Items.TypeQualifier",
                     "Items.DefaultUnitsNameAbbreviation",
                     "Items.Step",
                     "Items.Span",
                     "Items.Zero",
+                    "Items.Links.EnumerationValues",
                 ]
             ),
             "maxCount": self.__request_properties.max_returned_items_per_call,
@@ -239,6 +241,7 @@ class PIWebAPIAssetFrameworkTemplateSource:
                 )
             )
 
+        dictionary_lookup = _DictionaryLookup(self.__request_properties, session)
         for i, element in enumerate(result["GetElements"]["Content"].get("Items")):
             element_metadata = {self.__config.element_template: element["Name"]}
             if len(element["CategoryNames"]) > 0:
@@ -273,6 +276,7 @@ class PIWebAPIAssetFrameworkTemplateSource:
                             metadata.set_field(
                                 fields.Description, element["Description"]
                             )
+                        dictionary_lookup.lookup_dictionary(metadata, attribute)
                         yield metadata
 
     def get_metadata(self, selector: SeriesSelector) -> Metadata:
@@ -601,10 +605,14 @@ def _get_metadata(
         "Int32": DataType.FLOAT64,
         "Int64": DataType.FLOAT64,
         "String": DataType.STRING,
+        "EnumerationValue": DataType.DICTIONARY,
     }
     if attribute_type not in attribute_types:
         return None
     metadata.set_field(fields.DataType, attribute_types[attribute_type])
+
+    if attribute["Type"] == "EnumerationValue":
+        metadata.set_field(fields.DictionaryName, attribute.get("TypeQualifier"))
 
     if len(attribute["CategoryNames"]) > 0:
         metadata.set_field_by_name(
@@ -615,6 +623,46 @@ def _get_metadata(
     for k, v in extra_metadata.items():
         metadata.set_field_by_name(k, v)
     return metadata
+
+
+class _DictionaryLookup:
+
+    def __init__(self, request_properties: RequestProperties, session):
+        self._request_properties = request_properties
+        self._session = session
+        self._lookup: Dict[str, Dictionary] = {}
+
+    def lookup_dictionary(self, metadata: Metadata, attribute: Dict):
+        """Add a dictionary to the series for enumeration sets."""
+        dictionary_name = metadata.get_field(fields.DictionaryName)
+        if dictionary_name is not None:
+            if (
+                dictionary_name not in self._lookup
+                and "EnumerationValues" in attribute.get("Links", {})
+            ):
+                response = self._session.get(
+                    attribute["Links"]["EnumerationValues"],
+                    verify=self._request_properties.verify_ssl,
+                    timeout=self._request_properties.metadata_request_timeout_seconds,
+                    headers={"X-Requested-With": "Kukur"},
+                    params={
+                        "selectedFields": ";".join(
+                            [
+                                "Items.Name",
+                                "Items.Value",
+                            ]
+                        ),
+                    },
+                )
+                response.raise_for_status()
+                result = response.json()
+
+                mapping = {}
+                for item in result.get("Items", []):
+                    mapping[item["Value"]] = item["Name"]
+                self._lookup[dictionary_name] = Dictionary(mapping)
+
+            metadata.set_field(fields.Dictionary, self._lookup.get(dictionary_name))
 
 
 def from_config(config: Dict) -> PIWebAPIAssetFrameworkTemplateSource:
