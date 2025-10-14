@@ -576,41 +576,45 @@ class PIWebAPIAssetFrameworkTemplateSource:
             )
 
 
-def _validate_batch_response_status(result: dict):
+def _validate_batch_response_status(result: Dict):
     error_message = None
+    elements_content = result["GetElements"]["Content"]
     if result["GetElements"]["Status"] not in [HTTP_OK, HTTP_MULTI_STATUS]:
         error_message = "unknown error"
-        if isinstance(result["GetElements"]["Content"], dict):
-            error_message = ";".join(
-                result["GetElements"]["Content"].get("Errors", ["unknown error"])
-            )
-        if isinstance(result["GetAttributes"]["Content"], str):
-            error_message = result["GetAttributes"]["Content"]
+        if isinstance(elements_content, dict):
+            error_message = ";".join(elements_content.get("Errors", ["unknown error"]))
+        if isinstance(elements_content, str):
+            error_message = elements_content
 
     if error_message is not None:
         raise MetadataSearchFailedException(error_message)
 
     if result["GetAttributes"]["Status"] not in [HTTP_OK, HTTP_MULTI_STATUS]:
         error_message = "unknown error"
-        if isinstance(result["GetAttributes"]["Content"], dict):
+        attributes_content = result["GetAttributes"]["Content"]
+        if isinstance(attributes_content, dict):
             error_message = ";".join(
-                result["GetAttributes"]["Content"].get("Errors", ["unknown error"])
+                attributes_content.get("Errors", ["unknown error"])
             )
-        if isinstance(result["GetAttributes"]["Content"], str):
-            error_message = result["GetAttributes"]["Content"]
+        if isinstance(attributes_content, str):
+            error_message = attributes_content
     if error_message is not None:
-        element_names = ",".join(
-            [
-                f"'{element["Name"]}'"
-                for element in result["GetElements"]["Content"].get("Items", [])
-            ]
-        )
+        if isinstance(elements_content, dict):
+            element_names = ",".join(
+                [
+                    f"'{element["Name"]}'"
+                    for element in elements_content.get("Items", [])
+                ]
+            )
+            raise MetadataSearchFailedException(
+                f"Failed to get attributes for elements: {element_names}. {error_message}"
+            )
         raise MetadataSearchFailedException(
-            f"Failed to get attributes for elements: {element_names}. {error_message}"
+            f"Failed to get attributes: {error_message}"
         )
 
 
-def _validate_attribute_batch_item_status(element_name: str, item_data: dict) -> None:
+def _validate_attribute_batch_item_status(element_name: str, item_data: Dict):
     error_message = None
     if "Status" in item_data and item_data["Status"] != HTTP_OK:
         error_message = "unknown error"
