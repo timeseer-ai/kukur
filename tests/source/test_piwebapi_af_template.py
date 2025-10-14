@@ -10,8 +10,10 @@ from kukur.base import SeriesSearch
 from kukur.exceptions import KukurException
 from kukur.source.piwebapi_af_template import from_config
 from kukur.source.piwebapi_af_template.piwebapi_af_template import (
+    AttributeTemplateQueryFailedException,
     ElementInOtherDatabaseException,
     ElementTemplateQueryFailedException,
+    MetadataSearchFailedException,
 )
 
 WEB_API_URI = "https://pi.example.org/piwebapi/"
@@ -490,6 +492,106 @@ BATCH_ERROR_TEMPLATES = {
 }
 
 
+BATCH_GLOBAL_ERROR_ATTRIBUTES = {
+    "GetAttributes": {
+        "Status": 409,
+        "Headers": {},
+        "Content": "Error during GetAttributes requests.",
+    },
+    "GetElements": {
+        "Status": 200,
+        "Headers": {"Content-Type": "application/json; charset=utf-8"},
+        "Content": {
+            "Items": [
+                {
+                    "WebId": "R1",
+                    "Name": "Reactor01",
+                    "Description": "Reactor Houston",
+                    "CategoryNames": ["Production"],
+                    "Links": {
+                        "Attributes": "https://pi.example.org/piwebapi/elements/R1/attributes"
+                    },
+                },
+                {
+                    "WebId": "R2",
+                    "Name": "Reactor02",
+                    "Description": "Reactor Antwerp",
+                    "CategoryNames": ["Test"],
+                    "Links": {
+                        "Attributes": "https://pi.example.org/piwebapi/elements/R2/attributes"
+                    },
+                },
+            ]
+        },
+    },
+}
+
+BATCH_PARTIAL_ERROR_ATTRIBUTES = {
+    "GetAttributes": {
+        "Status": 207,
+        "Headers": {},
+        "Content": {
+            "Total": 2,
+            "Items": [
+                {
+                    "Status": 404,
+                    "Headers": {"Content-Type": "application/json; charset=utf-8"},
+                    "Content": {
+                        "Message": "No HTTP resource was found that matches the request URI 'https://pi.timeseer.ai/piwebapi/elements/F1EmMyvy4jYfVEyvgGiLVLmYvAwnVqd0a57xGIn2BFvZT1mwVk0tVFMtUElcVElNRVNFRVJcVFNBSSBBTlRXRVJQXFJFQUNUT1IwMg/attributestwid?searchFullHierarchy=true&selectedFields=Items.WebId%3BItems.Name%3BItems.Description%3BItems.Path%3BItems.CategoryNames%3BItems.DataReferencePlugin%3BItems.Type%3BItems.TypeQualifier%3BItems.DefaultUnitsNameAbbreviation%3BItems.Step%3BItems.Span%3BItems.Zero%3BItems.Links.EnumerationValues&maxCount=150000'."
+                    },
+                },
+                {
+                    "Status": 200,
+                    "Headers": {"Content-Type": "application/json; charset=utf-8"},
+                    "Content": {
+                        "Items": [
+                            {
+                                "WebId": "A2_2",
+                                "Name": "Concentration",
+                                "Description": "",
+                                "Path": "\\\\vm-ts-pi\\Timeseer\\TSAI Antwerp\\Reactor02|Concentration",
+                                "Type": "Double",
+                                "DefaultUnitsNameAbbreviation": "",
+                                "DataReferencePlugIn": "PI Point",
+                                "CategoryNames": ["Measurement"],
+                                "Step": False,
+                                "Span": 200.0,
+                                "Zero": 0.0,
+                            },
+                        ],
+                    },
+                },
+            ],
+        },
+    },
+    "GetElements": {
+        "Status": 200,
+        "Headers": {"Content-Type": "application/json; charset=utf-8"},
+        "Content": {
+            "Items": [
+                {
+                    "WebId": "R1",
+                    "Name": "Reactor01",
+                    "Description": "Reactor Houston",
+                    "CategoryNames": ["Production"],
+                    "Links": {
+                        "Attributes": "https://pi.example.org/piwebapi/elements/R1/attributes"
+                    },
+                },
+                {
+                    "WebId": "R2",
+                    "Name": "Reactor02",
+                    "Description": "Reactor Antwerp",
+                    "CategoryNames": ["Test"],
+                    "Links": {
+                        "Attributes": "https://pi.example.org/piwebapi/elements/R2/attributes"
+                    },
+                },
+            ]
+        },
+    },
+}
+
 MAIN_ELEMENTS_RESPONSE = {
     "Items": [
         {
@@ -619,6 +721,20 @@ def mocked_requests_batch_error_templates(*args, **kwargs):
     if args[0] == f"{WEB_API_URI}batch":
         assert "X-Requested-With" in kwargs["headers"]
         return MockResponse(BATCH_ERROR_TEMPLATES, 200)
+    raise Exception(args[0])
+
+
+def mocked_requests_batch_global_error_attributes(*args, **kwargs):
+    if args[0] == f"{WEB_API_URI}batch":
+        assert "X-Requested-With" in kwargs["headers"]
+        return MockResponse(BATCH_GLOBAL_ERROR_ATTRIBUTES, 200)
+    raise Exception(args[0])
+
+
+def mocked_requests_batch_error_attributes(*args, **kwargs):
+    if args[0] == f"{WEB_API_URI}batch":
+        assert "X-Requested-With" in kwargs["headers"]
+        return MockResponse(BATCH_PARTIAL_ERROR_ATTRIBUTES, 200)
     raise Exception(args[0])
 
 
@@ -924,6 +1040,32 @@ def test_get_element_template_request_error(_) -> None:
     )
     with pytest.raises(ElementTemplateQueryFailedException):
         source.list_element_templates()
+
+
+@patch(
+    "requests.Session.post", side_effect=mocked_requests_batch_global_error_attributes
+)
+def test_search_global_error_get_attributes(_) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "element_template": "Reactor",
+        }
+    )
+    with pytest.raises(MetadataSearchFailedException):
+        list(source.search(SeriesSearch("Test")))
+
+
+@patch("requests.Session.post", side_effect=mocked_requests_batch_error_attributes)
+def test_search_error_get_attributes(_) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "element_template": "Reactor",
+        }
+    )
+    with pytest.raises(AttributeTemplateQueryFailedException):
+        list(source.search(SeriesSearch("Test")))
 
 
 @patch("requests.Session.post", side_effect=mocked_requests_post)
