@@ -600,11 +600,12 @@ def _validate_batch_response_status(result: Dict):
             error_message = attributes_content
     if error_message is not None:
         if isinstance(elements_content, dict):
-            element_names = ",".join(
-                [f'{element["Name"]}' for element in elements_content.get("Items", [])]
-            )
+            elements = [
+                f'{element["Name"]}' for element in elements_content.get("Items", [])
+            ]
+            element_names = ", ".join(elements[:5])
             raise MetadataSearchFailedException(
-                f"Failed to get attributes for elements: {element_names}. {error_message}"
+                f"Failed to get attributes. Five first elements: {element_names}. {error_message}"
             )
         raise MetadataSearchFailedException(
             f"Failed to get attributes: {error_message}"
