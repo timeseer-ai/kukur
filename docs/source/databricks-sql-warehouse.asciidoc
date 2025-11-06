@@ -96,7 +96,7 @@ The required steps are:
 [source.Databricks.connection]
 host = "adb-5136731089164599.19.azuredatabricks.net"
 http_path = "/sql/1.0/warehouses/2cf2d4cd375bb81a"
-Azure_workspace_resource_id = "/subscriptions/4eaf5c02-76be-4f45-b92a-d5882e686c95/resourceGroups/rg-kukur/providers/Microsoft.Databricks/workspaces/kukur-demo"
+azure_workspace_resource_id = "/subscriptions/4eaf5c02-76be-4f45-b92a-d5882e686c95/resourceGroups/rg-kukur/providers/Microsoft.Databricks/workspaces/kukur-demo"
 ```
 
 === Connecting to Databricks SQL Warehouses using a Personal Access Token
@@ -130,5 +130,29 @@ ThriftTransport=2;
 AuthMech=11;
 Auth_Flow=3;
 Azure_workspace_resource_id=/subscriptions/4eaf5c02-76be-4f45-b92a-d5882e686c95/resourceGroups/rg-kukur/providers/Microsoft.Databricks/workspaces/kukur-demo;
+"""
+```
+
+=== Connecting using a DSN on Windows
+
+After installing the ODBC driver,
+open `ODBC Data Sources (64-bit)`.
+
+Create a new System DSN.
+
+* Configure the host and port.
+* Select the required authentication mechanism (`OAuth2` or `User Name and Password`). Use `token` as the `User Name` for Personal Access Token authentication.
+* Use HTTP as the `Thrift Transport`.
+* In `HTTP Options...` configure the `HTTP Path`.
+* `Enable SSL` in the `SSL Options...`
+
+Then,
+refer to the DSN name in `source.connection_string`.
+
+```toml
+[source.Databricks]
+type = "databricks-sql"
+connection_string = """
+DSN=Databricks;
 """
 ```
