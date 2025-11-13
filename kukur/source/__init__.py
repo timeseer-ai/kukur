@@ -331,8 +331,6 @@ class SourceFactory:
 
     def get_source(self, source_name: str) -> Optional[SourceWrapper]:
         """Get the data source and type as configured in the Kukur configuration."""
-        metadata_sources = self._get_extra_metadata_sources()
-
         for name, options in self.__config.get("source", {}).items():
             if source_name == name:
                 if "type" not in options:
@@ -343,27 +341,37 @@ class SourceFactory:
                         f'Source "{name}" has unknown type "{source_type}"'
                     )
                 data_source = self._make_source(source_type, options)
-                metadata_source = data_source
-                metadata_source_type = options.get("metadata_type", source_type)
-                if metadata_source_type != source_type:
-                    if metadata_source_type not in self.__factory:
-                        raise InvalidSourceException(
-                            f'"Source {name}" has unknown metadata type "{metadata_source_type}"'
-                        )
-                    metadata_source = self._make_source(metadata_source_type, options)
-
-                extra_metadata = []
-                for metadata_source_name in options.get("metadata_sources", []):
-                    if metadata_source_name not in metadata_sources:
-                        raise InvalidSourceException(
-                            f'Metadata source "{metadata_source_name}" for source "{name}" not found'
-                        )
-                    extra_metadata.append(metadata_sources[metadata_source_name])
-
-                return SourceWrapper(
-                    Source(metadata_source, data_source), extra_metadata, options
-                )
+                return self.make_wrapper(data_source, name, options)
         return None
+
+    def make_wrapper(
+        self,
+        source: Union[SourceProtocol, TagSource],
+        source_name: str,
+        source_config: Dict[str, Any],
+    ) -> SourceWrapper:
+        """Builds the source wrapper for a source."""
+        metadata_source = source
+        metadata_sources = self._get_extra_metadata_sources()
+        metadata_source_type = source_config.get("metadata_type", source_config["type"])
+        if metadata_source_type != source_config["type"]:
+            if metadata_source_type not in self.__factory:
+                raise InvalidSourceException(
+                    f'"Source {source_name}" has unknown metadata type "{metadata_source_type}"'
+                )
+            metadata_source = self._make_source(metadata_source_type, source_config)
+
+        extra_metadata = []
+        for metadata_source_name in source_config.get("metadata_sources", []):
+            if metadata_source_name not in metadata_sources:
+                raise InvalidSourceException(
+                    f'Metadata source "{metadata_source_name}" for source "{source_name}" not found'
+                )
+            extra_metadata.append(metadata_sources[metadata_source_name])
+
+        return SourceWrapper(
+            Source(metadata_source, source), extra_metadata, source_config
+        )
 
     def _get_extra_metadata_sources(self) -> Dict[str, MetadataSource]:
         metadata_sources = {}
