@@ -33,7 +33,7 @@ jobs:
           sudo apt-get --yes install libkrb5-dev
 
       - name: Install requirements
-        run: make deps dev-deps
+        run: make deps
 
       - name: Lint code
         run: make lint
@@ -107,7 +107,7 @@ jobs:
           sudo apt-get --yes install unixodbc tdsodbc
 
       - name: Install requirements
-        run: make deps dev-deps
+        run: make deps
 
       - name: Run integration test
         run: make integration-test-${{ matrix.target }}

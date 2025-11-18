@@ -77,10 +77,6 @@ integration-test-postgres: ## Run PostgreSQL integration tests
 
 .PHONY: deps
 deps: ## Install runtime dependencies
-	uv sync --frozen --no-dev --all-extras
-
-.PHONY: dev-deps
-dev-deps: ## Install development dependencies
 	uv sync --frozen --all-extras
 
 .PHONY: update-deps

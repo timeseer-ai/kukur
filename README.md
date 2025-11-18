@@ -79,7 +79,7 @@ Kukur uses [uv](https://docs.astral.sh/uv/).
 Create a virtualenv and install dependencies:
 
 ```bash
-$ make dev-deps
+$ make deps
 ```
 
 Launch Kukur using:

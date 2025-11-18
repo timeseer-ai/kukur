@@ -121,8 +121,10 @@ def _make_aware(timestamp: datetime) -> datetime:
 
 def _yield_table(table: Table) -> Generator[List[Any], None, None]:
     if "quality" in table.column_names:
-        for ts, value, quality in zip(table["ts"], table["value"], table["quality"]):
+        for ts, value, quality in zip(
+            table["ts"], table["value"], table["quality"], strict=True
+        ):
             yield [ts.as_py().isoformat(), value.as_py(), quality.as_py()]
     else:
-        for ts, value in zip(table["ts"], table["value"]):
+        for ts, value in zip(table["ts"], table["value"], strict=True):
             yield [ts.as_py().isoformat(), value.as_py()]

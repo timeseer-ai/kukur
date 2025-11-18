@@ -58,7 +58,7 @@ def list_sheets(readable) -> List[str]:
 def _to_pyarrow(headers: List[str], rows: List[List]) -> pa.Table:
     """Convert raw excel to a PyArrow table."""
     arrays = []
-    columns = list(zip(*rows))
+    columns = list(zip(*rows, strict=True))
     for column in columns:
         try:
             arrays.append(pa.array(column))
