@@ -13,7 +13,7 @@ from typing import Dict, Generator, List, Optional
 import pyarrow as pa
 
 from kukur import Metadata, SeriesSearch, SeriesSelector
-from kukur.auth import OIDCConfig, get_kerberos_auth, get_oidc_auth, has_kerberos_auth
+from kukur.auth import AuthenticationProperties
 from kukur.base import DataType, Dictionary, InterpolationType
 from kukur.exceptions import (
     InvalidSourceException,
@@ -148,11 +148,7 @@ class PIWebAPIAssetFrameworkTemplateSource:
 
         self.__config = AFTemplateSourceConfiguration.from_data(config)
 
-        self.__basic_auth = None
-        if "username" in config and "password" in config:
-            self.__basic_auth = (config["username"], config["password"])
-
-        self.__oidc_config = OIDCConfig.from_config(config)
+        self.__auth = AuthenticationProperties.from_data(config)
 
         if not self.__request_properties.verify_ssl:
             urllib3.disable_warnings()
@@ -500,12 +496,7 @@ class PIWebAPIAssetFrameworkTemplateSource:
 
     def _get_session(self):
         session = Session()
-        if self.__oidc_config is not None:
-            session.auth = get_oidc_auth(self.__oidc_config)
-        elif self.__basic_auth is not None:
-            session.auth = self.__basic_auth
-        elif has_kerberos_auth():
-            session.auth = get_kerberos_auth()
+        self.__auth.apply(session)
         return session
 
     def _get_batch_url(self) -> str:

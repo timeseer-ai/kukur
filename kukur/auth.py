@@ -6,7 +6,7 @@
 
 import time
 from dataclasses import dataclass
-from typing import Optional
+from typing import Dict, Optional, Tuple
 
 from kukur.exceptions import MissingModuleException
 
@@ -35,7 +35,7 @@ class OIDCConfig:
     oidc_token_url: str
 
     @classmethod
-    def from_config(cls, config: dict) -> Optional["OIDCConfig"]:
+    def from_config(cls, config: Dict) -> Optional["OIDCConfig"]:
         """Create OIDCConfig from a configuration dictionary."""
         if (
             (client_id := config.get("client_id"))
@@ -61,12 +61,14 @@ def has_kerberos_auth() -> bool:
     return HAS_REQUESTS_KERBEROS
 
 
-def get_kerberos_auth():
+def get_kerberos_auth(hostname_override: Optional[str] = None):
     """Return a requests authentication module for Kerberos."""
     if not HAS_REQUESTS_KERBEROS:
         raise MissingModuleException("requests-kerberos")
     return HTTPKerberosAuth(
-        mutual_authentication="REQUIRED", sanitize_mutual_error_response=False
+        mutual_authentication="REQUIRED",
+        sanitize_mutual_error_response=False,
+        hostname_override=hostname_override,
     )
 
 
@@ -112,3 +114,32 @@ if HAS_OIDC_AUTH:
     def get_oidc_auth(config: OIDCConfig):
         """Return a requests authentication module for OpenID Connect."""
         return OIDCBearerAuth(config)
+
+
+@dataclass
+class AuthenticationProperties:
+    """Support different authentication options for requests."""
+
+    basic_auth: Optional[Tuple[str, str]]
+    oidc_auth: Optional[OIDCConfig]
+    kerberos_hostname: Optional[str]
+
+    def apply(self, session):
+        """Apply the authentication properties to the requests Session."""
+        if self.oidc_auth is not None:
+            session.auth = get_oidc_auth(self.oidc_auth)
+        elif self.basic_auth is not None:
+            session.auth = self.basic_auth
+        elif has_kerberos_auth():
+            session.auth = get_kerberos_auth()
+
+    @classmethod
+    def from_data(cls, data: Dict) -> "AuthenticationProperties":
+        """Create from data configuration options."""
+        basic_auth = None
+        if "username" in data and "password" in data:
+            basic_auth = (data["username"], data["password"])
+
+        oidc_config = OIDCConfig.from_config(data)
+
+        return cls(basic_auth, oidc_config, data.get("kerberos_hostname"))

@@ -17,6 +17,7 @@ password = "" # optional: password for basic authentication
 oidc_token_url = "" # optional: URL for OIDC token request
 client_id = "" # optional: OIDC cliend_id
 client_secret = "" # optional: OIDC client_secret
+kerberos_hostname = "" # optional: override the hostname used to request Kerberos tickets
 ```
 
 `data_archive_uri` is a required field.
@@ -61,6 +62,10 @@ Set `verify_ssl` to `false` when PI Web API uses a self-signed certificate.
 
 By default,
 Kerberos https://docs.osisoft.com/bundle/pi-web-api/page/authentication-methods.html[authentication] is tried.
+A Kerberos ticket is requested for the hostname in the `data_archive_uri`.
+In situations where the hostname is an alias that is not known by Kerberos, override the hostname using `kerberos_hostname`.
+Enable https://learn.microsoft.com/en-us/troubleshoot/windows-server/active-directory/enable-kerberos-event-logging[Kerberos event logging] to diagnose issues.
+
 When Basic authentication is required,
 set the `username` and `password` fields in the configuration.
 To use OpenID Connect Bearer token authentication, set the `oidc_token_url`,
