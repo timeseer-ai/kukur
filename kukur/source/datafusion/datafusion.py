@@ -95,7 +95,6 @@ class DataFusionSource:
         context = self._get_context()
         table = context.sql(self.__options.list_query)
         for row in table.to_pylist():
-
             tags = {tag_name: row[tag_name] for tag_name in self.__options.tag_columns}
             for field_column in self.__options.field_columns:
                 series = SeriesSelector(selector.source, tags, field_column)

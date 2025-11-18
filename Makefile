@@ -29,7 +29,7 @@ run-docs: docs ## Run the documentation in a docker container on port 8080
 
 .PHONY: lint
 lint: ## Lint the kukur code
-	uv run black --check kukur/ tests/
+	uv run ruff format --check
 	uv run mypy --ignore-missing-imports kukur/
 	uv run ruff check .
 
@@ -86,7 +86,7 @@ update-deps: ## Update all dependencies to their latest version
 
 .PHONY: format
 format: ## Format the kukur code
-	uv run black kukur/ tests/
+	uv run ruff format
 
 .PHONY: wheel
 wheel: ## Build a Python wheel in dist/

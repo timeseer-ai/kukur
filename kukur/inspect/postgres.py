@@ -92,7 +92,7 @@ class PostgresPg8000:
                 """,
                 split_path,
             )
-            column_names = [name for name, in cursor]
+            column_names = [name for (name,) in cursor]
         columns = [_escape(column) for column in column_names]
         params = [num_rows]
         query = f"select {', '.join(columns)} from {_escape(split_path[0])}.{_escape(split_path[1])} limit %s"
@@ -125,7 +125,7 @@ class PostgresPg8000:
                 """,
                 split_path,
             )
-            column_names = [name for name, in cursor]
+            column_names = [name for (name,) in cursor]
         columns = [_escape(column) for column in column_names]
         query = f"select {', '.join(columns)} from {_escape(split_path[0])}.{_escape(split_path[1])}"
         cursor.execute(query)
@@ -196,7 +196,7 @@ class PostgresPsycopg:
                 """,
                 split_path,
             )
-            column_names = [name for name, in cursor]
+            column_names = [name for (name,) in cursor]
 
         query = psycopg.sql.SQL(
             "select {column_names} from {schema}.{table} limit %s"
@@ -235,7 +235,7 @@ class PostgresPsycopg:
                 """,
                 split_path,
             )
-            column_names = [name for name, in cursor]
+            column_names = [name for (name,) in cursor]
 
         query = psycopg.sql.SQL("select {column_names} from {schema}.{table}").format(
             column_names=psycopg.sql.SQL(",").join(

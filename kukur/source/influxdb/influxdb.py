@@ -149,7 +149,7 @@ class InfluxSource:
                     fields.append(value)
 
         tag_key_placeholder = json.dumps(tag_keys)
-        query_tag_values = f'SHOW TAG VALUES WITH KEY IN {tag_key_placeholder.replace("[", "(").replace("]", ")")}'
+        query_tag_values = f"SHOW TAG VALUES WITH KEY IN {tag_key_placeholder.replace('[', '(').replace(']', ')')}"
         tag_values = []
         for result in self.__client.query(query=query_tag_values).get_points():
             if result not in tag_values:

@@ -89,18 +89,18 @@ def preview_odbc_database(
             """,
             split_path,
         )
-        column_names = [name for name, in cursor]
+        column_names = [name for (name,) in cursor]
 
     columns = [_escape(column_name) for column_name in column_names]
     if config.limit_specification == "limit":
         query = f"""
-            select {', '.join(columns)}
+            select {", ".join(columns)}
             from {catalog}{_escape(split_path[0])}.{_escape(split_path[1])} limit ?
         """
         cursor.execute(query, [num_rows])
     else:
         query = f"""
-            select top {num_rows} {', '.join(columns)}
+            select top {num_rows} {", ".join(columns)}
             from {catalog}{_escape(split_path[0])}.{_escape(split_path[1])}
         """
         cursor.execute(query)
@@ -138,11 +138,11 @@ def read_odbc_database(
             """,
             split_path,
         )
-        column_names = [name for name, in cursor]
+        column_names = [name for (name,) in cursor]
 
     columns = [_escape(column_name) for column_name in column_names]
     query = f"""
-        select {', '.join(columns)}
+        select {", ".join(columns)}
         from {catalog}{_escape(split_path[0])}.{_escape(split_path[1])}
     """
 

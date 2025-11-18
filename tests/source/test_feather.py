@@ -3,7 +3,6 @@
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-
 import pytz
 from dateutil.parser import parse as parse_date
 

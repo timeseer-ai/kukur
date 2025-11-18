@@ -3,7 +3,6 @@
 # SPDX-FileCopyrightText: 2024 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-
 from kukur.config import merge_fragment
 
 

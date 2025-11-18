@@ -165,7 +165,6 @@ def get_resource_type_from_extension(  # noqa: PLR0911
 def _inspect_excel_workbook(
     filesystem: fs.FileSystem, path: PurePath
 ) -> list[InspectedPath]:
-
     return [
         InspectedPath(ResourceType.EXCEL_WORKSHEET, sheet)
         for sheet in list_sheets(filesystem.open_input_file(str(path)))

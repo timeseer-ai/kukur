@@ -3,7 +3,6 @@
 # SPDX-FileCopyrightText: 2023 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-
 from datetime import datetime, timedelta, timezone
 
 import pyarrow as pa

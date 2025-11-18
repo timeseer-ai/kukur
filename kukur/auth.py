@@ -3,7 +3,6 @@
 # SPDX-FileCopyrightText: 2025 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-
 import time
 from dataclasses import dataclass
 from typing import Optional

@@ -8,7 +8,6 @@ Two formats are supported:
 # SPDX-FileCopyrightText: 2022 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-
 try:
     from deltalake import DeltaTable
 

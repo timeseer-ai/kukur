@@ -17,7 +17,6 @@ azure-kusto-data==5.0.5
     # via kukur
 beautifulsoup4==4.14.2
     # via redshift-connector
-black==25.11.0
 boto3==1.40.75
     # via redshift-connector
 botocore==1.40.75
@@ -33,12 +32,8 @@ cffi==2.0.0 ; platform_python_implementation != 'PyPy'
     # via cryptography
 charset-normalizer==3.4.4
     # via requests
-click==8.3.1
-    # via black
 colorama==0.4.6 ; sys_platform == 'win32'
-    # via
-    #   click
-    #   pytest
+    # via pytest
 crate==2.0.0
     # via kukur
 cryptography==46.0.3
@@ -96,9 +91,7 @@ msgpack==1.1.2
     # via influxdb
 mypy==1.18.2
 mypy-extensions==1.1.0
-    # via
-    #   black
-    #   mypy
+    # via mypy
 numpy==2.2.6 ; python_full_version < '3.11'
     # via kukur
 numpy==2.3.5 ; python_full_version >= '3.11'
@@ -109,18 +102,13 @@ orjson==3.11.4
     # via crate
 packaging==25.0
     # via
-    #   black
     #   cx-freeze
     #   pytest
     #   redshift-connector
 pathspec==0.12.1
-    # via
-    #   black
-    #   mypy
+    # via mypy
 pg8000==1.31.5
     # via kukur
-platformdirs==4.5.0
-    # via black
 pluggy==1.6.0
     # via pytest
 psycopg==3.2.12
@@ -149,8 +137,6 @@ python-dateutil==2.9.0.post0
     #   influxdb
     #   kukur
     #   pg8000
-pytokens==0.3.0
-    # via black
 pytz==2025.2
     # via
     #   influxdb
@@ -198,7 +184,6 @@ toml==0.10.2 ; python_full_version < '3.11'
     # via kukur
 tomli==2.3.0 ; python_full_version < '3.11'
     # via
-    #   black
     #   cx-freeze
     #   mypy
     #   pytest
@@ -213,7 +198,6 @@ typing-extensions==4.15.0
     #   azure-core
     #   azure-identity
     #   beautifulsoup4
-    #   black
     #   cryptography
     #   datafusion
     #   exceptiongroup

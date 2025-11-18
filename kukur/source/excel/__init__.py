@@ -8,7 +8,6 @@ import pyarrow as pa
 from kukur.inspect import DataOptions
 
 try:
-
     import openpyxl
 
     HAS_OPENPYXL = True

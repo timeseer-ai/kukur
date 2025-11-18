@@ -325,9 +325,9 @@ class PIWebAPIAssetFrameworkSource:
                 continue
             element_path = attribute["Path"].split("|", 1)[0]
             if element_path in element_lookup:
-                element_lookup[element_path].metadata[
-                    attribute["Name"]
-                ] = attribute_value
+                element_lookup[element_path].metadata[attribute["Name"]] = (
+                    attribute_value
+                )
 
     def _get_attribute_value(self, session, attribute: dict) -> Any | None:
         logger.debug("Fetching attribute value for %s", attribute["Name"])

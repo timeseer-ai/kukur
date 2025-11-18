@@ -167,9 +167,9 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
             ]
             renames = [f"['{name}']=['{name}1']" for name in self.__metadata_columns]
             query = f"""['{self.__table}']
-                | summarize {', '.join(summaries)} by {', '.join(_add_square_brackets(self.__tags))}
-                | project-away {', '.join(_add_square_brackets(self.__metadata_columns))}
-                | project-rename {', '.join(renames)}
+                | summarize {", ".join(summaries)} by {", ".join(_add_square_brackets(self.__tags))}
+                | project-away {", ".join(_add_square_brackets(self.__metadata_columns))}
+                | project-rename {", ".join(renames)}
             """
             result = self.__client.execute(self.__database, query)
             if result is None or len(result.primary_results) == 0:

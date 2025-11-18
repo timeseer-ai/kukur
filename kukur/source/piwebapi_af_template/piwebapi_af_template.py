@@ -592,7 +592,7 @@ def _validate_batch_response_status(result: dict):
     if error_message is not None:
         if isinstance(elements_content, dict):
             elements = [
-                f'{element["Name"]}' for element in elements_content.get("Items", [])
+                f"{element['Name']}" for element in elements_content.get("Items", [])
             ]
             element_names = ", ".join(elements[:5])
             raise MetadataSearchFailedException(
@@ -668,7 +668,6 @@ def _get_metadata(
 
 
 class _DictionaryLookup:
-
     def __init__(self, request_properties: RequestProperties, session):
         self._request_properties = request_properties
         self._session = session

@@ -25,7 +25,9 @@ class KukurService:
     def initialize(self, _config_file_name):
         """Run startup tasks."""
         self.directory = os.path.dirname(sys.executable)
-        cx_Logging.StartLogging(os.path.join(self.directory, "service.log"), cx_Logging.DEBUG)
+        cx_Logging.StartLogging(
+            os.path.join(self.directory, "service.log"), cx_Logging.DEBUG
+        )
 
     def run(self):
         """Start Kukur."""

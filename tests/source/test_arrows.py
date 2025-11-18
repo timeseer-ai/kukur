@@ -3,7 +3,6 @@
 # SPDX-FileCopyrightText: 2023 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-
 from dateutil.parser import parse as parse_date
 
 import kukur.config
