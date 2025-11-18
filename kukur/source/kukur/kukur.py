@@ -3,8 +3,9 @@
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
+from collections.abc import Generator
 from datetime import datetime
-from typing import Any, Dict, Generator, Optional, Tuple, Union
+from typing import Any
 
 import pyarrow as pa
 
@@ -12,7 +13,7 @@ from kukur import Metadata, SeriesSearch, SeriesSelector, SourceStructure
 from kukur.client import Client
 
 
-def from_config(config: Dict[str, Any]):
+def from_config(config: dict[str, Any]):
     """Create a new Kukur source."""
     source_name = config["source"]
     host = config.get("host", "localhost")
@@ -29,14 +30,14 @@ class KukurSource:
 
     # pylint: disable=too-many-arguments
     def __init__(
-        self, source_name: str, host: str, port: int, api_key: Tuple[str, str]
+        self, source_name: str, host: str, port: int, api_key: tuple[str, str]
     ):
         self.__client = Client(api_key, host, port)
         self.__source_name = source_name
 
     def search(
         self, selector: SeriesSearch
-    ) -> Generator[Union[Metadata, SeriesSelector], None, None]:
+    ) -> Generator[Metadata | SeriesSelector, None, None]:
         """Search time series using the Flight service."""
         query = SeriesSearch(self.__source_name, selector.tags, selector.field)
         for result in self.__client.search(query):
@@ -83,9 +84,7 @@ class KukurSource:
             remote_selector, start_date, end_date, interval_count
         )
 
-    def get_source_structure(
-        self, selector: SeriesSelector
-    ) -> Optional[SourceStructure]:
+    def get_source_structure(self, selector: SeriesSelector) -> SourceStructure | None:
         """Return the source structure using the Flight service."""
         remote_selector = SeriesSelector.from_tags(
             self.__source_name, selector.tags, selector.field

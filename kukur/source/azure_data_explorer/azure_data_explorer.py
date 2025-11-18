@@ -4,9 +4,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, Generator, List, Optional
+from typing import Any
 
 import pyarrow as pa
 
@@ -48,13 +49,13 @@ class DataExplorerConfiguration:
     database: str
     table: str
     timestamp_column: str
-    tags: List[str]
-    metadata_columns: List[str]
-    ignored_columns: List[str]
+    tags: list[str]
+    metadata_columns: list[str]
+    ignored_columns: list[str]
 
 
 def from_config(
-    config: Dict[str, Any],
+    config: dict[str, Any],
     metadata_mapper: MetadataMapper,
     metadata_value_mapper: MetadataValueMapper,
 ):
@@ -87,9 +88,9 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
     __database: str
     __table: str
     __timestamp_column: str
-    __tags: List[str]
-    __metadata_columns: List[str]
-    __ignored_columns: List[str]
+    __tags: list[str]
+    __metadata_columns: list[str]
+    __ignored_columns: list[str]
     __metadata_mapper: MetadataMapper
     __metadata_value_mapper: MetadataValueMapper
 
@@ -221,7 +222,7 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
 
         return pa.Table.from_pydict({"ts": timestamps, "value": values})
 
-    def get_source_structure(self, _: SeriesSelector) -> Optional[SourceStructure]:
+    def get_source_structure(self, _: SeriesSelector) -> SourceStructure | None:
         """Return the available tag keys, tag values and tag fields."""
         all_columns = {_escape(column) for column in self._get_table_columns()}
         fields = (
@@ -249,7 +250,7 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
 
         return SourceStructure(list(fields), list(tag_keys), tag_values)
 
-    def _get_table_columns(self) -> List[str]:
+    def _get_table_columns(self) -> list[str]:
         query = f".show table ['{self.__table}'] schema as json"
         result = self.__client.execute(self.__database, query)
         if result is None or len(result.primary_results) == 0:
@@ -260,11 +261,11 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
         raise KukurException("Table schema is empty")
 
 
-def _add_square_brackets(columns: List[str]) -> List[str]:
+def _add_square_brackets(columns: list[str]) -> list[str]:
     return [f"['{column}']" for column in columns]
 
 
-def _escape(context: Optional[str]) -> str:
+def _escape(context: str | None) -> str:
     if context is None:
         context = "value"
     if "'" in context:

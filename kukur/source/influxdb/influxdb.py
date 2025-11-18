@@ -5,8 +5,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+from collections.abc import Generator
 from datetime import datetime
-from typing import Any, Dict, Generator, Optional, Tuple
+from typing import Any
 
 import dateutil.parser
 import pyarrow as pa
@@ -30,7 +31,7 @@ class InvalidClientConnection(KukurException):
         KukurException.__init__(self, f"Connection error: {message}")
 
 
-def from_config(config: Dict[str, Any]):
+def from_config(config: dict[str, Any]):
     """Create a new Influx data source."""
     if not HAS_INFLUX:
         raise MissingModuleException("influxdb", "influxdb")
@@ -132,7 +133,7 @@ class InfluxSource:
 
         return pa.Table.from_pydict({"ts": timestamps, "value": values})
 
-    def get_source_structure(self, _: SeriesSelector) -> Optional[SourceStructure]:
+    def get_source_structure(self, _: SeriesSelector) -> SourceStructure | None:
         """Return the available tag keys, tag value and tag fields."""
         query_tag_keys = "SHOW TAG KEYS"
         tag_keys = []
@@ -156,7 +157,7 @@ class InfluxSource:
         return SourceStructure(fields, tag_keys, tag_values)
 
 
-def _parse_influx_series(series: str) -> Tuple[str, Dict[str, str]]:
+def _parse_influx_series(series: str) -> tuple[str, dict[str, str]]:
     series_name = series.replace("\\", "")
     measurement = series_name.split(",")[0]
     tags = {}
@@ -169,7 +170,7 @@ def _parse_influx_series(series: str) -> Tuple[str, Dict[str, str]]:
     return measurement, tags
 
 
-def _escape(context: Optional[str]) -> str:
+def _escape(context: str | None) -> str:
     if context is None:
         context = "value"
     if '"' in context:

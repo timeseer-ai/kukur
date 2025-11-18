@@ -15,7 +15,7 @@ import threading
 import cx_Logging
 
 
-class KukurService():
+class KukurService:
     """Kukur Windows service."""
 
     def __init__(self):

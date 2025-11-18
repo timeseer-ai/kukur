@@ -4,7 +4,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Dict
 
 try:
     import pyodbc  # noqa: F401
@@ -49,7 +48,7 @@ class DatabricksSQLSource(ODBCSource):
         super().__init__(config, metadata_value_mapper, quality_mapper)
 
 
-def build_connection_string(data: Dict) -> str:
+def build_connection_string(data: dict) -> str:
     """Build the connection string from configuration."""
     connection_string = f"""
 Driver={data.get('driver', "/opt/simba/spark/lib/64/libsparkodbc_sb64.so")};

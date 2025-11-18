@@ -3,9 +3,9 @@
 # SPDX-FileCopyrightText: 2022 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
+from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, Generator, Optional
 
 import pyarrow as pa
 
@@ -52,13 +52,13 @@ class _DictionaryLookup:  # pylint: disable=too-few-public-methods
         self,
         session,
         request_properties: _RequestProperties,
-        data_archive: Dict,
+        data_archive: dict,
     ):
         self.__session = session
         self.__request_properties = request_properties
         self.__data_archive = data_archive
-        self.__digital_set_links: Optional[Dict[str, str]] = None
-        self.__dictionaries: Dict[str, Dictionary] = {}
+        self.__digital_set_links: dict[str, str] | None = None
+        self.__dictionaries: dict[str, Dictionary] = {}
 
     def get(self, name: str) -> Dictionary:
         """Return a dictionary with the given name.
@@ -86,7 +86,7 @@ class _DictionaryLookup:  # pylint: disable=too-few-public-methods
             }
         )
 
-    def _get_digital_set_links(self) -> Dict[str, str]:
+    def _get_digital_set_links(self) -> dict[str, str]:
         response = self.__session.get(
             self.__data_archive["Links"]["EnumerationSets"],
             verify=self.__request_properties.verify_ssl,
@@ -104,7 +104,7 @@ class _DictionaryLookup:  # pylint: disable=too-few-public-methods
 class PIWebAPIDataArchiveSource:
     """Connect to PI Data Archives using the PI Web API."""
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         self._request_properties = _RequestProperties(
             verify_ssl=config.get("verify_ssl", True),
             timeout_seconds=config.get("timeout_seconds", 60),
@@ -293,8 +293,8 @@ class PIWebAPIDataArchiveSource:
 
 
 def _get_metadata(
-    selector: SeriesSelector, point: Dict, dictionary_lookup: _DictionaryLookup
-) -> Optional[Metadata]:
+    selector: SeriesSelector, point: dict, dictionary_lookup: _DictionaryLookup
+) -> Metadata | None:
     metadata = Metadata(SeriesSelector(selector.source, point["Name"]))
     metadata.set_field(fields.Description, point["Descriptor"])
     metadata.set_field(fields.Unit, point["EngineeringUnits"])
@@ -328,7 +328,7 @@ def _get_metadata(
     return metadata
 
 
-def from_config(config: Dict) -> PIWebAPIDataArchiveSource:
+def from_config(config: dict) -> PIWebAPIDataArchiveSource:
     """Create a new PIWebAPIDataArchiveSource."""
     if "data_archive_uri" not in config:
         raise InvalidSourceException(

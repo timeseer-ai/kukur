@@ -4,9 +4,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+from collections.abc import Generator
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Generator
 
 from pyarrow import Table
 
@@ -55,7 +55,7 @@ def _read_metadata(selector: SeriesSelector, path: Path) -> Metadata:
         return Metadata.from_data(data, selector)
 
 
-def from_config(config: Dict) -> JSONSource:
+def from_config(config: dict) -> JSONSource:
     """Create a new JSON source."""
     if "metadata" not in config:
         raise InvalidSourceException("'metadata' is required for 'json' sources")

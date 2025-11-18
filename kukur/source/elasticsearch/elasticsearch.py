@@ -5,9 +5,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, Generator, List, Optional
+from typing import Any
 
 import pyarrow as pa
 
@@ -32,7 +33,7 @@ class InvalidConfigurationException(KukurException):
 
 
 def from_config(
-    config: Dict[str, Any],
+    config: dict[str, Any],
     metadata_mapper: MetadataMapper,
     metadata_value_mapper: MetadataValueMapper,
 ):
@@ -88,10 +89,10 @@ class ElasticsearchSourceConfiguration:
 
     scheme: str
     host: str
-    port: Optional[int]
+    port: int | None
     username: str
     password: str
-    api_key: Optional[str]
+    api_key: str | None
     query_timeout_seconds: int
 
 
@@ -99,15 +100,15 @@ class ElasticsearchSourceConfiguration:
 class ElasticsearchSourceOptions:
     """Options for Elasticsearch sources."""
 
-    index: Optional[str]
-    metadata_index: Optional[str]
-    tag_columns: List[str]
-    field_columns: List[str]
-    metadata_columns: List[str]
+    index: str | None
+    metadata_index: str | None
+    tag_columns: list[str]
+    field_columns: list[str]
+    metadata_columns: list[str]
     timestamp_column: str
-    metadata_field_column: Optional[str] = None
-    list_query: Optional[str] = None
-    metadata_query: Optional[str] = None
+    metadata_field_column: str | None = None
+    list_query: str | None = None
+    metadata_query: str | None = None
 
 
 class ElasticsearchSource:
@@ -143,7 +144,7 @@ class ElasticsearchSource:
                     yield metadata
 
     def _get_metadata(
-        self, source_name: str, row: Dict
+        self, source_name: str, row: dict
     ) -> Generator[Metadata, None, None]:
         tags = {
             self.__metadata_mapper.from_source(tag_name): row[tag_name]
@@ -286,16 +287,16 @@ class ElasticsearchSource:
 
         return pa.Table.from_pydict({"ts": timestamps, "value": values})
 
-    def get_source_structure(self, _: SeriesSelector) -> Optional[SourceStructure]:
+    def get_source_structure(self, _: SeriesSelector) -> SourceStructure | None:
         """Return the available tag keys, tag value and tag fields."""
         return None
 
-    def _list_query_dsl(self, list_query: Dict, sort: List) -> List:
+    def _list_query_dsl(self, list_query: dict, sort: list) -> list:
         if self.__options.metadata_index is None:
             raise KukurException("Define a `metadata_index` to search time series.")
         table = []
         search_after = None
-        query: Dict = {}
+        query: dict = {}
         if len(list_query) != 0:
             query["query"] = list_query
         query["sort"] = sort
@@ -313,7 +314,7 @@ class ElasticsearchSource:
             search_after = rows["hits"]["hits"][-1]["sort"]
         return table
 
-    def _search_sql(self, query: Dict) -> pa.Table:
+    def _search_sql(self, query: dict) -> pa.Table:
         columns = {}
         while True:
             content = self._send_query(query, "_sql")
@@ -337,7 +338,7 @@ class ElasticsearchSource:
             }
         return pa.Table.from_pydict(columns)
 
-    def _send_query(self, query: Dict, path: str) -> Dict:
+    def _send_query(self, query: dict, path: str) -> dict:
         headers = {"Content-Type": "application/json"}
         auth = None
         if self.__configuration.api_key is not None:

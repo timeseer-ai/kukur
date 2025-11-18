@@ -3,7 +3,7 @@
 # SPDX-FileCopyrightText: 2024 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Generator, List, Optional
+from collections.abc import Generator
 from urllib.parse import urlparse
 
 import pyarrow as pa
@@ -19,8 +19,8 @@ from kukur.inspect import (
 
 
 def inspect_blob(
-    blob_uri: str, *, options: Optional[FileOptions] = None
-) -> List[InspectedPath]:
+    blob_uri: str, *, options: FileOptions | None = None
+) -> list[InspectedPath]:
     """Inspect a blob store.
 
     Uses the URI scheme to determine the type of blob store.
@@ -40,8 +40,8 @@ def inspect_blob(
 
 
 def preview_blob(
-    blob_uri: str, num_rows: int = 5000, options: Optional[DataOptions] = None
-) -> Optional[pa.Table]:
+    blob_uri: str, num_rows: int = 5000, options: DataOptions | None = None
+) -> pa.Table | None:
     """Preview the contents of a blob."""
     parsed_url = urlparse(blob_uri)
     if parsed_url.scheme == "abfss":
@@ -53,7 +53,7 @@ def preview_blob(
 
 
 def read_blob(
-    blob_uri: str, options: Optional[DataOptions] = None
+    blob_uri: str, options: DataOptions | None = None
 ) -> Generator[pa.RecordBatch, None, None]:
     """Iterate over the RecordBatches at the given URI."""
     parsed_url = urlparse(blob_uri)

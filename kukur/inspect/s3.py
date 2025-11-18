@@ -3,8 +3,8 @@
 # SPDX-FileCopyrightText: 2024 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
+from collections.abc import Generator
 from pathlib import PurePath
-from typing import Generator, List, Optional
 from urllib.parse import ParseResult
 
 import pyarrow as pa
@@ -15,7 +15,7 @@ from kukur.inspect.arrow import BlobResource
 from kukur.inspect.arrow import inspect as inspect_s3
 
 
-def inspect(blob_uri: ParseResult, options: FileOptions) -> List[InspectedPath]:
+def inspect(blob_uri: ParseResult, options: FileOptions) -> list[InspectedPath]:
     """Inspect a path in an AWS S3 bucket.
 
     Recurses into subdirectories when recursive is True.
@@ -32,8 +32,8 @@ def inspect(blob_uri: ParseResult, options: FileOptions) -> List[InspectedPath]:
 
 
 def preview(
-    blob_uri: ParseResult, num_rows: int, options: Optional[DataOptions]
-) -> Optional[pa.Table]:
+    blob_uri: ParseResult, num_rows: int, options: DataOptions | None
+) -> pa.Table | None:
     """Return the first nuw_rows of the blob."""
     resource = _get_resource(blob_uri)
     data_set = resource.get_data_set(options)
@@ -41,7 +41,7 @@ def preview(
 
 
 def read(
-    blob_uri: ParseResult, options: Optional[DataOptions]
+    blob_uri: ParseResult, options: DataOptions | None
 ) -> Generator[pa.RecordBatch, None, None]:
     """Iterate over all RecordBatches at the given URI."""
     resource = _get_resource(blob_uri)

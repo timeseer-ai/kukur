@@ -6,8 +6,8 @@
 import json
 import logging
 import subprocess
+from collections.abc import Generator
 from datetime import datetime
-from typing import Generator, Union
 
 from pyarrow import Table, ipc
 
@@ -30,7 +30,7 @@ class PluginSource:
 
     def search(
         self, selector: SeriesSearch
-    ) -> Generator[Union[SeriesSelector, Metadata], None, None]:
+    ) -> Generator[SeriesSelector | Metadata, None, None]:
         """Request series or metadata from the binary."""
         data = {
             "config": self.__config,

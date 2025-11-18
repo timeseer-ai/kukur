@@ -4,8 +4,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+from collections.abc import Generator
 from pathlib import PurePath
-from typing import Generator, List, Optional
 
 from pyarrow import RecordBatch, csv, fs, parquet
 from pyarrow.dataset import CsvFileFormat, Dataset, dataset
@@ -25,7 +25,7 @@ except ImportError:
 
 def inspect(
     filesystem: fs.FileSystem, path: PurePath, options: FileOptions
-) -> List[InspectedPath]:
+) -> list[InspectedPath]:
     """Return the resource type of a path within a filesystem."""
     info = filesystem.get_file_info(str(path))
     if info.type == fs.FileType.File:
@@ -41,7 +41,7 @@ class BlobResource:
         self.__fs = filesystem
         self.__path = path
 
-    def get_data_set(self, options: Optional[DataOptions]) -> Dataset:
+    def get_data_set(self, options: DataOptions | None) -> Dataset:
         """Return a DataSet for the resource."""
         data_set = get_data_set(self.__fs, self.__path, options)
         if data_set is None:
@@ -51,7 +51,7 @@ class BlobResource:
         return data_set
 
     def read_batches(
-        self, options: Optional[DataOptions]
+        self, options: DataOptions | None
     ) -> Generator[RecordBatch, None, None]:
         """Iterate over all record batches in a memory-efficient way."""
         default_resource_type = None
@@ -73,7 +73,7 @@ class BlobResource:
             yield from data_set.to_batches(columns=column_names, batch_readahead=1)
 
 
-def _get_column_names(options: Optional[DataOptions]) -> Optional[List[str]]:
+def _get_column_names(options: DataOptions | None) -> list[str] | None:
     column_names = None
     if options is not None and options.column_names is not None:
         column_names = options.column_names
@@ -81,8 +81,8 @@ def _get_column_names(options: Optional[DataOptions]) -> Optional[List[str]]:
 
 
 def get_data_set(
-    filesystem: fs.FileSystem, path: PurePath, options: Optional[DataOptions]
-) -> Optional[Dataset]:
+    filesystem: fs.FileSystem, path: PurePath, options: DataOptions | None
+) -> Dataset | None:
     """Return a PyArrow dataset for the resources at the given path."""
     default_resource_type = None
     if options is not None:
@@ -119,7 +119,7 @@ def get_data_set(
 
 def _get_resource_type(
     filesystem: fs.FileSystem, file_info: fs.FileInfo, options: FileOptions
-) -> Optional[ResourceType]:
+) -> ResourceType | None:
     if file_info.type == fs.FileType.Directory:
         if options.detect_delta:
             for file_inside in filesystem.get_file_info(
@@ -134,8 +134,8 @@ def _get_resource_type(
 
 
 def get_resource_type_from_extension(  # noqa: PLR0911
-    extension: str, default_type: Optional[ResourceType]
-) -> Optional[ResourceType]:
+    extension: str, default_type: ResourceType | None
+) -> ResourceType | None:
     """Return the resource type based on a file extension.
 
     Returns None when the extension is unknown.
@@ -164,7 +164,7 @@ def get_resource_type_from_extension(  # noqa: PLR0911
 
 def _inspect_excel_workbook(
     filesystem: fs.FileSystem, path: PurePath
-) -> List[InspectedPath]:
+) -> list[InspectedPath]:
 
     return [
         InspectedPath(ResourceType.EXCEL_WORKSHEET, sheet)
@@ -174,7 +174,7 @@ def _inspect_excel_workbook(
 
 def _inspect_folder(
     filesystem: fs.FileSystem, path: PurePath, options: FileOptions
-) -> List[InspectedPath]:
+) -> list[InspectedPath]:
     paths = []
     for sub_path in filesystem.get_file_info(
         fs.FileSelector(str(path), recursive=options.recursive)

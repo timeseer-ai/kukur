@@ -6,7 +6,6 @@
 import glob
 import logging
 import sys
-from typing import Dict
 
 if sys.version_info >= (3, 11):
     import tomllib as toml
@@ -37,7 +36,7 @@ def from_toml(path):
     return config
 
 
-def merge_fragment(config: Dict, fragment: Dict):
+def merge_fragment(config: dict, fragment: dict):
     """Merge a configuration fragment into the main configuration.
 
     This extends lists and updates dictionaries two levels deep.
@@ -53,7 +52,7 @@ def merge_fragment(config: Dict, fragment: Dict):
             config[k] = v
 
 
-def _update_dict(existing: Dict, new: Dict):
+def _update_dict(existing: dict, new: dict):
     """Extend dictionaries, overwrite values and lists."""
     for k, v in new.items():
         if k in existing and isinstance(existing[k], dict):

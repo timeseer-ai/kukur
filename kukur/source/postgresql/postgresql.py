@@ -22,7 +22,6 @@ try:
 except ImportError:
     HAS_POSTGRES = False
 
-from typing import Dict
 
 from kukur.exceptions import InvalidSourceException, MissingModuleException
 from kukur.source.metadata import MetadataValueMapper
@@ -35,7 +34,7 @@ class PostgresSource(BaseSQLSource):
 
     def __init__(
         self,
-        data: Dict,
+        data: dict,
         metadata_value_mapper: MetadataValueMapper,
         quality_mapper: QualityMapper,
     ):

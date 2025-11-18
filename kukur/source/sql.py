@@ -6,10 +6,10 @@
 import logging
 from abc import ABC, abstractmethod
 from collections import defaultdict
+from collections.abc import Generator
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone, tzinfo
 from decimal import Decimal
-from typing import Dict, Generator, List, Optional, Tuple, Union
 
 import dateutil.parser
 import pyarrow as pa
@@ -41,24 +41,24 @@ class InvalidConfigurationError(KukurException):
 class SQLConfig:  # pylint: disable=too-many-instance-attributes
     """Configuration settings for a SQL connection."""
 
-    connection_string: Optional[str]
-    tag_columns: List[str]
+    connection_string: str | None
+    tag_columns: list[str]
     query_string_parameters: bool = False
-    list_query: Optional[str] = None
-    list_columns: List[str] = field(default_factory=list)
-    field_columns: Optional[List[str]] = None
-    metadata_query: Optional[str] = None
-    metadata_columns: List[str] = field(default_factory=list)
-    dictionary_query: Optional[str] = None
-    data_query: Optional[str] = None
-    data_query_datetime_format: Optional[str] = None
-    data_timezone: Optional[tzinfo] = None
-    data_query_timezone: Optional[tzinfo] = None
-    data_query_tags: Optional[List[str]] = None
+    list_query: str | None = None
+    list_columns: list[str] = field(default_factory=list)
+    field_columns: list[str] | None = None
+    metadata_query: str | None = None
+    metadata_columns: list[str] = field(default_factory=list)
+    dictionary_query: str | None = None
+    data_query: str | None = None
+    data_query_datetime_format: str | None = None
+    data_timezone: tzinfo | None = None
+    data_query_timezone: tzinfo | None = None
+    data_query_tags: list[str] | None = None
     enable_trace_logging: bool = False
-    query_timeout_seconds: Optional[int] = None
+    query_timeout_seconds: int | None = None
     type_checking_row_limit: int = 300
-    autocommit: Optional[bool] = None
+    autocommit: bool | None = None
 
     @classmethod
     def from_dict(cls, data):
@@ -131,16 +131,14 @@ class BaseSQLSource(ABC):
 
     def search(
         self, selector: SeriesSearch
-    ) -> Generator[Union[SeriesSelector, Metadata], None, None]:
+    ) -> Generator[SeriesSelector | Metadata, None, None]:
         """Search for time series matching the given selector."""
         if self._config.list_query is None:
             return
         if len(self._config.list_columns) == 0:
-            for result in self.__search_names(selector):
-                yield result
+            yield from self.__search_names(selector)
             return
-        for metadata in self.__search_metadata(selector):
-            yield metadata
+        yield from self.__search_metadata(selector)
 
     def get_metadata(self, selector: SeriesSelector) -> Metadata:
         """Read metadata from the DB-API connection."""
@@ -192,7 +190,7 @@ class BaseSQLSource(ABC):
         cursor.execute(query, params)
 
         timestamps = []
-        values: list[Union[float, str]] = []
+        values: list[float | str] = []
         qualities = []
         type_count: dict[str, int] = defaultdict(int)
         detected_type = None
@@ -238,7 +236,7 @@ class BaseSQLSource(ABC):
 
             if isinstance(value, bytes):
                 continue
-            if isinstance(value, (datetime, date)):
+            if isinstance(value, datetime | date):
                 value = value.isoformat()
             elif isinstance(value, Decimal):
                 value = float(value)
@@ -260,7 +258,7 @@ class BaseSQLSource(ABC):
 
     def __prepare_data_query(
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
-    ) -> Tuple[str, List]:
+    ) -> tuple[str, list]:
         assert self._config.data_query is not None
 
         try:
@@ -343,7 +341,7 @@ class BaseSQLSource(ABC):
         self,
         row,
         selector: SeriesSelector,
-        tag_column_indices: List[int],
+        tag_column_indices: list[int],
         dictionary_cursor,
     ) -> Metadata:
         metadata = Metadata(selector)
@@ -369,10 +367,10 @@ class BaseSQLSource(ABC):
             )
         return metadata
 
-    def __query_dictionary(self, cursor, dictionary_name: str) -> Optional[Dictionary]:
+    def __query_dictionary(self, cursor, dictionary_name: str) -> Dictionary | None:
         if self._config.dictionary_query is None:
             return None
-        mapping: Dict[int, str] = {}
+        mapping: dict[int, str] = {}
 
         query = self._config.dictionary_query
         params = [dictionary_name]
@@ -410,7 +408,7 @@ def _get_main_type(type_count: dict[str, int]) -> str:
     return "number"
 
 
-def _coerce_types(values: list[Union[float, str]], detected_type: str):
+def _coerce_types(values: list[float | str], detected_type: str):
     for i, value in enumerate(values):
         if detected_type == "str":
             if value is not None and type(value) in [str, Decimal, float]:

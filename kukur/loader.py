@@ -6,7 +6,7 @@
 import io
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Optional, Protocol, Union
+from typing import Protocol
 
 from pyarrow.fs import FileType, S3FileSystem
 
@@ -114,7 +114,7 @@ class AzureBlobConfiguration:
 
     connection_string: str
     container: str
-    identity: Optional[str] = None
+    identity: str | None = None
 
 
 class AzureBlobLoader:
@@ -161,7 +161,7 @@ class AzureBlobLoader:
         """Read the contents of the Blob given by path/name in a BytesIO buffer."""
         container_client = self._get_container_client()
         downloader = container_client.download_blob(self.__path + "/" + name)
-        buffer: Union[io.BytesIO, io.StringIO]
+        buffer: io.BytesIO | io.StringIO
         if "b" in self.__mode:
             buffer = io.BytesIO()
             buffer.write(downloader.content_as_bytes())
@@ -189,10 +189,10 @@ class AzureBlobLoader:
 class AwsS3Configuration:
     """Connection details for an AWS S3 connection."""
 
-    acces_key: Optional[str]
-    secret_key: Optional[str]
-    session_token: Optional[str]
-    region: Optional[str]
+    acces_key: str | None
+    secret_key: str | None
+    session_token: str | None
+    region: str | None
 
 
 class AwsS3Loader:
@@ -231,7 +231,7 @@ class AwsS3Loader:
         """Read the contents of the file given by path/name in a BytesIO buffer."""
         s3 = self._get_s3_filesystem()
         downloader = s3.open_input_file(self.__path + "/" + name)
-        buffer: Union[io.BytesIO, io.StringIO]
+        buffer: io.BytesIO | io.StringIO
         if "b" in self.__mode:
             buffer = io.BytesIO()
             buffer.write(downloader.readall())
@@ -251,7 +251,7 @@ class AwsS3Loader:
 
 
 def from_config(
-    config: Dict[str, str], key="path", mode="rb", files_as_path=False
+    config: dict[str, str], key="path", mode="rb", files_as_path=False
 ) -> Loader:
     """Create a loader from a configuration object.
 

@@ -7,7 +7,6 @@ import os
 import secrets
 from datetime import datetime, timezone
 from hashlib import scrypt
-from typing import List
 
 from kukur.api_key import ApiKey
 from kukur.repository import RepositoryRegistry
@@ -31,7 +30,7 @@ class ApiKeys:
         )
         return api_key
 
-    def list(self) -> List[ApiKey]:
+    def list(self) -> list[ApiKey]:
         """List all the api keys."""
         return self.__repository.api_key().list()
 

@@ -4,7 +4,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 from datetime import datetime
-from typing import List, Optional, Tuple
 
 from kukur.api_key import ApiKey
 from kukur.repository.base import BaseRepository, Migration
@@ -54,7 +53,7 @@ class ApiKeyRepository(BaseRepository):
             )
             db.commit()
 
-    def list(self) -> List[ApiKey]:
+    def list(self) -> list[ApiKey]:
         """List all api keys."""
         with self._open_db() as db:
             cursor = db.cursor()
@@ -67,7 +66,7 @@ class ApiKeyRepository(BaseRepository):
             results = cursor.fetchall()
             return [ApiKey(name, creation_date) for name, creation_date in results]
 
-    def get(self, name) -> Tuple[Optional[bytes], Optional[bytes]]:
+    def get(self, name) -> tuple[bytes | None, bytes | None]:
         """Get an api key by name."""
         with self._open_db() as db:
             cursor = db.cursor()

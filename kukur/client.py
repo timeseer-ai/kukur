@@ -6,9 +6,10 @@
 import json
 import os
 import ssl
+from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Dict, Generator, List, Optional, Tuple, Union
+from typing import Any
 
 import pyarrow as pa
 import pyarrow.flight as fl
@@ -27,7 +28,7 @@ class TLSOptions:
     """
 
     verify: bool = True
-    root_certs: Optional[bytes] = None
+    root_certs: bytes | None = None
 
 
 class Client:
@@ -37,10 +38,10 @@ class Client:
 
     def __init__(
         self,
-        api_key: Tuple[str, str] = ("", ""),
+        api_key: tuple[str, str] = ("", ""),
         host: str = "localhost",
         port: int = 8081,
-        use_tls: Union[bool, TLSOptions] = False,
+        use_tls: bool | TLSOptions = False,
     ):
         """Create a new Client.
 
@@ -68,8 +69,8 @@ class Client:
         host: str,
         *,
         port: int = 443,
-        api_key: Tuple[str, str] = ("", ""),
-        tls_options: Optional[TLSOptions] = None,
+        api_key: tuple[str, str] = ("", ""),
+        tls_options: TLSOptions | None = None,
     ) -> "Client":
         """Create a new Client that uses TLS to secure the connection.
 
@@ -82,7 +83,7 @@ class Client:
             api_key: the api key to use when connecting. This is a tuple of (key name, key).
             tls_options: TLS configuration options.
         """
-        use_tls: Union[bool, TLSOptions] = True
+        use_tls: bool | TLSOptions = True
         if tls_options is not None:
             use_tls = tls_options
         return cls(
@@ -94,7 +95,7 @@ class Client:
 
     def search(
         self, selector: SeriesSearch
-    ) -> Generator[Union[Metadata, SeriesSelector], None, None]:
+    ) -> Generator[Metadata | SeriesSelector, None, None]:
         """Search Kukur for time series matching the given ``SeriesSelector``.
 
         Args:
@@ -136,8 +137,8 @@ class Client:
     def get_data(
         self,
         selector: SeriesSelector,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
     ) -> pa.Table:
         """Get raw data for the time series selected by the SeriesSelector.
 
@@ -162,8 +163,8 @@ class Client:
     def get_plot_data(
         self,
         selector: SeriesSelector,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
         interval_count: int = 200,
     ) -> pa.Table:
         """Get plot data for the time series selected by the SeriesSelector.
@@ -188,19 +189,17 @@ class Client:
         ticket = fl.Ticket(json.dumps(query))
         return self._get_client().do_get(ticket).read_all()
 
-    def list_sources(self) -> List[str]:
+    def list_sources(self) -> list[str]:
         """List all configured sources.
 
         Returns:
             A list of source names that are configured in Kukur.
         """
-        results = list(self._get_client().do_action(("list_sources")))
+        results = list(self._get_client().do_action("list_sources"))
         data = json.loads(results[0].body.to_pybytes())
         return data
 
-    def get_source_structure(
-        self, selector: SeriesSelector
-    ) -> Optional[SourceStructure]:
+    def get_source_structure(self, selector: SeriesSelector) -> SourceStructure | None:
         """List all tags and fields from a source.
 
         Returns:
@@ -219,7 +218,7 @@ class Client:
 
     def _get_client(self) -> Any:
         if self._client is None:
-            extra_args: Dict[str, Any] = {}
+            extra_args: dict[str, Any] = {}
 
             if self._tls_options is not None:
                 location = fl.Location.for_grpc_tls(self._host, self._port)
@@ -238,13 +237,13 @@ class Client:
         return self._client
 
 
-def _read_metadata(data: Dict[str, Any]) -> Metadata:
+def _read_metadata(data: dict[str, Any]) -> Metadata:
     return Metadata.from_data(data)
 
 
 def _apply_default_range(
-    start_date: Optional[datetime], end_date: Optional[datetime]
-) -> Tuple[datetime, datetime]:
+    start_date: datetime | None, end_date: datetime | None
+) -> tuple[datetime, datetime]:
     if start_date is None or end_date is None:
         now = datetime.now(tz=timezone.utc)
         if start_date is None:

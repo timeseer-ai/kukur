@@ -3,7 +3,7 @@
 
 from datetime import datetime, timedelta, timezone
 from random import random
-from typing import Any, Dict, List, Union
+from typing import Any
 from unittest.mock import patch
 
 from kukur import SeriesSelector
@@ -13,9 +13,9 @@ from kukur.source.metadata import MetadataMapper, MetadataValueMapper
 
 
 class MockKustoResponse:
-    primary_results: List[List[Union[Dict[str, Any], List[str]]]]
+    primary_results: list[list[dict[str, Any] | list[str]]]
 
-    def __init__(self, results_list: List[Union[Dict[str, Any], List[str]]]):
+    def __init__(self, results_list: list[dict[str, Any] | list[str]]):
         self.primary_results = [results_list]
 
 

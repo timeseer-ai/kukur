@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from collections import defaultdict
-from typing import Generator, List, Optional
+from collections.abc import Generator
 
 from kukur.exceptions import InvalidSourceException, MissingModuleException
 
@@ -42,7 +42,7 @@ class PostgresPg8000:
     def _connect(self):
         return pg8000.dbapi.connect(**self.__connection_options)
 
-    def inspect_database(self, path: Optional[str] = None) -> List[InspectedPath]:
+    def inspect_database(self, path: str | None = None) -> list[InspectedPath]:
         """Inspect a database."""
         connection = self._connect()
         cursor = connection.cursor()
@@ -73,8 +73,8 @@ class PostgresPg8000:
         self,
         path: str,
         num_rows: int = 5000,
-        options: Optional[DataOptions] = None,
-    ) -> Optional[pa.Table]:
+        options: DataOptions | None = None,
+    ) -> pa.Table | None:
         """Preview the contents of a database."""
         connection = self._connect()
         cursor = connection.cursor()
@@ -106,7 +106,7 @@ class PostgresPg8000:
         return pa.Table.from_pydict(results)
 
     def read_database(
-        self, path: str, options: Optional[DataOptions] = None
+        self, path: str, options: DataOptions | None = None
     ) -> Generator[pa.RecordBatch, None, None]:
         """Iterate over the RecordBatches at the given Connection."""
         connection = self._connect()
@@ -145,7 +145,7 @@ class PostgresPsycopg:
     def _connect(self):
         return psycopg.connect(self.__connection_string)
 
-    def inspect_database(self, path: Optional[str] = None) -> List[InspectedPath]:
+    def inspect_database(self, path: str | None = None) -> list[InspectedPath]:
         """Inspect a database."""
         connection = self._connect()
         cursor = connection.cursor()
@@ -176,8 +176,8 @@ class PostgresPsycopg:
         self,
         path: str,
         num_rows: int = 5000,
-        options: Optional[DataOptions] = None,
-    ) -> Optional[pa.Table]:
+        options: DataOptions | None = None,
+    ) -> pa.Table | None:
         """Preview the contents of a database."""
         connection = self._connect()
         cursor = connection.cursor()
@@ -216,7 +216,7 @@ class PostgresPsycopg:
         return pa.Table.from_pydict(results)
 
     def read_database(
-        self, path: str, options: Optional[DataOptions] = None
+        self, path: str, options: DataOptions | None = None
     ) -> Generator[pa.RecordBatch, None, None]:
         """Iterate over the RecordBatches at the given Connection."""
         connection = self._connect()
@@ -265,7 +265,7 @@ def get_connection(config: Connection):
     raise InvalidSourceException("Missing `connection_options` or `connection_string`")
 
 
-def _escape(context: Optional[str]) -> str:
+def _escape(context: str | None) -> str:
     if context is None:
         context = "value"
     if '"' in context:

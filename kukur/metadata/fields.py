@@ -3,7 +3,8 @@
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Callable, Generic, List, Optional, Tuple, TypeVar
+from collections.abc import Callable
+from typing import Any, Generic, TypeVar
 
 from kukur.base import DataType as KukurDataType
 from kukur.base import Dictionary as KukurDictionary
@@ -26,9 +27,9 @@ class MetadataField(Generic[T]):
         *,
         default: T,
         serialized_name: str,
-        serialize: Optional[Callable[[T], Any]] = None,
-        deserialize: Optional[Callable[[Any], T]] = None,
-        calculate: Optional[Callable[[Any, Any], T]] = None,
+        serialize: Callable[[T], Any] | None = None,
+        deserialize: Callable[[Any], T] | None = None,
+        calculate: Callable[[Any, Any], T] | None = None,
     ):
         self.__name = name
         self.__default = default
@@ -81,7 +82,7 @@ Description = MetadataField[str](
 Unit = MetadataField[str]("unit", default="", serialized_name="unit")
 
 
-def _parse_float(number: Optional[Any]) -> Optional[float]:
+def _parse_float(number: Any | None) -> float | None:
     if number is None:
         return None
     if _is_empty_string(number):
@@ -89,7 +90,7 @@ def _parse_float(number: Optional[Any]) -> Optional[float]:
     return float(number)
 
 
-LimitLowPhysical = MetadataField[Optional[float]](
+LimitLowPhysical = MetadataField[float | None](
     "physical lower limit",
     default=None,
     serialized_name="limitLowPhysical",
@@ -97,7 +98,7 @@ LimitLowPhysical = MetadataField[Optional[float]](
 )
 
 
-LimitHighPhysical = MetadataField[Optional[float]](
+LimitHighPhysical = MetadataField[float | None](
     "physical upper limit",
     default=None,
     serialized_name="limitHighPhysical",
@@ -105,7 +106,7 @@ LimitHighPhysical = MetadataField[Optional[float]](
 )
 
 
-LimitLowFunctional = MetadataField[Optional[float]](
+LimitLowFunctional = MetadataField[float | None](
     "functional lower limit",
     default=None,
     serialized_name="limitLowFunctional",
@@ -113,7 +114,7 @@ LimitLowFunctional = MetadataField[Optional[float]](
 )
 
 
-LimitHighFunctional = MetadataField[Optional[float]](
+LimitHighFunctional = MetadataField[float | None](
     "functional upper limit",
     default=None,
     serialized_name="limitHighFunctional",
@@ -121,7 +122,7 @@ LimitHighFunctional = MetadataField[Optional[float]](
 )
 
 
-def _calculate_accuracy(metadata, accuracy: Optional[float]) -> Optional[float]:
+def _calculate_accuracy(metadata, accuracy: float | None) -> float | None:
     """Calculate the accuracy based on the accuracy percentage."""
     if accuracy is not None:
         return accuracy
@@ -145,7 +146,7 @@ def _calculate_accuracy(metadata, accuracy: Optional[float]) -> Optional[float]:
     return (high_limit - low_limit) * float(accuracy_percentage) / 100
 
 
-Accuracy = MetadataField[Optional[float]](
+Accuracy = MetadataField[float | None](
     "accuracy",
     default=None,
     serialized_name="accuracy",
@@ -154,7 +155,7 @@ Accuracy = MetadataField[Optional[float]](
 )
 
 
-def _parse_accuracy_percentage_float(number: Optional[Any]) -> Optional[float]:
+def _parse_accuracy_percentage_float(number: Any | None) -> float | None:
     if number is None:
         return None
     if _is_empty_string(number):
@@ -162,7 +163,7 @@ def _parse_accuracy_percentage_float(number: Optional[Any]) -> Optional[float]:
     return float(number)
 
 
-AccuracyPercentage = MetadataField[Optional[float]](
+AccuracyPercentage = MetadataField[float | None](
     "accuracy percentage",
     default=None,
     serialized_name="accuracyPercentage",
@@ -171,16 +172,16 @@ AccuracyPercentage = MetadataField[Optional[float]](
 
 
 def _interpolation_type_to_json(
-    interpolation_type: Optional[KukurInterpolationType],
-) -> Optional[str]:
+    interpolation_type: KukurInterpolationType | None,
+) -> str | None:
     if interpolation_type is None:
         return None
     return interpolation_type.value
 
 
 def _interpolation_type_from_json(
-    interpolation_type: Optional[str],
-) -> Optional[KukurInterpolationType]:
+    interpolation_type: str | None,
+) -> KukurInterpolationType | None:
     if interpolation_type is None:
         return None
     if _is_empty_string(interpolation_type):
@@ -188,7 +189,7 @@ def _interpolation_type_from_json(
     return KukurInterpolationType(interpolation_type)
 
 
-InterpolationType = MetadataField[Optional[KukurInterpolationType]](
+InterpolationType = MetadataField[KukurInterpolationType | None](
     "interpolation type",
     default=None,
     serialized_name="interpolationType",
@@ -197,13 +198,13 @@ InterpolationType = MetadataField[Optional[KukurInterpolationType]](
 )
 
 
-def _data_type_to_json(data_type: Optional[KukurDataType]) -> Optional[str]:
+def _data_type_to_json(data_type: KukurDataType | None) -> str | None:
     if data_type is None:
         return None
     return data_type.value
 
 
-def _data_type_from_json(data_type: Optional[str]) -> Optional[KukurDataType]:
+def _data_type_from_json(data_type: str | None) -> KukurDataType | None:
     if data_type is None:
         return None
     if _is_empty_string(data_type):
@@ -211,7 +212,7 @@ def _data_type_from_json(data_type: Optional[str]) -> Optional[KukurDataType]:
     return KukurDataType(data_type)
 
 
-DataType = MetadataField[Optional[KukurDataType]](
+DataType = MetadataField[KukurDataType | None](
     "data type",
     default=None,
     serialized_name="dataType",
@@ -220,28 +221,28 @@ DataType = MetadataField[Optional[KukurDataType]](
 )
 
 
-DictionaryName = MetadataField[Optional[str]](
+DictionaryName = MetadataField[str | None](
     "dictionary name", default=None, serialized_name="dictionaryName"
 )
 
 
 def _dictionary_to_json(
-    dictionary: Optional[KukurDictionary],
-) -> Optional[List[Tuple[int, str]]]:
+    dictionary: KukurDictionary | None,
+) -> list[tuple[int, str]] | None:
     if dictionary is None:
         return None
     return list(dictionary.mapping.items())
 
 
 def _dictionary_from_json(
-    dictionary: Optional[List[Tuple[int, str]]],
-) -> Optional[KukurDictionary]:
+    dictionary: list[tuple[int, str]] | None,
+) -> KukurDictionary | None:
     if dictionary is None:
         return None
     return KukurDictionary(dict(dictionary))
 
 
-Dictionary = MetadataField[Optional[KukurDictionary]](
+Dictionary = MetadataField[KukurDictionary | None](
     "dictionary",
     default=None,
     serialized_name="dictionary",
