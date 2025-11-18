@@ -1,4 +1,4 @@
-FROM python:3.12 AS builder
+FROM python:3.13 AS builder
 ENV APP_ROOT=/usr/src/app
 WORKDIR ${APP_ROOT}
 
@@ -22,7 +22,7 @@ RUN --mount=from=ghcr.io/astral-sh/uv,source=/uv,target=/bin/uv \
     --mount=type=bind,source=README.md,target=README.md \
     uv sync --frozen --all-extras --no-dev --no-editable
 
-FROM python:3.12-slim
+FROM python:3.13-slim
 ENV APP_ROOT=/usr/src/app
 WORKDIR ${APP_ROOT}
 
