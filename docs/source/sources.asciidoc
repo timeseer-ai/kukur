@@ -31,6 +31,7 @@ Valid values are:
 - `delta`
 - `elasticsearch`
 - `feather`
+- `flight-sql`
 - `influxdb`
 - `kukur`
 - `oledb`
@@ -55,6 +56,7 @@ Valid values are:
 - `databricks-sql`
 - `datafusion`
 - `elasticsearch`
+- `flight-sql`
 - `json`
 - `kukur`
 - `oledb`
@@ -179,6 +181,7 @@ ifndef::sources[]
 - link:databricks-sql-warehouse.asciidoc[Databricks SQL Warehouse] connections
 - link:delta.asciidoc[Delta Lake] tables
 - link:elasticsearch.asciidoc[Elasticsearch] data sources
+- link:flight-sql.asciidoc[Flight SQL] services
 - link:influxdb.asciidoc[InfluxDB] data sources
 - Kukur link:json.asciidoc[JSON] metadata files
 - Other link:kukur.asciidoc[Kukur or Timeseer instances]

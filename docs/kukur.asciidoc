@@ -745,6 +745,8 @@ include::./source/delta.asciidoc[leveloffset=+1]
 
 include::./source/elasticsearch.asciidoc[leveloffset=+1]
 
+include::./source/flight-sql.asciidoc[leveloffset=+1]
+
 include::./source/influxdb.asciidoc[leveloffset=+1]
 
 include::./source/json.asciidoc[leveloffset=+1]

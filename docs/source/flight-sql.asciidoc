@@ -1,0 +1,37 @@
+== Flight SQL
+
+Connections to Flight SQL services can be configured using sources with type `flight-sql`.
+
+```toml
+[source.<name>]
+type = "flight-sql"
+connection_string = "" # required: connection string (usually grpc://...)
+query_timeout_seconds = 0 # set to a specific number of seconds
+username = "" # optional: configure a username
+password = "" # optional: set the password for the username
+verify_ssl = true # optional: set to false to disable certificate validation
+```
+
+All query options supported in the
+ifdef::sources[]
+<<ODBC, ODBC source>>
+endif::sources[]
+ifndef::sources[]
+link:odbc.asciidoc[ODBC source]
+endif::sources[]
+are supported by the `flight-sql` source.
+
+This example uses Flight SQL to connect to a https://github.com/datafusion-contrib/datafusion-flight-sql-server[DataFusion Flight SQL Server] with a CSV and Parquet table added to its context:
+
+```toml
+[source.flight-sql]
+type = "flight-sql"
+connection_string = "grpc://localhost:50051"
+list_query = "select distinct `series name` from tsai_antwerp_metadata"
+data_query = """
+select ts, value
+from tsai_antwerp_data
+where `series name` = $1
+  and ts >= $2 and ts < $3
+"""
+```
