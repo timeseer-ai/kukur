@@ -79,7 +79,7 @@ Kukur uses [uv](https://docs.astral.sh/uv/).
 Create a virtualenv and install dependencies:
 
 ```bash
-$ make dev-deps
+$ make deps
 ```
 
 Launch Kukur using:
@@ -94,7 +94,7 @@ Lint and format:
 $ make lint
 ```
 
-Kukur uses [black](https://github.com/psf/black) to format all code.
+Kukur uses [ruff](https://docs.astral.sh/ruff/) to format and lint all code.
 
 Run unit tests:
 

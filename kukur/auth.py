@@ -3,10 +3,9 @@
 # SPDX-FileCopyrightText: 2025 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-
 import time
 from dataclasses import dataclass
-from typing import Dict, Optional, Tuple
+from typing import Optional
 
 from kukur.exceptions import MissingModuleException
 
@@ -35,7 +34,7 @@ class OIDCConfig:
     oidc_token_url: str
 
     @classmethod
-    def from_config(cls, config: Dict) -> Optional["OIDCConfig"]:
+    def from_config(cls, config: dict) -> Optional["OIDCConfig"]:
         """Create OIDCConfig from a configuration dictionary."""
         if (
             (client_id := config.get("client_id"))
@@ -61,7 +60,7 @@ def has_kerberos_auth() -> bool:
     return HAS_REQUESTS_KERBEROS
 
 
-def get_kerberos_auth(hostname_override: Optional[str] = None):
+def get_kerberos_auth(hostname_override: str | None = None):
     """Return a requests authentication module for Kerberos."""
     if not HAS_REQUESTS_KERBEROS:
         raise MissingModuleException("requests-kerberos")
@@ -120,9 +119,9 @@ if HAS_OIDC_AUTH:
 class AuthenticationProperties:
     """Support different authentication options for requests."""
 
-    basic_auth: Optional[Tuple[str, str]]
-    oidc_auth: Optional[OIDCConfig]
-    kerberos_hostname: Optional[str]
+    basic_auth: tuple[str, str] | None
+    oidc_auth: OIDCConfig | None
+    kerberos_hostname: str | None
 
     def apply(self, session):
         """Apply the authentication properties to the requests Session."""
@@ -134,7 +133,7 @@ class AuthenticationProperties:
             session.auth = get_kerberos_auth()
 
     @classmethod
-    def from_data(cls, data: Dict) -> "AuthenticationProperties":
+    def from_data(cls, data: dict) -> "AuthenticationProperties":
         """Create from data configuration options."""
         basic_auth = None
         if "username" in data and "password" in data:

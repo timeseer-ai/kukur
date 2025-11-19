@@ -1,15 +1,13 @@
 """Metadata mappings for Kukur data sources."""
 
-from typing import Dict, List, Union
-
 
 class MetadataMapper:
     """MetadataMapper maps names for metadata fields used in a source to the names known by Kukur."""
 
-    __mapping: Dict[str, str]
+    __mapping: dict[str, str]
 
     @classmethod
-    def from_config(cls, config: Dict[str, str]) -> "MetadataMapper":
+    def from_config(cls, config: dict[str, str]) -> "MetadataMapper":
         """Create a new mapper from a dictionary that maps Kukur names to external names."""
         mapper = cls()
         for k, v in config.items():
@@ -42,14 +40,14 @@ class MetadataMapper:
 class MetadataValueMapper:
     """MetadataFieldMapper maps values for a metadata field to values known by Kukur."""
 
-    __mapping: Dict[str, Dict[Union[str, int], str]]
+    __mapping: dict[str, dict[str | int, str]]
 
     def __init__(self):
         self.__mapping = {}
 
     @classmethod
     def from_config(
-        cls, config: Dict[str, Dict[str, Union[str, List[str]]]]
+        cls, config: dict[str, dict[str, str | list[str]]]
     ) -> "MetadataValueMapper":
         """Create a new mapper from a double dictionary.
 
@@ -58,7 +56,7 @@ class MetadataValueMapper:
         mapper = cls()
         for field_name, field_mapping in config.items():
             for field_value, external_field_value in field_mapping.items():
-                if isinstance(external_field_value, (str, int)):
+                if isinstance(external_field_value, str | int):
                     mapper.add_mapping(field_name, field_value, external_field_value)
                 else:
                     for choice in external_field_value:
@@ -69,16 +67,14 @@ class MetadataValueMapper:
         self,
         field_name: str,
         kukur_field_value: str,
-        external_field_value: Union[str, int],
+        external_field_value: str | int,
     ):
         """Add a mapping for a metadata field value known to kukur from the external value."""
         if field_name not in self.__mapping:
             self.__mapping[field_name] = {}
         self.__mapping[field_name][external_field_value] = kukur_field_value
 
-    def from_source(
-        self, field_name: str, external_field_value: Union[str, int]
-    ) -> str:
+    def from_source(self, field_name: str, external_field_value: str | int) -> str:
         """Map a field value as it's known in an external source to one known by Kukur."""
         if field_name not in self.__mapping:
             return str(external_field_value)

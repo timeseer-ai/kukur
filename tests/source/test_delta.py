@@ -4,7 +4,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from datetime import timedelta
-from typing import Dict, Optional
 
 from dateutil.parser import parse as parse_date
 
@@ -25,7 +24,7 @@ def get_source(source_name: str) -> Source:
     return source
 
 
-def make_series(source: str, tags: Optional[Dict[str, str]] = None) -> SeriesSelector:
+def make_series(source: str, tags: dict[str, str] | None = None) -> SeriesSelector:
     if tags is None:
         tags = {"series name": "test-tag-1"}
     return SeriesSelector.from_tags(source, tags)

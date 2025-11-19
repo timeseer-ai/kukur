@@ -7,8 +7,8 @@ They use the client to request data.
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+from collections.abc import Generator
 from datetime import datetime
-from typing import Generator
 
 import pytest
 from crate import client as crate_client

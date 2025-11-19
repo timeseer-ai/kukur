@@ -5,10 +5,11 @@
 
 from abc import ABC, abstractmethod
 from base64 import b64encode
+from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import PurePath
-from typing import Any, Dict, Generator, List, Optional
+from typing import Any
 
 import pyarrow as pa
 import pyarrow.compute
@@ -27,12 +28,12 @@ class SourcePartition:
 
     origin: str
     key: str
-    path_encoding: Optional[str] = None
-    format: Optional[str] = None
-    column: Optional[str] = None
+    path_encoding: str | None = None
+    format: str | None = None
+    column: str | None = None
 
     @classmethod
-    def from_data(cls, data: Dict[str, Any]) -> "SourcePartition":
+    def from_data(cls, data: dict[str, Any]) -> "SourcePartition":
         """Create a partition from a data dictionary."""
         if "origin" not in data:
             raise InvalidSourceException("No partition origin")
@@ -52,16 +53,16 @@ class BaseArrowSourceOptions:
     """Options for a BaseArrowSource."""
 
     data_format: str
-    column_mapping: Dict[str, str]
-    tag_columns: List[str]
-    field_columns: List[str]
-    data_datetime_format: Optional[str] = None
-    data_timezone: Optional[str] = None
-    path_encoding: Optional[str] = None
-    partitions: Optional[List[SourcePartition]] = None
+    column_mapping: dict[str, str]
+    tag_columns: list[str]
+    field_columns: list[str]
+    data_datetime_format: str | None = None
+    data_timezone: str | None = None
+    path_encoding: str | None = None
+    partitions: list[SourcePartition] | None = None
 
     @classmethod
-    def from_data(cls, data: Dict[str, Any]) -> "BaseArrowSourceOptions":
+    def from_data(cls, data: dict[str, Any]) -> "BaseArrowSourceOptions":
         """Create source options from a data dictionary."""
         data_format = data.get("format", "row")
         options = cls(
@@ -240,7 +241,7 @@ def get_value_schema_type(data: pa.Table):
     return value_type
 
 
-def map_pivot_columns(column_mapping: Dict[str, str], data: pa.Table) -> pa.Table:
+def map_pivot_columns(column_mapping: dict[str, str], data: pa.Table) -> pa.Table:
     """Map pivot format columns according to the mapping definition."""
     ts_column_name = data.column_names[0]
     if "ts" in column_mapping:
@@ -251,7 +252,7 @@ def map_pivot_columns(column_mapping: Dict[str, str], data: pa.Table) -> pa.Tabl
 
 
 def cast_ts_column(
-    data: pa.Table, data_datetime_format: Optional[str], data_timezone: Optional[str]
+    data: pa.Table, data_datetime_format: str | None, data_timezone: str | None
 ) -> pa.Table:
     """Cast the timestamp column considering format and timezone."""
     return data.set_column(
@@ -262,7 +263,7 @@ def cast_ts_column(
 
 
 def cast_timestamp(
-    array: pa.Array, data_datetime_format: Optional[str], data_timezone: Optional[str]
+    array: pa.Array, data_datetime_format: str | None, data_timezone: str | None
 ) -> pa.Array:
     """Cast a timestamp column considering format and timezone."""
     if data_datetime_format is not None:
@@ -336,8 +337,8 @@ def _map_quality(quality_data: pa.Array, quality_mapper: QualityMapper) -> pa.Ar
 
 def map_row_columns(
     all_data: pa.Table,
-    column_names: List[str],
-    column_mapping: Dict[str, str],
+    column_names: list[str],
+    column_mapping: dict[str, str],
     quality_mapper: QualityMapper,
 ) -> pa.Table:
     """Map columns according to the provided column mapping."""
@@ -354,7 +355,7 @@ def map_row_columns(
     return all_data
 
 
-def _map_columns(column_mapping: Dict[str, str], data: pa.Table) -> pa.Table:
+def _map_columns(column_mapping: dict[str, str], data: pa.Table) -> pa.Table:
     if len(column_mapping) == 0:
         return data
 

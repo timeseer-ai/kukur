@@ -12,7 +12,7 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
 ]
 authors = [{ name = "Timeseer.AI", email = "pypi@timeseer.ai" }]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
     "pyarrow>=16.0.0",
     "python-dateutil>=2.8.1",
@@ -46,7 +46,6 @@ simulator = ["PyYAML"]
 
 [dependency-groups]
 dev = [
-    "black >=24.4.0",
     "cx_Freeze >=7.2.7; sys_platform == 'win32'",
     "cx-Logging >=3.0; sys_platform == 'win32'",
     "mypy >=1.9.0,< 2",
@@ -70,8 +69,8 @@ build-backend = "hatchling.build"
 packages = ["kukur"]
 
 [tool.ruff]
-target-version = "py39"
-line-length = 120
+target-version = "py310"
+line-length = 88
 
 [tool.ruff.lint]
 select = [
@@ -90,8 +89,17 @@ select = [
     "Q",
     "RET",
     "T20",
+    "UP",
 ]
-ignore = ["C408", "D105", "D107", "D203", "D213", "RET504"]
+ignore = [
+    "C408",
+    "D105",
+    "D107",
+    "D203",
+    "D213",
+    "E501", # Line too long handled by formatter
+    "RET504",
+]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

@@ -3,8 +3,6 @@
 # SPDX-FileCopyrightText: 2022 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Optional
-
 
 class KukurException(Exception):  # noqa: N818
     """Base class for all Exceptions thrown by Kukur."""
@@ -34,7 +32,7 @@ class InvalidSourceException(KukurException):
 class MissingModuleException(KukurException):
     """Raised when a required Python module is not available."""
 
-    def __init__(self, module_name: str, source_type: Optional[str] = None):
+    def __init__(self, module_name: str, source_type: str | None = None):
         if source_type is not None:
             KukurException.__init__(
                 self,

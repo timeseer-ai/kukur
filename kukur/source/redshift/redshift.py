@@ -3,8 +3,6 @@
 # SPDX-FileCopyrightText: 2024 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Dict
-
 from kukur.exceptions import InvalidSourceException, MissingModuleException
 from kukur.source.metadata import MetadataValueMapper
 from kukur.source.quality import QualityMapper
@@ -23,7 +21,7 @@ class RedshiftSource(BaseSQLSource):
 
     def __init__(
         self,
-        data: Dict,
+        data: dict,
         metadata_value_mapper: MetadataValueMapper,
         quality_mapper: QualityMapper,
     ):
@@ -34,7 +32,7 @@ class RedshiftSource(BaseSQLSource):
             raise InvalidSourceException(
                 "'redshift' sources require a 'connection' dictionary."
             )
-        self.__connection_options: Dict = data["connection"]
+        self.__connection_options: dict = data["connection"]
         super().__init__(config, metadata_value_mapper, quality_mapper)
 
     def connect(self):

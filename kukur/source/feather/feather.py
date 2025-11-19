@@ -9,7 +9,7 @@ Three formats are supported:
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict
+from typing import Any
 
 import pyarrow as pa
 from pyarrow import feather
@@ -20,7 +20,7 @@ from kukur.source.arrow import BaseArrowSource, BaseArrowSourceOptions
 from kukur.source.quality import QualityMapper
 
 
-def from_config(config: Dict[str, Any], quality_mapper: QualityMapper):
+def from_config(config: dict[str, Any], quality_mapper: QualityMapper):
     """Create a new Feather data source from the given configuration dictionary."""
     loader = loader_from_config(config, files_as_path=True)
     if "path" not in config:

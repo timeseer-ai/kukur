@@ -6,7 +6,6 @@
 import abc
 import contextlib
 import sqlite3
-from typing import List
 
 from dateutil.parser import parse as parse_date
 
@@ -46,7 +45,7 @@ class Migration(abc.ABC):  # pylint: disable=too-few-public-methods
 class MigrationRunner:
     """MigrationRunner keeps track of registered database migrations and runs them."""
 
-    __migrations: List[Migration]
+    __migrations: list[Migration]
 
     def __init__(self):
         self.__migrations = []

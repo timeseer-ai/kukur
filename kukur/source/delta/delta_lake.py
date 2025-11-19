@@ -8,7 +8,6 @@ Two formats are supported:
 # SPDX-FileCopyrightText: 2022 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-
 try:
     from deltalake import DeltaTable
 
@@ -16,11 +15,12 @@ try:
 except ImportError:
     HAS_DELTA_LAKE = False
 
+from collections.abc import Generator
 from dataclasses import dataclass
 from dataclasses import field as data_field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, Generator, List, Optional, Tuple, Union
+from typing import Any
 
 import pyarrow as pa
 from dateutil.relativedelta import relativedelta
@@ -64,11 +64,11 @@ class DeltaLakePartition:
 
     origin: PartitionOrigin
     key: str
-    format: Optional[str] = None
-    column: Optional[str] = None
+    format: str | None = None
+    column: str | None = None
 
     @classmethod
-    def from_data(cls, data: Dict[str, Any]) -> "DeltaLakePartition":
+    def from_data(cls, data: dict[str, Any]) -> "DeltaLakePartition":
         """Create a partition from a data dictionary."""
         if "origin" not in data:
             raise InvalidSourceException("No partition origin")
@@ -88,17 +88,17 @@ class DeltaSourceOptions:
 
     uri: str
     data_format: str
-    column_mapping: Dict[str, str]
-    tag_columns: List[str]
-    field_columns: List[str]
-    partitions: List[DeltaLakePartition] = data_field(default_factory=list)
-    data_datetime_format: Optional[str] = None
-    data_timezone: Optional[str] = None
-    path_encoding: Optional[str] = None
+    column_mapping: dict[str, str]
+    tag_columns: list[str]
+    field_columns: list[str]
+    partitions: list[DeltaLakePartition] = data_field(default_factory=list)
+    data_datetime_format: str | None = None
+    data_timezone: str | None = None
+    path_encoding: str | None = None
     sort_by_timestamp: bool = True
 
     @classmethod
-    def from_data(cls, data: Dict[str, Any]) -> "DeltaSourceOptions":
+    def from_data(cls, data: dict[str, Any]) -> "DeltaSourceOptions":
         """Create source options from a data dictionary."""
         if "uri" not in data:
             raise InvalidSourceException("No uri provided in config")
@@ -217,7 +217,7 @@ class DeltaLakeSource:
         if pa.types.is_timestamp(schema.field(effective_column_mapping["ts"]).type):
             is_timestamp = True
 
-        partitions: List[Tuple[str, str, Union[List[str], str]]] = []
+        partitions: list[tuple[str, str, list[str] | str]] = []
         for partition in self.__options.partitions:
             if partition.origin == PartitionOrigin.TAG:
                 partitions.append(self._format_tag_partition(partition, selector))
@@ -299,7 +299,7 @@ class DeltaLakeSource:
         self,
         partition: DeltaLakePartition,
         selector: SeriesSelector,
-    ) -> Tuple[str, str, str]:
+    ) -> tuple[str, str, str]:
         column_name = self.__options.column_mapping.get(partition.key, partition.key)
         return (column_name, "=", selector.tags[partition.key])
 
@@ -308,7 +308,7 @@ class DeltaLakeSource:
         partition: DeltaLakePartition,
         start_date: datetime,
         end_date: datetime,
-    ) -> Tuple[str, str, List[str]]:
+    ) -> tuple[str, str, list[str]]:
         resolution = Resolution(partition.key)
         column = resolution.value
         if partition.column is not None:
@@ -320,7 +320,7 @@ class DeltaLakeSource:
 
         if resolution == Resolution.YEAR:
             start_date = start_date.replace(month=1, day=1, hour=0, minute=0, second=0)
-            interval: Union[relativedelta, timedelta] = relativedelta(years=1)
+            interval: relativedelta | timedelta = relativedelta(years=1)
             if format is None:
                 format = "%Y"
         elif resolution == Resolution.MONTH:
@@ -358,7 +358,7 @@ class DeltaLakeSource:
 
 def _get_tag_filter_value(
     schema: pa.Schema, column: str, value: str
-) -> tuple[str, str, Union[str, int]]:
+) -> tuple[str, str, str | int]:
     if pa.types.is_integer(schema.field(column).type):
         return (column, "=", int(value))
     return (column, "=", value)
@@ -382,5 +382,5 @@ def from_config(config: dict, quality_mapper: QualityMapper) -> DeltaLakeSource:
     )
 
 
-def _parquet_timestamp(value: datetime, tz: Optional[str]):
+def _parquet_timestamp(value: datetime, tz: str | None):
     return pa.scalar(value, pa.timestamp("us", tz))

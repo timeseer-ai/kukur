@@ -4,9 +4,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import json
+from collections.abc import Generator
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional, Union
+from typing import Any
 
 import pyarrow as pa
 
@@ -25,7 +26,7 @@ class Kukur:
 
     __repository: RepositoryRegistry
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         self.__source_factory = SourceFactory(config)
         self.__repository = RepositoryRegistry(
             data_dir=Path(config.get("data_dir", "."))
@@ -36,7 +37,7 @@ class Kukur:
 
     def search(
         self, selector: SeriesSearch
-    ) -> Generator[Union[SeriesSelector, Metadata], None, None]:
+    ) -> Generator[SeriesSelector | Metadata, None, None]:
         """Return all time series or even the metadata of them in this source matching the selector."""
         return self._get_source(selector.source).search(selector)
 
@@ -67,9 +68,7 @@ class Kukur:
             selector, start_date, end_date, interval_count
         )
 
-    def get_source_structure(
-        self, selector: SeriesSelector
-    ) -> Optional[SourceStructure]:
+    def get_source_structure(self, selector: SeriesSelector) -> SourceStructure | None:
         """Return the structure of a source."""
         return self._get_source(selector.source).get_source_structure(selector)
 
@@ -77,7 +76,7 @@ class Kukur:
         """Return the api keys."""
         return ApiKeys(self.__repository)
 
-    def list_sources(self, *_) -> List[bytes]:
+    def list_sources(self, *_) -> list[bytes]:
         """Return all the configured sources."""
         sources = self.__source_factory.get_source_names()
         return [json.dumps(sources).encode()]

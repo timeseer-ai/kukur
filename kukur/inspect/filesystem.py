@@ -3,8 +3,8 @@
 # SPDX-FileCopyrightText: 2024 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator, List, Optional
 
 import pyarrow as pa
 from pyarrow import fs
@@ -14,8 +14,8 @@ from kukur.inspect.arrow import BlobResource, inspect
 
 
 def inspect_filesystem(
-    path: Path, *, options: Optional[FileOptions] = None
-) -> List[InspectedPath]:
+    path: Path, *, options: FileOptions | None = None
+) -> list[InspectedPath]:
     """Inspect a filesystem path.
 
     Lists all files in the path.
@@ -28,8 +28,8 @@ def inspect_filesystem(
 
 
 def preview_filesystem(
-    path: Path, num_rows: int = 5000, options: Optional[DataOptions] = None
-) -> Optional[pa.Table]:
+    path: Path, num_rows: int = 5000, options: DataOptions | None = None
+) -> pa.Table | None:
     """Preview a data file at the specified filesystem location."""
     local = fs.LocalFileSystem()
     resource = BlobResource(str(path), local, path)
@@ -38,7 +38,7 @@ def preview_filesystem(
 
 
 def read_filesystem(
-    path: Path, options: Optional[DataOptions] = None
+    path: Path, options: DataOptions | None = None
 ) -> Generator[pa.RecordBatch, None, None]:
     """Read path as a series of record batches.
 

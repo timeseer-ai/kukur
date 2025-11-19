@@ -6,7 +6,7 @@ This uses the functions in the ODBC inspect.
 # SPDX-FileCopyrightText: 2024 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Generator, List, Optional
+from collections.abc import Generator
 
 import pyarrow as pa
 
@@ -24,8 +24,8 @@ from kukur.source.databricks_sql.databricks_sql import build_connection_string
 
 
 def inspect_databricks_sql_database(
-    config: Connection, path: Optional[str] = None
-) -> List[InspectedPath]:
+    config: Connection, path: str | None = None
+) -> list[InspectedPath]:
     """Inspect a database."""
     if config.connection_string is None and config.connection_options is not None:
         config.connection_string = build_connection_string(config.connection_options)
@@ -36,8 +36,8 @@ def preview_databricks_sql_database(
     config: Connection,
     path: str,
     num_rows: int = 5000,
-    options: Optional[DataOptions] = None,
-) -> Optional[pa.Table]:
+    options: DataOptions | None = None,
+) -> pa.Table | None:
     """Preview the contents of a database."""
     if config.connection_string is None and config.connection_options is not None:
         config.connection_string = build_connection_string(config.connection_options)
@@ -45,7 +45,7 @@ def preview_databricks_sql_database(
 
 
 def read_databricks_sql_database(
-    config: Connection, path: str, options: Optional[DataOptions] = None
+    config: Connection, path: str, options: DataOptions | None = None
 ) -> Generator[pa.RecordBatch, None, None]:
     """Iterate over the RecordBatches at the given Connection."""
     if config.connection_string is None and config.connection_options is not None:

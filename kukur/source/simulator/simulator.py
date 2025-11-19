@@ -7,13 +7,14 @@ import itertools
 import operator
 import sys
 from collections import defaultdict
+from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from hashlib import sha1
 from pathlib import Path
 from random import Random
-from typing import Any, Dict, Generator, List, Optional, Union
+from typing import Any
 
 try:
     import numpy
@@ -57,11 +58,11 @@ class UnknownSignalTypeError(Exception):
 class SimulatorConfiguration:
     """Simulator source configuration."""
 
-    path: Optional[str]
+    path: str | None
 
 
 def from_config(
-    config: Dict[str, Any],
+    config: dict[str, Any],
 ):
     """Create a new Simulator data source from the given configuration dictionary."""
     return SimulatorSource(SimulatorConfiguration(config.get("path")))
@@ -75,10 +76,10 @@ class SignalGeneratorConfig:  # pylint: disable=too-many-instance-attributes
     signal_type: str
     initial_seed: int
     number_of_seeds: int
-    interval_seconds_min: Union[List[float], float]
-    interval_seconds_max: Union[List[float], float]
-    metadata: Dict[str, str]
-    fields: List[str]
+    interval_seconds_min: list[float] | float
+    interval_seconds_max: list[float] | float
+    metadata: dict[str, str]
+    fields: list[str]
 
 
 @dataclass
@@ -109,7 +110,7 @@ class StepSignalGeneratorConfigValue:
 
     min: float
     max: float
-    number_of_steps: List[int]
+    number_of_steps: list[int]
     data_type: SignalDataType
 
 
@@ -117,7 +118,7 @@ class StepSignalGeneratorConfigValue:
 class StepSignalGeneratorConfig(SignalGeneratorConfig):
     """Configuration for the step signal generator."""
 
-    values: List[StepSignalGeneratorConfigValue]
+    values: list[StepSignalGeneratorConfigValue]
 
 
 @dataclass
@@ -134,8 +135,8 @@ class StepSignalConfig(SignalConfig):
 class WhiteNoiseSignalGeneratorConfig(SignalGeneratorConfig):
     """Configuration for the white noise signal generator."""
 
-    mean: Union[List[float], float]
-    standard_deviation: Union[List[float], float]
+    mean: list[float] | float
+    standard_deviation: list[float] | float
 
 
 @dataclass
@@ -150,10 +151,10 @@ class WhiteNoiseSignalConfig(SignalConfig):
 class SineSignalGeneratorConfig(SignalGeneratorConfig):
     """Configuration for the sine signal generator."""
 
-    period_seconds: Union[List[float], float]
-    phase_seconds: Union[List[float], float]
-    amplitude: Union[List[float], float]
-    shift: Union[List[float], float]
+    period_seconds: list[float] | float
+    phase_seconds: list[float] | float
+    amplitude: list[float] | float
+    shift: list[float] | float
 
 
 @dataclass
@@ -172,15 +173,15 @@ class CounterSignalGeneratorConfigValue:
 
     min: float
     max: float
-    increase_value: List[float]
-    interval_seconds: List[int]
+    increase_value: list[float]
+    interval_seconds: list[int]
 
 
 @dataclass
 class CounterSignalGeneratorConfig(SignalGeneratorConfig):
     """Configuration for the counter signal generator."""
 
-    values: List[CounterSignalGeneratorConfigValue]
+    values: list[CounterSignalGeneratorConfigValue]
 
 
 @dataclass
@@ -196,9 +197,9 @@ class CounterSignalConfig(SignalConfig):
 class StepSignalGenerator:
     """Step signal generator."""
 
-    __config: Optional[StepSignalGeneratorConfig] = None
+    __config: StepSignalGeneratorConfig | None = None
 
-    def __init__(self, config: Optional[Dict] = None):
+    def __init__(self, config: dict | None = None):
         if config is not None:
             self.__config = StepSignalGeneratorConfig(
                 config["seriesName"],
@@ -333,8 +334,8 @@ class StepSignalGenerator:
                 )
 
 
-def _ensure_list(value) -> List:
-    if isinstance(value, List):
+def _ensure_list(value) -> list:
+    if isinstance(value, list):
         return value
     return [value]
 
@@ -387,9 +388,9 @@ def _get_start_of_day(ts: datetime) -> datetime:
 class WhiteNoiseSignalGenerator:
     """White noise signal generator."""
 
-    __config: Optional[WhiteNoiseSignalGeneratorConfig] = None
+    __config: WhiteNoiseSignalGeneratorConfig | None = None
 
-    def __init__(self, config: Optional[Dict] = None):
+    def __init__(self, config: dict | None = None):
         if not HAS_NUMPY:
             raise MissingModuleException("numpy")
         if config is not None:
@@ -532,9 +533,9 @@ def _get_white_noise_configuration(
 class SineSignalGenerator:
     """Sine signal generator."""
 
-    __config: Optional[SineSignalGeneratorConfig] = None
+    __config: SineSignalGeneratorConfig | None = None
 
-    def __init__(self, config: Optional[Dict] = None):
+    def __init__(self, config: dict | None = None):
         if not HAS_NUMPY:
             raise MissingModuleException("numpy")
         if config is not None:
@@ -706,9 +707,9 @@ def calculate_sine(
 class CounterSignalGenerator:
     """Count signal generator."""
 
-    __config: Optional[CounterSignalGeneratorConfig] = None
+    __config: CounterSignalGeneratorConfig | None = None
 
-    def __init__(self, config: Optional[Dict] = None):
+    def __init__(self, config: dict | None = None):
         if config is not None:
             self.__config = CounterSignalGeneratorConfig(
                 config["seriesName"],
@@ -735,8 +736,8 @@ class CounterSignalGenerator:
     ) -> pa.Table:
         """Generate data as counter based on a selector start and end date."""
         configuration = _get_counter_configuration(selector)
-        ts: List[datetime] = []
-        value: List[float] = []
+        ts: list[datetime] = []
+        value: list[float] = []
         period_in_seconds = (
             int(
                 (configuration.max_value - configuration.min_value)
@@ -857,9 +858,9 @@ def _get_counter_configuration(selector: SeriesSelector) -> CounterSignalConfig:
 class SimulatorSource:
     """A simulator data source."""
 
-    __signal_generators: Dict[str, List[SignalGenerator]]
+    __signal_generators: dict[str, list[SignalGenerator]]
 
-    __yaml_path: Optional[Path] = None
+    __yaml_path: Path | None = None
 
     def __init__(self, config: SimulatorConfiguration):
         self.__signal_generators = defaultdict(list)
@@ -882,7 +883,7 @@ class SimulatorSource:
 
     def search(
         self, selector: SeriesSearch
-    ) -> Generator[Union[Metadata, SeriesSelector], None, None]:
+    ) -> Generator[Metadata | SeriesSelector, None, None]:
         """Yield all possible metadata combinations using the signal configuration and the provided selector."""
         all_series = []
         if "signal_type" in selector.tags:
@@ -911,10 +912,10 @@ class SimulatorSource:
             return generator.generate(selector, start_date, end_date)
         raise UnknownSignalTypeError(selector.tags["signal_type"])
 
-    def get_source_structure(self, _: SeriesSelector) -> Optional[SourceStructure]:
+    def get_source_structure(self, _: SeriesSelector) -> SourceStructure | None:
         """Return the structure of a source."""
 
-    def _register_generator(self, config: Dict):
+    def _register_generator(self, config: dict):
         """Register a generator."""
         signal_type = config["type"]
         if signal_type == "step":
@@ -930,11 +931,11 @@ class SimulatorSource:
 
 
 def _extract_from_tag(
-    tags: Dict[str, str], key: str, fallback: Union[List[Any], Any]
-) -> List[Any]:
+    tags: dict[str, str], key: str, fallback: list[Any] | Any
+) -> list[Any]:
     if key in tags:
         return [tags[key]]
-    if not isinstance(fallback, List):
+    if not isinstance(fallback, list):
         return [fallback]
     return fallback
 

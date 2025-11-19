@@ -4,9 +4,10 @@ import functools
 import inspect
 import logging
 import time
+from collections.abc import Callable, Generator
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union
+from typing import Any
 
 import pyarrow as pa
 import pyarrow.types
@@ -56,7 +57,7 @@ from .metadata import MetadataMapper, MetadataValueMapper
 
 logger = logging.getLogger(__name__)
 
-_FACTORY: Dict[str, Callable[..., SourceProtocol]] = {
+_FACTORY: dict[str, Callable[..., SourceProtocol]] = {
     "adodb": adodb.from_config,
     "arrows": arrows.from_config,
     "cratedb": cratedb.from_config,
@@ -89,7 +90,7 @@ class MetadataSource:
     """A metadata source provides at least some metadata fields."""
 
     source: SourceProtocol
-    fields: List[str] = field(default_factory=list)
+    fields: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -99,7 +100,7 @@ class Source:
     Source keeps them together.
     """
 
-    metadata: Union[SourceProtocol, TagSource]
+    metadata: SourceProtocol | TagSource
     data: SourceProtocol
 
 
@@ -129,15 +130,15 @@ class SourceWrapper:
     """
 
     __source: Source
-    __metadata: List[MetadataSource]
+    __metadata: list[MetadataSource]
     __query_retry_count: int
     __query_retry_delay: float
-    __data_query_interval: Optional[timedelta] = None
+    __data_query_interval: timedelta | None = None
 
     def __init__(
         self,
         source: Source,
-        metadata_sources: List[MetadataSource],
+        metadata_sources: list[MetadataSource],
         common_options,
     ):
         self.__source = source
@@ -151,7 +152,7 @@ class SourceWrapper:
 
     def search(
         self, selector: SeriesSearch
-    ) -> Generator[Union[SeriesSelector, Metadata], None, None]:
+    ) -> Generator[SeriesSelector | Metadata, None, None]:
         """Search for all time series matching the given selector.
 
         The result is either a sequence of selectors for each time series in the source or a sequence of metadata
@@ -263,9 +264,7 @@ class SourceWrapper:
             f'Plot data query for "{selector.name}" ({selector.source}) ({start_date} to {end_date}) failed',
         )
 
-    def get_source_structure(
-        self, selector: SeriesSelector
-    ) -> Optional[SourceStructure]:
+    def get_source_structure(self, selector: SeriesSelector) -> SourceStructure | None:
         """Return the structure of the source for the given series."""
         if not isinstance(self.__source.metadata, TagSource):
             return None
@@ -294,7 +293,7 @@ class SourceWrapper:
 
     def __to_intervals(
         self, start_date: datetime, end_date: datetime
-    ) -> Generator[Tuple[datetime, datetime], None, None]:
+    ) -> Generator[tuple[datetime, datetime], None, None]:
         if self.__data_query_interval is None:
             yield (start_date, end_date)
             return
@@ -309,8 +308,8 @@ class SourceWrapper:
 class SourceFactory:
     """Source factory to create Source objects."""
 
-    __config: Dict[str, Any]
-    __factory: Dict[str, Callable]
+    __config: dict[str, Any]
+    __factory: dict[str, Callable]
 
     def __init__(self, config):
         self.__config = config
@@ -322,14 +321,14 @@ class SourceFactory:
         """Register a new source type with the factory."""
         self.__factory[source_type_name] = source_factory
 
-    def get_source_names(self) -> List[str]:
+    def get_source_names(self) -> list[str]:
         """Get the data sources names as configured in the Kukur configuration."""
         sources = []
         for name, _ in self.__config.get("source", {}).items():
             sources.append(name)
         return sources
 
-    def get_source(self, source_name: str) -> Optional[SourceWrapper]:
+    def get_source(self, source_name: str) -> SourceWrapper | None:
         """Get the data source and type as configured in the Kukur configuration."""
         for name, options in self.__config.get("source", {}).items():
             if source_name == name:
@@ -346,9 +345,9 @@ class SourceFactory:
 
     def make_wrapper(
         self,
-        source: Union[SourceProtocol, TagSource],
+        source: SourceProtocol | TagSource,
         source_name: str,
-        source_config: Dict[str, Any],
+        source_config: dict[str, Any],
     ) -> SourceWrapper:
         """Builds the source wrapper for a source."""
         metadata_source = source
@@ -373,7 +372,7 @@ class SourceFactory:
             Source(metadata_source, source), extra_metadata, source_config
         )
 
-    def _get_extra_metadata_sources(self) -> Dict[str, MetadataSource]:
+    def _get_extra_metadata_sources(self) -> dict[str, MetadataSource]:
         metadata_sources = {}
         for name, options in self.__config.get("metadata", {}).items():
             if "type" not in options:
@@ -389,8 +388,8 @@ class SourceFactory:
         return metadata_sources
 
     def _make_source(
-        self, source_type: str, source_config: Dict[str, Any]
-    ) -> Union[SourceProtocol, TagSource]:
+        self, source_type: str, source_config: dict[str, Any]
+    ) -> SourceProtocol | TagSource:
         metadata_mapper = self._get_metadata_mapper(
             source_config.get("metadata_mapping")
         )
@@ -401,7 +400,7 @@ class SourceFactory:
 
         factory_function: Any = self.__factory[source_type]
 
-        arguments: List[Any] = []
+        arguments: list[Any] = []
         for parameter in inspect.signature(factory_function).parameters.values():
             if parameter.annotation == MetadataMapper:
                 arguments.append(metadata_mapper)
@@ -414,13 +413,13 @@ class SourceFactory:
 
         return factory_function(*arguments)
 
-    def _get_metadata_mapper(self, name: Optional[str]) -> MetadataMapper:
+    def _get_metadata_mapper(self, name: str | None) -> MetadataMapper:
         if name is None or name not in self.__config.get("metadata_mapping", {}):
             return MetadataMapper()
 
         return MetadataMapper.from_config(self.__config["metadata_mapping"][name])
 
-    def _get_metadata_value_mapper(self, name: Optional[str]) -> MetadataValueMapper:
+    def _get_metadata_value_mapper(self, name: str | None) -> MetadataValueMapper:
         if name is None or name not in self.__config.get("metadata_value_mapping", {}):
             return MetadataValueMapper()
 
@@ -428,14 +427,14 @@ class SourceFactory:
             self.__config["metadata_value_mapping"][name]
         )
 
-    def _get_quality_mapper(self, name: Optional[str]) -> QualityMapper:
+    def _get_quality_mapper(self, name: str | None) -> QualityMapper:
         if name is None or name not in self.__config.get("quality_mapping", {}):
             return QualityMapper()
 
         return QualityMapper.from_config(self.__config["quality_mapping"][name])
 
 
-def concat_tables(tables: List[pa.Table]) -> pa.Table:
+def concat_tables(tables: list[pa.Table]) -> pa.Table:
     """Safely concatenate multiple pyarrow.Table's.
 
     If any of the given tables contains strings, the result will contain a
@@ -475,7 +474,7 @@ def concat_tables(tables: List[pa.Table]) -> pa.Table:
     return pa.concat_tables([table.cast(schema) for table in tables])
 
 
-def _has_any_string(tables: List[pa.Table]) -> bool:
+def _has_any_string(tables: list[pa.Table]) -> bool:
     string_tables = [
         table
         for table in tables
@@ -484,7 +483,7 @@ def _has_any_string(tables: List[pa.Table]) -> bool:
     return len(string_tables) > 0
 
 
-def _is_all_integer(tables: List[pa.Table]) -> bool:
+def _is_all_integer(tables: list[pa.Table]) -> bool:
     integer_tables = [
         table
         for table in tables
@@ -493,6 +492,6 @@ def _is_all_integer(tables: List[pa.Table]) -> bool:
     return len(integer_tables) == len(tables)
 
 
-def _has_quality_data_flag(tables: List[pa.Table]) -> bool:
+def _has_quality_data_flag(tables: list[pa.Table]) -> bool:
     quality_table = [table for table in tables if "quality" in table.column_names]
     return len(quality_table) > 0

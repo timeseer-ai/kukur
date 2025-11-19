@@ -18,7 +18,6 @@ The `kukur.inspect.blob` module supports inspecting blob stores.
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Optional
 
 from kukur.exceptions import KukurException
 
@@ -69,11 +68,11 @@ class DataOptions:
     `default_resource_type` assumes files without extension are of this type.
     """
 
-    column_names: Optional[List[str]] = None
-    csv_delimiter: Optional[str] = None
+    column_names: list[str] | None = None
+    csv_delimiter: str | None = None
     csv_header_row: bool = True
     excel_header_row: bool = True
-    default_resource_type: Optional[ResourceType] = None
+    default_resource_type: ResourceType | None = None
 
 
 @dataclass
@@ -86,11 +85,11 @@ class FileOptions:
     """
 
     detect_delta: bool = False
-    default_resource_type: Optional[ResourceType] = None
+    default_resource_type: ResourceType | None = None
     recursive: bool = False
 
     @classmethod
-    def from_data(cls, data: Dict) -> "FileOptions":
+    def from_data(cls, data: dict) -> "FileOptions":
         """Read FileOptions from a data dictionary."""
         options = cls()
         if "detect_delta" in data:
@@ -107,7 +106,7 @@ class Connection:
     """Defines the connection to a database."""
 
     connection_type: str
-    catalog: Optional[str]
-    connection_string: Optional[str]
-    connection_options: Optional[dict]
-    limit_specification: Optional[str]
+    catalog: str | None
+    connection_string: str | None
+    connection_options: dict | None
+    limit_specification: str | None

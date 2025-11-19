@@ -3,14 +3,11 @@
 # SPDX-FileCopyrightText: 2025 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import List, Optional
-
 import pyarrow as pa
 
 from kukur.inspect import DataOptions
 
 try:
-
     import openpyxl
 
     HAS_OPENPYXL = True
@@ -22,7 +19,7 @@ except ImportError:
 from kukur.exceptions import MissingModuleException
 
 
-def parse_excel(readable, sheet_name: str, options: Optional[DataOptions]) -> pa.Table:
+def parse_excel(readable, sheet_name: str, options: DataOptions | None) -> pa.Table:
     """Parse an Excel file to a PyArrow Table."""
     if not HAS_OPENPYXL:
         raise MissingModuleException("openpyxl", "excel")
@@ -45,7 +42,7 @@ def parse_excel(readable, sheet_name: str, options: Optional[DataOptions]) -> pa
     return _to_pyarrow([str(header) for header in headers], rows)
 
 
-def list_sheets(readable) -> List[str]:
+def list_sheets(readable) -> list[str]:
     """List the sheets in the Excel file."""
     if not HAS_OPENPYXL:
         raise MissingModuleException("openpyxl", "excel")
@@ -55,10 +52,10 @@ def list_sheets(readable) -> List[str]:
     return sheetnames
 
 
-def _to_pyarrow(headers: List[str], rows: List[List]) -> pa.Table:
+def _to_pyarrow(headers: list[str], rows: list[list]) -> pa.Table:
     """Convert raw excel to a PyArrow table."""
     arrays = []
-    columns = list(zip(*rows))
+    columns = list(zip(*rows, strict=True))
     for column in columns:
         try:
             arrays.append(pa.array(column))

@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: 2024 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import List
 
 import kukur.config
 from kukur import Metadata, Source
@@ -36,7 +35,7 @@ def test_data_fusion_tags():
     assert len(all_metadata) == 8
 
 
-def _get_metadata(all_metadata: List[Metadata], series_name: str) -> Metadata:
+def _get_metadata(all_metadata: list[Metadata], series_name: str) -> Metadata:
     matching_series = None
     for metadata in all_metadata:
         if metadata.series.tags["series name"] == series_name:

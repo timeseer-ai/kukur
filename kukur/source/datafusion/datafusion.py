@@ -3,10 +3,10 @@
 # SPDX-FileCopyrightText: 2024 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
+from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Dict, Generator, List, Optional, Union
 
 import pyarrow as pa
 
@@ -49,7 +49,7 @@ class DataFusionTable:
     location: str
 
     @classmethod
-    def from_data(cls, data: Dict) -> "DataFusionTable":
+    def from_data(cls, data: dict) -> "DataFusionTable":
         """Create a table definition from a JSON dictionary."""
         return cls(DataFusionTableType(data["type"]), data["name"], data["location"])
 
@@ -58,13 +58,13 @@ class DataFusionTable:
 class DataFusionSourceOptions:
     """Configuration for DataFusion sources."""
 
-    tables: List[DataFusionTable]
-    tag_columns: List[str]
-    field_columns: List[str]
-    list_query: Optional[str]
+    tables: list[DataFusionTable]
+    tag_columns: list[str]
+    field_columns: list[str]
+    list_query: str | None
 
     @classmethod
-    def from_data(cls, data: Dict) -> "DataFusionSourceOptions":
+    def from_data(cls, data: dict) -> "DataFusionSourceOptions":
         """Create from a JSON dictionary."""
         return DataFusionSourceOptions(
             [DataFusionTable.from_data(table) for table in data.get("table", [])],
@@ -87,7 +87,7 @@ class DataFusionSource:
 
     def search(
         self, selector: SeriesSearch
-    ) -> Generator[Union[SeriesSelector, Metadata], None, None]:
+    ) -> Generator[SeriesSelector | Metadata, None, None]:
         """Return all time series or even the metadata of them in this source matching the selector."""
         if self.__options.list_query is None:
             raise InvalidSourceException("Missing list_query")
@@ -95,7 +95,6 @@ class DataFusionSource:
         context = self._get_context()
         table = context.sql(self.__options.list_query)
         for row in table.to_pylist():
-
             tags = {tag_name: row[tag_name] for tag_name in self.__options.tag_columns}
             for field_column in self.__options.field_columns:
                 series = SeriesSelector(selector.source, tags, field_column)
@@ -142,7 +141,7 @@ class DataFusionSource:
 
 
 def from_config(
-    config: Dict, metadata_value_mapper: MetadataValueMapper
+    config: dict, metadata_value_mapper: MetadataValueMapper
 ) -> DataFusionSource:
     """Create a new DataFusion data source from the given configuration dictionary."""
     if not HAS_DATA_FUSION:

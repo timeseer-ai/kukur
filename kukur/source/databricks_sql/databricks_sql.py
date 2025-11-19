@@ -4,8 +4,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Dict
-
 try:
     import pyodbc  # noqa: F401
 
@@ -49,23 +47,23 @@ class DatabricksSQLSource(ODBCSource):
         super().__init__(config, metadata_value_mapper, quality_mapper)
 
 
-def build_connection_string(data: Dict) -> str:
+def build_connection_string(data: dict) -> str:
     """Build the connection string from configuration."""
     connection_string = f"""
-Driver={data.get('driver', "/opt/simba/spark/lib/64/libsparkodbc_sb64.so")};
-Host={data['host']};
+Driver={data.get("driver", "/opt/simba/spark/lib/64/libsparkodbc_sb64.so")};
+Host={data["host"]};
 Port={data.get("port", 443)};
 SSL=1;
 ThriftTransport=2;
-HTTPPath={data['http_path']};
+HTTPPath={data["http_path"]};
         """
     if data.get("oauth_client_id") is not None:
         connection_string = f"""
 {connection_string}
 AuthMech=11;
 Auth_Flow=1;
-Auth_Client_ID={data['oauth_client_id']};
-Auth_Client_Secret={data['oauth_secret']};
+Auth_Client_ID={data["oauth_client_id"]};
+Auth_Client_Secret={data["oauth_secret"]};
         """
     elif data.get("password") is not None:
         connection_string = f"""
@@ -77,7 +75,7 @@ PWD={data["password"]};
     else:
         connection_string = f"""
 {connection_string}
-Azure_workspace_resource_id={data['azure_workspace_resource_id']};
+Azure_workspace_resource_id={data["azure_workspace_resource_id"]};
 AuthMech=11;
 Auth_Flow=3;
         """

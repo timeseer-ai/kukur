@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from collections import defaultdict
-from typing import Generator, List, Optional
+from collections.abc import Generator
 
 import pyarrow as pa
 
@@ -26,8 +26,8 @@ except ImportError:
 
 
 def inspect_odbc_database(
-    config: Connection, path: Optional[str] = None
-) -> List[InspectedPath]:
+    config: Connection, path: str | None = None
+) -> list[InspectedPath]:
     """Inspect a database."""
     connection = _get_connection(config)
     cursor = connection.cursor()
@@ -65,8 +65,8 @@ def preview_odbc_database(
     config: Connection,
     path: str,
     num_rows: int = 5000,
-    options: Optional[DataOptions] = None,
-) -> Optional[pa.Table]:
+    options: DataOptions | None = None,
+) -> pa.Table | None:
     """Preview the contents of a database."""
     connection = _get_connection(config)
     cursor = connection.cursor()
@@ -89,18 +89,18 @@ def preview_odbc_database(
             """,
             split_path,
         )
-        column_names = [name for name, in cursor]
+        column_names = [name for (name,) in cursor]
 
     columns = [_escape(column_name) for column_name in column_names]
     if config.limit_specification == "limit":
         query = f"""
-            select {', '.join(columns)}
+            select {", ".join(columns)}
             from {catalog}{_escape(split_path[0])}.{_escape(split_path[1])} limit ?
         """
         cursor.execute(query, [num_rows])
     else:
         query = f"""
-            select top {num_rows} {', '.join(columns)}
+            select top {num_rows} {", ".join(columns)}
             from {catalog}{_escape(split_path[0])}.{_escape(split_path[1])}
         """
         cursor.execute(query)
@@ -114,7 +114,7 @@ def preview_odbc_database(
 
 
 def read_odbc_database(
-    config: Connection, path: str, options: Optional[DataOptions] = None
+    config: Connection, path: str, options: DataOptions | None = None
 ) -> Generator[pa.RecordBatch, None, None]:
     """Iterate over the RecordBatches at the given Connection."""
     connection = _get_connection(config)
@@ -138,11 +138,11 @@ def read_odbc_database(
             """,
             split_path,
         )
-        column_names = [name for name, in cursor]
+        column_names = [name for (name,) in cursor]
 
     columns = [_escape(column_name) for column_name in column_names]
     query = f"""
-        select {', '.join(columns)}
+        select {", ".join(columns)}
         from {catalog}{_escape(split_path[0])}.{_escape(split_path[1])}
     """
 
@@ -164,7 +164,7 @@ def _get_connection(config: Connection):
     return pyodbc.connect(config.connection_string, autocommit=True)
 
 
-def _escape(context: Optional[str]) -> str:
+def _escape(context: str | None) -> str:
     if context is None:
         context = "value"
     if '"' in context:

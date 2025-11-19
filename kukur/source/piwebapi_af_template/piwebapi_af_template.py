@@ -5,10 +5,10 @@
 
 import logging
 import urllib.parse
+from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import PurePath
-from typing import Dict, Generator, List, Optional
 
 import pyarrow as pa
 
@@ -63,15 +63,15 @@ class AFTemplateSourceConfiguration:
     """Configuration to find PI AF attributes of a template."""
 
     database_uri: str
-    root_id: Optional[str]
-    element_template: Optional[str]
-    element_category: Optional[str]
-    attribute_names: Optional[List[str]]
-    attribute_category: Optional[str]
-    allowed_data_references: List[str]
+    root_id: str | None
+    element_template: str | None
+    element_category: str | None
+    attribute_names: list[str] | None
+    attribute_category: str | None
+    allowed_data_references: list[str]
 
     @classmethod
-    def from_data(cls, config: Dict) -> "AFTemplateSourceConfiguration":
+    def from_data(cls, config: dict) -> "AFTemplateSourceConfiguration":
         """Create an object from a configuration dict."""
         return cls(
             config["database_uri"],
@@ -100,7 +100,7 @@ class AttributeTemplate:
 
     name: str
     description: str
-    categories: List[str]
+    categories: list[str]
 
 
 @dataclass
@@ -109,7 +109,7 @@ class ElementTemplate:
 
     name: str
     description: str
-    attribute_templates: List[AttributeTemplate]
+    attribute_templates: list[AttributeTemplate]
 
 
 @dataclass
@@ -131,7 +131,7 @@ class AttributeCategory:
 class PIWebAPIAssetFrameworkTemplateSource:
     """Connect to PI AF using the PI Web API."""
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         self.__request_properties = RequestProperties(
             verify_ssl=config.get("verify_ssl", True),
             timeout_seconds=config.get("timeout_seconds", 60),
@@ -305,7 +305,7 @@ class PIWebAPIAssetFrameworkTemplateSource:
             DataRequest(plot_url, start_date, end_date, interval_count),
         )
 
-    def list_elements(self, element_id: Optional[str]) -> List[Element]:
+    def list_elements(self, element_id: str | None) -> list[Element]:
         """Return all direct child elements."""
         session = self._get_session()
         if element_id is None:
@@ -344,7 +344,7 @@ class PIWebAPIAssetFrameworkTemplateSource:
             for item in data["Items"]
         ]
 
-    def list_element_templates(self) -> List[ElementTemplate]:
+    def list_element_templates(self) -> list[ElementTemplate]:
         """Return all element templates in the database."""
         session = self._get_session()
 
@@ -436,7 +436,7 @@ class PIWebAPIAssetFrameworkTemplateSource:
 
         return element_templates
 
-    def list_element_categories(self) -> List[ElementCategory]:
+    def list_element_categories(self) -> list[ElementCategory]:
         """Return all element categories in the database."""
         session = self._get_session()
         url = f"{self.__config.database_uri}/elementcategories"
@@ -465,7 +465,7 @@ class PIWebAPIAssetFrameworkTemplateSource:
             for item in data["Items"]
         ]
 
-    def list_attribute_categories(self) -> List[AttributeCategory]:
+    def list_attribute_categories(self) -> list[AttributeCategory]:
         """Return all attribute categories in the database."""
         session = self._get_session()
         url = f"{self.__config.database_uri}/attributecategories"
@@ -567,7 +567,7 @@ class PIWebAPIAssetFrameworkTemplateSource:
             )
 
 
-def _validate_batch_response_status(result: Dict):
+def _validate_batch_response_status(result: dict):
     error_message = None
     elements_content = result["GetElements"]["Content"]
     if result["GetElements"]["Status"] not in [HTTP_OK, HTTP_MULTI_STATUS]:
@@ -592,7 +592,7 @@ def _validate_batch_response_status(result: Dict):
     if error_message is not None:
         if isinstance(elements_content, dict):
             elements = [
-                f'{element["Name"]}' for element in elements_content.get("Items", [])
+                f"{element['Name']}" for element in elements_content.get("Items", [])
             ]
             element_names = ", ".join(elements[:5])
             raise MetadataSearchFailedException(
@@ -603,7 +603,7 @@ def _validate_batch_response_status(result: Dict):
         )
 
 
-def _validate_attribute_batch_item_status(element_name: str, item_data: Dict):
+def _validate_attribute_batch_item_status(element_name: str, item_data: dict):
     error_message = None
     if "Status" in item_data and item_data["Status"] != HTTP_OK:
         error_message = "unknown error"
@@ -619,8 +619,8 @@ def _validate_attribute_batch_item_status(element_name: str, item_data: Dict):
 
 
 def _get_metadata(
-    selector: SeriesSelector, attribute: Dict, extra_metadata: Dict
-) -> Optional[Metadata]:
+    selector: SeriesSelector, attribute: dict, extra_metadata: dict
+) -> Metadata | None:
     metadata = Metadata(selector)
     metadata.set_field(fields.Description, attribute["Description"])
     metadata.set_field(fields.Unit, attribute["DefaultUnitsNameAbbreviation"])
@@ -668,13 +668,12 @@ def _get_metadata(
 
 
 class _DictionaryLookup:
-
     def __init__(self, request_properties: RequestProperties, session):
         self._request_properties = request_properties
         self._session = session
-        self._lookup: Dict[str, Dictionary] = {}
+        self._lookup: dict[str, Dictionary] = {}
 
-    def lookup_dictionary(self, metadata: Metadata, attribute: Dict):
+    def lookup_dictionary(self, metadata: Metadata, attribute: dict):
         """Add a dictionary to the series for enumeration sets."""
         dictionary_name = metadata.get_field(fields.DictionaryName)
         if dictionary_name is not None:
@@ -707,7 +706,7 @@ class _DictionaryLookup:
             metadata.set_field(fields.Dictionary, self._lookup.get(dictionary_name))
 
 
-def from_config(config: Dict) -> PIWebAPIAssetFrameworkTemplateSource:
+def from_config(config: dict) -> PIWebAPIAssetFrameworkTemplateSource:
     """Create a new PIWebAPIAssetFrameworkSource."""
     if "database_uri" not in config:
         raise InvalidSourceException(
@@ -718,7 +717,7 @@ def from_config(config: Dict) -> PIWebAPIAssetFrameworkTemplateSource:
     return PIWebAPIAssetFrameworkTemplateSource(config)
 
 
-def add_query_params(url: str, params: Dict) -> str:
+def add_query_params(url: str, params: dict) -> str:
     """Add additional query parameters to a URL."""
     parts = urllib.parse.urlsplit(url)
     query_params = urllib.parse.parse_qs(parts.query)

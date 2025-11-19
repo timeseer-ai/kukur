@@ -10,9 +10,10 @@ Three formats are supported:
 # SPDX-License-Identifier: Apache-2.0
 
 import csv
+from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, Generator, List, Optional, Union
+from typing import Any
 
 import pyarrow as pa
 import pyarrow.compute
@@ -35,7 +36,7 @@ class InvalidMetadataError(KukurException):
 
 
 def from_config(
-    config: Dict[str, Any],
+    config: dict[str, Any],
     metadata_mapper: MetadataMapper,
     metadata_value_mapper: MetadataValueMapper,
     quality_mapper: QualityMapper,
@@ -64,7 +65,7 @@ def from_config(
         config.get("data_decimal_point", "."),
         config.get("data_column_separator"),
     )
-    metadata_fields: List[str] = config.get("metadata_fields", [])
+    metadata_fields: list[str] = config.get("metadata_fields", [])
     if len(metadata_fields) == 0:
         metadata_fields = config.get("fields", [])
     mappers = CSVMappers(metadata_mapper, metadata_value_mapper, quality_mapper)
@@ -75,9 +76,9 @@ def from_config(
 class CSVLoaders:
     """Data loaders for CSV sources."""
 
-    data: Optional[Loader] = None
-    metadata: Optional[Loader] = None
-    dictionary: Optional[Loader] = None
+    data: Loader | None = None
+    metadata: Loader | None = None
+    dictionary: Loader | None = None
 
 
 @dataclass
@@ -95,14 +96,14 @@ class CSVSourceOptions:
 
     data_format: str
     header_row: bool
-    column_mapping: Dict[str, str]
-    tags: List[str]
-    fields: List[str]
-    metadata_field_column: Optional[str] = None
-    data_datetime_format: Optional[str] = None
-    data_timezone: Optional[str] = None
+    column_mapping: dict[str, str]
+    tags: list[str]
+    fields: list[str]
+    metadata_field_column: str | None = None
+    data_datetime_format: str | None = None
+    data_timezone: str | None = None
     data_decimal_point: str = "."
-    data_column_separator: Optional[str] = None
+    data_column_separator: str | None = None
 
 
 class CSVSource:
@@ -110,13 +111,13 @@ class CSVSource:
 
     __loaders: CSVLoaders
     __options: CSVSourceOptions
-    __metadata_fields: List[str]
+    __metadata_fields: list[str]
     __mappers: CSVMappers
 
     def __init__(
         self,
         options: CSVSourceOptions,
-        metadata_fields: List[str],
+        metadata_fields: list[str],
         loaders: CSVLoaders,
         mappers: CSVMappers,
     ):
@@ -128,7 +129,7 @@ class CSVSource:
 
     def search(  # noqa: PLR0912
         self, selector: SeriesSearch
-    ) -> Generator[Union[Metadata, SeriesSelector], None, None]:
+    ) -> Generator[Metadata | SeriesSelector, None, None]:
         """Search for series matching the given selector."""
         if self.__loaders.metadata is None:
             yield from self._search_in_data(selector)
@@ -244,7 +245,7 @@ class CSVSource:
         column_name = self.__mappers.metadata.from_kukur(column_name)
         return self.__options.column_mapping.get(column_name, column_name)
 
-    def __get_dictionary(self, set_name: str) -> Optional[Dictionary]:
+    def __get_dictionary(self, set_name: str) -> Dictionary | None:
         if self.__loaders.dictionary is None:
             return None
         if not self.__loaders.dictionary.has_child(f"{set_name}.csv"):
@@ -469,7 +470,7 @@ class CSVSource:
             read_options = pyarrow.csv.ReadOptions()
         return read_options
 
-    def _get_parse_options(self) -> Optional[pyarrow.csv.ParseOptions]:
+    def _get_parse_options(self) -> pyarrow.csv.ParseOptions | None:
         parse_options = None
         if self.__options.data_column_separator is not None:
             parse_options = pyarrow.csv.ParseOptions(
@@ -501,7 +502,7 @@ class CSVSource:
         )
 
 
-def _cast_ts_column(data: pa.Table, data_timezone: Optional[str]) -> pa.Table:
+def _cast_ts_column(data: pa.Table, data_timezone: str | None) -> pa.Table:
     if data_timezone is None:
         return data
 
@@ -514,7 +515,7 @@ def _cast_ts_column(data: pa.Table, data_timezone: Optional[str]) -> pa.Table:
 
 
 def _convert_timestamp(
-    data: pa.Table, data_datetime_format: str, data_timezone: Optional[str]
+    data: pa.Table, data_datetime_format: str, data_timezone: str | None
 ) -> pa.Table:
     # pylint: disable=no-member
     data = data.set_column(
@@ -548,7 +549,7 @@ def _convert_timestamp(
     )
 
 
-def _map_columns(column_mapping: Dict[str, str], data: pa.Table) -> pa.Table:
+def _map_columns(column_mapping: dict[str, str], data: pa.Table) -> pa.Table:
     return pa.Table.from_pydict(
         {
             column_name: data[data_name]
@@ -557,7 +558,7 @@ def _map_columns(column_mapping: Dict[str, str], data: pa.Table) -> pa.Table:
     )
 
 
-def _map_pivot_columns(column_mapping: Dict[str, str], data: pa.Table) -> pa.Table:
+def _map_pivot_columns(column_mapping: dict[str, str], data: pa.Table) -> pa.Table:
     ts_column_name = data.column_names[0]
     if "ts" in column_mapping:
         ts_column_name = column_mapping["ts"]

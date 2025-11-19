@@ -5,7 +5,8 @@
 
 import typing
 from datetime import datetime
-from typing import Generator, Optional, Protocol, Union
+from typing import Protocol
+from collections.abc import Generator
 
 import pyarrow as pa
 
@@ -28,7 +29,7 @@ class Source(Protocol):
 
     def search(
         self, selector: SeriesSearch
-    ) -> Generator[Union[SeriesSelector, Metadata], None, None]:
+    ) -> Generator[SeriesSelector | Metadata, None, None]:
         """Return all time series or even the metadata of them in this source matching the selector."""
         ...
 
@@ -47,9 +48,7 @@ class Source(Protocol):
 class TagSource(Source, Protocol):
     """TagSource is the interface that Kukur data sources that support tags and fields need to implement."""
 
-    def get_source_structure(
-        self, selector: SeriesSelector
-    ) -> Optional[SourceStructure]:
+    def get_source_structure(self, selector: SeriesSelector) -> SourceStructure | None:
         """Return the available tag keys and tag values and fields of a source."""
         ...
 

@@ -3,7 +3,7 @@
 # SPDX-FileCopyrightText: 2024 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Generator, List, Optional
+from collections.abc import Generator
 
 import pyarrow as pa
 
@@ -26,8 +26,8 @@ from kukur.inspect.postgres import get_connection
 
 
 def inspect_database(
-    config: Connection, path: Optional[str] = None
-) -> List[InspectedPath]:
+    config: Connection, path: str | None = None
+) -> list[InspectedPath]:
     """Inspect a database."""
     if config.connection_type == "postgresql":
         connection = get_connection(config)
@@ -46,8 +46,8 @@ def preview_database(
     config: Connection,
     path: str,
     num_rows: int = 5000,
-    options: Optional[DataOptions] = None,
-) -> Optional[pa.Table]:
+    options: DataOptions | None = None,
+) -> pa.Table | None:
     """Preview the contents of a database."""
     if config.connection_type == "postgresql":
         connection = get_connection(config)
@@ -62,7 +62,7 @@ def preview_database(
 
 
 def read_database(
-    config: Connection, path: str, options: Optional[DataOptions] = None
+    config: Connection, path: str, options: DataOptions | None = None
 ) -> Generator[pa.RecordBatch, None, None]:
     """Iterate over the RecordBatches at the given Connection."""
     if config.connection_type == "postgresql":

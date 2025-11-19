@@ -5,7 +5,7 @@
 
 import logging
 import logging.handlers
-from typing import Any, Dict
+from typing import Any
 
 from kukur.exceptions import InvalidLogLevelException
 
@@ -16,7 +16,7 @@ LEVELS = {
 }
 
 
-def configure(config: Dict[str, Any]):
+def configure(config: dict[str, Any]):
     """Configure the Python logger."""
     log_format = "%(asctime)s %(levelname)s %(name)s %(threadName)s : %(message)s"
     level = _get_log_level(config)
@@ -35,7 +35,7 @@ def configure(config: Dict[str, Any]):
     logging.getLogger("botocore.credentials").setLevel(logging.WARNING)
 
 
-def _get_log_level(config: Dict[str, Any]):
+def _get_log_level(config: dict[str, Any]):
     log_level = logging.INFO
     if "logging" in config and "level" in config["logging"]:
         level_text: str = config["logging"]["level"]

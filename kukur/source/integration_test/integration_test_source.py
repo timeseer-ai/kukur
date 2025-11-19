@@ -3,8 +3,8 @@
 # SPDX-FileCopyrightText: 2022 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
+from collections.abc import Generator
 from datetime import datetime
-from typing import Generator, Union
 
 from pyarrow import Table
 
@@ -18,7 +18,7 @@ class IntegrationTestSource:
 
     def search(  # pylint: disable=no-self-use
         self, selector: SeriesSearch
-    ) -> Generator[Union[Metadata, SeriesSelector], None, None]:
+    ) -> Generator[Metadata | SeriesSelector, None, None]:
         """Search time series using the Flight service."""
         yield SeriesSelector(
             selector.source, {"tag1": "value1", "tag2": "value2"}, "pressure"

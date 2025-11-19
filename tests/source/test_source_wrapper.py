@@ -1,8 +1,8 @@
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
+from collections.abc import Generator
 from datetime import datetime, timedelta
-from typing import Generator, Optional, Union
 
 import pyarrow as pa
 import pytest
@@ -30,7 +30,7 @@ class FakeSource:
 class FakeTagSource:
     def search(
         self, selector: SeriesSelector
-    ) -> Generator[Union[SeriesSelector, Metadata], None, None]:
+    ) -> Generator[SeriesSelector | Metadata, None, None]:
         yield selector
 
     def get_metadata(self, selector: SeriesSelector) -> Metadata:
@@ -42,7 +42,7 @@ class FakeTagSource:
         # end_date should not be part of the returned interval, but is here for easy comparison
         return pa.Table.from_pydict({"ts": [start_date, end_date], "value": [42, 24]})
 
-    def get_source_structure(self, _: SeriesSelector) -> Optional[SourceStructure]:
+    def get_source_structure(self, _: SeriesSelector) -> SourceStructure | None:
         return SourceStructure(
             ["fake_field"],
             ["fake_tag_key"],

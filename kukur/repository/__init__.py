@@ -1,10 +1,9 @@
 """Persistence for Kukur."""
 
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
-#
 # SPDX-License-Identifier: Apache-2.0
+
 from pathlib import Path
-from typing import Optional
 
 from .api_key import ApiKeyRepository
 from .base import MigrationRunner  # noqa: F401
@@ -13,9 +12,9 @@ from .base import MigrationRunner  # noqa: F401
 class RepositoryRegistry:  # pylint: disable=too-few-public-methods
     """RepositoryRegistry provides access to the different repositories in Kukur."""
 
-    __data_dir: Optional[Path]
+    __data_dir: Path | None
 
-    def __init__(self, *, data_dir: Optional[Path] = None):
+    def __init__(self, *, data_dir: Path | None = None):
         self.__data_dir = data_dir
 
     def api_key(self) -> ApiKeyRepository:

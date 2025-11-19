@@ -7,8 +7,9 @@ This takes care to not persistently store metadata.
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
+from collections.abc import Generator
 from datetime import datetime, timezone
-from typing import Any, Generator, List
+from typing import Any
 
 from dateutil.tz import tzlocal
 from pyarrow import Table
@@ -18,7 +19,7 @@ from kukur import Metadata, PlotSource, SeriesSearch, SeriesSelector, Source
 logger = logging.getLogger(__name__)
 
 
-def search(source: Source, source_name: str) -> Generator[List[Any], None, None]:
+def search(source: Source, source_name: str) -> Generator[list[Any], None, None]:
     """Test listing all series (or metadata) in a source."""
     header_printed = False
     logger.info('Searching for time series in "%s"', source_name)
@@ -37,7 +38,7 @@ def search(source: Source, source_name: str) -> Generator[List[Any], None, None]
 
 def metadata(
     source: Source, source_name: str, series_name: str
-) -> Generator[List[Any], None, None]:
+) -> Generator[list[Any], None, None]:
     """Test fetching metadata from a source.
 
     This does not store the metadata.
@@ -54,7 +55,7 @@ def data(
     series_name: str,
     start_date: datetime,
     end_date: datetime,
-) -> Generator[List[Any], None, None]:
+) -> Generator[list[Any], None, None]:
     """Test fetching data for a time series."""
     start_date = _make_aware(start_date)
     end_date = _make_aware(end_date)
@@ -81,7 +82,7 @@ def plot(  # noqa: PLR0913
     start_date: datetime,
     end_date: datetime,
     interval_count: int,
-) -> Generator[List[Any], None, None]:
+) -> Generator[list[Any], None, None]:
     """Test fetching plot data for a time series."""
     if not isinstance(source, PlotSource):
         logger.warning("Plot data not supported by source %s", source_name)
@@ -105,11 +106,11 @@ def plot(  # noqa: PLR0913
     yield from _yield_table(table)
 
 
-def _get_metadata_header(result: Metadata) -> List[str]:
+def _get_metadata_header(result: Metadata) -> list[str]:
     return ["series name"] + [k for k, _ in result.iter_serialized()]
 
 
-def _get_metadata(result: Metadata) -> List[Any]:
+def _get_metadata(result: Metadata) -> list[Any]:
     return [result.series.name] + [v for _, v in result.iter_serialized()]
 
 
@@ -119,10 +120,12 @@ def _make_aware(timestamp: datetime) -> datetime:
     return timestamp
 
 
-def _yield_table(table: Table) -> Generator[List[Any], None, None]:
+def _yield_table(table: Table) -> Generator[list[Any], None, None]:
     if "quality" in table.column_names:
-        for ts, value, quality in zip(table["ts"], table["value"], table["quality"]):
+        for ts, value, quality in zip(
+            table["ts"], table["value"], table["quality"], strict=True
+        ):
             yield [ts.as_py().isoformat(), value.as_py(), quality.as_py()]
     else:
-        for ts, value in zip(table["ts"], table["value"]):
+        for ts, value in zip(table["ts"], table["value"], strict=True):
             yield [ts.as_py().isoformat(), value.as_py()]

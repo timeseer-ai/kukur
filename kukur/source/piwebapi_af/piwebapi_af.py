@@ -5,10 +5,11 @@
 
 import logging
 import urllib.parse
+from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import PurePath
-from typing import Any, Dict, Generator, List, Optional, Tuple, Union
+from typing import Any
 
 import pyarrow as pa
 
@@ -55,9 +56,9 @@ class Element:
     path: str
     name: str
     description: str
-    template: Optional[str]
-    metadata: Dict[str, str]
-    paths: List[str]
+    template: str | None
+    metadata: dict[str, str]
+    paths: list[str]
 
 
 @dataclass
@@ -67,13 +68,13 @@ class DataRequest:
     url: str
     start_date: datetime
     end_date: datetime
-    interval_count: Optional[int]
+    interval_count: int | None
 
 
 class PIWebAPIAssetFrameworkSource:
     """Connect to PI AF using the PI Web API."""
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         self._request_properties = RequestProperties(
             verify_ssl=config.get("verify_ssl", True),
             timeout_seconds=config.get("timeout_seconds", 60),
@@ -178,10 +179,10 @@ class PIWebAPIAssetFrameworkSource:
         )
         return urllib.parse.urlunparse(database_uri._replace(path=str(recorded_path)))
 
-    def _get_all_elements(self, session, uri: str) -> List[Element]:
-        all_elements: List[Element] = []
+    def _get_all_elements(self, session, uri: str) -> list[Element]:
+        all_elements: list[Element] = []
 
-        next_uri: Optional[str] = uri
+        next_uri: str | None = uri
         params = {
             "searchFullHierarchy": "true",
             "associations": "paths",
@@ -206,7 +207,7 @@ class PIWebAPIAssetFrameworkSource:
 
             for element_data in elements["Items"]:
                 try:
-                    template_name: Optional[str] = None
+                    template_name: str | None = None
                     element_metadata = {}
                     if (
                         "TemplateName" in element_data
@@ -233,8 +234,8 @@ class PIWebAPIAssetFrameworkSource:
 
         return all_elements
 
-    def _add_extra_templates(self, elements: List[Element]):
-        element_lookup: Dict[str, Element] = {
+    def _add_extra_templates(self, elements: list[Element]):
+        element_lookup: dict[str, Element] = {
             element.path: element
             for element in elements
             if element.template is not None
@@ -244,8 +245,8 @@ class PIWebAPIAssetFrameworkSource:
             element.metadata.update(extra_metadata)
 
     def _get_parents_template(
-        self, path: str, element_lookup: Dict[str, Element]
-    ) -> Dict[str, str]:
+        self, path: str, element_lookup: dict[str, Element]
+    ) -> dict[str, str]:
         extra_metadata = {}
         for parent_path in _get_parent_paths(path)[1:]:
             if parent_path in element_lookup:
@@ -254,11 +255,11 @@ class PIWebAPIAssetFrameworkSource:
                     extra_metadata[parent_element.template] = parent_element.name
         return extra_metadata
 
-    def _get_all_attributes(self, session) -> Tuple[List[Dict], List[Dict]]:
-        data_attributes: List[Dict] = []
-        metadata_attributes: List[Dict] = []
+    def _get_all_attributes(self, session) -> tuple[list[dict], list[dict]]:
+        data_attributes: list[dict] = []
+        metadata_attributes: list[dict] = []
 
-        next_uri: Optional[str] = self._get_element_attributes_url()
+        next_uri: str | None = self._get_element_attributes_url()
         params = {
             "searchFullHierarchy": "true",
             "maxCount": self._request_properties.max_returned_metadata_items_per_call,
@@ -295,7 +296,7 @@ class PIWebAPIAssetFrameworkSource:
         return urllib.parse.urlunparse(database_uri._replace(path=str(attributes_path)))
 
     def _assign_metadata_to_elements(
-        self, session, metadata_attributes: list[Dict], elements: List[Element]
+        self, session, metadata_attributes: list[dict], elements: list[Element]
     ):
         attribute_types = {
             "Boolean",
@@ -324,11 +325,11 @@ class PIWebAPIAssetFrameworkSource:
                 continue
             element_path = attribute["Path"].split("|", 1)[0]
             if element_path in element_lookup:
-                element_lookup[element_path].metadata[
-                    attribute["Name"]
-                ] = attribute_value
+                element_lookup[element_path].metadata[attribute["Name"]] = (
+                    attribute_value
+                )
 
-    def _get_attribute_value(self, session, attribute: Dict) -> Optional[Any]:
+    def _get_attribute_value(self, session, attribute: dict) -> Any | None:
         logger.debug("Fetching attribute value for %s", attribute["Name"])
         try:
             attribute_value_response = session.get(
@@ -345,7 +346,7 @@ class PIWebAPIAssetFrameworkSource:
         return attribute_value_response.json()["Value"]
 
     def _build_metadata(
-        self, source_name: str, data_attributes: List[Dict], elements: List[Element]
+        self, source_name: str, data_attributes: list[dict], elements: list[Element]
     ) -> Generator[Metadata, None, None]:
         element_lookup = {element.path: element for element in elements}
         for attribute in data_attributes:
@@ -380,8 +381,8 @@ class PIWebAPIAssetFrameworkSource:
                     yield metadata
 
     def _classify_attributes(
-        self, attributes: List[Dict]
-    ) -> Tuple[List[Dict], List[Dict]]:
+        self, attributes: list[dict]
+    ) -> tuple[list[dict], list[dict]]:
         data_attributes = []
         metadata_attributes = []
         data_reference_plugins = ["PI Point", "Formula"]
@@ -409,8 +410,8 @@ def _get_parent_paths(path: str) -> list[str]:
 
 
 def _get_metadata(
-    selector: SeriesSelector, attribute: Dict, extra_metadata: Dict
-) -> Optional[Metadata]:
+    selector: SeriesSelector, attribute: dict, extra_metadata: dict
+) -> Metadata | None:
     metadata = Metadata(selector)
     metadata.set_field(fields.Description, attribute["Description"])
     metadata.set_field(fields.Unit, attribute["DefaultUnitsNameAbbreviation"])
@@ -463,7 +464,7 @@ def read_data(
     start_date = data_request.start_date
 
     while True:
-        params: Dict[str, Union[str, int]] = {
+        params: dict[str, str | int] = {
             "maxCount": str(request_properties.max_returned_items_per_call),
             "startTime": start_date.isoformat(),
             "endTime": data_request.end_date.isoformat(),
@@ -513,7 +514,7 @@ def read_data(
     )
 
 
-def from_config(config: Dict) -> PIWebAPIAssetFrameworkSource:
+def from_config(config: dict) -> PIWebAPIAssetFrameworkSource:
     """Create a new PIWebAPIAssetFrameworkSource."""
     if "database_uri" not in config:
         raise InvalidSourceException(

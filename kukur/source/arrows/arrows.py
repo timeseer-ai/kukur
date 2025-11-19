@@ -3,7 +3,7 @@
 # SPDX-FileCopyrightText: 2023 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict
+from typing import Any
 
 import pyarrow as pa
 from pyarrow.ipc import open_stream
@@ -27,7 +27,7 @@ class ArrowIPCStreamSource(BaseArrowSource):
 
 
 def from_config(
-    config: Dict[str, Any], quality_mapper: QualityMapper
+    config: dict[str, Any], quality_mapper: QualityMapper
 ) -> ArrowIPCStreamSource:
     """Create a new IPC Stream data source from the given configuration dictionary."""
     loader = loader_from_config(config, files_as_path=True)
