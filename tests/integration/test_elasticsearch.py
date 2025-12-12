@@ -118,6 +118,23 @@ def test_data_minimal(client: Client):
     assert data["value"][240].as_py() == 6.944541
 
 
+def test_search_doc(client: Client):
+    """Test searching for metadata in a source with nested documents and tags in a list."""
+    many_series = list(client.search(SeriesSearch(suffix_source("noaa-es-doc"))))
+    assert len(many_series) == 4
+    series = [
+        series
+        for series in many_series
+        if series.series.tags["series name"] == "h2o"
+        and series.series.tags["location"] == "deer_creek"
+        and series.series.field == "temperature"
+    ][0]
+    assert isinstance(series, Metadata)
+    assert series.get_field(fields.Description) == "between 0 and 40 degrees"
+    assert series.get_field(fields.LimitLowFunctional) == 0
+    assert series.get_field(fields.LimitHighFunctional) == 40
+
+
 def test_search_sql(client: Client):
     many_series = list(client.search(SeriesSearch(suffix_source("noaa-es-sql"))))
     assert len(many_series) == 3

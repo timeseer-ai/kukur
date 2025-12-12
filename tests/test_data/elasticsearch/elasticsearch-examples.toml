@@ -37,6 +37,42 @@ index = "tsai_data"
 metadata_field_column = "field"
 timestamp_column = "ts"
 
+[source.noaa-es-doc]
+type = "elasticsearch"
+host = "elasticsearch"
+port = 9200
+tag_columns = ["name", "location"]
+field_columns = ["water_level", "temperature"]
+metadata_columns = ["name", "description", "limits.low", "limits.high"]
+metadata_mapping = "noaa_es_mapping"
+index = "tsai_metadata_doc"
+metadata_field_column = "field"
+timestamp_column = "ts"
+
+[source.noaa-es-doc-linux]
+type = "elasticsearch"
+host = "localhost"
+port = 9200
+tag_columns = ["name", "location"]
+field_columns = ["water_level", "temperature"]
+metadata_columns = ["name", "description", "limits.low", "limits.high"]
+metadata_mapping = "noaa_es_mapping"
+index = "tsai_metadata_doc"
+metadata_field_column = "field"
+timestamp_column = "ts"
+
+[source.noaa-es-doc-local]
+type = "elasticsearch"
+host = "localhost"
+port = 9200
+tag_columns = ["name", "location"]
+field_columns = ["water_level", "temperature"]
+metadata_columns = ["name", "description", "limits.low", "limits.high"]
+metadata_mapping = "noaa_es_mapping"
+index = "tsai_metadata_doc"
+metadata_field_column = "field"
+timestamp_column = "ts"
+
 [source.noaa-es-minimal]
 type = "elasticsearch"
 host = "elasticsearch"
@@ -100,7 +136,6 @@ list_query = "select * from tsai_metadata"
 metadata_query = "select * from tsai_metadata where name = ? and location = ? and field = ?"
 metadata_field_column = "field"
 metadata_mapping = "noaa_es_mapping"
-
 
 [source.noaa-es-sql-local]
 type = "elasticsearch"

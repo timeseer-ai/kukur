@@ -151,32 +151,27 @@ class ElasticsearchSource:
         self, source_name: str, row: dict
     ) -> Generator[Metadata, None, None]:
         tags = {
-            self.__metadata_mapper.from_source(tag_name): row[tag_name]
+            self.__metadata_mapper.from_source(tag_name): _dot_lookup(row, tag_name)
             for tag_name in self.__options.tag_columns
         }
+        all_tags = _flatten_lists(tags)
         fields = self.__options.field_columns
         if self.__options.metadata_field_column is not None:
-            fields = [row[self.__options.metadata_field_column]]
-        for field_column in fields:
-            series = SeriesSelector(source_name, tags, field_column)
-            metadata = Metadata(series)
-            for k, v in row.items():
-                if k in self.__options.tag_columns:
-                    continue
-                if self.__options.metadata_field_column is not None:
-                    if k == self.__options.metadata_field_column:
+            fields = [_dot_lookup(row, self.__options.metadata_field_column)]
+        for tags in all_tags:
+            for field_column in fields:
+                series = SeriesSelector(source_name, tags, field_column)
+                metadata = Metadata(series)
+                for metadata_column_name in self.__options.metadata_columns:
+                    v = _dot_lookup(row, metadata_column_name)
+                    if v is None:
                         continue
-                if len(self.__options.metadata_columns) > 0:
-                    if k not in self.__options.metadata_columns:
-                        continue
-                if v is None:
-                    continue
-                name = self.__metadata_mapper.from_source(k)
-                metadata.coerce_field(
-                    name,
-                    self.__metadata_value_mapper.from_source(name, v),
-                )
-            yield metadata
+                    name = self.__metadata_mapper.from_source(metadata_column_name)
+                    metadata.coerce_field(
+                        name,
+                        self.__metadata_value_mapper.from_source(name, v),
+                    )
+                yield metadata
 
     def get_metadata(self, selector: SeriesSelector) -> Metadata:
         """Read metadata, taking any configured metadata mapping into account."""
@@ -364,3 +359,38 @@ class ElasticsearchSource:
             logger.error("error for query '%s': %s", json.dumps(query), response.text)
         response.raise_for_status()
         return json.loads(response.content)
+
+
+def _dot_lookup(doc: dict, key: str):
+    if key in doc:
+        return doc[key]
+    if "." not in key:
+        raise AttributeError(name=key)
+    parts = key.split(".")
+    for part in parts:
+        if part not in doc:
+            raise AttributeError(name=part)
+        doc = doc[part]
+    return doc
+
+
+def _flatten_lists(tags: dict) -> list[dict]:
+    """Split up tag values that are lists."""
+    simple_tags = {}
+    list_tags = []
+    for k, v in tags.items():
+        if isinstance(v, list):
+            pairs = [(k, vv) for vv in v]
+            list_tags.append(pairs)
+        else:
+            simple_tags[k] = v
+    if len(list_tags) == 0:
+        return [simple_tags]
+    all_tags = []
+    for group in itertools.product(*list_tags):
+        base = simple_tags.copy()
+        for k, v in group:
+            base[k] = v
+        all_tags.append(base)
+
+    return all_tags
