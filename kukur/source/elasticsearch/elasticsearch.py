@@ -1,10 +1,12 @@
 """Connections to Elasticsearch data sources from Timeseer."""
 
 # SPDX-FileCopyrightText: 2024 Timeseer.AI
-#
 # SPDX-License-Identifier: Apache-2.0
 
+import http
+import itertools
 import json
+import logging
 from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import datetime
@@ -23,6 +25,8 @@ except ImportError:
 
 from kukur import Metadata, SeriesSearch, SeriesSelector, SourceStructure
 from kukur.exceptions import KukurException, MissingModuleException
+
+logger = logging.getLogger(__name__)
 
 
 class InvalidConfigurationException(KukurException):
@@ -356,5 +360,7 @@ class ElasticsearchSource:
             json=query,
             timeout=self.__configuration.query_timeout_seconds,
         )
+        if response.status_code >= http.HTTPStatus.BAD_REQUEST:
+            logger.error("error for query '%s': %s", json.dumps(query), response.text)
         response.raise_for_status()
         return json.loads(response.content)
