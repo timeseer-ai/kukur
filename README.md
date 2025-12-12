@@ -128,7 +128,7 @@ $ make compose
 Then, in another shell:
 
 ```
-(venv) $ python -m kukur.cli --config-file tests/test_data/Kukur.toml
+(venv) $ uv run python -m kukur.cli --config-file tests/test_data/Kukur.toml
 ```
 
 Since the location of the freetds libraries varies and this needs to be hardcoded in the unixodbc configuration,
