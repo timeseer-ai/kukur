@@ -33,6 +33,8 @@ from kukur.exceptions import (
 )
 from kukur.source.metadata import MetadataMapper, MetadataValueMapper
 
+MAX_ITEMS_PER_CALL = 500_000
+
 
 class InvalidClientConnection(KukurException):
     """Raised when an error occured when making the connection."""
@@ -211,14 +213,25 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
 
         query = f"{query} | sort by ['{self.__timestamp_column}'] asc"
 
-        result = self.__client.execute(self.__database, query)
         timestamps = []
         values = []
+        offset = 0
+        while True:
+            paginated_query = f"""{query}
+            | serialize
+            | where row_number() > {offset}
+            | take {MAX_ITEMS_PER_CALL}"""
+            result = self.__client.execute(self.__database, paginated_query)
 
-        if result is not None and len(result.primary_results) > 0:
+            if result is None or len(result.primary_results) == 0:
+                break
+
             for row in result.primary_results[0]:
                 timestamps.append(row[self.__timestamp_column])
                 values.append(row[selector.field])
+            if len(result.primary_results[0]) < MAX_ITEMS_PER_CALL:
+                break
+            offset += MAX_ITEMS_PER_CALL
 
         return pa.Table.from_pydict({"ts": timestamps, "value": values})
 
