@@ -15,10 +15,11 @@ database = "<database>"
 table = "<table>"
 timestamp_column = "ts"
 tag_columns = []
+field_columns = []
 metadata_columns = []
-ignored_columns = []
 metadata_mapping = ""
 metadata_value_mapping = ""
+max_items_per_call = 500000
 ```
 
 `database`, `table` and `connection_string` are required.
@@ -28,13 +29,16 @@ See https://learn.microsoft.com/en-us/azure/data-explorer/kusto/api/connection-s
 The https://github.com/Azure/azure-sdk-for-python/tree/main/sdk/identity/azure-identity#defaultazurecredential[DefaultAzureCredential]
 from the https://pypi.org/project/azure-identity/[azure-identity] package is used for authentication.
 
+`max_items_per_call` configures the maximum number of rows to return in one response.
+This can be adapted to conform to the https://learn.microsoft.com/en-us/kusto/concepts/query-limits[Kusto Query Limits].
+
 `timestamp_column` is an optional parameter used to define the name
 of the database column that contains timestamps for the series.
 Defaults to `"ts"`.
 
 Listing time series in an Azure Data Explorer table is supported only when the `tag_columns` parameter is specified.
 Each value in the parameter is a column in the table that will be part of the set of tags of the series.
-Other columns are assumed to be fields.
+Fields are specified by `field_columns`.
 
 For example:
 
@@ -43,6 +47,10 @@ tag_columns = [
     "deviceId",
     "plant",
     "location",
+]
+field_columns = [
+    "pressure",
+    "temperature",
 ]
 ```
 
@@ -53,17 +61,6 @@ For example:
 ```toml
 metadata_columns = [
     "unit",
-]
-```
-
-Columns that should not appear in either tags, fields or metadata can be ignored.
-They can be defined as a list in the `ignored_columns` parameter.
-
-For example:
-
-```toml
-ignored_columns = [
-    "unknown",
 ]
 ```
 

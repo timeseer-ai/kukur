@@ -3,7 +3,6 @@
 # SPDX-FileCopyrightText: 2022 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-import json
 from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import datetime
@@ -19,14 +18,19 @@ except ImportError:
     HAS_AZURE_IDENTITY = False
 
 try:
-    from azure.kusto.data import KustoClient, KustoConnectionStringBuilder
+    from azure.kusto.data import (
+        ClientRequestProperties,
+        KustoClient,
+        KustoConnectionStringBuilder,
+    )
+    from azure.kusto.data.exceptions import KustoMultiApiError
 
     HAS_KUSTO = True
 except ImportError:
     HAS_KUSTO = False
 
 
-from kukur import Metadata, SeriesSearch, SeriesSelector, SourceStructure
+from kukur import Metadata, SeriesSearch, SeriesSelector
 from kukur.exceptions import (
     KukurException,
     MissingModuleException,
@@ -51,9 +55,10 @@ class DataExplorerConfiguration:
     database: str
     table: str
     timestamp_column: str
-    tags: list[str]
+    tag_columns: list[str]
+    field_columns: list[str]
     metadata_columns: list[str]
-    ignored_columns: list[str]
+    max_items_per_call: int
 
 
 def from_config(
@@ -66,18 +71,19 @@ def from_config(
     database = config["database"]
     table = config["table"]
     timestamp_column = config.get("timestamp_column", "ts")
-    tags = config.get("tag_columns", [])
+    tag_columns = config.get("tag_columns", [])
+    field_columns = config.get("field_columns", [])
     metadata_columns = config.get("metadata_columns", [])
-    ignored_columns = config.get("ignored_columns", [])
     return DataExplorerSource(
         DataExplorerConfiguration(
             connection_string,
             database,
             table,
             timestamp_column,
-            tags,
+            tag_columns,
+            field_columns,
             metadata_columns,
-            ignored_columns,
+            config.get("max_items_per_call", MAX_ITEMS_PER_CALL),
         ),
         metadata_mapper,
         metadata_value_mapper,
@@ -86,18 +92,6 @@ def from_config(
 
 class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
     """An Azure Data Explorer data source."""
-
-    __database: str
-    __table: str
-    __timestamp_column: str
-    __tags: list[str]
-    __metadata_columns: list[str]
-    __ignored_columns: list[str]
-    __metadata_mapper: MetadataMapper
-    __metadata_value_mapper: MetadataValueMapper
-
-    if HAS_KUSTO:
-        __client: KustoClient
 
     def __init__(
         self,
@@ -113,78 +107,52 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
 
         self.__metadata_mapper = metadata_mapper
         self.__metadata_value_mapper = metadata_value_mapper
-        self.__database = _escape(config.database)
-        self.__table = _escape(config.table)
-        self.__timestamp_column = _escape(config.timestamp_column)
-        self.__tags = [_escape(tag) for tag in config.tags]
-        self.__metadata_columns = [
-            _escape(metadata_column) for metadata_column in config.metadata_columns
-        ]
-        self.__ignored_columns = [
-            _escape(ignored_column) for ignored_column in config.ignored_columns
-        ]
-
-        azure_credential = DefaultAzureCredential()
-
-        def _get_token():
-            return azure_credential.get_token(config.connection_string + "//.default")[
-                0
-            ]
-
-        kcsb = KustoConnectionStringBuilder.with_token_provider(
-            config.connection_string, _get_token
-        )
-        self.__client = KustoClient(kcsb)
+        self.__config = config
 
     def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
         """Search for series matching the given selector."""
-        if len(self.__tags) == 0:
+        if len(self.__config.tag_columns) == 0:
             raise KukurException("Define tags to support listing time series")
 
-        all_columns = {_escape(column) for column in self._get_table_columns()}
-        fields = (
-            all_columns
-            - {self.__timestamp_column}
-            - set(self.__tags)
-            - set(self.__metadata_columns)
-            - set(self.__ignored_columns)
-        )
-
-        if len(self.__metadata_columns) == 0:
-            query = f"['{self.__table}'] | distinct {', '.join(self.__tags)}"
-            result = self.__client.execute(self.__database, query)
+        if len(self.__config.metadata_columns) == 0:
+            query = f"['{self.__config.table}'] | distinct {', '.join(self.__config.tag_columns)}"
+            with self._get_client() as client:
+                result = client.execute(self.__config.database, query)
             if result is None or len(result.primary_results) == 0:
                 return
 
             for row in result.primary_results[0]:
                 tags = {}
-                for tag in self.__tags:
+                for tag in self.__config.tag_columns:
                     tags[tag] = row[tag]
-                for field in fields:
+                for field in self.__config.field_columns:
                     yield Metadata(SeriesSelector(selector.source, tags, field))
         else:
             summaries = [
-                f"['{name}']=arg_max(['{self.__timestamp_column}'], ['{name}'])"
-                for name in self.__metadata_columns
+                f"['{name}']=arg_max(['{self.__config.timestamp_column}'], ['{name}'])"
+                for name in self.__config.metadata_columns
             ]
-            renames = [f"['{name}']=['{name}1']" for name in self.__metadata_columns]
-            query = f"""['{self.__table}']
-                | summarize {", ".join(summaries)} by {", ".join(_add_square_brackets(self.__tags))}
-                | project-away {", ".join(_add_square_brackets(self.__metadata_columns))}
+            renames = [
+                f"['{name}']=['{name}1']" for name in self.__config.metadata_columns
+            ]
+            query = f"""['{self.__config.table}']
+                | summarize {", ".join(summaries)} by {", ".join(_add_square_brackets(self.__config.tag_columns))}
+                | project-away {", ".join(_add_square_brackets(self.__config.metadata_columns))}
                 | project-rename {", ".join(renames)}
             """
-            result = self.__client.execute(self.__database, query)
+            with self._get_client() as client:
+                result = client.execute(self.__config.database, query)
             if result is None or len(result.primary_results) == 0:
                 return
 
             for row in result.primary_results[0]:
                 tags = {}
-                for tag in self.__tags:
+                for tag in self.__config.tag_columns:
                     tags[tag] = row[tag]
-                for field in fields:
+                for field in self.__config.field_columns:
                     series_selector = SeriesSelector(selector.source, tags, field)
                     metadata = Metadata(series_selector)
-                    for column_name in self.__metadata_columns:
+                    for column_name in self.__config.metadata_columns:
                         metadata.coerce_field(
                             self.__metadata_mapper.from_source(column_name),
                             self.__metadata_value_mapper.from_source(
@@ -203,90 +171,92 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         """Return data for the given time series in the given time period."""
-        query = f"""['{self.__table}']
-            | where ['{self.__timestamp_column}'] >= todatetime('{start_date}')
-            | where ['{self.__timestamp_column}'] <= todatetime('{end_date}')
+        if selector.field not in self.__config.field_columns:
+            raise KukurException(f"Unknown field: {selector.field}")
+
+        params = ["startDate: string", "endDate: string"]
+        props = ClientRequestProperties()
+        props.set_parameter("startDate", start_date.isoformat())
+        props.set_parameter("endDate", end_date.isoformat())
+        for i, tag_column in enumerate(self.__config.tag_columns):
+            params.append(f"tag_{i}: string")
+            props.set_parameter(f"tag_{i}", selector.tags[tag_column])
+
+        ts = self.__config.timestamp_column
+
+        query = f"""declare query_parameters ({", ".join(params)});
+        ['{self.__config.table}']
+            | where ['{ts}'] >= todatetime(startDate)
+            | where ['{ts}'] <= todatetime(endDate)
         """
 
-        for tag_key, tag_value in selector.tags.items():
-            query += f" | where ['{_escape(tag_key)}']=='{_escape(tag_value)}'"
+        for i, tag_column in enumerate(self.__config.tag_columns):
+            query += f" | where ['{tag_column}']==tag_{i}"
 
-        query = f"{query} | sort by ['{self.__timestamp_column}'] asc"
+        query = f"{query} | project ['{ts}'], ['{selector.field}']"
+        query = f"{query} | sort by ['{ts}'] asc"
+
+        max_items_per_call = self.__config.max_items_per_call
 
         timestamps = []
         values = []
         offset = 0
-        while True:
-            paginated_query = f"""{query}
-            | serialize
-            | where row_number() > {offset}
-            | take {MAX_ITEMS_PER_CALL}"""
-            result = self.__client.execute(self.__database, paginated_query)
+        with self._get_client() as client:
+            while True:
+                try:
+                    paginated_query = f"""{query}
+                    | serialize
+                    | where row_number() > {offset}
+                    | take {max_items_per_call}"""
+                    result = client.execute(
+                        self.__config.database, paginated_query, props
+                    )
+                    if result is None or len(result.primary_results) == 0:
+                        break
 
-            if result is None or len(result.primary_results) == 0:
-                break
-
-            for row in result.primary_results[0]:
-                timestamps.append(row[self.__timestamp_column])
-                values.append(row[selector.field])
-            if len(result.primary_results[0]) < MAX_ITEMS_PER_CALL:
-                break
-            offset += MAX_ITEMS_PER_CALL
+                    for row in result.primary_results[0]:
+                        timestamps.append(row[ts])
+                        values.append(row[selector.field])
+                    if len(result.primary_results[0]) < max_items_per_call:
+                        break
+                    offset += max_items_per_call
+                except KustoMultiApiError as e:
+                    if _is_result_set_too_large(e):
+                        max_items_per_call = max_items_per_call // 2
+                        if max_items_per_call == 0:
+                            raise e
+                    else:
+                        raise e
 
         return pa.Table.from_pydict({"ts": timestamps, "value": values})
 
-    def get_source_structure(self, _: SeriesSelector) -> SourceStructure | None:
-        """Return the available tag keys, tag values and tag fields."""
-        all_columns = {_escape(column) for column in self._get_table_columns()}
-        fields = (
-            all_columns
-            - {self.__timestamp_column}
-            - set(self.__tags)
-            - set(self.__metadata_columns)
-            - set(self.__ignored_columns)
+    def _get_client(self):
+        """Return a Kusto client.
+
+        The client should be closed after use.
+        """
+        azure_credential = DefaultAzureCredential()
+
+        def _get_token():
+            return azure_credential.get_token(
+                self.__config.connection_string + "//.default"
+            )[0]
+
+        kcsb = KustoConnectionStringBuilder.with_token_provider(
+            self.__config.connection_string, _get_token
         )
-        tag_keys = set(self.__tags)
-        tag_values = []
+        return KustoClient(kcsb)
 
-        for tag_key in tag_keys:
-            query = f"""['{self.__table}']
-                    | distinct ['{tag_key}']
-            """
-            result = self.__client.execute(self.__database, query)
-            if result is not None and len(result.primary_results) > 0:
-                tag_values.extend(
-                    [
-                        {"key": tag_key, "value": row[0]}
-                        for row in result.primary_results[0]
-                    ]
-                )
 
-        return SourceStructure(list(fields), list(tag_keys), tag_values)
-
-    def _get_table_columns(self) -> list[str]:
-        query = f".show table ['{self.__table}'] schema as json"
-        result = self.__client.execute(self.__database, query)
-        if result is None or len(result.primary_results) == 0:
-            raise KukurException("Failed to get table schema")
-        for row in result.primary_results[0]:
-            schema = json.loads(row["Schema"])
-            return [column["Name"] for column in schema.get("OrderedColumns", [])]
-        raise KukurException("Table schema is empty")
+def _is_result_set_too_large(err: KustoMultiApiError) -> bool:
+    for api_error in err.get_api_errors():
+        if (
+            api_error.description is not None
+            and "E_QUERY_RESULT_SET_TOO_LARGE" in api_error.description
+        ):
+            return True
+    return False
 
 
 def _add_square_brackets(columns: list[str]) -> list[str]:
     return [f"['{column}']" for column in columns]
-
-
-def _escape(context: str | None) -> str:
-    if context is None:
-        context = "value"
-    if "'" in context:
-        context = context.replace("'", "")
-    if '"' in context:
-        context = context.replace('"', "")
-    if "|" in context:
-        context = context.replace("|", "")
-    if ";" in context:
-        context = context.replace(";", "")
-    return context
