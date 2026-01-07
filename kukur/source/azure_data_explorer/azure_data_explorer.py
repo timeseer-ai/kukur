@@ -248,7 +248,7 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
         return KustoClient(kcsb)
 
 
-def _is_result_set_too_large(err: KustoMultiApiError) -> bool:
+def _is_result_set_too_large(err) -> bool:
     for api_error in err.get_api_errors():
         if (
             api_error.description is not None
