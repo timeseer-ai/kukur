@@ -17,17 +17,17 @@ try:
 except ImportError:
     HAS_AZURE_IDENTITY = False
 
-try:
-    from azure.kusto.data import (
-        ClientRequestProperties,
-        KustoClient,
-        KustoConnectionStringBuilder,
-    )
-    from azure.kusto.data.exceptions import KustoMultiApiError
+# try:
+from azure.kusto.data import (
+    ClientRequestProperties,
+    KustoClient,
+    KustoConnectionStringBuilder,
+)
+from azure.kusto.data.exceptions import KustoMultiApiError
 
-    HAS_KUSTO = True
-except ImportError:
-    HAS_KUSTO = False
+#     HAS_KUSTO = True
+# except ImportError:
+#     HAS_KUSTO = False
 
 
 from kukur import Metadata, SeriesSearch, SeriesSelector
