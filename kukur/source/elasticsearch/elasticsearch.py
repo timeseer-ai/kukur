@@ -163,7 +163,7 @@ class ElasticsearchSource:
                 series = SeriesSelector(source_name, tags, field_column)
                 metadata = Metadata(series)
                 for metadata_column_name in self.__options.metadata_columns:
-                    v = _dot_lookup(row, metadata_column_name)
+                    v = _dot_lookup(row, metadata_column_name, strict=False)
                     if v is None:
                         continue
                     name = self.__metadata_mapper.from_source(metadata_column_name)
@@ -361,15 +361,19 @@ class ElasticsearchSource:
         return json.loads(response.content)
 
 
-def _dot_lookup(doc: dict, key: str):
+def _dot_lookup(doc: dict, key: str, *, strict: bool = True):
     if key in doc:
         return doc[key]
     if "." not in key:
-        raise AttributeError(name=key)
+        if strict:
+            raise AttributeError(name=key)
+        return None
     parts = key.split(".")
     for part in parts:
         if part not in doc:
-            raise AttributeError(name=part)
+            if strict:
+                raise AttributeError(name=part)
+            return None
         doc = doc[part]
     return doc
 
