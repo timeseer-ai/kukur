@@ -15,6 +15,7 @@ type = "odbc"
 connection_string = "<ODBC connection_string>"
 connection_string_path = "<path to connection string>"
 autocommit = false
+encoding = "" # optional encoding to use for queries and responses
 query_timeout_seconds = 0
 query_timeout_enable = true
 query_string_parameters = false
@@ -99,6 +100,10 @@ By default,
 a transaction is created in which all queries run.
 Some drivers do not support this.
 A transaction will not be created when `autocommit = true`.
+
+While ODBC generally expects data to be encoded as UTF16LE,
+databases or drivers can deviate from this.
+Use the `encoding` option to configure a different encoding to use for queries and for reading textual data in responses.
 
 === Search
 

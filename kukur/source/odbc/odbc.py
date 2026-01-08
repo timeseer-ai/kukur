@@ -55,4 +55,8 @@ class ODBCSource(BaseSQLSource):
         )
         if self._config.query_timeout_seconds is not None:
             connection.timeout = self._config.query_timeout_seconds
+        if self._config.encoding is not None:
+            connection.setencoding(self._config.encoding)
+            connection.setdecoding(pyodbc.SQL_CHAR, self._config.encoding)
+            connection.setdecoding(pyodbc.SQL_WCHAR, self._config.encoding)
         return connection
