@@ -13,15 +13,6 @@ RUN --mount=from=ghcr.io/astral-sh/uv,source=/uv,target=/bin/uv \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     uv sync --frozen --all-extras --no-dev --no-install-project --no-editable
 
-COPY kukur ${APP_ROOT}/kukur
-
-RUN --mount=from=ghcr.io/astral-sh/uv,source=/uv,target=/bin/uv \
-    --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    --mount=type=bind,source=README.md,target=README.md \
-    uv sync --frozen --all-extras --no-dev --no-editable
-
 FROM python:3.13-slim
 ENV APP_ROOT=/usr/src/app
 WORKDIR ${APP_ROOT}
@@ -39,6 +30,8 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder ${APP_ROOT}/.venv ${APP_ROOT}/.venv
+
+COPY kukur ${APP_ROOT}/kukur
 
 USER 1001
 ENV PATH="${APP_ROOT}/.venv/bin:$PATH"
