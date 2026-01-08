@@ -48,9 +48,9 @@ simulator = ["PyYAML"]
 dev = [
     "cx_Freeze >=7.2.7; sys_platform == 'win32'",
     "cx-Logging >=3.0; sys_platform == 'win32'",
-    "mypy >=1.9.0,< 2",
-    "pytest >=8.1.1,< 9",
-    "ruff >=0.8.3,< 0.10",
+    "mypy >=1.9.0",
+    "pytest >=8.1.1",
+    "ruff >=0.8.3",
     "types-python-dateutil",
     "types-pytz",
     "types-PyYAML",
