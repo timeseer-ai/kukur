@@ -59,6 +59,7 @@ class SQLConfig:  # pylint: disable=too-many-instance-attributes
     query_timeout_seconds: int | None = None
     type_checking_row_limit: int = 300
     autocommit: bool | None = None
+    encoding: str | None = None
 
     @classmethod
     def from_dict(cls, data):
@@ -106,6 +107,7 @@ class SQLConfig:  # pylint: disable=too-many-instance-attributes
         if data.get("query_timeout_enable", True):
             config.query_timeout_seconds = data.get("query_timeout_seconds", 0)
         config.autocommit = data.get("autocommit")
+        config.encoding = data.get("encoding")
         return config
 
 
