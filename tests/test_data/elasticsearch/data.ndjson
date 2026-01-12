@@ -5,9 +5,9 @@
 { "index" : { "_index" : "tsai_metadata" } }
 { "name": "h2o", "location": "santa_monica", "description": "between 7 and 8 feet", "field": "water_level", "limits.low": 7, "limits.high": 8}
 { "index" : { "_index" : "tsai_metadata_doc" } }
-{ "name": "h2o", "location": ["santa_monica"], "description": "between 7 and 8 feet", "field": "water_level", "limits": {"low": 7, "high": 8}}
+{ "name": "h2o", "location": ["santa_monica"], "description": "between 7 and 8 feet", "field": "water_level", "limits": {"low": 7, "high": 8}, "sensor": {"model": "A"}}
 { "index" : { "_index" : "tsai_metadata_doc" } }
-{ "name": "h2o", "location": ["coyote_creek"], "description": "between 6 and 9 feet", "field": "water_level", "limits": {"low": 7, "high": 9}}
+{ "name": "h2o", "location": ["coyote_creek"], "description": "between 6 and 9 feet", "field": "water_level", "limits": {"low": 7, "high": 9}, "sensor": {}}
 { "index" : { "_index" : "tsai_metadata_doc" } }
 { "name": "h2o", "location": ["coyote_creek", "deer_creek"], "description": "between 0 and 40 degrees", "field": "temperature", "limits": {"low": 0, "high": 40}}
 { "index" : { "_index" : "tsai_data" } }

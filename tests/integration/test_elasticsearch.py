@@ -135,6 +135,23 @@ def test_search_doc(client: Client):
     assert series.get_field(fields.LimitHighFunctional) == 40
 
 
+def test_search_doc_optional_metadata(client: Client):
+    """Test searching for metadata in a source with nested documents and tags in a list.
+
+    The metadata field can potentially not exist."""
+    many_series = list(client.search(SeriesSearch(suffix_source("noaa-es-doc"))))
+    assert len(many_series) == 4
+    series = [
+        series
+        for series in many_series
+        if series.series.tags["series name"] == "h2o"
+        and series.series.tags["location"] == "santa_monica"
+        and series.series.field == "water_level"
+    ][0]
+    assert isinstance(series, Metadata)
+    assert series.get_field_by_name("sensor model") == "A"
+
+
 def test_search_sql(client: Client):
     many_series = list(client.search(SeriesSearch(suffix_source("noaa-es-sql"))))
     assert len(many_series) == 3

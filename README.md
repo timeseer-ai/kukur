@@ -128,7 +128,7 @@ $ make compose
 Then, in another shell:
 
 ```
-(venv) $ uv run python -m kukur.cli --config-file tests/test_data/Kukur.toml
+$ uv run python -m kukur.cli --config-file tests/test_data/Kukur.toml
 ```
 
 Since the location of the freetds libraries varies and this needs to be hardcoded in the unixodbc configuration,
@@ -142,7 +142,7 @@ These profiles can be selected using the `KUKUR_INTEGRATION_TARGET` environment 
 Then, run the tests:
 
 ```bash
-(venv) $ KUKUR_INTEGRATION_TARGET=linux make integration-test
+$ KUKUR_INTEGRATION_TARGET=linux make integration-test
 ```
 
 Stop the databases using:
