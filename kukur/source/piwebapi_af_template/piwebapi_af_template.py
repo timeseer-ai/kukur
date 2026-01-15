@@ -367,6 +367,7 @@ class PIWebAPIAssetFrameworkTemplateSource:
                 ]
             ),
             "showDescendants": "true",
+            "showInherited": "true",
         }
 
         batch_query = {
