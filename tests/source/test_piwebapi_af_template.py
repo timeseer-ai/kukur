@@ -698,6 +698,12 @@ def mocked_requests_post(*args, **kwargs):
                     "Resource"
                 ]
             )
+            assert (
+                "showInherited=true"
+                in kwargs["json"]["GetAttributeTemplates"]["RequestTemplate"][
+                    "Resource"
+                ]
+            )
 
             response = BATCH_ELEMENT_TEMPLATES_RESPONSE
             return MockResponse(response, 200)
