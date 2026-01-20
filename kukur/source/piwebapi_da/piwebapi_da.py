@@ -243,7 +243,10 @@ class PIWebAPIDataArchiveSource:
                 else:
                     quality_flags.append(0)
 
-            if len(data_points) != self._request_properties.max_returned_items_per_call:
+            if (
+                len(data_points) != self._request_properties.max_returned_items_per_call
+                or len(timestamps) == 0
+            ):
                 break
 
             start_date = timestamps[-1]
