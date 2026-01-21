@@ -228,8 +228,10 @@ class PIWebAPIDataArchiveSource:
 
             data_points = response.json()["Items"]
 
+            last_timestamp: datetime | None = None
             for data_point in data_points:
                 timestamp = parse_date(data_point["Timestamp"])
+                last_timestamp = timestamp
                 value = data_point["Value"]
                 if isinstance(value, dict):
                     if value.get("IsSystem", False):
@@ -245,12 +247,12 @@ class PIWebAPIDataArchiveSource:
 
             if (
                 len(data_points) != self._request_properties.max_returned_items_per_call
-                or len(timestamps) == 0
+                or last_timestamp is None
             ):
                 break
 
-            start_date = timestamps[-1]
-            while timestamps[-1] == start_date:
+            start_date = last_timestamp
+            while len(timestamps) > 0 and timestamps[-1] == start_date:
                 timestamps.pop()
                 values.pop()
                 quality_flags.pop()

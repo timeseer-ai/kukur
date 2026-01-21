@@ -311,6 +311,54 @@ def mocked_requests_get(*args, **kwargs):
     raise Exception(args[0])
 
 
+def mocked_requests_get_system_points(*args, **kwargs):
+    """Return one page full of system points."""
+    params = kwargs.get("params", {})
+    start_time = parse_date(params["startTime"])
+
+    if start_time == parse_date("2020-01-01T17:24:21Z"):
+        response = {
+            "Items": [
+                {
+                    "Timestamp": "2020-01-01T17:24:21Z",
+                    "Value": {"Name": "Shutdown", "Value": 254, "IsSystem": True},
+                    "Good": False,
+                },
+                {
+                    "Timestamp": "2020-01-02T00:00:00Z",
+                    "Value": 81.83204,
+                    "Good": True,
+                },
+            ]
+        }
+    else:
+        response = {
+            "Items": [
+                {
+                    "Timestamp": "2020-01-01T17:24:18Z",
+                    "Value": {"Name": "Shutdown", "Value": 254, "IsSystem": True},
+                    "Good": False,
+                },
+                {
+                    "Timestamp": "2020-01-01T17:24:19Z",
+                    "Value": {"Name": "Shutdown", "Value": 254, "IsSystem": True},
+                    "Good": False,
+                },
+                {
+                    "Timestamp": "2020-01-01T17:24:20Z",
+                    "Value": {"Name": "Shutdown", "Value": 254, "IsSystem": True},
+                    "Good": False,
+                },
+                {
+                    "Timestamp": "2020-01-01T17:24:21Z",
+                    "Value": {"Name": "Shutdown", "Value": 254, "IsSystem": True},
+                    "Good": False,
+                },
+            ]
+        }
+    return MockResponse(response, 200)
+
+
 def fail_element_timeout(*args, **kwargs):
     if args[0] == _BASE_URL:
         response = SAMPLE_DATABASE
@@ -430,6 +478,27 @@ def test_get_data_dates_outside_limits(_) -> None:
     assert len(data) == 17
     assert data["ts"][0].as_py() == parse_date("2020-01-01T00:00:00Z")
     assert data["ts"][-1].as_py() == parse_date("2020-01-03T10:56:25Z")
+
+
+@patch("requests.Session.get", side_effect=mocked_requests_get_system_points)
+def test_get_data_system_points(_) -> None:
+    source = from_config(
+        {
+            "database_uri": "https://test_pi.net",
+            "max_returned_items_per_call": 4,
+            "username": "test",
+            "password": "test",
+            "verify_ssl": "false",
+        }
+    )
+    start_date = parse_date("2019-10-01T00:00:00Z")
+    end_date = parse_date("2020-02-01T10:56:25Z")
+
+    data = source.get_data(
+        SeriesSelector("Test", {"__id__": "A9"}), start_date, end_date
+    )
+    assert len(data) == 1
+    assert data["ts"][0].as_py() == parse_date("2020-01-02T00:00:00Z")
 
 
 @patch("requests.Session.get", side_effect=mocked_requests_get)
