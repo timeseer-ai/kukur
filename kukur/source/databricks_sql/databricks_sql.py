@@ -12,6 +12,7 @@ except ImportError:
     HAS_ODBC = False
 
 from kukur.exceptions import MissingModuleException
+from kukur.source.databricks_sql.rest import DatabricksStatementExecutionSource
 from kukur.source.metadata import MetadataValueMapper
 from kukur.source.odbc.odbc import ODBCSource
 from kukur.source.quality import QualityMapper
@@ -22,6 +23,8 @@ def from_config(
     data, metadata_value_mapper: MetadataValueMapper, quality_mapper: QualityMapper
 ):
     """Create a new Databricks SQL data source from a configuration dict."""
+    if "provider" in data and data["provider"] == "REST":
+        return DatabricksStatementExecutionSource(data, metadata_value_mapper, quality_mapper)
     if not HAS_ODBC:
         raise MissingModuleException("pyodbc", "odbc")
 
