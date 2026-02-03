@@ -17,7 +17,11 @@ import pyarrow as pa
 from pyarrow import ipc
 
 from kukur import Metadata, SeriesSearch, SeriesSelector
-from kukur.exceptions import InvalidSourceException, KukurException
+from kukur.exceptions import (
+    InvalidSourceException,
+    KukurException,
+    MissingModuleException,
+)
 from kukur.source.metadata import MetadataValueMapper
 from kukur.source.quality import QualityMapper
 
@@ -41,7 +45,9 @@ class DatabricksError(KukurException):
 
 
 @dataclass
-class _ConnectionConfiguration:
+class ConnectionConfiguration:
+    """Databricks Statement Execution API connection properties."""
+
     url: str
     warehouse_id: str
     password: str
@@ -51,7 +57,8 @@ class _ConnectionConfiguration:
     user_agent: str
 
     @classmethod
-    def from_data(cls, data: dict) -> "_ConnectionConfiguration":
+    def from_data(cls, data: dict) -> "ConnectionConfiguration":
+        """Create from a data dictionary."""
         return cls(
             data["url"],
             data["warehouse_id"],
@@ -64,8 +71,10 @@ class _ConnectionConfiguration:
 
 
 @dataclass
-class _Configuration:
-    connection: _ConnectionConfiguration
+class StatementExecutionConfiguration:
+    """Databricks statement execution API source configuration."""
+
+    connection: ConnectionConfiguration
     list_query: str | None
     list_columns: list[str] | None
     tag_columns: list[str]
@@ -74,10 +83,10 @@ class _Configuration:
     data_query: str | None
 
     @classmethod
-    def from_data(cls, data: dict) -> "_Configuration":
+    def from_data(cls, data: dict) -> "StatementExecutionConfiguration":
         """Create from a data dictionary."""
         return cls(
-            _ConnectionConfiguration.from_data(data["connection"]),
+            ConnectionConfiguration.from_data(data["connection"]),
             data.get("list_query"),
             data.get("list_columns"),
             data.get("tag_columns", ["series name"]),
@@ -92,11 +101,13 @@ class DatabricksStatementExecutionSource:
 
     def __init__(
         self,
-        config: dict,
+        config: StatementExecutionConfiguration,
         metadata_value_mapper: MetadataValueMapper,
         quality_mapper: QualityMapper,
     ):
-        self._config = _Configuration.from_data(config)
+        if not HAS_REQUESTS:
+            raise MissingModuleException("requests", "databricks-sql")
+        self._config = config
         self.__metadata_value_mapper = metadata_value_mapper
         self.__quality_mapper = quality_mapper
 
@@ -232,7 +243,7 @@ class DatabricksStatementExecutionSource:
 
 
 def _query_data_links(
-    session, config: _ConnectionConfiguration, query: dict, headers: dict
+    session, config: ConnectionConfiguration, query: dict, headers: dict
 ) -> list[tuple[int, str]]:
     assert isinstance(session, requests.Session)
     response = session.post(
