@@ -12,7 +12,7 @@ The Databricks Statement Execution API for SQL Warehouses returns data efficient
 
 Two queries are supported.
 Metadata for time series can be queried by defining a `list_query`.
-Data for time series is queries using the `data_query`.
+Data for time series is queried using the `data_query`.
 
 ```toml
 [source.<name>]
