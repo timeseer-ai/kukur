@@ -1,7 +1,6 @@
-"""Connections to Databricks SQL data sources from Timeseer."""
+"""Connections to Databricks SQL Warehouse data sources from Timeseer."""
 
 # SPDX-FileCopyrightText: 2024 Timeseer.AI
-#
 # SPDX-License-Identifier: Apache-2.0
 
 try:
@@ -18,21 +17,6 @@ from kukur.source.quality import QualityMapper
 from kukur.source.sql import SQLConfig
 
 
-def from_config(
-    data, metadata_value_mapper: MetadataValueMapper, quality_mapper: QualityMapper
-):
-    """Create a new Databricks SQL data source from a configuration dict."""
-    if not HAS_ODBC:
-        raise MissingModuleException("pyodbc", "odbc")
-
-    if "connection_string" not in data and "connection" in data:
-        connection_string = build_connection_string(data["connection"])
-        data["connection_string"] = connection_string
-    config = SQLConfig.from_dict(data)
-
-    return DatabricksSQLSource(config, metadata_value_mapper, quality_mapper)
-
-
 class DatabricksSQLSource(ODBCSource):
     """A Databricks SQL data source."""
 
@@ -42,6 +26,8 @@ class DatabricksSQLSource(ODBCSource):
         metadata_value_mapper: MetadataValueMapper,
         quality_mapper: QualityMapper,
     ):
+        if not HAS_ODBC:
+            raise MissingModuleException("pyodbc", "odbc")
         if config.autocommit is None:
             config.autocommit = True
         super().__init__(config, metadata_value_mapper, quality_mapper)
