@@ -48,7 +48,7 @@ class DatabricksError(KukurException):
 class ConnectionConfiguration:
     """Databricks Statement Execution API connection properties."""
 
-    url: str
+    host: str
     warehouse_id: str
     password: str
     proxy: str | None
@@ -60,7 +60,7 @@ class ConnectionConfiguration:
     def from_data(cls, data: dict) -> "ConnectionConfiguration":
         """Create from a data dictionary."""
         return cls(
-            data["url"],
+            data["host"],
             data["warehouse_id"],
             data["password"],
             data.get("proxy"),
@@ -247,7 +247,7 @@ def _query_data_links(
 ) -> list[tuple[int, str]]:
     assert isinstance(session, requests.Session)
     response = session.post(
-        urljoin(config.url, "/api/2.0/sql/statements"),
+        urljoin(f"https://{config.host}", "/api/2.0/sql/statements"),
         json=query,
         headers=headers,
         timeout=60,  # calls take at most 50 seconds due to "wait_timeout"
@@ -261,7 +261,9 @@ def _query_data_links(
     while body["status"]["state"] in ("PENDING", "RUNNING"):
         statement_id = body["statement_id"]
         response = session.get(
-            urljoin(config.url, f"/api/2.0/sql/statements/{statement_id}"),
+            urljoin(
+                f"https://{config.host}", f"/api/2.0/sql/statements/{statement_id}"
+            ),
             headers=headers,
             timeout=config.timeout_seconds,
         )
@@ -290,7 +292,7 @@ def _query_data_links(
     while "next_chunk_internal_link" in chunk_body["external_links"][0]:
         response = session.get(
             urljoin(
-                config.url,
+                f"https://{config.host}",
                 chunk_body["external_links"][0]["next_chunk_internal_link"],
             ),
             headers=headers,
