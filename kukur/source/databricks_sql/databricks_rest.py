@@ -179,7 +179,7 @@ class DatabricksStatementExecutionSource:
     ) -> pa.Table:
         """Return data."""
         if self._config.data_query is None:
-            raise InvalidSourceException("no `list_columns` defined")
+            raise InvalidSourceException("no `data_query` defined")
 
         with requests.Session() as session:
             if self._config.connection.proxy:
@@ -245,7 +245,6 @@ class DatabricksStatementExecutionSource:
 def _query_data_links(
     session, config: ConnectionConfiguration, query: dict, headers: dict
 ) -> list[tuple[int, str]]:
-    assert isinstance(session, requests.Session)
     response = session.post(
         urljoin(f"https://{config.host}", "/api/2.0/sql/statements"),
         json=query,
@@ -318,6 +317,5 @@ def _generate_named_parameter_marker(value: str) -> str:
 
 
 def _log_error(response, message: str):
-    assert isinstance(response, requests.Response)
     if response.status_code >= HTTPStatus.BAD_GATEWAY:
         logger.error("%s - %s:\n%s", message, response.status_code, response.text)
