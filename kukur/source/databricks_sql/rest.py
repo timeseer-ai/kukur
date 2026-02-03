@@ -3,10 +3,14 @@
 https://docs.databricks.com/api/workspace/statementexecution
 """
 
+# SPDX-FileCopyrightText: 2026 Timeseer.AI
+# SPDX-License-Identifier: Apache-2.0
+
 import logging
 from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import datetime
+from http import HTTPStatus
 from urllib.parse import urljoin
 
 import pyarrow as pa
@@ -44,6 +48,7 @@ class _ConnectionConfiguration:
     proxy: str | None
     verify_ssl: bool
     timeout_seconds: int
+    user_agent: str
 
     @classmethod
     def from_data(cls, data: dict) -> "_ConnectionConfiguration":
@@ -54,6 +59,7 @@ class _ConnectionConfiguration:
             data.get("proxy"),
             data.get("verify_ssl", True),
             data.get("timeout_seconds", 60),
+            data.get("user_agent", "Timeseer.AI+Kukur"),
         )
 
 
@@ -111,6 +117,7 @@ class DatabricksStatementExecutionSource:
                 session.proxies.update({"https": self._config.connection.proxy})
             if not self._config.connection.verify_ssl:
                 session.verify = False
+            session.headers["User-Agent"] = self._config.connection.user_agent
 
             headers = {"Authorization": "Bearer " + self._config.connection.password}
             query = {
@@ -131,6 +138,7 @@ class DatabricksStatementExecutionSource:
                 response = session.get(
                     data_link[1], timeout=self._config.connection.timeout_seconds
                 )
+                _log_error(response, "Failed to GET data link")
                 response.raise_for_status()
                 for row in response.json():
                     tags = {}
@@ -163,6 +171,12 @@ class DatabricksStatementExecutionSource:
             raise InvalidSourceException("no `list_columns` defined")
 
         with requests.Session() as session:
+            if self._config.connection.proxy:
+                session.proxies.update({"https": self._config.connection.proxy})
+            if not self._config.connection.verify_ssl:
+                session.verify = False
+            session.headers["User-Agent"] = self._config.connection.user_agent
+
             headers = {"Authorization": "Bearer " + self._config.connection.password}
             query = {
                 "warehouse_id": self._config.connection.warehouse_id,
@@ -202,6 +216,7 @@ class DatabricksStatementExecutionSource:
                 response = session.get(
                     data_link[1], timeout=self._config.connection.timeout_seconds
                 )
+                _log_error(response, "Failed to GET data link")
                 response.raise_for_status()
                 stream = ipc.open_stream(response.content)
                 table = stream.read_all()
@@ -226,6 +241,7 @@ def _query_data_links(
         headers=headers,
         timeout=60,  # calls take at most 50 seconds due to "wait_timeout"
     )
+    _log_error(response, "Failed to execute statement")
     response.raise_for_status()
 
     body = response.json()
@@ -238,6 +254,7 @@ def _query_data_links(
             headers=headers,
             timeout=config.timeout_seconds,
         )
+        _log_error(response, f"Failed to query status of statement {statement_id}")
         response.raise_for_status()
         body = response.json()
 
@@ -268,6 +285,7 @@ def _query_data_links(
             headers=headers,
             timeout=config.timeout_seconds,
         )
+        _log_error(response, "Failed to query chunk")
         response.raise_for_status()
         chunk_body = response.json()
         if len(chunk_body["external_links"]) != 1:
@@ -284,3 +302,9 @@ def _query_data_links(
 
 def _generate_named_parameter_marker(value: str) -> str:
     return value.replace(" ", "_")
+
+
+def _log_error(response, message: str):
+    assert isinstance(response, requests.Response)
+    if response.status_code >= HTTPStatus.BAD_GATEWAY:
+        logger.error("%s - %s:\n%s", message, response.status_code, response.text)

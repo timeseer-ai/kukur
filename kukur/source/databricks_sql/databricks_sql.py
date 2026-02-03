@@ -1,7 +1,6 @@
-"""Connections to Databricks SQL data sources from Timeseer."""
+"""Connections to Databricks SQL Warehouse data sources from Timeseer."""
 
 # SPDX-FileCopyrightText: 2024 Timeseer.AI
-#
 # SPDX-License-Identifier: Apache-2.0
 
 try:
@@ -24,7 +23,9 @@ def from_config(
 ):
     """Create a new Databricks SQL data source from a configuration dict."""
     if "provider" in data and data["provider"] == "REST":
-        return DatabricksStatementExecutionSource(data, metadata_value_mapper, quality_mapper)
+        return DatabricksStatementExecutionSource(
+            data, metadata_value_mapper, quality_mapper
+        )
     if not HAS_ODBC:
         raise MissingModuleException("pyodbc", "odbc")
 
