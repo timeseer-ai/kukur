@@ -22,6 +22,7 @@ from kukur.exceptions import (
     KukurException,
     MissingModuleException,
 )
+from kukur.source.arrow import empty_table
 from kukur.source.metadata import MetadataValueMapper
 from kukur.source.quality import QualityMapper
 
@@ -239,6 +240,8 @@ class DatabricksStatementExecutionSource:
                         2, "quality", self.__quality_mapper.map_array(table["quality"])
                     )
                 tables.append(table)
+            if len(tables) == 0:
+                return empty_table(include_quality=self.__quality_mapper.is_present())
             return pa.concat_tables(tables)
 
 
@@ -277,7 +280,10 @@ def _query_data_links(
 
     # List all responses
     chunk_body = body["result"]
-    data_links = []
+    data_links: list[tuple[int, str]] = []
+
+    if "external_links" not in chunk_body:
+        return data_links
 
     if len(chunk_body["external_links"]) != 1:
         raise UnexpectedResponseError("not exactly 1 external link")
