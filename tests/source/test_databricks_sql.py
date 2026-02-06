@@ -51,6 +51,12 @@ STATEMENT_COMPLETE = {
     },
 }
 
+STATEMENT_NO_DATA = {
+    "statement_id": STATEMENT_ID,
+    "status": {"state": "SUCCEEDED"},
+    "result": {},
+}
+
 LAST_CHUNK = {
     "external_links": [
         {
@@ -191,6 +197,16 @@ class GetDataMock:
         raise Exception("unknown GET request")
 
 
+def mock_no_data_post(*args, **kwargs) -> MockResponse:
+    assert PASSWORD in kwargs["headers"]["Authorization"]
+    body = kwargs["json"]
+    assert body["warehouse_id"] == WAREHOUSE_ID
+    assert body["disposition"] == "EXTERNAL_LINKS"
+    assert body["wait_timeout"] == "50s"
+    assert "statement" in body
+    return MockResponse(STATEMENT_NO_DATA, 200)
+
+
 def get_source() -> DatabricksStatementExecutionSource:
     config = StatementExecutionConfiguration.from_data(
         {
@@ -246,6 +262,17 @@ def test_data() -> None:
     )
     assert len(data) == 2
     assert data["value"].to_pylist() == [1, 2]
+
+
+@patch("requests.Session.post", mock_no_data_post)
+def test_no_data() -> None:
+    source = get_source()
+    data = source.get_data(
+        SeriesSelector("databricks", "test-tag-1"),
+        datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
+        datetime.fromisoformat("2026-02-01T00:00:00+00:00"),
+    )
+    assert len(data) == 0
 
 
 def _get_ipc_bytes(table: pa.Table) -> BytesIO:

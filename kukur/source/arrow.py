@@ -331,6 +331,19 @@ def conform_to_schema(table: pa.Table, quality_mapper: QualityMapper) -> pa.Tabl
     return table.cast(schema)
 
 
+def empty_table(*, include_quality: bool) -> pa.Table:
+    """Create a new empty table, optionally including a quality column."""
+    data: dict = {"ts": [], "value": []}
+    fields = [
+        ("ts", pa.timestamp("us", "UTC")),
+        ("value", pa.float64()),
+    ]
+    if include_quality:
+        data["quality"] = []
+        fields.append(("quality", pa.int8()))
+    return pa.Table.from_pydict(data, schema=pa.schema(fields))
+
+
 def _map_quality(quality_data: pa.Array, quality_mapper: QualityMapper) -> pa.Array:
     return quality_mapper.map_array(quality_data)
 
