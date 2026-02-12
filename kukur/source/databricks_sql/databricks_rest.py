@@ -323,5 +323,5 @@ def _generate_named_parameter_marker(value: str) -> str:
 
 
 def _log_error(response, message: str):
-    if response.status_code >= HTTPStatus.BAD_GATEWAY:
+    if response.status_code >= HTTPStatus.BAD_REQUEST:
         logger.error("%s - %s:\n%s", message, response.status_code, response.text)
