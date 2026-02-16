@@ -82,7 +82,6 @@ deps: ## Install runtime dependencies
 .PHONY: update-deps
 update-deps: ## Update all dependencies to their latest version
 	uv lock --upgrade
-	uv export --all-extras --no-hashes > requirements.txt
 
 .PHONY: format
 format: ## Format the kukur code
