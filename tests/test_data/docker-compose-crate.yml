@@ -2,7 +2,7 @@ version: '2.3'
 
 services:
   cratedb:
-    image: crate:4.7
+    image: crate:6.2
     ports:
       - "4200:4200"
       - "5432:5432"
