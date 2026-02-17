@@ -103,7 +103,6 @@ $ make test
 ```
 
 Dependencies are managed in [pyproject.toml](pyproject.toml).
-A `requirements.txt` file is automatically generated for compatibility with Dependabot.
 
 ```bash
 $ make update-deps
