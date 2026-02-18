@@ -32,6 +32,7 @@ class OIDCConfig:
     client_id: str
     client_secret: str
     oidc_token_url: str
+    scope: str
 
     @classmethod
     def from_config(cls, config: dict) -> Optional["OIDCConfig"]:
@@ -45,6 +46,7 @@ class OIDCConfig:
                 client_id=client_id,
                 client_secret=client_secret,
                 oidc_token_url=oidc_token_url,
+                scope=config.get("scope", "openid"),
             )
 
         return None
@@ -83,20 +85,18 @@ if HAS_OIDC_AUTH:
         __FALLBACK_TOKEN_LIFETIME = 60 * 5
 
         def __init__(self, config: OIDCConfig):
-            self.token_url = config.oidc_token_url
-            self.client_id = config.client_id
-            self.client_secret = config.client_secret
+            self.config = config
             self._access_token = None
             self._expires_at = 0
 
         def _refresh_token(self) -> None:
             data = {
                 "grant_type": "client_credentials",
-                "client_id": self.client_id,
-                "client_secret": self.client_secret,
-                "scope": "openid",
+                "client_id": self.config.client_id,
+                "client_secret": self.config.client_secret,
+                "scope": self.config.scope,
             }
-            response = requests.post(self.token_url, data=data)
+            response = requests.post(self.config.oidc_token_url, data=data)
             response.raise_for_status()
             token_data = response.json()
             self._access_token = token_data["access_token"]
