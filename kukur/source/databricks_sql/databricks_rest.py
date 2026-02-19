@@ -17,6 +17,7 @@ import pyarrow as pa
 from pyarrow import ipc
 
 from kukur import Metadata, SeriesSearch, SeriesSelector
+from kukur.auth import IMDSTokenFetcher, OIDCConfig, get_oidc_auth
 from kukur.exceptions import (
     InvalidSourceException,
     KukurException,
@@ -28,6 +29,7 @@ from kukur.source.quality import QualityMapper
 
 try:
     import requests
+    import requests.auth
 
     HAS_REQUESTS = True
 except ImportError:
@@ -51,7 +53,10 @@ class ConnectionConfiguration:
 
     host: str
     warehouse_id: str
-    password: str
+    password: str | None
+    oauth_client_id: str | None
+    oauth_client_secret: str | None
+    azure_workspace_resource_id: str | None
     proxy: str | None
     verify_ssl: bool
     timeout_seconds: int
@@ -63,7 +68,10 @@ class ConnectionConfiguration:
         return cls(
             data["host"],
             data["warehouse_id"],
-            data["password"],
+            data.get("password"),
+            data.get("oauth_client_id"),
+            data.get("oauth_client_secret"),
+            data.get("azure_workspace_resource_id"),
             data.get("proxy"),
             data.get("verify_ssl", True),
             data.get("timeout_seconds", 60),
@@ -125,13 +133,9 @@ class DatabricksStatementExecutionSource:
             raise InvalidSourceException("no `list_columns` defined")
 
         with requests.Session() as session:
-            if self._config.connection.proxy:
-                session.proxies.update({"https": self._config.connection.proxy})
-            if not self._config.connection.verify_ssl:
-                session.verify = False
-            session.headers["User-Agent"] = self._config.connection.user_agent
+            self._configure_session(session)
+            self._authorize_session(session)
 
-            headers = {"Authorization": "Bearer " + self._config.connection.password}
             query = {
                 "warehouse_id": self._config.connection.warehouse_id,
                 "statement": self._config.list_query,
@@ -143,8 +147,10 @@ class DatabricksStatementExecutionSource:
                 session,
                 self._config.connection,
                 query,
-                headers,
             )
+
+        with requests.Session() as session:
+            self._configure_session(session)
 
             for data_link in data_links:
                 response = session.get(
@@ -183,13 +189,9 @@ class DatabricksStatementExecutionSource:
             raise InvalidSourceException("no `data_query` defined")
 
         with requests.Session() as session:
-            if self._config.connection.proxy:
-                session.proxies.update({"https": self._config.connection.proxy})
-            if not self._config.connection.verify_ssl:
-                session.verify = False
-            session.headers["User-Agent"] = self._config.connection.user_agent
+            self._configure_session(session)
+            self._authorize_session(session)
 
-            headers = {"Authorization": "Bearer " + self._config.connection.password}
             query = {
                 "warehouse_id": self._config.connection.warehouse_id,
                 "statement": self._config.data_query,
@@ -220,8 +222,10 @@ class DatabricksStatementExecutionSource:
                 session,
                 self._config.connection,
                 query,
-                headers,
             )
+
+        with requests.Session() as session:
+            self._configure_session(session)
 
             tables = []
             for data_link in data_links:
@@ -244,14 +248,80 @@ class DatabricksStatementExecutionSource:
                 return empty_table(include_quality=self.__quality_mapper.is_present())
             return pa.concat_tables(tables)
 
+    def _configure_session(self, session) -> None:
+        if self._config.connection.proxy:
+            session.proxies.update({"https": self._config.connection.proxy})
+        if not self._config.connection.verify_ssl:
+            session.verify = False
+        session.headers["User-Agent"] = self._config.connection.user_agent
+
+    def _authorize_session(self, session) -> None:
+        if self._config.connection.password is not None:
+            session.headers["Authorization"] = (
+                "Bearer " + self._config.connection.password
+            )
+        elif (
+            self._config.connection.oauth_client_id is not None
+            and self._config.connection.oauth_client_secret is not None
+        ):
+            config = {
+                "oidc_token_url": f"https://{self._config.connection.host}/oidc/v1/token",
+                "client_id": self._config.connection.oauth_client_id,
+                "client_secret": self._config.connection.oauth_client_secret,
+                "scope": "all-apis",
+            }
+            oidc_config = OIDCConfig.from_config(config)
+            if oidc_config is not None:
+                session.auth = get_oidc_auth(oidc_config)
+        elif self._config.connection.azure_workspace_resource_id is not None:
+            # Use managed identity
+            with IMDSTokenFetcher() as imds:
+                databricks_access_token = imds.get_access_token(
+                    "2ff814a6-3304-4ab8-85cb-cd0e6f879c1d"
+                )
+                azure_access_token = imds.get_access_token(
+                    "https://management.core.windows.net/"
+                )
+            session.auth = IMDSAuth(
+                databricks_access_token,
+                azure_access_token,
+                self._config.connection.azure_workspace_resource_id,
+            )
+
+
+if HAS_REQUESTS:
+
+    class IMDSAuth(requests.auth.AuthBase):
+        """Authenticate to Databricks using the Azure Instance Metadata Service."""
+
+        def __init__(
+            self,
+            databricks_access_token: str,
+            azure_access_token: str,
+            workspace_resource_id: str,
+        ):
+            self.databricks_access_token = databricks_access_token
+            self.azure_access_token = azure_access_token
+            self.workspace_resource_id = workspace_resource_id
+
+        def __call__(self, r):
+            """IMDS (or service principal) authentication requires 2 additional headers."""
+            r.headers["Authorization"] = f"Bearer {self.databricks_access_token}"
+            r.headers["X-Databricks-Azure-SP-Management-Token"] = (
+                self.azure_access_token
+            )
+            r.headers["X-Databricks-Azure-Workspace-Resource-Id"] = (
+                self.workspace_resource_id
+            )
+            return r
+
 
 def _query_data_links(
-    session, config: ConnectionConfiguration, query: dict, headers: dict
+    session, config: ConnectionConfiguration, query: dict
 ) -> list[tuple[int, str]]:
     response = session.post(
         urljoin(f"https://{config.host}", "/api/2.0/sql/statements"),
         json=query,
-        headers=headers,
         timeout=60,  # calls take at most 50 seconds due to "wait_timeout"
     )
     _log_error(response, "Failed to execute statement")
@@ -266,7 +336,6 @@ def _query_data_links(
             urljoin(
                 f"https://{config.host}", f"/api/2.0/sql/statements/{statement_id}"
             ),
-            headers=headers,
             timeout=config.timeout_seconds,
         )
         _log_error(response, f"Failed to query status of statement {statement_id}")
@@ -300,7 +369,6 @@ def _query_data_links(
                 f"https://{config.host}",
                 chunk_body["external_links"][0]["next_chunk_internal_link"],
             ),
-            headers=headers,
             timeout=config.timeout_seconds,
         )
         _log_error(response, "Failed to query chunk")

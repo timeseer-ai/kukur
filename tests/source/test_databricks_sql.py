@@ -111,7 +111,6 @@ class MockBinaryResponse:
 
 
 def mock_post(*args, **kwargs) -> MockResponse:
-    assert PASSWORD in kwargs["headers"]["Authorization"]
     body = kwargs["json"]
     assert body["warehouse_id"] == WAREHOUSE_ID
     assert body["disposition"] == "EXTERNAL_LINKS"
@@ -198,7 +197,6 @@ class GetDataMock:
 
 
 def mock_no_data_post(*args, **kwargs) -> MockResponse:
-    assert PASSWORD in kwargs["headers"]["Authorization"]
     body = kwargs["json"]
     assert body["warehouse_id"] == WAREHOUSE_ID
     assert body["disposition"] == "EXTERNAL_LINKS"
