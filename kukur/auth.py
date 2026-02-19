@@ -142,3 +142,29 @@ class AuthenticationProperties:
         oidc_config = OIDCConfig.from_config(data)
 
         return cls(basic_auth, oidc_config, data.get("kerberos_hostname"))
+
+
+class IMDSTokenFetcher:
+    """Request access tokens from an Instance Metadata Service."""
+
+    def __enter__(self, headers: dict[str, str] | None = None):
+        self.session = requests.Session()
+        self.session.headers["Metadata"] = "true"
+        if headers is not None:
+            for k, v in headers.items():
+                self.session.headers[k] = v
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        self.session.close()
+
+    def get_access_token(self, resource: str) -> str:
+        """Return an access token for the given resource."""
+        response = self.session.get(
+            "http://169.254.169.254/metadata/identity/oauth2/token",
+            params={"api-version": "2018-02-01", "resource": resource},
+            timeout=10,
+        )
+        response.raise_for_status()
+        data = response.json()
+        return data["access_token"]

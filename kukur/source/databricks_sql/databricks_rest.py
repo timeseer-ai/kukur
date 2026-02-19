@@ -17,7 +17,7 @@ import pyarrow as pa
 from pyarrow import ipc
 
 from kukur import Metadata, SeriesSearch, SeriesSelector
-from kukur.auth import OIDCConfig, get_oidc_auth
+from kukur.auth import IMDSTokenFetcher, OIDCConfig, get_oidc_auth
 from kukur.exceptions import (
     InvalidSourceException,
     KukurException,
@@ -29,6 +29,7 @@ from kukur.source.quality import QualityMapper
 
 try:
     import requests
+    import requests.auth
 
     HAS_REQUESTS = True
 except ImportError:
@@ -55,6 +56,7 @@ class ConnectionConfiguration:
     password: str | None
     oauth_client_id: str | None
     oauth_client_secret: str | None
+    azure_workspace_resource_id: str | None
     proxy: str | None
     verify_ssl: bool
     timeout_seconds: int
@@ -69,6 +71,7 @@ class ConnectionConfiguration:
             data.get("password"),
             data.get("oauth_client_id"),
             data.get("oauth_client_secret"),
+            data.get("azure_workspace_resource_id"),
             data.get("proxy"),
             data.get("verify_ssl", True),
             data.get("timeout_seconds", 60),
@@ -270,6 +273,47 @@ class DatabricksStatementExecutionSource:
             oidc_config = OIDCConfig.from_config(config)
             if oidc_config is not None:
                 session.auth = get_oidc_auth(oidc_config)
+        elif self._config.connection.azure_workspace_resource_id is not None:
+            # Use managed identity
+            with IMDSTokenFetcher() as imds:
+                databricks_access_token = imds.get_access_token(
+                    "2ff814a6-3304-4ab8-85cb-cd0e6f879c1d"
+                )
+                azure_access_token = imds.get_access_token(
+                    "https://management.core.windows.net/"
+                )
+            session.auth = IMDSAuth(
+                databricks_access_token,
+                azure_access_token,
+                self._config.connection.azure_workspace_resource_id,
+            )
+
+
+if HAS_REQUESTS:
+
+    class IMDSAuth(requests.auth.AuthBase):
+        """Authenticate to Databricks using the Azure Instance Metadata Service."""
+
+        def __init__(
+            self,
+            databricks_access_token: str,
+            azure_access_token: str,
+            workspace_resource_id: str,
+        ):
+            self.databricks_access_token = databricks_access_token
+            self.azure_access_token = azure_access_token
+            self.workspace_resource_id = workspace_resource_id
+
+        def __call__(self, r):
+            """IMDS (or service principal) authentication requires 2 additional headers."""
+            r.headers["Authorization"] = f"Bearer {self.databricks_access_token}"
+            r.headers["X-Databricks-Azure-SP-Management-Token"] = (
+                self.azure_access_token
+            )
+            r.headers["X-Databricks-Azure-Workspace-Resource-Id"] = (
+                self.workspace_resource_id
+            )
+            return r
 
 
 def _query_data_links(
