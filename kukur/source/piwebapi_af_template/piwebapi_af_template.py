@@ -3,6 +3,7 @@
 # SPDX-FileCopyrightText: 2025 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 import logging
 import urllib.parse
 from collections.abc import Generator
@@ -408,7 +409,7 @@ class PIWebAPIAssetFrameworkTemplateSource:
             raise ElementTemplateQueryFailedException(
                 ";".join(
                     result["GetElementTemplates"]["Content"].get(
-                        "Errors", ["unknown error"]
+                        "Errors", [json.dumps(result)]
                     )
                 )
             )
@@ -572,9 +573,9 @@ def _validate_batch_response_status(result: dict):
     error_message = None
     elements_content = result["GetElements"]["Content"]
     if result["GetElements"]["Status"] not in [HTTP_OK, HTTP_MULTI_STATUS]:
-        error_message = "unknown error"
+        error_message = json.dumps(result)
         if isinstance(elements_content, dict):
-            error_message = ";".join(elements_content.get("Errors", ["unknown error"]))
+            error_message = ";".join(elements_content.get("Errors", [error_message]))
         if isinstance(elements_content, str):
             error_message = elements_content
 
@@ -582,12 +583,10 @@ def _validate_batch_response_status(result: dict):
         raise MetadataSearchFailedException(error_message)
 
     if result["GetAttributes"]["Status"] not in [HTTP_OK, HTTP_MULTI_STATUS]:
-        error_message = "unknown error"
+        error_message = json.dumps(result)
         attributes_content = result["GetAttributes"]["Content"]
         if isinstance(attributes_content, dict):
-            error_message = ";".join(
-                attributes_content.get("Errors", ["unknown error"])
-            )
+            error_message = ";".join(attributes_content.get("Errors", [error_message]))
         if isinstance(attributes_content, str):
             error_message = attributes_content
     if error_message is not None:
@@ -607,12 +606,12 @@ def _validate_batch_response_status(result: dict):
 def _validate_attribute_batch_item_status(element_name: str, item_data: dict):
     error_message = None
     if "Status" in item_data and item_data["Status"] != HTTP_OK:
-        error_message = "unknown error"
+        error_message = json.dumps(item_data)
         if "Content" in item_data:
             if isinstance(item_data["Content"], str):
                 error_message = item_data["Content"]
             elif isinstance(item_data["Content"], dict):
-                error_message = item_data["Content"].get("Message", "unknown error")
+                error_message = item_data["Content"].get("Message", item_data)
     if error_message is not None:
         raise AttributeTemplateQueryFailedException(
             f"Failed to get attributes for element '{element_name}': {error_message}"

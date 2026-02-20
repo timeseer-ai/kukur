@@ -730,6 +730,16 @@ def mocked_requests_batch_error_templates(*args, **kwargs):
     raise Exception(args[0])
 
 
+def mocked_requests_batch_error_unknown_response(*args, **kwargs):
+    if args[0] == f"{WEB_API_URI}batch":
+        assert "X-Requested-With" in kwargs["headers"]
+        return MockResponse(
+            {"GetElementTemplates": {"Status": 400, "Content": {"error": "message"}}},
+            200,
+        )
+    raise Exception(args[0])
+
+
 def mocked_requests_batch_global_error_attributes(*args, **kwargs):
     if args[0] == f"{WEB_API_URI}batch":
         assert "X-Requested-With" in kwargs["headers"]
@@ -1046,6 +1056,21 @@ def test_get_element_template_request_error(_) -> None:
     )
     with pytest.raises(ElementTemplateQueryFailedException):
         source.list_element_templates()
+
+
+@patch(
+    "requests.Session.post", side_effect=mocked_requests_batch_error_unknown_response
+)
+def test_get_element_template_request_unknown_error(_) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "element_template": "Reactor",
+        }
+    )
+    with pytest.raises(ElementTemplateQueryFailedException) as excinfo:
+        source.list_element_templates()
+    assert '"error": "message"' in str(excinfo.value)
 
 
 @patch(
