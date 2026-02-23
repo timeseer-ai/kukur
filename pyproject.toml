@@ -109,7 +109,7 @@ convention = "google"
 "tests/**.py" = ["ARG001", "ARG002", "D", "PLR"]
 
 [tool.pytest.ini_options]
-markers = ["crate", "elasticsearch", "influxdb", "kukur", "odbc", "postgresql"]
+markers = ["config", "crate", "elasticsearch", "influxdb", "kukur", "odbc", "postgresql"]
 
 [[tool.cxfreeze.executables]]
 script = "kukur/cli.py"

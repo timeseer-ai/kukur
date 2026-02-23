@@ -129,11 +129,73 @@ class AttributeCategory:
     description: str
 
 
+class PIWebAPIConnection:
+    """Stateful connection to PI Asset Framework using PI Web API.
+
+    Should be used as a context manager.
+    """
+
+    def __init__(self, config: dict):
+        self._auth = AuthenticationProperties.from_data(config)
+        self._verify_ssl = config.get("verify_ssl", True)
+
+        if not self._verify_ssl:
+            urllib3.disable_warnings()
+
+    def __enter__(self) -> "PIWebAPIConnection":
+        self.session = Session()
+        self.session.headers["X-Requested-With"] = "Kukur"
+        self.session.verify = self._verify_ssl
+        self._auth.apply(self.session)
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        if self.session is not None:
+            self.session.close()
+
+
 class PIWebAPIAssetFrameworkTemplateSource:
     """Connect to PI AF using the PI Web API."""
 
     def __init__(self, config: dict):
-        self.__request_properties = RequestProperties(
+        self._config = config
+
+    def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
+        """Return all attributes of the selected elements in the Asset Framework."""
+        with PIWebAPIConnection(self._config) as connection:
+            af = PIAssetFramework(connection, self._config)
+            yield from af.search(selector)
+
+    def get_metadata(self, selector: SeriesSelector) -> Metadata:
+        """Return metadata for one tag."""
+        raise NotImplementedError()
+
+    def get_data(
+        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
+    ) -> pa.Table:
+        """Return data for the given time series in the given time period."""
+        with PIWebAPIConnection(self._config) as connection:
+            af = PIAssetFramework(connection, self._config)
+            yield from af.get_data(selector, start_date, end_date)
+
+    def get_plot_data(
+        self,
+        selector: SeriesSelector,
+        start_date: datetime,
+        end_date: datetime,
+        interval_count: int,
+    ):
+        """Return plot data for the given time series in the given time period."""
+        with PIWebAPIConnection(self._config) as connection:
+            af = PIAssetFramework(connection, self._config)
+            yield from af.get_plot_data(selector, start_date, end_date, interval_count)
+
+
+class PIAssetFramework:
+    """Query PI Asset Framework using PI Web API."""
+
+    def __init__(self, connection: PIWebAPIConnection, config: dict):
+        self._request_properties = RequestProperties(
             verify_ssl=config.get("verify_ssl", True),
             timeout_seconds=config.get("timeout_seconds", 60),
             metadata_request_timeout_seconds=config.get(
@@ -148,11 +210,7 @@ class PIWebAPIAssetFrameworkTemplateSource:
         )
 
         self.__config = AFTemplateSourceConfiguration.from_data(config)
-
-        self.__auth = AuthenticationProperties.from_data(config)
-
-        if not self.__request_properties.verify_ssl:
-            urllib3.disable_warnings()
+        self._session = connection.session
 
     def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
         """Return all attributes in the Asset Framework."""
@@ -162,8 +220,6 @@ class PIWebAPIAssetFrameworkTemplateSource:
         ):
             logger.info("Cannot search in element template source without template")
             return
-
-        session = self._get_session()
 
         element_params = {
             "templateName": self.__config.element_template,
@@ -177,7 +233,7 @@ class PIWebAPIAssetFrameworkTemplateSource:
                     "Items.Links.Attributes",
                 ]
             ),
-            "maxCount": self.__request_properties.max_returned_items_per_call,
+            "maxCount": self._request_properties.max_returned_items_per_call,
         }
         if self.__config.element_category is not None:
             element_params["categoryName"] = self.__config.element_category
@@ -200,7 +256,7 @@ class PIWebAPIAssetFrameworkTemplateSource:
                     "Items.Links.EnumerationValues",
                 ]
             ),
-            "maxCount": self.__request_properties.max_returned_items_per_call,
+            "maxCount": self._request_properties.max_returned_items_per_call,
         }
         if self.__config.attribute_category is not None:
             attribute_params["categoryName"] = self.__config.attribute_category
@@ -208,7 +264,7 @@ class PIWebAPIAssetFrameworkTemplateSource:
             "GetElements": {
                 "Method": "GET",
                 "Resource": add_query_params(
-                    self._get_element_search_url(session),
+                    self._get_element_search_url(),
                     element_params,
                 ),
             },
@@ -226,18 +282,16 @@ class PIWebAPIAssetFrameworkTemplateSource:
             },
         }
 
-        response = session.post(
+        response = self._session.post(
             self._get_batch_url(),
-            verify=self.__request_properties.verify_ssl,
-            timeout=self.__request_properties.metadata_request_timeout_seconds,
-            headers={"X-Requested-With": "Kukur"},
+            timeout=self._request_properties.metadata_request_timeout_seconds,
             json=batch_query,
         )
         response.raise_for_status()
         result = response.json()
         _validate_batch_response_status(result)
 
-        dictionary_lookup = _DictionaryLookup(self.__request_properties, session)
+        dictionary_lookup = _DictionaryLookup(self._request_properties, self._session)
         for i, element in enumerate(result["GetElements"]["Content"].get("Items")):
             element_metadata = {self.__config.element_template: element["Name"]}
             if len(element["CategoryNames"]) > 0:
@@ -276,18 +330,14 @@ class PIWebAPIAssetFrameworkTemplateSource:
                         dictionary_lookup.lookup_dictionary(metadata, attribute)
                         yield metadata
 
-    def get_metadata(self, selector: SeriesSelector) -> Metadata:
-        """Return metadata for one tag."""
-        raise NotImplementedError()
-
     def get_data(
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         """Return data for the given time series in the given time period."""
         data_url = self._get_data_url(selector)
         return read_data(
-            self._get_session(),
-            self.__request_properties,
+            self._session,
+            self._request_properties,
             DataRequest(data_url, start_date, end_date, None),
         )
 
@@ -301,26 +351,22 @@ class PIWebAPIAssetFrameworkTemplateSource:
         """Return plot data for the given time series in the given time period."""
         plot_url = self._get_plot_url(selector)
         return read_data(
-            self._get_session(),
-            self.__request_properties,
+            self._session,
+            self._request_properties,
             DataRequest(plot_url, start_date, end_date, interval_count),
         )
 
     def list_elements(self, element_id: str | None) -> list[Element]:
         """Return all direct child elements."""
-        session = self._get_session()
         if element_id is None:
             url = f"{self.__config.database_uri}/elements"
         else:
-            self._verify_element_in_database(
-                session, f"{self._get_elements_url()}/{element_id}"
-            )
+            self._verify_element_in_database(f"{self._get_elements_url()}/{element_id}")
 
             url = f"{self._get_elements_url()}/{element_id}/elements"
-        response = session.get(
+        response = self._session.get(
             url,
-            verify=self.__request_properties.verify_ssl,
-            timeout=self.__request_properties.metadata_request_timeout_seconds,
+            timeout=self._request_properties.metadata_request_timeout_seconds,
             params={
                 "selectedFields": ";".join(
                     [
@@ -347,8 +393,6 @@ class PIWebAPIAssetFrameworkTemplateSource:
 
     def list_element_templates(self) -> list[ElementTemplate]:
         """Return all element templates in the database."""
-        session = self._get_session()
-
         element_template_params = {
             "selectedFields": ";".join(
                 [
@@ -395,11 +439,9 @@ class PIWebAPIAssetFrameworkTemplateSource:
             },
         }
 
-        response = session.post(
+        response = self._session.post(
             self._get_batch_url(),
-            verify=self.__request_properties.verify_ssl,
-            timeout=self.__request_properties.metadata_request_timeout_seconds,
-            headers={"X-Requested-With": "Kukur"},
+            timeout=self._request_properties.metadata_request_timeout_seconds,
             json=batch_query,
         )
         response.raise_for_status()
@@ -440,13 +482,11 @@ class PIWebAPIAssetFrameworkTemplateSource:
 
     def list_element_categories(self) -> list[ElementCategory]:
         """Return all element categories in the database."""
-        session = self._get_session()
         url = f"{self.__config.database_uri}/elementcategories"
 
-        response = session.get(
+        response = self._session.get(
             url,
-            verify=self.__request_properties.verify_ssl,
-            timeout=self.__request_properties.metadata_request_timeout_seconds,
+            timeout=self._request_properties.metadata_request_timeout_seconds,
             params={
                 "selectedFields": ";".join(
                     [
@@ -469,13 +509,12 @@ class PIWebAPIAssetFrameworkTemplateSource:
 
     def list_attribute_categories(self) -> list[AttributeCategory]:
         """Return all attribute categories in the database."""
-        session = self._get_session()
         url = f"{self.__config.database_uri}/attributecategories"
 
-        response = session.get(
+        response = self._session.get(
             url,
-            verify=self.__request_properties.verify_ssl,
-            timeout=self.__request_properties.metadata_request_timeout_seconds,
+            verify=self._request_properties.verify_ssl,
+            timeout=self._request_properties.metadata_request_timeout_seconds,
             params={
                 "selectedFields": ";".join(
                     [
@@ -495,11 +534,6 @@ class PIWebAPIAssetFrameworkTemplateSource:
             )
             for item in data["Items"]
         ]
-
-    def _get_session(self):
-        session = Session()
-        self.__auth.apply(session)
-        return session
 
     def _get_batch_url(self) -> str:
         database_uri = urllib.parse.urlparse(self.__config.database_uri)
@@ -536,23 +570,20 @@ class PIWebAPIAssetFrameworkTemplateSource:
         )
         return urllib.parse.urlunparse(database_uri._replace(path=str(plot_path)))
 
-    def _get_element_search_url(self, session) -> str:
+    def _get_element_search_url(self) -> str:
         elements_uri = self._get_database_elements_url()
         if self.__config.root_id is not None:
             element_id = self.__config.root_id
-            self._verify_element_in_database(
-                session, f"{self._get_elements_url()}/{element_id}"
-            )
+            self._verify_element_in_database(f"{self._get_elements_url()}/{element_id}")
 
             elements_uri = f"{self._get_elements_url()}/{element_id}/elements"
         return elements_uri
 
-    def _verify_element_in_database(self, session, url: str):
+    def _verify_element_in_database(self, url: str):
         """Raise an exception when an element is not in the configured database."""
-        response = session.get(
+        response = self._session.get(
             url,
-            verify=self.__request_properties.verify_ssl,
-            timeout=self.__request_properties.metadata_request_timeout_seconds,
+            timeout=self._request_properties.metadata_request_timeout_seconds,
             params={
                 "selectedFields": ";".join(
                     [
