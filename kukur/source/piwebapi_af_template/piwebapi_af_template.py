@@ -9,7 +9,7 @@ import urllib.parse
 from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import datetime
-from pathlib import PurePath
+from pathlib import PurePosixPath
 
 import pyarrow as pa
 
@@ -154,41 +154,35 @@ class PIWebAPIConnection:
             self.session.close()
 
 
-class PIWebAPIAssetFrameworkTemplateSource:
-    """Connect to PI AF using the PI Web API."""
+class DatabaseURLBuilder:
+    """Build Web API URLs for Asset Databases.
 
-    def __init__(self, config: dict):
-        self._config = config
+    Should be used for building the starting point for AF navigation.
+    Use the Links to navigate.
+    """
 
-    def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
-        """Return all attributes of the selected elements in the Asset Framework."""
-        with PIWebAPIConnection(self._config) as connection:
-            af = PIAssetFramework(connection, self._config)
-            yield from af.search(selector)
+    def __init__(self, database_uri: str):
+        self.database_uri = urllib.parse.urlparse(database_uri)
 
-    def get_metadata(self, selector: SeriesSelector) -> Metadata:
-        """Return metadata for one tag."""
-        raise NotImplementedError()
+    def root(self, path: list[str] | str) -> str:
+        """Generate a URL relative to the root of the Web API."""
+        if isinstance(path, str):
+            path = [path]
+        result_path = PurePosixPath(
+            self.database_uri.path
+        ).parent.parent / PurePosixPath(*path)
+        return urllib.parse.urlunparse(
+            self.database_uri._replace(path=str(result_path))
+        )
 
-    def get_data(
-        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
-    ) -> pa.Table:
-        """Return data for the given time series in the given time period."""
-        with PIWebAPIConnection(self._config) as connection:
-            af = PIAssetFramework(connection, self._config)
-            yield from af.get_data(selector, start_date, end_date)
-
-    def get_plot_data(
-        self,
-        selector: SeriesSelector,
-        start_date: datetime,
-        end_date: datetime,
-        interval_count: int,
-    ):
-        """Return plot data for the given time series in the given time period."""
-        with PIWebAPIConnection(self._config) as connection:
-            af = PIAssetFramework(connection, self._config)
-            yield from af.get_plot_data(selector, start_date, end_date, interval_count)
+    def database(self, path: list[str] | str) -> str:
+        """Generate a URL relative to the database."""
+        if isinstance(path, str):
+            path = [path]
+        result_path = PurePosixPath(self.database_uri.path) / PurePosixPath(*path)
+        return urllib.parse.urlunparse(
+            self.database_uri._replace(path=str(result_path))
+        )
 
 
 class PIAssetFramework:
@@ -209,20 +203,21 @@ class PIAssetFramework:
             ),
         )
 
-        self.__config = AFTemplateSourceConfiguration.from_data(config)
+        self._config = AFTemplateSourceConfiguration.from_data(config)
         self._session = connection.session
+        self._url = DatabaseURLBuilder(self._config.database_uri)
 
     def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
         """Return all attributes in the Asset Framework."""
         if (
-            self.__config.element_template is None
-            or self.__config.element_template.strip() == ""
+            self._config.element_template is None
+            or self._config.element_template.strip() == ""
         ):
             logger.info("Cannot search in element template source without template")
             return
 
         element_params = {
-            "templateName": self.__config.element_template,
+            "templateName": self._config.element_template,
             "searchFullHierarchy": "true",
             "selectedFields": ";".join(
                 [
@@ -235,8 +230,8 @@ class PIAssetFramework:
             ),
             "maxCount": self._request_properties.max_returned_items_per_call,
         }
-        if self.__config.element_category is not None:
-            element_params["categoryName"] = self.__config.element_category
+        if self._config.element_category is not None:
+            element_params["categoryName"] = self._config.element_category
         attribute_params = {
             "searchFullHierarchy": "true",
             "selectedFields": ";".join(
@@ -258,8 +253,8 @@ class PIAssetFramework:
             ),
             "maxCount": self._request_properties.max_returned_items_per_call,
         }
-        if self.__config.attribute_category is not None:
-            attribute_params["categoryName"] = self.__config.attribute_category
+        if self._config.attribute_category is not None:
+            attribute_params["categoryName"] = self._config.attribute_category
         batch_query = {
             "GetElements": {
                 "Method": "GET",
@@ -293,7 +288,7 @@ class PIAssetFramework:
 
         dictionary_lookup = _DictionaryLookup(self._request_properties, self._session)
         for i, element in enumerate(result["GetElements"]["Content"].get("Items")):
-            element_metadata = {self.__config.element_template: element["Name"]}
+            element_metadata = {self._config.element_template: element["Name"]}
             if len(element["CategoryNames"]) > 0:
                 element_metadata["Element category"] = ";".join(
                     element["CategoryNames"]
@@ -302,9 +297,9 @@ class PIAssetFramework:
             attributes = result["GetAttributes"]["Content"]["Items"][i]
             _validate_attribute_batch_item_status(element["Name"], attributes)
             for attribute in attributes["Content"].get("Items", []):
-                if self.__config.attribute_names is not None:
+                if self._config.attribute_names is not None:
                     attribute_path = attribute["Path"].split("|", maxsplit=1)[1]
-                    if attribute_path not in self.__config.attribute_names:
+                    if attribute_path not in self._config.attribute_names:
                         continue
 
                 tags = {
@@ -315,7 +310,7 @@ class PIAssetFramework:
                 if (
                     "DataReferencePlugIn" in attribute
                     and attribute["DataReferencePlugIn"]
-                    in self.__config.allowed_data_references
+                    in self._config.allowed_data_references
                 ):
                     metadata = _get_metadata(
                         SeriesSelector(selector.source, tags, attribute["Name"]),
@@ -359,11 +354,11 @@ class PIAssetFramework:
     def list_elements(self, element_id: str | None) -> list[Element]:
         """Return all direct child elements."""
         if element_id is None:
-            url = f"{self.__config.database_uri}/elements"
+            url = self._url.database("elements")
         else:
-            self._verify_element_in_database(f"{self._get_elements_url()}/{element_id}")
+            self._verify_element_in_database(self._url.root(["elements", element_id]))
+            url = self._url.root(["elements", element_id, "elements"])
 
-            url = f"{self._get_elements_url()}/{element_id}/elements"
         response = self._session.get(
             url,
             timeout=self._request_properties.metadata_request_timeout_seconds,
@@ -419,7 +414,7 @@ class PIAssetFramework:
             "GetElementTemplates": {
                 "Method": "GET",
                 "Resource": add_query_params(
-                    f"{self.__config.database_uri}/elementtemplates",
+                    f"{self._config.database_uri}/elementtemplates",
                     element_template_params,
                 ),
             },
@@ -473,7 +468,7 @@ class PIAssetFramework:
                         )
                         for item in attributes["Content"].get("Items", [])
                         if item["DataReferencePlugIn"]
-                        in self.__config.allowed_data_references
+                        in self._config.allowed_data_references
                     ],
                 )
             )
@@ -482,7 +477,7 @@ class PIAssetFramework:
 
     def list_element_categories(self) -> list[ElementCategory]:
         """Return all element categories in the database."""
-        url = f"{self.__config.database_uri}/elementcategories"
+        url = f"{self._config.database_uri}/elementcategories"
 
         response = self._session.get(
             url,
@@ -509,7 +504,7 @@ class PIAssetFramework:
 
     def list_attribute_categories(self) -> list[AttributeCategory]:
         """Return all attribute categories in the database."""
-        url = f"{self.__config.database_uri}/attributecategories"
+        url = f"{self._config.database_uri}/attributecategories"
 
         response = self._session.get(
             url,
@@ -536,48 +531,20 @@ class PIAssetFramework:
         ]
 
     def _get_batch_url(self) -> str:
-        database_uri = urllib.parse.urlparse(self.__config.database_uri)
-        batch_path = PurePath(database_uri.path).parent.parent / "batch"
-        return urllib.parse.urlunparse(database_uri._replace(path=str(batch_path)))
-
-    def _get_database_elements_url(self) -> str:
-        database_uri = urllib.parse.urlparse(self.__config.database_uri)
-        elements_path = PurePath(database_uri.path) / "elements"
-        return urllib.parse.urlunparse(database_uri._replace(path=str(elements_path)))
-
-    def _get_elements_url(self) -> str:
-        database_uri = urllib.parse.urlparse(self.__config.database_uri)
-        elements_path = PurePath(database_uri.path).parent.parent / "elements"
-        return urllib.parse.urlunparse(database_uri._replace(path=str(elements_path)))
+        return self._url.root("batch")
 
     def _get_data_url(self, selector: SeriesSelector) -> str:
-        database_uri = urllib.parse.urlparse(self.__config.database_uri)
-        recorded_path = (
-            PurePath(database_uri.path).parent.parent
-            / "streams"
-            / selector.tags["__id__"]
-            / "recorded"
-        )
-        return urllib.parse.urlunparse(database_uri._replace(path=str(recorded_path)))
+        return self._url.root(["streams", selector.tags["__id__"], "recorded"])
 
     def _get_plot_url(self, selector: SeriesSelector) -> str:
-        database_uri = urllib.parse.urlparse(self.__config.database_uri)
-        plot_path = (
-            PurePath(database_uri.path).parent.parent
-            / "streams"
-            / selector.tags["__id__"]
-            / "plot"
-        )
-        return urllib.parse.urlunparse(database_uri._replace(path=str(plot_path)))
+        return self._url.root(["streams", selector.tags["__id__"], "plot"])
 
     def _get_element_search_url(self) -> str:
-        elements_uri = self._get_database_elements_url()
-        if self.__config.root_id is not None:
-            element_id = self.__config.root_id
-            self._verify_element_in_database(f"{self._get_elements_url()}/{element_id}")
-
-            elements_uri = f"{self._get_elements_url()}/{element_id}/elements"
-        return elements_uri
+        if self._config.root_id is not None:
+            element_id = self._config.root_id
+            self._verify_element_in_database(self._url.root(["elements", element_id]))
+            return self._url.root(["elements", element_id, "elements"])
+        return self._url.database("elements")
 
     def _verify_element_in_database(self, url: str):
         """Raise an exception when an element is not in the configured database."""
@@ -594,10 +561,47 @@ class PIAssetFramework:
         )
         response.raise_for_status()
         data = response.json()
-        if data["Links"]["Database"] != self.__config.database_uri:
+        if data["Links"]["Database"] != self._config.database_uri:
             raise ElementInOtherDatabaseException(
                 f"element {url} is not in configured database"
             )
+
+
+class PIWebAPIAssetFrameworkTemplateSource:
+    """Connect to PI AF using the PI Web API."""
+
+    def __init__(self, config: dict):
+        self._config = config
+
+    def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
+        """Return all attributes of the selected elements in the Asset Framework."""
+        with PIWebAPIConnection(self._config) as connection:
+            af = PIAssetFramework(connection, self._config)
+            yield from af.search(selector)
+
+    def get_metadata(self, selector: SeriesSelector) -> Metadata:
+        """Return metadata for one tag."""
+        raise NotImplementedError()
+
+    def get_data(
+        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
+    ) -> pa.Table:
+        """Return data for the given time series in the given time period."""
+        with PIWebAPIConnection(self._config) as connection:
+            af = PIAssetFramework(connection, self._config)
+            return af.get_data(selector, start_date, end_date)
+
+    def get_plot_data(
+        self,
+        selector: SeriesSelector,
+        start_date: datetime,
+        end_date: datetime,
+        interval_count: int,
+    ) -> pa.Table:
+        """Return plot data for the given time series in the given time period."""
+        with PIWebAPIConnection(self._config) as connection:
+            af = PIAssetFramework(connection, self._config)
+            return af.get_plot_data(selector, start_date, end_date, interval_count)
 
 
 def _validate_batch_response_status(result: dict):
