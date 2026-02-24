@@ -674,6 +674,75 @@ PHASES_RESPONSE = {
     ]
 }
 
+BATCH_ATTRIBUTE_CATEGORY_RESPONSE = {
+    "GetElement": {
+        "Status": 207,
+        "Headers": {},
+        "Content": {
+            "Total": 2,
+            "Items": [
+                {
+                    "Status": 200,
+                    "Content": {
+                        "WebId": "R1",
+                        "Name": "Reactor01",
+                        "Description": "",
+                        "TemplateName": "Reactor",
+                        "CategoryNames": [],
+                    },
+                },
+                {
+                    "Status": 200,
+                    "Content": {
+                        "WebId": "R2",
+                        "Name": "Reactor02",
+                        "Description": "",
+                        "TemplateName": "Reactor",
+                        "CategoryNames": [],
+                    },
+                },
+            ],
+        },
+    },
+    "GetAttributes": {
+        "Status": 200,
+        "Content": {
+            "Items": [
+                {
+                    "WebId": "A1",
+                    "Name": "Level",
+                    "Description": "",
+                    "Path": "\\\\vm-ts-pi\\WriteBack\\Reactors\\Reactor01|Level",
+                    "Type": "Double",
+                    "TypeQualifier": "",
+                    "DefaultUnitsNameAbbreviation": "",
+                    "DataReferencePlugIn": "PI Point",
+                    "CategoryNames": ["Validation"],
+                    "Step": False,
+                    "Span": 100.0,
+                    "Zero": 0.0,
+                    "Links": {"Element": "https://pi.timeseer.ai/piwebapi/elements/A1"},
+                },
+                {
+                    "WebId": "A2",
+                    "Name": "Level",
+                    "Description": "",
+                    "Path": "\\\\vm-ts-pi\\WriteBack\\Reactors\\Reactor02|Level",
+                    "Type": "Double",
+                    "TypeQualifier": "",
+                    "DefaultUnitsNameAbbreviation": "",
+                    "DataReferencePlugIn": "PI Point",
+                    "CategoryNames": ["Validation"],
+                    "Step": False,
+                    "Span": 100.0,
+                    "Zero": 0.0,
+                    "Links": {"Element": "https://pi.timeseer.ai/piwebapi/elements/A2"},
+                },
+            ]
+        },
+    },
+}
+
 
 class MockResponse:
     def __init__(self, json_data, status_code):
@@ -705,6 +774,8 @@ def mocked_requests_post(*args, **kwargs):
 
             response = BATCH_ELEMENT_TEMPLATES_RESPONSE
             return MockResponse(response, 200)
+        if "GetElement" in kwargs["json"]:
+            return MockResponse(BATCH_ATTRIBUTE_CATEGORY_RESPONSE, 200)
 
         if "categoryName=Invalid" in kwargs["json"]["GetElements"]["Resource"]:
             return MockResponse(BATCH_ERROR, 200)
@@ -979,6 +1050,19 @@ def test_search_dictionary(_post, _get) -> None:
         0: "Phase1",
         1: "Phase2",
     }
+
+
+@patch("requests.Session.post", side_effect=mocked_requests_post)
+def test_search_by_category(_post) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "attribute_category": "Validation",
+        }
+    )
+    all_series = list(source.search(SeriesSearch("Test")))
+    assert len(all_series) == 2
+    assert all_series[0].series.tags["series name"] == "Reactor01"
 
 
 @patch("requests.Session.get", side_effect=mocked_requests_get)

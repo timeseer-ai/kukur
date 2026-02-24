@@ -177,6 +177,10 @@ class DatabaseURLBuilder:
             self.database_uri._replace(path=str(result_path))
         )
 
+    def database_id(self) -> str:
+        """Return the WebID of the Asset Database."""
+        return PurePosixPath(self.database_uri.path).stem
+
 
 class PIAssetFramework:
     """Query PI Asset Framework using PI Web API."""
@@ -203,12 +207,23 @@ class PIAssetFramework:
     def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
         """Return all attributes in the Asset Framework."""
         if (
-            self._config.element_template is None
-            or self._config.element_template.strip() == ""
+            self._config.element_template is not None
+            and self._config.element_template.strip() != ""
         ):
-            logger.info("Cannot search in element template source without template")
-            return
+            yield from self._search_template(selector)
+        elif (
+            self._config.attribute_category is not None
+            and self._config.attribute_category.strip() != ""
+        ):
+            yield from self._search_attribute_category(selector)
+        else:
+            logger.info(
+                "Cannot search in AF source without template or attribute category"
+            )
 
+    def _search_template(
+        self, selector: SeriesSearch
+    ) -> Generator[Metadata, None, None]:
         element_params = {
             "templateName": self._config.element_template,
             "searchFullHierarchy": "true",
@@ -316,6 +331,129 @@ class PIAssetFramework:
                             )
                         dictionary_lookup.lookup_dictionary(metadata, attribute)
                         yield metadata
+
+    def _search_attribute_category(
+        self, selector: SeriesSearch
+    ) -> Generator[Metadata, None, None]:
+        root_element = "Name:=*"
+        if self._config.root_id is not None:
+            root_element = f"ID:={self._config.root_id}"
+
+        attribute_params = {
+            "databaseWebId": self._url.database_id(),
+            "query": f"Element:{{ {root_element} }} category:{self._config.attribute_category}",
+            "searchFullHierarchy": "true",
+            "selectedFields": ";".join(
+                [
+                    "Items.WebId",
+                    "Items.Name",
+                    "Items.Description",
+                    "Items.Path",
+                    "Items.CategoryNames",
+                    "Items.DataReferencePlugin",
+                    "Items.Type",
+                    "Items.TypeQualifier",
+                    "Items.DefaultUnitsNameAbbreviation",
+                    "Items.Step",
+                    "Items.Span",
+                    "Items.Zero",
+                    "Items.Links.EnumerationValues",
+                    "Items.Links.Element",
+                ]
+            ),
+            "maxCount": self._request_properties.max_returned_items_per_call,
+        }
+
+        element_params = {
+            "selectedFields": ";".join(
+                [
+                    "Name",
+                    "WebId",
+                    "Description",
+                    "TemplateName",
+                    "CategoryNames",
+                ]
+            ),
+            "maxCount": self._request_properties.max_returned_items_per_call,
+        }
+        if self._config.element_category is not None:
+            element_params["categoryName"] = self._config.element_category
+
+        batch_query = {
+            "GetAttributes": {
+                "Method": "GET",
+                "Resource": add_query_params(
+                    self._url.root(["attributes", "search"]),
+                    attribute_params,
+                ),
+            },
+            "GetElement": {
+                "Method": "GET",
+                "RequestTemplate": {
+                    "Resource": "{0}?"
+                    + urllib.parse.urlencode(
+                        element_params,
+                        doseq=True,
+                    ),
+                },
+                "Parameters": ["$.GetAttributes.Content.Items[*].Links.Element"],
+                "ParentIds": ["GetAttributes"],
+            },
+        }
+
+        response = self._session.post(
+            self._get_batch_url(),
+            timeout=self._request_properties.metadata_request_timeout_seconds,
+            json=batch_query,
+        )
+        response.raise_for_status()
+        result = response.json()
+        validate_batch_response(result)
+
+        dictionary_lookup = _DictionaryLookup(self._request_properties, self._session)
+        for i, element_request in enumerate(
+            result["GetElement"]["Content"].get("Items")
+        ):
+            element = element_request["Content"]
+            element_metadata = {}
+            if (
+                "TemplateName" in element
+                and element["TemplateName"] is not None
+                and len(element["TemplateName"]) > 0
+            ):
+                element_metadata[element["TemplateName"]] = element["Name"]
+
+            if len(element["CategoryNames"]) > 0:
+                element_metadata["Element category"] = ";".join(
+                    element["CategoryNames"]
+                )
+
+            attribute = result["GetAttributes"]["Content"]["Items"][i]
+            if self._config.attribute_names is not None:
+                attribute_path = attribute["Path"].split("|", maxsplit=1)[1]
+                if attribute_path not in self._config.attribute_names:
+                    continue
+
+            tags = {
+                "series name": element["Name"],
+                "__id__": attribute["WebId"],
+            }
+
+            if (
+                "DataReferencePlugIn" in attribute
+                and attribute["DataReferencePlugIn"]
+                in self._config.allowed_data_references
+            ):
+                metadata = _get_metadata(
+                    SeriesSelector(selector.source, tags, attribute["Name"]),
+                    attribute,
+                    element_metadata,
+                )
+                if metadata is not None:
+                    if metadata.get_field(fields.Description) == "":
+                        metadata.set_field(fields.Description, element["Description"])
+                    dictionary_lookup.lookup_dictionary(metadata, attribute)
+                    yield metadata
 
     def get_data(
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
