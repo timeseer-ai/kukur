@@ -10,10 +10,10 @@ from kukur.base import SeriesSearch
 from kukur.exceptions import KukurException
 from kukur.source.piwebapi_af_template import from_config
 from kukur.source.piwebapi_af_template.piwebapi_af_template import (
-    AttributeTemplateQueryFailedException,
+    BatchRequestFailedException,
     ElementInOtherDatabaseException,
-    ElementTemplateQueryFailedException,
-    MetadataSearchFailedException,
+    PIAssetFramework,
+    PIWebAPIConnection,
 )
 
 WEB_API_URI = "https://pi.example.org/piwebapi/"
@@ -689,8 +689,6 @@ class MockResponse:
 
 def mocked_requests_post(*args, **kwargs):
     if args[0] == f"{WEB_API_URI}batch":
-        assert "X-Requested-With" in kwargs["headers"]
-
         if "GetElementTemplates" in kwargs["json"]:
             assert (
                 "showDescendants=true"
@@ -725,14 +723,12 @@ def mocked_requests_post(*args, **kwargs):
 
 def mocked_requests_batch_error_templates(*args, **kwargs):
     if args[0] == f"{WEB_API_URI}batch":
-        assert "X-Requested-With" in kwargs["headers"]
         return MockResponse(BATCH_ERROR_TEMPLATES, 200)
     raise Exception(args[0])
 
 
 def mocked_requests_batch_error_unknown_response(*args, **kwargs):
     if args[0] == f"{WEB_API_URI}batch":
-        assert "X-Requested-With" in kwargs["headers"]
         return MockResponse(
             {"GetElementTemplates": {"Status": 400, "Content": {"error": "message"}}},
             200,
@@ -742,22 +738,18 @@ def mocked_requests_batch_error_unknown_response(*args, **kwargs):
 
 def mocked_requests_batch_global_error_attributes(*args, **kwargs):
     if args[0] == f"{WEB_API_URI}batch":
-        assert "X-Requested-With" in kwargs["headers"]
         return MockResponse(BATCH_GLOBAL_ERROR_ATTRIBUTES, 200)
     raise Exception(args[0])
 
 
 def mocked_requests_batch_error_attributes(*args, **kwargs):
     if args[0] == f"{WEB_API_URI}batch":
-        assert "X-Requested-With" in kwargs["headers"]
         return MockResponse(BATCH_PARTIAL_ERROR_ATTRIBUTES, 200)
     raise Exception(args[0])
 
 
 def mocked_requests_empty_attributes(*args, **kwargs):
     if args[0] == f"{WEB_API_URI}batch":
-        assert "X-Requested-With" in kwargs["headers"]
-
         if "GetElements" in kwargs["json"]:
             response = BATCH_EMPTY_ATTRIBUTES_RESPONSE
             return MockResponse(response, 200)
@@ -820,6 +812,21 @@ def mocked_requests_get_invalid_database(*args, **kwargs):
         )
 
     raise Exception(args[0])
+
+
+@pytest.fixture
+def af(request):
+    marker = request.node.get_closest_marker("config")
+    if marker is None:
+        config = {
+            "database_uri": DATABASE_URI,
+            "element_template": "Reactor",
+        }
+    else:
+        config = marker.args[0]
+    with PIWebAPIConnection({}) as connection:
+        af = PIAssetFramework(connection, config)
+        yield af
 
 
 @patch("requests.Session.post", side_effect=mocked_requests_post)
@@ -975,54 +982,32 @@ def test_search_dictionary(_post, _get) -> None:
 
 
 @patch("requests.Session.get", side_effect=mocked_requests_get)
-def test_get_elements(_) -> None:
-    source = from_config(
-        {
-            "database_uri": DATABASE_URI,
-            "element_template": "Reactor",
-        }
-    )
-    elements = list(source.list_elements(None))
+def test_get_elements(_, af: PIAssetFramework) -> None:
+    elements = list(af.list_elements(None))
     assert len(elements) == 3
     assert elements[0].name == "Reactors"
 
 
 @patch("requests.Session.get", side_effect=mocked_requests_get)
-def test_get_elements_for_element(_) -> None:
-    source = from_config(
-        {
-            "database_uri": DATABASE_URI,
-            "element_template": "Reactor",
-        }
-    )
+def test_get_elements_for_element(_, af: PIAssetFramework) -> None:
     element_web_id = "A1_1"
-    elements = list(source.list_elements(element_web_id))
+    elements = list(af.list_elements(element_web_id))
     assert len(elements) == 2
     assert elements[0].name == "Reactor 1"
     assert elements[1].name == "Reactor 2"
 
 
 @patch("requests.Session.get", side_effect=mocked_requests_get)
-def test_get_elements_for_invalid_element(_) -> None:
-    source = from_config(
-        {
-            "database_uri": DATABASE_URI,
-            "element_template": "Reactor",
-        }
-    )
+def test_get_elements_for_invalid_element(_, af: PIAssetFramework) -> None:
     element_web_id = "B1_1"
     with pytest.raises(ElementInOtherDatabaseException):
-        list(source.list_elements(element_web_id))
+        list(af.list_elements(element_web_id))
 
 
 @patch("requests.Session.post", side_effect=mocked_requests_post)
-def test_get_element_templates(_) -> None:
-    source = from_config(
-        {
-            "database_uri": DATABASE_URI,
-        }
-    )
-    element_templates = source.list_element_templates()
+@pytest.mark.config({"database_uri": DATABASE_URI})
+def test_get_element_templates(_, af: PIAssetFramework) -> None:
+    element_templates = af.list_element_templates()
     assert len(element_templates) == 2
     assert "Reactor" in [template.name for template in element_templates]
     reactor_template = [
@@ -1047,29 +1032,17 @@ def test_get_element_templates(_) -> None:
 
 
 @patch("requests.Session.post", side_effect=mocked_requests_batch_error_templates)
-def test_get_element_template_request_error(_) -> None:
-    source = from_config(
-        {
-            "database_uri": DATABASE_URI,
-            "element_template": "Reactor",
-        }
-    )
-    with pytest.raises(ElementTemplateQueryFailedException):
-        source.list_element_templates()
+def test_get_element_template_request_error(_, af: PIAssetFramework) -> None:
+    with pytest.raises(BatchRequestFailedException):
+        af.list_element_templates()
 
 
 @patch(
     "requests.Session.post", side_effect=mocked_requests_batch_error_unknown_response
 )
-def test_get_element_template_request_unknown_error(_) -> None:
-    source = from_config(
-        {
-            "database_uri": DATABASE_URI,
-            "element_template": "Reactor",
-        }
-    )
-    with pytest.raises(ElementTemplateQueryFailedException) as excinfo:
-        source.list_element_templates()
+def test_get_element_template_request_unknown_error(_, af: PIAssetFramework) -> None:
+    with pytest.raises(BatchRequestFailedException) as excinfo:
+        af.list_element_templates()
     assert '"error": "message"' in str(excinfo.value)
 
 
@@ -1083,7 +1056,7 @@ def test_search_global_error_get_attributes(_) -> None:
             "element_template": "Reactor",
         }
     )
-    with pytest.raises(MetadataSearchFailedException):
+    with pytest.raises(BatchRequestFailedException):
         list(source.search(SeriesSearch("Test")))
 
 
@@ -1095,16 +1068,16 @@ def test_search_error_get_attributes(_) -> None:
             "element_template": "Reactor",
         }
     )
-    with pytest.raises(AttributeTemplateQueryFailedException):
+    with pytest.raises(BatchRequestFailedException):
         list(source.search(SeriesSearch("Test")))
 
 
 @patch("requests.Session.post", side_effect=mocked_requests_post)
-def test_get_element_templates_formulat(_) -> None:
-    source = from_config(
-        {"database_uri": DATABASE_URI, "allowed_data_references": ["Formula"]}
-    )
-    element_templates = source.list_element_templates()
+@pytest.mark.config(
+    {"database_uri": DATABASE_URI, "allowed_data_references": ["Formula"]}
+)
+def test_get_element_templates_formulat(_, af: PIAssetFramework) -> None:
+    element_templates = af.list_element_templates()
     assert len(element_templates) == 2
     assert "Reactor" in [template.name for template in element_templates]
     reactor_template = [
@@ -1117,28 +1090,16 @@ def test_get_element_templates_formulat(_) -> None:
 
 
 @patch("requests.Session.get", side_effect=mocked_requests_get)
-def test_get_element_categories(_) -> None:
-    source = from_config(
-        {
-            "database_uri": DATABASE_URI,
-            "element_template": "Reactor",
-        }
-    )
-    element_categories = source.list_element_categories()
+def test_get_element_categories(_, af: PIAssetFramework) -> None:
+    element_categories = af.list_element_categories()
     assert len(element_categories) == 2
     assert element_categories[0].name == "Production"
     assert element_categories[1].name == "Test"
 
 
 @patch("requests.Session.get", side_effect=mocked_requests_get)
-def test_get_attribute_categories(_) -> None:
-    source = from_config(
-        {
-            "database_uri": DATABASE_URI,
-            "element_template": "Reactor",
-        }
-    )
-    attribute_categories = source.list_attribute_categories()
+def test_get_attribute_categories(_, af: PIAssetFramework) -> None:
+    attribute_categories = af.list_attribute_categories()
     assert len(attribute_categories) == 2
     assert attribute_categories[0].name == "Measurement"
     assert attribute_categories[1].name == "Status"
