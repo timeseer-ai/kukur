@@ -40,23 +40,16 @@ logger = logging.getLogger(__name__)
 
 HTTP_OK = 200
 HTTP_MULTI_STATUS = 207
+HTTP_BAD_REQUEST = 400
 HTTP_NOT_FOUND = 404
-
-
-class MetadataSearchFailedException(KukurException):
-    """Raised when the metadata search failed."""
-
-
-class ElementTemplateQueryFailedException(KukurException):
-    """Raised when element template query failed."""
-
-
-class AttributeTemplateQueryFailedException(KukurException):
-    """Raised when attribute template query failed."""
 
 
 class ElementInOtherDatabaseException(KukurException):
     """Raised when an element is in another AF database."""
+
+
+class BatchRequestFailedException(KukurException):
+    """Raised when a batch query fails."""
 
 
 @dataclass
@@ -284,7 +277,7 @@ class PIAssetFramework:
         )
         response.raise_for_status()
         result = response.json()
-        _validate_batch_response_status(result)
+        validate_batch_response(result)
 
         dictionary_lookup = _DictionaryLookup(self._request_properties, self._session)
         for i, element in enumerate(result["GetElements"]["Content"].get("Items")):
@@ -295,7 +288,6 @@ class PIAssetFramework:
                 )
 
             attributes = result["GetAttributes"]["Content"]["Items"][i]
-            _validate_attribute_batch_item_status(element["Name"], attributes)
             for attribute in attributes["Content"].get("Items", []):
                 if self._config.attribute_names is not None:
                     attribute_path = attribute["Path"].split("|", maxsplit=1)[1]
@@ -441,15 +433,7 @@ class PIAssetFramework:
         )
         response.raise_for_status()
         result = response.json()
-
-        if result["GetElementTemplates"]["Status"] != HTTP_OK:
-            raise ElementTemplateQueryFailedException(
-                ";".join(
-                    result["GetElementTemplates"]["Content"].get(
-                        "Errors", [json.dumps(result)]
-                    )
-                )
-            )
+        validate_batch_response(result)
 
         element_templates = []
         for i, element_template in enumerate(
@@ -604,53 +588,38 @@ class PIWebAPIAssetFrameworkTemplateSource:
             return af.get_plot_data(selector, start_date, end_date, interval_count)
 
 
-def _validate_batch_response_status(result: dict):
-    error_message = None
-    elements_content = result["GetElements"]["Content"]
-    if result["GetElements"]["Status"] not in [HTTP_OK, HTTP_MULTI_STATUS]:
-        error_message = json.dumps(result)
-        if isinstance(elements_content, dict):
-            error_message = ";".join(elements_content.get("Errors", [error_message]))
-        if isinstance(elements_content, str):
-            error_message = elements_content
+def validate_batch_response(result: dict):
+    """Validate a batch controller result.
 
-    if error_message is not None:
-        raise MetadataSearchFailedException(error_message)
+    Successful queries return 200 or 207 (for templated queries).
+    Queries fail with 400.
+    Queries that were not executed because their parent failed return 409.
+    """
+    errors = []
 
-    if result["GetAttributes"]["Status"] not in [HTTP_OK, HTTP_MULTI_STATUS]:
-        error_message = json.dumps(result)
-        attributes_content = result["GetAttributes"]["Content"]
-        if isinstance(attributes_content, dict):
-            error_message = ";".join(attributes_content.get("Errors", [error_message]))
-        if isinstance(attributes_content, str):
-            error_message = attributes_content
-    if error_message is not None:
-        if isinstance(elements_content, dict):
-            elements = [
-                f"{element['Name']}" for element in elements_content.get("Items", [])
-            ]
-            element_names = ", ".join(elements[:5])
-            raise MetadataSearchFailedException(
-                f"Failed to get attributes. Five first elements: {element_names}. {error_message}"
-            )
-        raise MetadataSearchFailedException(
-            f"Failed to get attributes: {error_message}"
+    for batch_id, batch_response in result.items():
+        batch_status = batch_response["Status"]
+        if batch_status == HTTP_MULTI_STATUS:
+            for item in batch_response["Content"]["Items"]:
+                if item["Status"] >= HTTP_BAD_REQUEST:
+                    errors.append((batch_id, _extract_error(item)))
+        elif batch_status >= HTTP_BAD_REQUEST:
+            errors.append((batch_id, _extract_error(batch_response)))
+
+    if len(errors) > 0:
+        raise BatchRequestFailedException(
+            ";".join([f"{batch_id}: {error}" for batch_id, error in errors])
         )
 
 
-def _validate_attribute_batch_item_status(element_name: str, item_data: dict):
-    error_message = None
-    if "Status" in item_data and item_data["Status"] != HTTP_OK:
-        error_message = json.dumps(item_data)
-        if "Content" in item_data:
-            if isinstance(item_data["Content"], str):
-                error_message = item_data["Content"]
-            elif isinstance(item_data["Content"], dict):
-                error_message = item_data["Content"].get("Message", item_data)
-    if error_message is not None:
-        raise AttributeTemplateQueryFailedException(
-            f"Failed to get attributes for element '{element_name}': {error_message}"
-        )
+def _extract_error(item: dict) -> str:
+    content = item["Content"]
+    if isinstance(content, str):
+        return content
+    if isinstance(content, dict):
+        if "Errors" in content:
+            return ";".join(content["Errors"])
+    return json.dumps(content)
 
 
 def _get_metadata(

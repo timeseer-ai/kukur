@@ -10,10 +10,8 @@ from kukur.base import SeriesSearch
 from kukur.exceptions import KukurException
 from kukur.source.piwebapi_af_template import from_config
 from kukur.source.piwebapi_af_template.piwebapi_af_template import (
-    AttributeTemplateQueryFailedException,
+    BatchRequestFailedException,
     ElementInOtherDatabaseException,
-    ElementTemplateQueryFailedException,
-    MetadataSearchFailedException,
     PIAssetFramework,
     PIWebAPIConnection,
 )
@@ -1035,7 +1033,7 @@ def test_get_element_templates(_, af: PIAssetFramework) -> None:
 
 @patch("requests.Session.post", side_effect=mocked_requests_batch_error_templates)
 def test_get_element_template_request_error(_, af: PIAssetFramework) -> None:
-    with pytest.raises(ElementTemplateQueryFailedException):
+    with pytest.raises(BatchRequestFailedException):
         af.list_element_templates()
 
 
@@ -1043,7 +1041,7 @@ def test_get_element_template_request_error(_, af: PIAssetFramework) -> None:
     "requests.Session.post", side_effect=mocked_requests_batch_error_unknown_response
 )
 def test_get_element_template_request_unknown_error(_, af: PIAssetFramework) -> None:
-    with pytest.raises(ElementTemplateQueryFailedException) as excinfo:
+    with pytest.raises(BatchRequestFailedException) as excinfo:
         af.list_element_templates()
     assert '"error": "message"' in str(excinfo.value)
 
@@ -1058,7 +1056,7 @@ def test_search_global_error_get_attributes(_) -> None:
             "element_template": "Reactor",
         }
     )
-    with pytest.raises(MetadataSearchFailedException):
+    with pytest.raises(BatchRequestFailedException):
         list(source.search(SeriesSearch("Test")))
 
 
@@ -1070,7 +1068,7 @@ def test_search_error_get_attributes(_) -> None:
             "element_template": "Reactor",
         }
     )
-    with pytest.raises(AttributeTemplateQueryFailedException):
+    with pytest.raises(BatchRequestFailedException):
         list(source.search(SeriesSearch("Test")))
 
 
