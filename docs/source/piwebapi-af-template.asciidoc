@@ -5,14 +5,14 @@
 
 Sources with `type = "piwebapi-af-template"` configure connections to AVEVA (OSIsoft) PI Asset Framework using the PI Web API.
 Inside the Asset Framework,
-only elements of a given Element Template will be returned.
+only elements of a given Element Template or elements with attributes matching a given category will be returned.
 
 ```toml
 [source.<name>]
 type = "piwebapi-af-template"
 database_uri = "" # Required: the PI Web API self URI of the AF database
 root_id = "" # optional: the webid of the root element to start the search
-element_template = "" # The name of the template
+element_template = "" # optional: The name of the template
 element_category = "" # optional: return only attributes of elements with this category
 attribute_names = [] # optional: return only these attributes
 attribute_category = "" # optional: return only attributes with this category
@@ -68,7 +68,8 @@ follow the link to the `Databases` on the correct asset server and copy the `Sel
 }
 ```
 
-Elements with the provided `element_template` will be searched in the full database unless `root_id` is provided.
+When `element_template` is defined,
+elements with the provided `element_template` will be searched in the full database unless `root_id` is provided.
 `root_id` is the https://docs.aveva.com/bundle/pi-web-api-reference/page/help/topics/webid-type.html[WebID] of an element resource in a PI Web API database.
 
 `attribute_names` allows selecting a subset of (child) attributes of an element.
@@ -81,6 +82,9 @@ attribute_names = [
     "Level",
 ]
 ```
+
+When `element_template` is not defined,
+`attribute_category` can be used to search for all attributes available in the asset framework matching the given category.
 
 The PI Web API configuration limits the https://docs.osisoft.com/bundle/pi-web-api/page/restrictions-on-number-of-items-per-call.html[maximum number of items] returned in a response to one request.
 This limit is applied to the number of time series (PI Points) and to the number of values.
