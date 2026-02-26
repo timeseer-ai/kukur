@@ -335,13 +335,12 @@ class PIAssetFramework:
     def _search_attribute_category(
         self, selector: SeriesSearch
     ) -> Generator[Metadata, None, None]:
-        root_element = "Name:=*"
         if self._config.root_id is not None:
-            root_element = f"ID:={self._config.root_id}"
+            raise InvalidSourceException("Cannot search attributes with element root")
 
         attribute_params = {
             "databaseWebId": self._url.database_id(),
-            "query": f"Element:{{ {root_element} }} category:{self._config.attribute_category}",
+            "query": f"Element:{{ Name:=* }} category:{self._config.attribute_category}",
             "searchFullHierarchy": "true",
             "selectedFields": ";".join(
                 [
