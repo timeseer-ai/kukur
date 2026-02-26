@@ -937,6 +937,36 @@ def test_search(_post, _get) -> None:
     assert metadata.get_field_by_name("Attribute category") == "Measurement"
 
 
+@patch("requests.Session.post", side_effect=mocked_requests_post)
+@patch("requests.Session.get", side_effect=mocked_requests_get)
+def test_search_attribute_as_tag(_post, _get) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "element_template": "Reactor",
+            "attributes_as_fields": False,
+        }
+    )
+    series_metadata = list(source.search(SeriesSearch("Test")))
+    assert len(series_metadata) == 10
+
+    concentration = [
+        metadata
+        for metadata in series_metadata
+        if metadata.series.tags["series name"] == "Concentration"
+    ]
+    assert len(concentration) == 2
+
+    metadata = [
+        metadata
+        for metadata in concentration
+        if metadata.get_field_by_name("Reactor") == "Reactor01"
+    ][0]
+
+    assert metadata.series.tags["element"] == "Reactor01"
+    assert metadata.series.tags["__id__"] == "A1_2"
+
+
 def test_search_missing_element_template() -> None:
     source = from_config(
         {
@@ -1063,6 +1093,21 @@ def test_search_by_category(_post) -> None:
     all_series = list(source.search(SeriesSearch("Test")))
     assert len(all_series) == 2
     assert all_series[0].series.tags["series name"] == "Reactor01"
+
+
+@patch("requests.Session.post", side_effect=mocked_requests_post)
+def test_search_by_category_field_tag(_post) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "attribute_category": "Validation",
+            "attributes_as_fields": False,
+        }
+    )
+    all_series = list(source.search(SeriesSearch("Test")))
+    assert len(all_series) == 2
+    assert all_series[0].series.tags["series name"] == "Level"
+    assert all_series[0].series.tags["element"] == "Reactor01"
 
 
 @patch("requests.Session.get", side_effect=mocked_requests_get)
