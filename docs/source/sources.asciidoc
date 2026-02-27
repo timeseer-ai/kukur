@@ -35,9 +35,7 @@ Valid values are:
 - `kukur`
 - `oledb`
 - `parquet`
-ifdef::sources[]
 - `piwebapi-af`
-endif::sources[]
 - `piwebapi-af-template`
 - `piwebapi-da`
 - `plugin`
@@ -189,6 +187,7 @@ ifndef::sources[]
 - Kukur link:json.asciidoc[JSON] metadata files
 - Other link:kukur.asciidoc[Kukur or Timeseer instances]
 - link:odbc.asciidoc[ODBC] data sources
+- link:piwebapi-af.asciidoc[PI Asset Framework] using PI Web API
 - link:piwebapi-af-template.asciidoc[PI Asset Framework Element Template] using PI Web API
 - link:piwebapi-da.asciidoc[PI Data Archive] using PI Web API
 - link:postgresql.asciidoc[PostgreSQL] databases
