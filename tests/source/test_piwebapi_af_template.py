@@ -8,13 +8,11 @@ import pytest
 from kukur import DataType
 from kukur.base import SeriesSearch
 from kukur.exceptions import KukurException
-from kukur.source.piwebapi_af_template import from_config
-from kukur.source.piwebapi_af_template.piwebapi_af_template import (
+from kukur.source.piwebapi_af.pi_asset_framework import (
     BatchRequestFailedException,
     ElementInOtherDatabaseException,
-    PIAssetFramework,
-    PIWebAPIConnection,
 )
+from kukur.source.piwebapi_af_template import from_config
 
 WEB_API_URI = "https://pi.example.org/piwebapi/"
 DATABASE_URI = f"{WEB_API_URI}assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI"
@@ -22,7 +20,6 @@ ROOT_ID = "F1EmMyvy4jYfVEyvgGiLVLmYvAe-IYOLTf7xGIoGBFvZT1mwVk0tVFMtUElcVElNRVNFR
 ROOT_URI = f"{WEB_API_URI}elements/{ROOT_ID}"
 PHASES_ID = "F1MSRMyvy4jYfVEyvgGiLVLmYvA69wQlmWrDESLkkfNAL9XiAVk0tVFMtUElcVElNRVNFRVJcRU5VTUVSQVRJT05TRVRTW1BIQVNFU10"
 PHASES_URI = f"{WEB_API_URI}enumerationsets/{PHASES_ID}/enumerationvalues"
-
 
 BATCH_RESPONSE = {
     "GetAttributes": {
@@ -386,77 +383,6 @@ BATCH_EMPTY_ATTRIBUTES_RESPONSE = {
 }
 
 
-BATCH_ELEMENT_TEMPLATES_RESPONSE = {
-    "GetAttributeTemplates": {
-        "Status": 207,
-        "Content": {
-            "Total": 2,
-            "Items": [
-                {
-                    "Status": 200,
-                    "Headers": {"Content-Type": "application/json; charset=utf-8"},
-                    "Content": {
-                        "Items": [
-                            {
-                                "Path": "\\\\vm-ts-pi\\Timeseer\\ElementTemplates[Reactor]|Temperature",
-                                "Description": "",
-                                "DataReferencePlugIn": "PI Point",
-                                "CategoryNames": ["Measurement"],
-                            },
-                            {
-                                "Path": "\\\\vm-ts-pi\\Timeseer\\ElementTemplates[Reactor]|TemperatureKelvin",
-                                "Description": "",
-                                "DataReferencePlugIn": "Formula",
-                                "CategoryNames": ["Measurement"],
-                            },
-                            {
-                                "Path": "\\\\vm-ts-pi\\Timeseer\\ElementTemplates[Reactor]|Status",
-                                "DataReferencePlugIn": "",
-                                "Description": "",
-                                "CategoryNames": [],
-                            },
-                            {
-                                "Path": "\\\\vm-ts-pi\\Timeseer\\ElementTemplates[Reactor]|Status|Active",
-                                "DataReferencePlugIn": "PI Point",
-                                "Description": "",
-                                "CategoryNames": [],
-                            },
-                        ]
-                    },
-                },
-                {
-                    "Status": 200,
-                    "Headers": {"Content-Type": "application/json; charset=utf-8"},
-                    "Content": {"Items": []},
-                },
-            ],
-        },
-    },
-    "GetElementTemplates": {
-        "Status": 200,
-        "Headers": {},
-        "Content": {
-            "Total": 2,
-            "Items": [
-                {
-                    "Name": "Reactor",
-                    "Description": "",
-                    "Links": {
-                        "AttributeTemplates": "https://pi.example.org/piwebapi/elements/Reactor/attributetemplates"
-                    },
-                },
-                {
-                    "Name": "Site",
-                    "Description": "",
-                    "Links": {
-                        "AttributeTemplates": "https://pi.example.org/piwebapi/elements/Sites/attributetemplates"
-                    },
-                },
-            ],
-        },
-    },
-}
-
 BATCH_ERROR = {
     "GetAttributes": {
         "Status": 409,
@@ -464,23 +390,6 @@ BATCH_ERROR = {
         "Content": "The following ParentIds did not complete successfully: GetElements.",
     },
     "GetElements": {
-        "Status": 400,
-        "Headers": {"Content-Type": "application/json; charset=utf-8"},
-        "Content": {
-            "Errors": [
-                "The specified element category was not found in the specified Asset Database."
-            ]
-        },
-    },
-}
-
-BATCH_ERROR_TEMPLATES = {
-    "GetAttributeTemplates": {
-        "Status": 409,
-        "Headers": {},
-        "Content": "The following ParentIds did not complete successfully: GetElements.",
-    },
-    "GetElementTemplates": {
         "Status": 400,
         "Headers": {"Content-Type": "application/json; charset=utf-8"},
         "Content": {
@@ -592,74 +501,6 @@ BATCH_PARTIAL_ERROR_ATTRIBUTES = {
     },
 }
 
-MAIN_ELEMENTS_RESPONSE = {
-    "Items": [
-        {
-            "WebId": "A1_1",
-            "Name": "Reactors",
-            "Description": "Reactors",
-            "HasChildren": True,
-        },
-        {
-            "WebId": "A1_2",
-            "Name": "Sites",
-            "Description": "Sites",
-            "HasChildren": False,
-        },
-        {
-            "WebId": "A1_3",
-            "Name": "Test",
-            "Description": "",
-            "HasChildren": True,
-        },
-    ]
-}
-
-ELEMENTS_RESPONSE = {
-    "Items": [
-        {
-            "WebId": "A2_1",
-            "Name": "Reactor 1",
-            "Description": "First reactor",
-            "HasChildren": True,
-        },
-        {
-            "WebId": "A2_2",
-            "Name": "Reactor 2",
-            "Description": "Second reactor",
-            "HasChildren": False,
-        },
-    ]
-}
-
-ELEMENT_CATEGORIES_RESPONSE = {
-    "Links": {},
-    "Items": [
-        {
-            "Name": "Production",
-            "Description": "",
-        },
-        {
-            "Name": "Test",
-            "Description": "",
-        },
-    ],
-}
-
-ATTRIBUTE_CATEGORIES_RESPONSE = {
-    "Links": {},
-    "Items": [
-        {
-            "Name": "Measurement",
-            "Description": "",
-        },
-        {
-            "Name": "Status",
-            "Description": "",
-        },
-    ],
-}
-
 
 PHASES_RESPONSE = {
     "Items": [
@@ -672,6 +513,75 @@ PHASES_RESPONSE = {
             "Value": 1,
         },
     ]
+}
+
+BATCH_ATTRIBUTE_CATEGORY_RESPONSE = {
+    "GetElement": {
+        "Status": 207,
+        "Headers": {},
+        "Content": {
+            "Total": 2,
+            "Items": [
+                {
+                    "Status": 200,
+                    "Content": {
+                        "WebId": "R1",
+                        "Name": "Reactor01",
+                        "Description": "",
+                        "TemplateName": "Reactor",
+                        "CategoryNames": [],
+                    },
+                },
+                {
+                    "Status": 200,
+                    "Content": {
+                        "WebId": "R2",
+                        "Name": "Reactor02",
+                        "Description": "",
+                        "TemplateName": "Reactor",
+                        "CategoryNames": [],
+                    },
+                },
+            ],
+        },
+    },
+    "GetAttributes": {
+        "Status": 200,
+        "Content": {
+            "Items": [
+                {
+                    "WebId": "A1",
+                    "Name": "Level",
+                    "Description": "",
+                    "Path": "\\\\vm-ts-pi\\WriteBack\\Reactors\\Reactor01|Level",
+                    "Type": "Double",
+                    "TypeQualifier": "",
+                    "DefaultUnitsNameAbbreviation": "",
+                    "DataReferencePlugIn": "PI Point",
+                    "CategoryNames": ["Validation"],
+                    "Step": False,
+                    "Span": 100.0,
+                    "Zero": 0.0,
+                    "Links": {"Element": "https://pi.timeseer.ai/piwebapi/elements/A1"},
+                },
+                {
+                    "WebId": "A2",
+                    "Name": "Active",
+                    "Description": "",
+                    "Path": "\\\\vm-ts-pi\\WriteBack\\Reactors\\Reactor02|Status|Active",
+                    "Type": "Double",
+                    "TypeQualifier": "",
+                    "DefaultUnitsNameAbbreviation": "",
+                    "DataReferencePlugIn": "PI Point",
+                    "CategoryNames": ["Validation"],
+                    "Step": False,
+                    "Span": 100.0,
+                    "Zero": 0.0,
+                    "Links": {"Element": "https://pi.timeseer.ai/piwebapi/elements/A2"},
+                },
+            ]
+        },
+    },
 }
 
 
@@ -689,22 +599,8 @@ class MockResponse:
 
 def mocked_requests_post(*args, **kwargs):
     if args[0] == f"{WEB_API_URI}batch":
-        if "GetElementTemplates" in kwargs["json"]:
-            assert (
-                "showDescendants=true"
-                in kwargs["json"]["GetAttributeTemplates"]["RequestTemplate"][
-                    "Resource"
-                ]
-            )
-            assert (
-                "showInherited=true"
-                in kwargs["json"]["GetAttributeTemplates"]["RequestTemplate"][
-                    "Resource"
-                ]
-            )
-
-            response = BATCH_ELEMENT_TEMPLATES_RESPONSE
-            return MockResponse(response, 200)
+        if "GetElement" in kwargs["json"]:
+            return MockResponse(BATCH_ATTRIBUTE_CATEGORY_RESPONSE, 200)
 
         if "categoryName=Invalid" in kwargs["json"]["GetElements"]["Resource"]:
             return MockResponse(BATCH_ERROR, 200)
@@ -718,21 +614,6 @@ def mocked_requests_post(*args, **kwargs):
                 return MockResponse(BATCH_RESPONSE, 200)
             if uri.startswith(f"{ROOT_URI}/elements"):
                 return MockResponse(BATCH_FILTER_ROOT_RESPONSE, 200)
-    raise Exception(args[0])
-
-
-def mocked_requests_batch_error_templates(*args, **kwargs):
-    if args[0] == f"{WEB_API_URI}batch":
-        return MockResponse(BATCH_ERROR_TEMPLATES, 200)
-    raise Exception(args[0])
-
-
-def mocked_requests_batch_error_unknown_response(*args, **kwargs):
-    if args[0] == f"{WEB_API_URI}batch":
-        return MockResponse(
-            {"GetElementTemplates": {"Status": 400, "Content": {"error": "message"}}},
-            200,
-        )
     raise Exception(args[0])
 
 
@@ -761,44 +642,6 @@ def mocked_requests_get(*args, **kwargs):
     if args[0] == f"{ROOT_URI}":
         return MockResponse({"Links": {"Database": DATABASE_URI}}, 200)
 
-    if args[0] == f"{DATABASE_URI}/elements":
-        response = MAIN_ELEMENTS_RESPONSE
-        return MockResponse(response, 200)
-
-    if args[0] == f"{WEB_API_URI}elements/A1_1":
-        response = {
-            "WebId": "A1_1",
-            "Name": "Reactors",
-            "HasChildren": True,
-            "Links": {
-                "Database": DATABASE_URI,
-            },
-        }
-        return MockResponse(response, 200)
-
-    if args[0] == f"{WEB_API_URI}elements/B1_1":
-        response = {
-            "WebId": "A1_1",
-            "Name": "Reactors",
-            "HasChildren": True,
-            "Links": {
-                "Database": "https://pi.example.org/piwebapi/hacker",
-            },
-        }
-        return MockResponse(response, 200)
-
-    if args[0] == f"{WEB_API_URI}elements/A1_1/elements":
-        response = ELEMENTS_RESPONSE
-        return MockResponse(response, 200)
-
-    if args[0] == f"{DATABASE_URI}/elementcategories":
-        response = ELEMENT_CATEGORIES_RESPONSE
-        return MockResponse(response, 200)
-
-    if args[0] == f"{DATABASE_URI}/attributecategories":
-        response = ATTRIBUTE_CATEGORIES_RESPONSE
-        return MockResponse(response, 200)
-
     if args[0] == PHASES_URI:
         return MockResponse(PHASES_RESPONSE, 200)
 
@@ -812,21 +655,6 @@ def mocked_requests_get_invalid_database(*args, **kwargs):
         )
 
     raise Exception(args[0])
-
-
-@pytest.fixture
-def af(request):
-    marker = request.node.get_closest_marker("config")
-    if marker is None:
-        config = {
-            "database_uri": DATABASE_URI,
-            "element_template": "Reactor",
-        }
-    else:
-        config = marker.args[0]
-    with PIWebAPIConnection({}) as connection:
-        af = PIAssetFramework(connection, config)
-        yield af
 
 
 @patch("requests.Session.post", side_effect=mocked_requests_post)
@@ -864,6 +692,58 @@ def test_search(_post, _get) -> None:
     assert metadata.get_field_by_name("data type") == DataType.FLOAT64
     assert metadata.get_field_by_name("Element category") == "Production"
     assert metadata.get_field_by_name("Attribute category") == "Measurement"
+
+
+@patch("requests.Session.post", side_effect=mocked_requests_post)
+@patch("requests.Session.get", side_effect=mocked_requests_get)
+def test_search_attribute_as_tag(_post, _get) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "element_template": "Reactor",
+            "attributes_as_fields": False,
+        }
+    )
+    series_metadata = list(source.search(SeriesSearch("Test")))
+    assert len(series_metadata) == 10
+
+    concentration = [
+        metadata
+        for metadata in series_metadata
+        if metadata.series.tags["series name"] == "Concentration"
+    ]
+    assert len(concentration) == 2
+
+    metadata = [
+        metadata
+        for metadata in concentration
+        if metadata.get_field_by_name("Reactor") == "Reactor01"
+    ][0]
+
+    assert metadata.series.tags["element"] == "Reactor01"
+    assert metadata.series.tags["__id__"] == "A1_2"
+
+
+@patch("requests.Session.post", side_effect=mocked_requests_post)
+@patch("requests.Session.get", side_effect=mocked_requests_get)
+def test_search_attribute_path(_post, _get) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "element_template": "Reactor",
+            "attributes_as_fields": False,
+            "use_attribute_path": True,
+        }
+    )
+    series_metadata = list(source.search(SeriesSearch("Test")))
+    assert len(series_metadata) == 10
+
+    active = [
+        metadata
+        for metadata in series_metadata
+        if metadata.series.tags["series name"] == "Status|Active"
+    ]
+    assert len(active) == 2
 
 
 def test_search_missing_element_template() -> None:
@@ -981,69 +861,48 @@ def test_search_dictionary(_post, _get) -> None:
     }
 
 
-@patch("requests.Session.get", side_effect=mocked_requests_get)
-def test_get_elements(_, af: PIAssetFramework) -> None:
-    elements = list(af.list_elements(None))
-    assert len(elements) == 3
-    assert elements[0].name == "Reactors"
-
-
-@patch("requests.Session.get", side_effect=mocked_requests_get)
-def test_get_elements_for_element(_, af: PIAssetFramework) -> None:
-    element_web_id = "A1_1"
-    elements = list(af.list_elements(element_web_id))
-    assert len(elements) == 2
-    assert elements[0].name == "Reactor 1"
-    assert elements[1].name == "Reactor 2"
-
-
-@patch("requests.Session.get", side_effect=mocked_requests_get)
-def test_get_elements_for_invalid_element(_, af: PIAssetFramework) -> None:
-    element_web_id = "B1_1"
-    with pytest.raises(ElementInOtherDatabaseException):
-        list(af.list_elements(element_web_id))
+@patch("requests.Session.post", side_effect=mocked_requests_post)
+def test_search_by_category(_post) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "attribute_category": "Validation",
+        }
+    )
+    all_series = list(source.search(SeriesSearch("Test")))
+    assert len(all_series) == 2
+    assert all_series[0].series.tags["series name"] == "Reactor01"
 
 
 @patch("requests.Session.post", side_effect=mocked_requests_post)
-@pytest.mark.config({"database_uri": DATABASE_URI})
-def test_get_element_templates(_, af: PIAssetFramework) -> None:
-    element_templates = af.list_element_templates()
-    assert len(element_templates) == 2
-    assert "Reactor" in [template.name for template in element_templates]
-    reactor_template = [
-        template for template in element_templates if template.name == "Reactor"
-    ][0]
-    assert len(reactor_template.attribute_templates) == 2
-    assert "Temperature" in [
-        attribute.name for attribute in reactor_template.attribute_templates
-    ]
-    temperature_template = [
-        attribute
-        for attribute in reactor_template.attribute_templates
-        if attribute.name == "Temperature"
-    ][0]
-    assert temperature_template.categories == ["Measurement"]
-    status_template = [
-        attribute
-        for attribute in reactor_template.attribute_templates
-        if attribute.name == "Status|Active"
-    ][0]
-    assert len(status_template.categories) == 0
+def test_search_by_category_field_tag(_post) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "attribute_category": "Validation",
+            "attributes_as_fields": False,
+        }
+    )
+    all_series = list(source.search(SeriesSearch("Test")))
+    assert len(all_series) == 2
+    assert all_series[0].series.tags["series name"] == "Level"
+    assert all_series[0].series.tags["element"] == "Reactor01"
 
 
-@patch("requests.Session.post", side_effect=mocked_requests_batch_error_templates)
-def test_get_element_template_request_error(_, af: PIAssetFramework) -> None:
-    with pytest.raises(BatchRequestFailedException):
-        af.list_element_templates()
-
-
-@patch(
-    "requests.Session.post", side_effect=mocked_requests_batch_error_unknown_response
-)
-def test_get_element_template_request_unknown_error(_, af: PIAssetFramework) -> None:
-    with pytest.raises(BatchRequestFailedException) as excinfo:
-        af.list_element_templates()
-    assert '"error": "message"' in str(excinfo.value)
+@patch("requests.Session.post", side_effect=mocked_requests_post)
+def test_search_by_category_use_path(_post) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "attribute_category": "Validation",
+            "attributes_as_fields": False,
+            "use_attribute_path": True,
+        }
+    )
+    all_series = list(source.search(SeriesSearch("Test")))
+    assert len(all_series) == 2
+    assert all_series[1].series.tags["series name"] == "Status|Active"
+    assert all_series[1].series.tags["element"] == "Reactor02"
 
 
 @patch(
@@ -1070,36 +929,3 @@ def test_search_error_get_attributes(_) -> None:
     )
     with pytest.raises(BatchRequestFailedException):
         list(source.search(SeriesSearch("Test")))
-
-
-@patch("requests.Session.post", side_effect=mocked_requests_post)
-@pytest.mark.config(
-    {"database_uri": DATABASE_URI, "allowed_data_references": ["Formula"]}
-)
-def test_get_element_templates_formulat(_, af: PIAssetFramework) -> None:
-    element_templates = af.list_element_templates()
-    assert len(element_templates) == 2
-    assert "Reactor" in [template.name for template in element_templates]
-    reactor_template = [
-        template for template in element_templates if template.name == "Reactor"
-    ][0]
-    assert len(reactor_template.attribute_templates) == 1
-    assert "TemperatureKelvin" in [
-        attribute.name for attribute in reactor_template.attribute_templates
-    ]
-
-
-@patch("requests.Session.get", side_effect=mocked_requests_get)
-def test_get_element_categories(_, af: PIAssetFramework) -> None:
-    element_categories = af.list_element_categories()
-    assert len(element_categories) == 2
-    assert element_categories[0].name == "Production"
-    assert element_categories[1].name == "Test"
-
-
-@patch("requests.Session.get", side_effect=mocked_requests_get)
-def test_get_attribute_categories(_, af: PIAssetFramework) -> None:
-    attribute_categories = af.list_attribute_categories()
-    assert len(attribute_categories) == 2
-    assert attribute_categories[0].name == "Measurement"
-    assert attribute_categories[1].name == "Status"

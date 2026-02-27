@@ -4,11 +4,9 @@
 from datetime import datetime
 from unittest.mock import patch
 
-import pytest
 from dateutil.parser import parse as parse_date
 
 from kukur import SeriesSelector
-from kukur.base import SeriesSearch
 from kukur.source.piwebapi_af import from_config
 
 _BASE_URL = "https://test_pi.net"
@@ -17,178 +15,6 @@ SAMPLE_DATABASE = {
         "Elements": f"{_BASE_URL}/db/elements",
     },
 }
-
-SAMPLE_SITES_1 = {
-    "Links": {"Next": f"{_BASE_URL}/db/elements?startIndex=2"},
-    "Items": [
-        {
-            "Name": "Antwerp",
-            "Description": "Antwerp Site",
-            "TemplateName": "Site",
-            "Path": "\\\\path\\sample\\Antwerp",
-            "Paths": ["\\\\path\\sample\\Antwerp"],
-        },
-        {
-            "WebId": "E1",
-            "Id": "776a75c2-b946-11ef-889f-6045bd94f59b",
-            "Name": "Reactor02",
-            "Description": "",
-            "Path": "\\\\path\\sample\\Antwerp\\Reactor02",
-            "Paths": ["\\\\path\\sample\\Antwerp\\Reactor02"],
-            "TemplateName": "Reactor",
-            "CategoryNames": [],
-            "ExtendedProperties": {},
-        },
-    ],
-}
-
-SAMPLE_SITES_2 = {
-    "Links": {},
-    "Items": [
-        {
-            "WebId": "E2",
-            "Id": "776a75c2-b946-11ef-889f-6045bd94f59c",
-            "Name": "Reactor03",
-            "Description": "",
-            "Path": "\\\\path\\sample\\Antwerp\\Reactor03",
-            "Paths": ["\\\\path\\sample\\Antwerp\\Reactor03"],
-            "TemplateName": "Reactor",
-            "CategoryNames": [],
-            "ExtendedProperties": {},
-        },
-    ],
-}
-
-SAMPLE_CHILD_ATTRIBUTES_1 = {
-    "Links": {
-        "Next": f"{_BASE_URL}/elementattributes?startIndex=3",
-    },
-    "Items": [
-        {
-            "WebId": "A2",
-            "Name": "Active",
-            "Description": "Sample",
-            "HasChildren": False,
-            "Step": False,
-            "Type": "Double",
-            "Path": "\\\\path\\sample\\Antwerp\\Reactor02|Active",
-            "DataReferencePlugIn": "PI Point",
-            "DefaultUnitsNameAbbreviation": "",
-            "Span": 200.0,
-            "Zero": 0.0,
-            "Links": {
-                "PlotData": f"{_BASE_URL}/streams/A2/plot",
-                "Recorded": f"{_BASE_URL}/streams/A2/recorded",
-                "Attributes": f"{_BASE_URL}/empty-attributes",
-            },
-        },
-        {
-            "WebId": "A3",
-            "Name": "Concentration",
-            "Description": "Sample description",
-            "Path": "\\\\path\\sample\\Antwerp\\Reactor02|Concentration",
-            "Type": "Double",
-            "DataReferencePlugIn": "PI Point",
-            "DefaultUnitsNameAbbreviation": "",
-            "HasChildren": False,
-            "Step": False,
-            "Span": 200.0,
-            "Zero": 0.0,
-            "Links": {
-                "PlotData": f"{_BASE_URL}/streams/A3/plot",
-                "Recorded": f"{_BASE_URL}/streams/A3/recorded",
-                "Attributes": f"{_BASE_URL}/empty-attributes",
-            },
-        },
-        {
-            "WebId": "A4",
-            "Name": "Lookup Values",
-            "Description": "Sample description",
-            "Path": "\\\\path\\sample\\Antwerp\\Reactor02|Lookup",
-            "Type": "Double",
-            "DataReferencePlugIn": "Table Lookup",
-            "DefaultUnitsNameAbbreviation": "",
-            "HasChildren": False,
-            "Step": False,
-            "Span": 200.0,
-            "Zero": 0.0,
-            "Links": {
-                "PlotData": f"{_BASE_URL}/streams/A4/plot",
-                "Recorded": f"{_BASE_URL}/streams/A4/recorded",
-                "Attributes": f"{_BASE_URL}/empty-attributes",
-            },
-        },
-    ],
-}
-
-SAMPLE_CHILD_ATTRIBUTES_2 = {
-    "Links": {},
-    "Items": [
-        {
-            "WebId": "A5",
-            "Name": "Location",
-            "Description": "Sample description",
-            "Path": "\\\\path\\sample\\Antwerp\\Reactor02|Location",
-            "Type": "Double",
-            "DataReferencePlugIn": "",
-            "DefaultUnitsNameAbbreviation": "",
-            "HasChildren": False,
-            "Step": False,
-            "Span": None,
-            "Zero": None,
-            "Links": {
-                "Value": f"{_BASE_URL}/attributes/A5/value",
-            },
-        },
-        {
-            "WebId": "A6",
-            "Name": "Location",
-            "Description": "Sample description",
-            "Path": "\\\\path\\sample\\Antwerp|Location",
-            "Type": "Double",
-            "DataReferencePlugIn": "",
-            "DefaultUnitsNameAbbreviation": "",
-            "HasChildren": False,
-            "Step": False,
-            "Span": None,
-            "Zero": None,
-            "Links": {
-                "Value": f"{_BASE_URL}/attributes/A6/value",
-            },
-        },
-        {
-            "WebId": "A7",
-            "Name": "Level",
-            "Description": "Sample description",
-            "Path": "\\\\path\\sample\\Antwerp\\Reactor03|Level",
-            "Type": "Double",
-            "DataReferencePlugIn": "PI Point",
-            "DefaultUnitsNameAbbreviation": "",
-            "HasChildren": False,
-            "Step": False,
-            "Span": None,
-            "Zero": None,
-            "Links": {},
-        },
-        {
-            "WebId": "A8",
-            "Name": "Enumeration",
-            "Description": "Invalid data type",
-            "Path": "\\\\path\\sample\\Antwerp|Enumeration",
-            "Type": "EnumerationValue",
-            "DataReferencePlugIn": "",
-            "DefaultUnitsNameAbbreviation": "",
-            "HasChildren": False,
-            "Step": False,
-            "Span": None,
-            "Zero": None,
-            "Links": {
-                "Value": f"{_BASE_URL}/attributes/A8/value",
-            },
-        },
-    ],
-}
-
 
 SAMPLE_DATA_POINTS = [
     {"Timestamp": "2020-01-01T00:00:00Z", "Value": 81.83204, "Good": True},
@@ -234,40 +60,6 @@ class MockResponse:
 def mocked_requests_get(*args, **kwargs):
     if args[0] == _BASE_URL:
         response = SAMPLE_DATABASE
-        return MockResponse(response, 200)
-
-    if args[0] == f"{_BASE_URL}/db/elements":
-        response = SAMPLE_SITES_1
-        return MockResponse(response, 200)
-
-    if args[0] == f"{_BASE_URL}/db/elements?startIndex=2":
-        response = SAMPLE_SITES_2
-        return MockResponse(response, 200)
-
-    if args[0] == f"{_BASE_URL}/elementattributes":
-        response = SAMPLE_CHILD_ATTRIBUTES_1
-        return MockResponse(response, 200)
-
-    if args[0] == f"{_BASE_URL}/elementattributes?startIndex=3":
-        response = SAMPLE_CHILD_ATTRIBUTES_2
-        return MockResponse(response, 200)
-
-    if args[0] == f"{_BASE_URL}/attributes/A5/value":
-        response = {
-            "Value": "Antwerp",
-        }
-        return MockResponse(response, 200)
-
-    if args[0] == f"{_BASE_URL}/attributes/A6/value":
-        response = {
-            "Value": "Antwerp (Berchem)",
-        }
-        return MockResponse(response, 200)
-
-    if args[0] == f"{_BASE_URL}/attributes/A8/value":
-        response = {
-            "Value": {"Value": "ERROR"},
-        }
         return MockResponse(response, 200)
 
     if args[0] == f"{_BASE_URL}/streams/A2/plot":
@@ -359,64 +151,6 @@ def mocked_requests_get_system_points(*args, **kwargs):
     return MockResponse(response, 200)
 
 
-def fail_element_timeout(*args, **kwargs):
-    if args[0] == _BASE_URL:
-        response = SAMPLE_DATABASE
-        return MockResponse(response, 200)
-
-    if args[0] == f"{_BASE_URL}/db/elements":
-        response = SAMPLE_SITES_1
-        return MockResponse(response, 200)
-
-    if args[0] == f"{_BASE_URL}/db/elements?startIndex=2":
-        raise TimeoutError()
-
-    return None
-
-
-def fail_attribute_timeout(*args, **kwargs):
-    if args[0] == _BASE_URL:
-        response = SAMPLE_DATABASE
-        return MockResponse(response, 200)
-
-    if args[0] == f"{_BASE_URL}/db/elements":
-        response = SAMPLE_SITES_1
-        return MockResponse(response, 200)
-
-    if args[0] == f"{_BASE_URL}/db/elements?startIndex=2":
-        response = SAMPLE_SITES_2
-        return MockResponse(response, 200)
-
-    if args[0] == f"{_BASE_URL}/elementattributes":
-        raise TimeoutError()
-
-    return None
-
-
-@patch("requests.Session.get", side_effect=mocked_requests_get)
-def test_search(_) -> None:
-    source = from_config(
-        {
-            "database_uri": "https://test_pi.net",
-            "max_returned_items_per_call": 5,
-            "username": "test",
-            "password": "test",
-            "verify_ssl": "false",
-        }
-    )
-    series = list(source.search(SeriesSearch("Test")))
-    assert len(series) == 3
-    assert series[0].series.tags.get("series name") == "Reactor02"
-    assert series[1].series.tags.get("series name") == "Reactor02"
-    assert series[2].series.tags.get("series name") == "Reactor03"
-    assert series[0].series.field == "Active"
-    assert series[1].series.field == "Concentration"
-    assert series[2].series.field == "Level"
-    assert series[0].get_field_by_name("Location") == "Antwerp"
-    assert series[2].get_field_by_name("Location") == "Antwerp (Berchem)"
-    assert series[0].get_field_by_name("Enumeration") is None
-
-
 @patch("requests.Session.get", side_effect=mocked_requests_get)
 def test_get_data_without_limits(_) -> None:
     source = from_config(
@@ -499,51 +233,3 @@ def test_get_data_system_points(_) -> None:
     )
     assert len(data) == 1
     assert data["ts"][0].as_py() == parse_date("2020-01-02T00:00:00Z")
-
-
-@patch("requests.Session.get", side_effect=mocked_requests_get)
-def test_search_with_table_lookup_enabled(_) -> None:
-    source = from_config(
-        {
-            "database_uri": "https://test_pi.net",
-            "max_returned_items_per_call": 4,
-            "username": "test",
-            "password": "test",
-            "use_table_lookup": "true",
-            "verify_ssl": "false",
-        }
-    )
-    series = list(source.search(SeriesSearch("Test")))
-    assert len(series) == 4
-    assert series[0].series.tags.get("series name") == "Reactor02"
-    assert series[1].series.tags.get("series name") == "Reactor02"
-    assert series[2].series.tags.get("series name") == "Reactor02"
-    assert series[3].series.tags.get("series name") == "Reactor03"
-    assert series[0].series.field == "Active"
-    assert series[1].series.field == "Concentration"
-    assert series[2].series.field == "Lookup Values"
-    assert series[3].series.field == "Level"
-
-
-@patch("requests.Session.get", side_effect=fail_element_timeout)
-def test_search_element_failure(_) -> None:
-    source = from_config(
-        {
-            "database_uri": "https://test_pi.net",
-            "max_returned_items_per_call": 4,
-        }
-    )
-    with pytest.raises(TimeoutError):
-        list(source.search(SeriesSearch("Test")))
-
-
-@patch("requests.Session.get", side_effect=fail_attribute_timeout)
-def test_search_attribute_failure(_) -> None:
-    source = from_config(
-        {
-            "database_uri": "https://test_pi.net",
-            "max_returned_items_per_call": 4,
-        }
-    )
-    with pytest.raises(TimeoutError):
-        list(source.search(SeriesSearch("Test")))

@@ -3,139 +3,14 @@
 
 == PI Asset Framework Element Template using Web API
 
-Sources with `type = "piwebapi-af-template"` configure connections to AVEVA (OSIsoft) PI Asset Framework using the PI Web API.
-Inside the Asset Framework,
-only elements of a given Element Template will be returned.
+Sources of type `piwebapi-af-template` provide the same capabilities as sources of the `piwebapi-af` type.
+
+Defaults differ for compatibility reasons and are documented below:
 
 ```toml
 [source.<name>]
 type = "piwebapi-af-template"
-database_uri = "" # Required: the PI Web API self URI of the AF database
-root_id = "" # optional: the webid of the root element to start the search
-element_template = "" # The name of the template
-element_category = "" # optional: return only attributes of elements with this category
-attribute_names = [] # optional: return only these attributes
-attribute_category = "" # optional: return only attributes with this category
-allowed_data_references = ["PI Point"] # optional: include attributes other than PI Points
-max_returned_items_per_call = 150000
-verify_ssl = true
-timeout_seconds = 60 # The maximum time to wait for a response
-metadata_request_timeout_seconds = 10 # The maximum time to wait for a response for a metadata request
-username = "" # optional: username for basic authentication
-password = "" # optional: password for basic authentication
-oidc_token_url = "" # optional: URL for OIDC token request
-client_id = "" # optional: OIDC cliend_id
-client_secret = "" # optional: OIDC client_secret
-kerberos_hostname = "" # optional: override the hostname used to request Kerberos tickets
-```
-
-`database_uri` is a required field.
-It is the `self` URI of a database in PI Web API, for example: `https://pi.example.org/piwebapi/assetdatabases/ABC`.
-
-To get this value,
-open `https://pi.example.org/piwebapi/assetservers`,
-follow the link to the `Databases` on the correct asset server and copy the `Self` link from the response:
-
-```
-{
-  "Links": {},
-  "Items": [
-    {
-      "WebId": "F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI",
-      "Id": "994e1f8d-9f26-4186-9f17-4f6258871a23",
-      "Name": "Timeseer",
-      "Description": "Timeseer.AI Test Database",
-      "Path": "\\\\vm-ts-pi\\Timeseer",
-      "ExtendedProperties": {},
-      "Links": {
-        "Self": "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI",
-        "Elements": "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/elements",
-        "ElementTemplates": "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/elementtemplates",
-        "EventFrames": "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/eventframes",
-        "AssetServer": "https://pi.example.org/piwebapi/assetservers/F1RSMyvy4jYfVEyvgGiLVLmYvAVk0tVFMtUEk",
-        "ElementCategories": "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/elementcategories",
-        "AttributeCategories": "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/attributecategories",
-        "TableCategories": "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/tablecategories",
-        "AnalysisCategories": "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/analysiscategories",
-        "AnalysisTemplates": "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/analysistemplates",
-        "EnumerationSets": "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/enumerationsets",
-        "Tables": "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/tables",
-        "Security": "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/security",
-        "SecurityEntries": "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI/securityentries"
-      }
-    }
-  ]
-}
-```
-
-Elements with the provided `element_template` will be searched in the full database unless `root_id` is provided.
-`root_id` is the https://docs.aveva.com/bundle/pi-web-api-reference/page/help/topics/webid-type.html[WebID] of an element resource in a PI Web API database.
-
-`attribute_names` allows selecting a subset of (child) attributes of an element.
-
-For example:
-
-```toml
-attribute_names = [
-    "Status|Active",
-    "Level",
-]
-```
-
-The PI Web API configuration limits the https://docs.osisoft.com/bundle/pi-web-api/page/restrictions-on-number-of-items-per-call.html[maximum number of items] returned in a response to one request.
-This limit is applied to the number of time series (PI Points) and to the number of values.
-The default setting is `150000`.
-
-Adapt the number in the Kukur configuration when it has been increased or decreased on the server.
-
-Increase `timeout_seconds` when responses could take longer than the already long 2 minutes.
-Use with `query_retry_count` and `query_retry_delay` to work around flaky connections.
-
-Set `verify_ssl` to `false` when PI Web API uses a self-signed certificate.
-
-By default,
-Kerberos https://docs.osisoft.com/bundle/pi-web-api/page/authentication-methods.html[authentication] is tried.
-A Kerberos ticket is requested for the hostname in the `data_archive_uri`.
-In situations where the hostname is an alias that is not known by Kerberos, override the hostname using `kerberos_hostname`.
-Enable https://learn.microsoft.com/en-us/troubleshoot/windows-server/active-directory/enable-kerberos-event-logging[Kerberos event logging] to diagnose issues.
-
-When Basic authentication is required,
-set the `username` and `password` fields in the configuration.
-To use OpenID Connect Bearer token authentication, set the `oidc_token_url`,
-`client_id` and `client_secret` fields in the configuration.
-
-For example,
-this defines an `af-template` source,
-with the Web API running on `pi.example.org`.
-
-All `PI Point` attributes of the `Reactor` template will be made available.
-
-```toml
-[source.af-template]
-type = "piwebapi-af-template"
-database_uri = "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI"
-element_template = "Reactor"
-```
-
-To include `Formula` attributes as well:
-
-```toml
-[source.af-template]
-type = "piwebapi-af-template"
-database_uri = "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI"
-element_template = "Reactor"
-allowed_data_references = ["PI Point", "Formula"]
-```
-
-When the Web API is using a self-signed certificate and basic authentication,
-the configuration becomes:
-
-```toml
-[source.af]
-type = "piwebapi-af-template"
-database_uri = "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI"
-verify_ssl = false
-username = "auser"
-password = "apassword"
-element_template = "Reactor"
+attributes_as_fields = true # set to false to use the attribute name as the "series name" tag.
+use_attribute_path = false # set to true to use the full path of the attribute for the field.
+# all other options of the piwebapi-af source are supported here.
 ```
