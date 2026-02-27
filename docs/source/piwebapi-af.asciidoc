@@ -1,19 +1,26 @@
-// SPDX-FileCopyrightText: 2024 Timeseer.AI
+// SPDX-FileCopyrightText: 2026 Timeseer.AI
 // SPDX-License-Identifier: Apache-2.0
 
 == PI Asset Framework using Web API
 
 Sources with `type = "piwebapi-af"` configure connections to AVEVA (OSIsoft) PI Asset Framework using the PI Web API.
+Inside the Asset Framework,
+only elements of a given Element Template or elements with attributes matching a given category will be returned.
 
 ```toml
 [source.<name>]
 type = "piwebapi-af"
-database_uri = "The self-URI of the database"
+database_uri = "" # Required: the PI Web API self URI of the AF database
+root_id = "" # optional: the webid of the root element to start the search
+element_template = "" # optional: The name of the template
+element_category = "" # optional: return only attributes of elements with this category
+attribute_names = [] # optional: return only these attributes
+attribute_category = "" # optional: return only attributes with this category
+allowed_data_references = ["PI Point"] # optional: include attributes other than PI Points
+attributes_as_fields = false # set to true to use the attribute name as the field.
 max_returned_items_per_call = 150000
-max_returned_metadata_items_per_call = 150
 verify_ssl = true
-use_table_lookup = false # Use Table Lookup attributes
-timeout_seconds = 60 # The maximum time to wait for a response for a data request
+timeout_seconds = 60 # The maximum time to wait for a response
 metadata_request_timeout_seconds = 10 # The maximum time to wait for a response for a metadata request
 username = "" # optional: username for basic authentication
 password = "" # optional: password for basic authentication
@@ -24,8 +31,7 @@ kerberos_hostname = "" # optional: override the hostname used to request Kerbero
 ```
 
 `database_uri` is a required field.
-
-`database_uri` is the URI of the `AssetDatabase` resource in PI Web API that corresponds to the PI AF database.
+It is the `self` URI of a database in PI Web API, for example: `https://pi.example.org/piwebapi/assetdatabases/ABC`.
 
 To get this value,
 open `https://pi.example.org/piwebapi/assetservers`,
@@ -63,6 +69,24 @@ follow the link to the `Databases` on the correct asset server and copy the `Sel
 }
 ```
 
+When `element_template` is defined,
+elements with the provided `element_template` will be searched in the full database unless `root_id` is provided.
+`root_id` is the https://docs.aveva.com/bundle/pi-web-api-reference/page/help/topics/webid-type.html[WebID] of an element resource in a PI Web API database.
+
+`attribute_names` allows selecting a subset of (child) attributes of an element.
+
+For example:
+
+```toml
+attribute_names = [
+    "Status|Active",
+    "Level",
+]
+```
+
+When `element_template` is not defined,
+`attribute_category` can be used to search for all attributes available in the asset framework matching the given category.
+
 The PI Web API configuration limits the https://docs.osisoft.com/bundle/pi-web-api/page/restrictions-on-number-of-items-per-call.html[maximum number of items] returned in a response to one request.
 This limit is applied to the number of time series (PI Points) and to the number of values.
 The default setting is `150000`.
@@ -86,13 +110,26 @@ To use OpenID Connect Bearer token authentication, set the `oidc_token_url`,
 `client_id` and `client_secret` fields in the configuration.
 
 For example,
-this defines an `af` source,
-with the Web API running on `pi.example.org`:
+this defines an `piwebapi-af` source,
+with the Web API running on `pi.example.org`.
+
+All `PI Point` attributes of the `Reactor` template will be made available.
 
 ```toml
-[source.af]
+[source.af-template]
 type = "piwebapi-af"
 database_uri = "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI"
+element_template = "Reactor"
+```
+
+To include `Formula` attributes as well:
+
+```toml
+[source.af-template]
+type = "piwebapi-af"
+database_uri = "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvgGiLVLmYvAjR9OmSafhkGfF09iWIcaIwVk0tVFMtUElcVElNRVNFRVI"
+element_template = "Reactor"
+allowed_data_references = ["PI Point", "Formula"]
 ```
 
 When the Web API is using a self-signed certificate and basic authentication,
@@ -105,4 +142,5 @@ database_uri = "https://pi.example.org/piwebapi/assetdatabases/F1RDMyvy4jYfVEyvg
 verify_ssl = false
 username = "auser"
 password = "apassword"
+element_template = "Reactor"
 ```
