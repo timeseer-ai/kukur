@@ -60,6 +60,7 @@ class AFTemplateSourceConfiguration:
     attribute_category: str | None
     allowed_data_references: list[str]
     attributes_as_fields: bool
+    use_attribute_path: bool
 
     @classmethod
     def from_data(cls, config: dict) -> "AFTemplateSourceConfiguration":
@@ -73,6 +74,7 @@ class AFTemplateSourceConfiguration:
             config.get("attribute_category"),
             config.get("allowed_data_references", ["PI Point"]),
             config.get("attributes_as_fields", True),
+            config.get("use_attribute_path", False),
         )
 
 
@@ -328,13 +330,13 @@ class PIAssetFramework:
                     if attribute_path not in self._config.attribute_names:
                         continue
 
-                field_name = attribute["Name"]
+                field_name = self._name_attribute(attribute)
                 tags = {
                     "series name": element["Name"],
                     "__id__": attribute["WebId"],
                 }
                 if not self._config.attributes_as_fields:
-                    tags["series name"] = attribute["Name"]
+                    tags["series name"] = self._name_attribute(attribute)
                     tags["element"] = element["Name"]
                     field_name = "value"
 
@@ -457,13 +459,13 @@ class PIAssetFramework:
                 if attribute_path not in self._config.attribute_names:
                     continue
 
-            field_name = attribute["Name"]
+            field_name = self._name_attribute(attribute)
             tags = {
                 "series name": element["Name"],
                 "__id__": attribute["WebId"],
             }
             if not self._config.attributes_as_fields:
-                tags["series name"] = attribute["Name"]
+                tags["series name"] = self._name_attribute(attribute)
                 tags["element"] = element["Name"]
                 field_name = "value"
 
@@ -715,6 +717,11 @@ class PIAssetFramework:
             raise ElementInOtherDatabaseException(
                 f"element {url} is not in configured database"
             )
+
+    def _name_attribute(self, attribute: dict) -> str:
+        if self._config.use_attribute_path:
+            return attribute["Path"].split("|", maxsplit=1)[1]
+        return attribute["Name"]
 
 
 def validate_batch_response(result: dict):

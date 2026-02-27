@@ -42,6 +42,8 @@ class PIWebAPIAssetFrameworkSource:
     def __init__(self, config: dict):
         if "attributes_as_fields" not in config:
             config["attributes_as_fields"] = False
+        if "use_attribute_path" not in config:
+            config["use_attribute_path"] = True
         self._config = config
 
     def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:

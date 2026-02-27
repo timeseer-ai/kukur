@@ -11,5 +11,6 @@ Defaults differ for compatibility reasons and are documented below:
 [source.<name>]
 type = "piwebapi-af-template"
 attributes_as_fields = true # set to false to use the attribute name as the "series name" tag.
+use_attribute_path = false # set to true to use the full path of the attribute for the field.
 # all other options of the piwebapi-af source are supported here.
 ```

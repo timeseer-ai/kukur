@@ -566,9 +566,9 @@ BATCH_ATTRIBUTE_CATEGORY_RESPONSE = {
                 },
                 {
                     "WebId": "A2",
-                    "Name": "Level",
+                    "Name": "Active",
                     "Description": "",
-                    "Path": "\\\\vm-ts-pi\\WriteBack\\Reactors\\Reactor02|Level",
+                    "Path": "\\\\vm-ts-pi\\WriteBack\\Reactors\\Reactor02|Status|Active",
                     "Type": "Double",
                     "TypeQualifier": "",
                     "DefaultUnitsNameAbbreviation": "",
@@ -724,6 +724,28 @@ def test_search_attribute_as_tag(_post, _get) -> None:
     assert metadata.series.tags["__id__"] == "A1_2"
 
 
+@patch("requests.Session.post", side_effect=mocked_requests_post)
+@patch("requests.Session.get", side_effect=mocked_requests_get)
+def test_search_attribute_path(_post, _get) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "element_template": "Reactor",
+            "attributes_as_fields": False,
+            "use_attribute_path": True,
+        }
+    )
+    series_metadata = list(source.search(SeriesSearch("Test")))
+    assert len(series_metadata) == 10
+
+    active = [
+        metadata
+        for metadata in series_metadata
+        if metadata.series.tags["series name"] == "Status|Active"
+    ]
+    assert len(active) == 2
+
+
 def test_search_missing_element_template() -> None:
     source = from_config(
         {
@@ -865,6 +887,22 @@ def test_search_by_category_field_tag(_post) -> None:
     assert len(all_series) == 2
     assert all_series[0].series.tags["series name"] == "Level"
     assert all_series[0].series.tags["element"] == "Reactor01"
+
+
+@patch("requests.Session.post", side_effect=mocked_requests_post)
+def test_search_by_category_use_path(_post) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "attribute_category": "Validation",
+            "attributes_as_fields": False,
+            "use_attribute_path": True,
+        }
+    )
+    all_series = list(source.search(SeriesSearch("Test")))
+    assert len(all_series) == 2
+    assert all_series[1].series.tags["series name"] == "Status|Active"
+    assert all_series[1].series.tags["element"] == "Reactor02"
 
 
 @patch(
