@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import re
+from collections import Counter
 from datetime import datetime, timedelta, timezone
 from random import random
 from typing import Any
@@ -29,6 +30,13 @@ def source_structure_queries(_, query) -> MockKustoResponse:
                 {"deviceId": "sim000001", "plant": "Plant01", "location": "Antwerp"},
                 {"deviceId": "sim000002", "plant": "Plant02", "location": "Antwerp"},
                 {"deviceId": "sim000003", "plant": "Plant03", "location": "Curitiba"},
+            ]
+        )
+    if query == "['telemetry-metadata'] | distinct deviceId, plant, location":
+        return MockKustoResponse(
+            [
+                {"deviceId": "sim000001", "plant": "Plant01", "location": "Antwerp"},
+                {"deviceId": "sim000002", "plant": "Plant02", "location": "Antwerp"},
             ]
         )
     if "summarize" in query:
@@ -114,6 +122,60 @@ def get_data_response(_database, query, _params):
         response_data = response_data[offset:]
     if limit is not None:
         response_data = response_data[:limit]
+
+    return MockKustoResponse(response_data)
+
+
+def get_data_response_custom_query(_database, query, props):
+    assert "telemetry-custom-data" in query
+    assert "loc" in query
+    assert props.get_parameter("loc", "") == "Antwerp"
+    limit = _get_limit_from_query(query)
+    offset = _get_offset_from_query(query)
+    response_data = [
+        {
+            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=10),
+            "pressure": random() * 100,
+        },
+        {
+            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=9),
+            "pressure": random() * 100,
+        },
+        {
+            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=8),
+            "pressure": random() * 100,
+        },
+        {
+            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=7),
+            "pressure": random() * 100,
+        },
+        {
+            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=6),
+            "pressure": random() * 100,
+        },
+        {
+            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=5),
+            "pressure": random() * 100,
+        },
+        {
+            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=4),
+            "pressure": random() * 100,
+        },
+        {
+            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=3),
+            "pressure": random() * 100,
+        },
+        {
+            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=2),
+            "pressure": random() * 100,
+        },
+        {
+            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=1),
+            "pressure": random() * 100,
+        },
+    ]
+    response_data = response_data[offset:]
+    response_data = response_data[:limit]
 
     return MockKustoResponse(response_data)
 
@@ -334,3 +396,53 @@ def test_search_without_metadata(_kusto_client) -> None:
         assert isinstance(metadata, Metadata)
         assert "plant" in metadata.series.tags
         assert "location" in metadata.series.tags
+
+
+@patch("azure.kusto.data.KustoClient.execute", side_effect=source_structure_queries)
+def test_search_with_custom_query(_kusto_client) -> None:
+    source = from_config(
+        {
+            "connection_string": "https://test_cluster.net",
+            "database": "telemetry",
+            "tag_columns": ["deviceId", "plant", "location"],
+            "field_columns": ["pressure", "temperature"],
+            "list_query": "['telemetry-metadata'] | distinct deviceId, plant, location",
+        },
+        MetadataMapper(),
+        MetadataValueMapper(),
+    )
+    all_metadata = list(source.search(SeriesSearch("my_source")))
+    assert len(all_metadata) == 4
+    field_counter = Counter([metadata.series.field for metadata in all_metadata])
+    assert field_counter["pressure"] == 2
+    assert field_counter["temperature"] == 2
+    for metadata in all_metadata:
+        assert isinstance(metadata, Metadata)
+        assert "plant" in metadata.series.tags
+        assert "location" in metadata.series.tags
+
+
+@patch(
+    "azure.kusto.data.KustoClient.execute", side_effect=get_data_response_custom_query
+)
+def test_get_data_custom_query(kusto_client) -> None:
+    source = from_config(
+        {
+            "connection_string": "https://test_cluster.net",
+            "database": "telemetry",
+            "tag_columns": ["deviceId", "plant", "location"],
+            "field_columns": ["pressure", "temperature"],
+            "data_query": "['telemetry-custom-data'] | where ['location'] == loc",
+            "data_query_named_parameters": {"loc": "location"},
+            "max_items_per_call": 3,
+        },
+        MetadataMapper(),
+        MetadataValueMapper(),
+    )
+    selector = SeriesSelector(
+        "my_source", {"location": "Antwerp", "plant": "Plant02"}, "pressure"
+    )
+    initial_date = datetime.now(tz=timezone.utc) - timedelta(minutes=20)
+    final_date = datetime.now(tz=timezone.utc)
+    data = source.get_data(selector, initial_date, final_date)
+    assert len(data) == 10

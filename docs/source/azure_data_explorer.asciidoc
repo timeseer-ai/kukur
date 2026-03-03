@@ -12,17 +12,20 @@ The https://github.com/Azure/azure-kusto-python[azure-kusto-data] Python package
 type = "azure-data-explorer"
 connection_string = "<connection_string>"
 database = "<database>"
-table = "<table>"
+table = "<table>" # optional when `list_query` and `data_query` are defined
 timestamp_column = "ts"
 tag_columns = []
 field_columns = []
 metadata_columns = []
 metadata_mapping = ""
 metadata_value_mapping = ""
+list_query = "" # optional when `table` is defined
+data_query = "" # optional when `table` is defined
+data_query_named_parameters = {}
 max_items_per_call = 500000
 ```
 
-`database`, `table` and `connection_string` are required.
+`connection_string` and `database` are required.
 
 See https://learn.microsoft.com/en-us/azure/data-explorer/kusto/api/connection-strings/kusto[here] to learn more about connection strings.
 
@@ -31,6 +34,11 @@ from the https://pypi.org/project/azure-identity/[azure-identity] package is use
 
 `max_items_per_call` configures the maximum number of rows to return in one response.
 This can be adapted to conform to the https://learn.microsoft.com/en-us/kusto/concepts/query-limits[Kusto Query Limits].
+
+When all data in a table needs to be queried,
+define `table`.
+When extra filter operations need to be applied,
+define `list_query` and `data_query.`
 
 `timestamp_column` is an optional parameter used to define the name
 of the database column that contains timestamps for the series.
@@ -109,3 +117,44 @@ Kukur will interpret it as `FLOAT64`.
 
 `metadata_mapping` and `metadata_value_mapping` can be used together
 to map wildly different metadata formats to a format supported by Kukur.
+
+=== Custom Queries
+
+When time series metadata and data are in separate tables or additional filtering needs to be applied,
+custom queries can be defined using `list_query` and `data_query`.
+
+`list_query` should return all columns defined in `tag_columns` and `metadata_columns`.
+
+`data_query` should return the `timestamp_column` and all `field_columns`.
+Named parameters for the start and end date of the time range to be queried are passed as `startDate` and `endDate`.
+The `data_query` should define these https://learn.microsoft.com/en-us/kusto/query/query-parameters-statement[parameters].
+`data_query_named_parameters` maps further parameter names to series tags.
+
+The following example shows how to connect to a source that defined separate tables for metadata and data.
+The link between both is made by an internal id that is mapped to the `__id__` tag in Kukur:
+
+```toml
+[source.timeseries]
+type = "azure-data-explorer"
+connection_string = "https://tsaitelemetry.westeurope.kusto.windows.net"
+database = "telemetry"
+timestamp_column = "timestamp"
+tag_columns = ["series name", "__id__"]
+field_columns = ["value"]
+metadata_columns = ["description"]
+list_query = """
+['timeseries-metadata']
+| project-rename ['__id__'] = ['id']
+| project-rename ['series name'] = ['tag']
+"""
+data_query = """
+declare query_parameters (startDate: string, endDate: string, tagid: string);
+['timeseries-data']
+| where ['timestamp'] >= todatetime(startDate)
+| where ['timestamp'] < todatetime(endDate)
+| where ['id'] == tagid
+| project ['timestamp'], ['value']
+| sort by ['timestamp'] asc
+"""
+data_query_named_parameters = {"tagid" = "__id__"}
+```
