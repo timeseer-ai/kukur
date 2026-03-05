@@ -277,6 +277,7 @@ def mocked_requests_post(*args, **kwargs):
             response = BATCH_ELEMENT_TEMPLATES_RESPONSE
             return MockResponse(response, 200)
         if "GetElement" in kwargs["json"]:
+            assert "webIdFormat" in kwargs["params"]
             return MockResponse(BATCH_ATTRIBUTE_CATEGORY_RESPONSE, 200)
 
     raise Exception(args[0])
@@ -302,6 +303,7 @@ def mocked_requests_get(*args, **kwargs):
         return MockResponse({"Links": {"Database": DATABASE_URI}}, 200)
 
     if args[0] == f"{DATABASE_URI}/elements":
+        assert "webIdType" in kwargs["params"]
         response = MAIN_ELEMENTS_RESPONSE
         return MockResponse(response, 200)
 
