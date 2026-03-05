@@ -376,8 +376,9 @@ def test_get_elements_for_element(_, af: PIAssetFramework) -> None:
 @patch("requests.Session.get", side_effect=mocked_requests_get)
 def test_get_elements_for_invalid_element(_, af: PIAssetFramework) -> None:
     element_web_id = "B1_1"
-    with pytest.raises(ElementInOtherDatabaseException):
+    with pytest.raises(ElementInOtherDatabaseException) as exc:
         list(af.list_elements(element_web_id))
+    assert "hacker" in str(exc.value)
 
 
 @patch("requests.Session.post", side_effect=mocked_requests_post)

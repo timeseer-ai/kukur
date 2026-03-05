@@ -714,8 +714,9 @@ class PIAssetFramework:
         response.raise_for_status()
         data = response.json()
         if data["Links"]["Database"] != self._config.database_uri:
+            database_link = data["Links"]["Database"]
             raise ElementInOtherDatabaseException(
-                f"element {url} is not in configured database"
+                f"element {url} (database: {database_link}) is not in configured database"
             )
 
     def _name_attribute(self, attribute: dict) -> str:
