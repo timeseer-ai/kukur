@@ -9,11 +9,10 @@ from datetime import datetime
 
 import pyarrow as pa
 
-from kukur.auth import AuthenticationProperties
+from kukur.source.piwebapi_af.pi_asset_framework import PIWebAPIConnection
 
 try:
-    import urllib3
-    from requests import Session
+    import requests  # noqa: F401
 
     HAS_REQUESTS = True
 except ImportError:
@@ -42,7 +41,6 @@ NOT_FOUND = 404
 
 @dataclass
 class _RequestProperties:
-    verify_ssl: bool
     timeout_seconds: float
     max_returned_items_per_call: int
 
@@ -74,7 +72,6 @@ class _DictionaryLookup:  # pylint: disable=too-few-public-methods
             self.__digital_set_links = self._get_digital_set_links()
         response = self.__session.get(
             self.__digital_set_links[name],
-            verify=self.__request_properties.verify_ssl,
             timeout=self.__request_properties.timeout_seconds,
             params=dict(maxCount=self.__request_properties.max_returned_items_per_call),
         )
@@ -89,7 +86,6 @@ class _DictionaryLookup:  # pylint: disable=too-few-public-methods
     def _get_digital_set_links(self) -> dict[str, str]:
         response = self.__session.get(
             self.__data_archive["Links"]["EnumerationSets"],
-            verify=self.__request_properties.verify_ssl,
             timeout=self.__request_properties.timeout_seconds,
             params=dict(maxCount=self.__request_properties.max_returned_items_per_call),
         )
@@ -105,27 +101,59 @@ class PIWebAPIDataArchiveSource:
     """Connect to PI Data Archives using the PI Web API."""
 
     def __init__(self, config: dict):
+        self._config = config
+
+    def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
+        """Return all tags in the Data Archive."""
+        with PIWebAPIConnection(self._config) as connection:
+            yield from PIDataArchive(connection, self._config).search(selector)
+
+    def get_metadata(self, selector: SeriesSelector) -> Metadata:
+        """Return metadata for one tag."""
+        with PIWebAPIConnection(self._config) as connection:
+            return PIDataArchive(connection, self._config).get_metadata(selector)
+
+    def get_data(
+        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
+    ) -> pa.Table:
+        """Return recorded data for the given time series in the given time period."""
+        with PIWebAPIConnection(self._config) as connection:
+            return PIDataArchive(connection, self._config).get_data(
+                selector, start_date, end_date
+            )
+
+    def get_plot_data(
+        self,
+        selector: SeriesSelector,
+        start_date: datetime,
+        end_date: datetime,
+        interval_count: int,
+    ) -> pa.Table:
+        """Return recorded data for the given time series in the given time period."""
+        with PIWebAPIConnection(self._config) as connection:
+            return PIDataArchive(connection, self._config).get_plot_data(
+                selector, start_date, end_date, interval_count
+            )
+
+
+class PIDataArchive:
+    """Connect to PI Data Archive using PI Web API."""
+
+    def __init__(self, connection: PIWebAPIConnection, config: dict):
+        self.__data_archive_uri = config["data_archive_uri"]
+        self._session = connection.session
+
         self._request_properties = _RequestProperties(
-            verify_ssl=config.get("verify_ssl", True),
             timeout_seconds=config.get("timeout_seconds", 60),
             max_returned_items_per_call=config.get(
                 "max_returned_items_per_call", 150000
             ),
         )
-        self.__data_archive_uri = config["data_archive_uri"]
-
-        self.__auth = AuthenticationProperties.from_data(config)
-
-        if not self._request_properties.verify_ssl:
-            urllib3.disable_warnings()
 
     def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
         """Return all tags in the Data Archive."""
-        session = self._get_session()
-
-        response = session.get(
+        response = self._session.get(
             self.__data_archive_uri,
-            verify=self._request_properties.verify_ssl,
             timeout=self._request_properties.timeout_seconds,
             params=dict(selectedFields="Links.Points;Links.EnumerationSets"),
         )
@@ -134,14 +162,13 @@ class PIWebAPIDataArchiveSource:
         data_archive = response.json()
 
         dictionary_lookup = _DictionaryLookup(
-            session, self._request_properties, data_archive
+            self._session, self._request_properties, data_archive
         )
 
         page = 0
         while True:
-            response = session.get(
+            response = self._session.get(
                 data_archive["Links"]["Points"],
-                verify=self._request_properties.verify_ssl,
                 timeout=self._request_properties.timeout_seconds,
                 params=dict(
                     maxCount=self._request_properties.max_returned_items_per_call,
@@ -166,26 +193,23 @@ class PIWebAPIDataArchiveSource:
 
     def get_metadata(self, selector: SeriesSelector) -> Metadata:
         """Return metadata for one tag."""
-        session = self._get_session()
-        response = session.get(
+        response = self._session.get(
             self.__data_archive_uri,
-            verify=self._request_properties.verify_ssl,
             timeout=self._request_properties.timeout_seconds,
             params=dict(selectedFields="Links.Points;Links.EnumerationSets"),
         )
         response.raise_for_status()
 
         data_archive = response.json()
-        response = session.get(
+        response = self._session.get(
             data_archive["Links"]["Points"],
-            verify=self._request_properties.verify_ssl,
             timeout=self._request_properties.timeout_seconds,
             params=dict(nameFilter=selector.name),
         )
         response.raise_for_status()
 
         dictionary_lookup = _DictionaryLookup(
-            session, self._request_properties, data_archive
+            self._session, self._request_properties, data_archive
         )
 
         items = response.json()["Items"]
@@ -201,24 +225,45 @@ class PIWebAPIDataArchiveSource:
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         """Return data for the given time series in the given time period."""
-        session = self._get_session()
-        data_url = self._get_data_url(session, selector)
+        data_url = self._get_data_url(selector)
+        return self._get_data(data_url, start_date, end_date)
 
+    def get_plot_data(
+        self,
+        selector: SeriesSelector,
+        start_date: datetime,
+        end_date: datetime,
+        interval_count: int,
+    ) -> pa.Table:
+        """Return data for the given time series in the given time period."""
+        data_url = self._get_plot_data_url(selector)
+        return self._get_data(data_url, start_date, end_date, interval_count)
+
+    def _get_data(
+        self,
+        data_url: str,
+        start_date: datetime,
+        end_date: datetime,
+        interval_count: int | None = None,
+    ) -> pa.Table:
         timestamps = []
         values = []
         quality_flags = []
 
         while True:
-            response = session.get(
+            params: dict[str, str | int] = {
+                "maxCount": str(self._request_properties.max_returned_items_per_call),
+                "startTime": start_date.isoformat(),
+                "endTime": end_date.isoformat(),
+                "selectedFields": "Items.Value;Items.Timestamp;Items.Good",
+            }
+            if interval_count is not None:
+                params["intervals"] = interval_count
+
+            response = self._session.get(
                 data_url,
-                verify=self._request_properties.verify_ssl,
                 timeout=self._request_properties.timeout_seconds,
-                params=dict(
-                    maxCount=str(self._request_properties.max_returned_items_per_call),
-                    startTime=start_date.isoformat(),
-                    endTime=end_date.isoformat(),
-                    selectedFields="Items.Value;Items.Timestamp;Items.Good",
-                ),
+                params=params,
             )
 
             if response.status_code == NOT_FOUND:
@@ -261,24 +306,17 @@ class PIWebAPIDataArchiveSource:
             {"ts": timestamps, "value": values, "quality": quality_flags}
         )
 
-    def _get_session(self):
-        session = Session()
-        self.__auth.apply(session)
-        return session
-
-    def _get_data_url(self, session, selector: SeriesSelector) -> str:
-        response = session.get(
+    def _get_data_url(self, selector: SeriesSelector) -> str:
+        response = self._session.get(
             self.__data_archive_uri,
-            verify=self._request_properties.verify_ssl,
             timeout=self._request_properties.timeout_seconds,
             params=dict(selectedFields="Links.Points"),
         )
         response.raise_for_status()
 
         data_archive = response.json()
-        response = session.get(
+        response = self._session.get(
             data_archive["Links"]["Points"],
-            verify=self._request_properties.verify_ssl,
             timeout=self._request_properties.timeout_seconds,
             params=dict(
                 maxCount=str(self._request_properties.max_returned_items_per_call),
@@ -295,6 +333,34 @@ class PIWebAPIDataArchiveSource:
             )
 
         return response.json()["Items"][0]["Links"]["RecordedData"]
+
+    def _get_plot_data_url(self, selector: SeriesSelector) -> str:
+        response = self._session.get(
+            self.__data_archive_uri,
+            timeout=self._request_properties.timeout_seconds,
+            params=dict(selectedFields="Links.Points"),
+        )
+        response.raise_for_status()
+
+        data_archive = response.json()
+        response = self._session.get(
+            data_archive["Links"]["Points"],
+            timeout=self._request_properties.timeout_seconds,
+            params=dict(
+                maxCount=str(self._request_properties.max_returned_items_per_call),
+                nameFilter=selector.name,
+                selectedFields="Items.Links.PlotData",
+            ),
+        )
+        response.raise_for_status()
+
+        data_points = response.json()["Items"]
+        if len(data_points) == 0:
+            raise DataNotFoundException(
+                f"no PlotData link for series '{selector.name}'"
+            )
+
+        return response.json()["Items"][0]["Links"]["PlotData"]
 
 
 def _get_metadata(
