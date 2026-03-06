@@ -131,6 +131,7 @@ class RequestProperties:
     metadata_request_timeout_seconds: float
     max_returned_items_per_call: int
     max_returned_metadata_items_per_call: int
+    web_id_type: str
 
 
 @dataclass
@@ -219,6 +220,7 @@ class PIAssetFramework:
             max_returned_metadata_items_per_call=config.get(
                 "max_returned_metadata_items_per_call", 150
             ),
+            web_id_type=config.get("web_id_type", "Full"),
         )
 
         self._config = AFTemplateSourceConfiguration.from_data(config)
@@ -258,6 +260,7 @@ class PIAssetFramework:
                 ]
             ),
             "maxCount": self._request_properties.max_returned_items_per_call,
+            "webIdFormat": self._request_properties.web_id_type,
         }
         if self._config.element_category is not None:
             element_params["categoryName"] = self._config.element_category
@@ -281,6 +284,7 @@ class PIAssetFramework:
                 ]
             ),
             "maxCount": self._request_properties.max_returned_items_per_call,
+            "webIdType": self._request_properties.web_id_type,
         }
         if self._config.attribute_category is not None:
             attribute_params["categoryName"] = self._config.attribute_category
@@ -387,6 +391,7 @@ class PIAssetFramework:
                 ]
             ),
             "maxCount": self._request_properties.max_returned_items_per_call,
+            "webIdType": self._request_properties.web_id_type,
         }
 
         element_params = {
@@ -400,6 +405,7 @@ class PIAssetFramework:
                 ]
             ),
             "maxCount": self._request_properties.max_returned_items_per_call,
+            "webIdType": self._request_properties.web_id_type,
         }
         if self._config.element_category is not None:
             element_params["categoryName"] = self._config.element_category
@@ -531,6 +537,7 @@ class PIAssetFramework:
                         "Items.HasChildren",
                     ]
                 ),
+                "webIdType": self._request_properties.web_id_type,
             },
         )
         response.raise_for_status()
@@ -714,8 +721,9 @@ class PIAssetFramework:
         response.raise_for_status()
         data = response.json()
         if data["Links"]["Database"] != self._config.database_uri:
+            database_link = data["Links"]["Database"]
             raise ElementInOtherDatabaseException(
-                f"element {url} is not in configured database"
+                f"element {url} (database: {database_link}) is not in configured database"
             )
 
     def _name_attribute(self, attribute: dict) -> str:

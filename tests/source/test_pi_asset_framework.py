@@ -277,6 +277,7 @@ def mocked_requests_post(*args, **kwargs):
             response = BATCH_ELEMENT_TEMPLATES_RESPONSE
             return MockResponse(response, 200)
         if "GetElement" in kwargs["json"]:
+            assert "webIdFormat" in kwargs["params"]
             return MockResponse(BATCH_ATTRIBUTE_CATEGORY_RESPONSE, 200)
 
     raise Exception(args[0])
@@ -302,6 +303,7 @@ def mocked_requests_get(*args, **kwargs):
         return MockResponse({"Links": {"Database": DATABASE_URI}}, 200)
 
     if args[0] == f"{DATABASE_URI}/elements":
+        assert "webIdType" in kwargs["params"]
         response = MAIN_ELEMENTS_RESPONSE
         return MockResponse(response, 200)
 
@@ -376,8 +378,9 @@ def test_get_elements_for_element(_, af: PIAssetFramework) -> None:
 @patch("requests.Session.get", side_effect=mocked_requests_get)
 def test_get_elements_for_invalid_element(_, af: PIAssetFramework) -> None:
     element_web_id = "B1_1"
-    with pytest.raises(ElementInOtherDatabaseException):
+    with pytest.raises(ElementInOtherDatabaseException) as exc:
         list(af.list_elements(element_web_id))
+    assert "hacker" in str(exc.value)
 
 
 @patch("requests.Session.post", side_effect=mocked_requests_post)

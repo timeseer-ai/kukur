@@ -91,13 +91,38 @@ DATA_POINTS = [
     {"Timestamp": "2020-01-03T10:56:25Z", "Value": 23.6581783, "Good": True},
 ]
 
+PLOT_POINTS = [
+    {"Timestamp": "2021-01-01T00:00:00Z", "Value": 81.83204, "Good": True},
+    {"Timestamp": "2021-01-01T07:33:25Z", "Value": 13.6064939, "Good": True},
+    {"Timestamp": "2021-01-01T08:37:25Z", "Value": 0.9678813, "Good": True},
+    {"Timestamp": "2021-01-01T09:42:25Z", "Value": 3.38636, "Good": True},
+    {"Timestamp": "2021-01-01T09:42:25Z", "Value": 23.6581783, "Good": True},
+    {"Timestamp": "2021-01-01T09:42:25Z", "Value": 23.6581783, "Good": True},
+    {"Timestamp": "2021-01-01T09:44:25Z", "Value": 23.6581783, "Good": True},
+    {
+        "Timestamp": "2021-01-01T17:24:18Z",
+        "Value": {"Name": "Shutdown", "Value": 254, "IsSystem": True},
+        "Good": False,
+    },
+    {"Timestamp": "2021-01-02T00:00:00Z", "Value": 81.83204, "Good": True},
+    {"Timestamp": "2021-01-02T07:33:25Z", "Value": 13.6064939, "Good": True},
+    {"Timestamp": "2021-01-02T08:37:25Z", "Value": 0.9678813, "Good": True},
+    {"Timestamp": "2021-01-02T09:42:25Z", "Value": 3.38636, "Good": True},
+    {"Timestamp": "2021-01-02T10:56:25Z", "Value": 23.6581783, "Good": True},
+    {"Timestamp": "2021-01-03T00:00:00Z", "Value": 81.83204, "Good": True},
+    {"Timestamp": "2021-01-03T07:33:25Z", "Value": 13.6064939, "Good": True},
+    {"Timestamp": "2021-01-03T08:37:25Z", "Value": 0.9678813, "Good": True},
+    {"Timestamp": "2021-01-03T09:42:25Z", "Value": 3.38636, "Good": True},
+    {"Timestamp": "2021-01-03T10:56:25Z", "Value": 23.6581783, "Good": True},
+]
 
-def _get_data(start_date: datetime, end_date: datetime, limit: int):
+
+def _get_data(points: list[dict], start_date: datetime, end_date: datetime, limit: int):
     def between_dates(item):
         date = parse_date(item["Timestamp"])
         return date >= start_date and date <= end_date
 
-    return list(filter(between_dates, DATA_POINTS))[:limit]
+    return list(filter(between_dates, points))[:limit]
 
 
 def mocked_requests_get(*args, **kwargs):
@@ -131,7 +156,17 @@ def mocked_requests_get(*args, **kwargs):
         end_date = parse_date(params["endTime"])
         max_count = int(params["maxCount"])
 
-        response = {"Items": _get_data(start_date, end_date, max_count)}
+        response = {"Items": _get_data(DATA_POINTS, start_date, end_date, max_count)}
+        return MockResponse(response, 200)
+
+    if args[0] == "https://test_pi.net/streams/1/plot":
+        params = kwargs.get("params", {})
+        start_date = parse_date(params["startTime"])
+        end_date = parse_date(params["endTime"])
+        max_count = int(params["maxCount"])
+        assert "intervals" in params
+
+        response = {"Items": _get_data(PLOT_POINTS, start_date, end_date, max_count)}
         return MockResponse(response, 200)
 
     raise Exception(args[0])
@@ -303,3 +338,22 @@ def test_get_data_ignore_system_points(_) -> None:
     data = source.get_data(SeriesSelector("Test", "CDT158"), start_date, end_date)
     assert len(data) == 1
     assert data["ts"][0].as_py() == parse_date("2020-01-02T00:00:00Z")
+
+
+@patch("requests.Session.get", side_effect=mocked_requests_get)
+def test_get_plot_data_without_limits(_) -> None:
+    source = from_config(
+        {
+            "data_archive_uri": "https://test_pi.net",
+            "max_returned_items_per_call": 10,
+            "username": "test",
+            "password": "test",
+            "verify_ssl": "false",
+        }
+    )
+    start_date = parse_date("2021-01-01T00:00:00Z")
+    end_date = parse_date("2021-01-02T00:00:00Z")
+    data = source.get_plot_data(
+        SeriesSelector("Test", "CDT158"), start_date, end_date, interval_count=200
+    )
+    assert len(data) == 8
