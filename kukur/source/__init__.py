@@ -184,11 +184,12 @@ class SourceWrapper:
                         if v is not None and v != "":
                             extra_metadata.set_field_by_name(k, v)
                     yield extra_metadata
-                except Exception:  # pylint: disable=broad-except
+                except Exception as err:
                     logger.error(
-                        """Metadata query for "%s" (%s) failed all attempts.""",
+                        """Metadata query for "%s" (%s) failed all attempts: %s""",
                         series_selector.name,
                         series_selector.source,
+                        err,
                     )
                     yield result
 
