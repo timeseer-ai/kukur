@@ -10,8 +10,8 @@ from unittest.mock import patch
 
 from azure.kusto.data.exceptions import KustoMultiApiError
 
-from kukur import SeriesSearch, SeriesSelector
-from kukur.metadata import Metadata
+from kukur import DataType, SeriesSearch, SeriesSelector
+from kukur.metadata import Metadata, fields
 from kukur.source.azure_data_explorer import from_config
 from kukur.source.metadata import MetadataMapper, MetadataValueMapper
 
@@ -32,11 +32,24 @@ def source_structure_queries(_, query) -> MockKustoResponse:
                 {"deviceId": "sim000003", "plant": "Plant03", "location": "Curitiba"},
             ]
         )
-    if query == "['telemetry-metadata'] | distinct deviceId, plant, location":
+    if (
+        query
+        == "['telemetry-metadata'] | distinct deviceId, plant, location, ['data type']"
+    ):
         return MockKustoResponse(
             [
-                {"deviceId": "sim000001", "plant": "Plant01", "location": "Antwerp"},
-                {"deviceId": "sim000002", "plant": "Plant02", "location": "Antwerp"},
+                {
+                    "deviceId": "sim000001",
+                    "plant": "Plant01",
+                    "location": "Antwerp",
+                    "data type": "float",
+                },
+                {
+                    "deviceId": "sim000002",
+                    "plant": "Plant02",
+                    "location": "Antwerp",
+                    "data type": None,
+                },
             ]
         )
     if "summarize" in query:
@@ -406,20 +419,23 @@ def test_search_with_custom_query(_kusto_client) -> None:
             "database": "telemetry",
             "tag_columns": ["deviceId", "plant", "location"],
             "field_columns": ["pressure", "temperature"],
-            "list_query": "['telemetry-metadata'] | distinct deviceId, plant, location",
+            "metadata_columns": ["data type"],
+            "list_query": "['telemetry-metadata'] | distinct deviceId, plant, location, ['data type']",
         },
         MetadataMapper(),
-        MetadataValueMapper(),
+        MetadataValueMapper.from_config({"data type": {"FLOAT64": ["float"]}}),
     )
     all_metadata = list(source.search(SeriesSearch("my_source")))
     assert len(all_metadata) == 4
     field_counter = Counter([metadata.series.field for metadata in all_metadata])
     assert field_counter["pressure"] == 2
     assert field_counter["temperature"] == 2
-    for metadata in all_metadata:
+    for idx, metadata in enumerate(all_metadata):
         assert isinstance(metadata, Metadata)
         assert "plant" in metadata.series.tags
         assert "location" in metadata.series.tags
+        if idx == 0:
+            assert metadata.get_field(fields.DataType) == DataType.FLOAT64
 
 
 @patch(
