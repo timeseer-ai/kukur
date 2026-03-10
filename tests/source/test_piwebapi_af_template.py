@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2025 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
+import re
 from unittest.mock import patch
 
 import pytest
@@ -617,6 +618,131 @@ def mocked_requests_post(*args, **kwargs):
     raise Exception(args[0])
 
 
+def mocked_requests_category_paginated(*args, **kwargs):
+    if args[0] == f"{WEB_API_URI}batch":
+        match = re.search(
+            "startIndex=(\\d+)", kwargs["json"]["GetAttributes"]["Resource"]
+        )
+        assert match is not None
+        start_index = int(match.group(1))
+        if start_index == 0:
+            return MockResponse(
+                {
+                    "GetElement": {
+                        "Status": 207,
+                        "Headers": {},
+                        "Content": {
+                            "Total": 1,
+                            "Items": [
+                                {
+                                    "Status": 200,
+                                    "Content": {
+                                        "WebId": "R1",
+                                        "Name": "Reactor01",
+                                        "Description": "",
+                                        "TemplateName": "Reactor",
+                                        "CategoryNames": [],
+                                    },
+                                },
+                            ],
+                        },
+                    },
+                    "GetAttributes": {
+                        "Status": 200,
+                        "Content": {
+                            "Items": [
+                                {
+                                    "WebId": "A1",
+                                    "Name": "Level",
+                                    "Description": "",
+                                    "Path": "\\\\vm-ts-pi\\WriteBack\\Reactors\\Reactor01|Level",
+                                    "Type": "Double",
+                                    "TypeQualifier": "",
+                                    "DefaultUnitsNameAbbreviation": "",
+                                    "DataReferencePlugIn": "PI Point",
+                                    "CategoryNames": ["Validation"],
+                                    "Step": False,
+                                    "Span": 100.0,
+                                    "Zero": 0.0,
+                                    "Links": {
+                                        "Element": "https://pi.timeseer.ai/piwebapi/elements/A1"
+                                    },
+                                },
+                            ]
+                        },
+                    },
+                },
+                207,
+            )
+        if start_index == 1:
+            return MockResponse(
+                {
+                    "GetElement": {
+                        "Status": 207,
+                        "Headers": {},
+                        "Content": {
+                            "Total": 1,
+                            "Items": [
+                                {
+                                    "Status": 200,
+                                    "Content": {
+                                        "WebId": "R2",
+                                        "Name": "Reactor02",
+                                        "Description": "",
+                                        "TemplateName": "Reactor",
+                                        "CategoryNames": [],
+                                    },
+                                },
+                            ],
+                        },
+                    },
+                    "GetAttributes": {
+                        "Status": 200,
+                        "Content": {
+                            "Items": [
+                                {
+                                    "WebId": "A2",
+                                    "Name": "Active",
+                                    "Description": "",
+                                    "Path": "\\\\vm-ts-pi\\WriteBack\\Reactors\\Reactor02|Status|Active",
+                                    "Type": "Double",
+                                    "TypeQualifier": "",
+                                    "DefaultUnitsNameAbbreviation": "",
+                                    "DataReferencePlugIn": "PI Point",
+                                    "CategoryNames": ["Validation"],
+                                    "Step": False,
+                                    "Span": 100.0,
+                                    "Zero": 0.0,
+                                    "Links": {
+                                        "Element": "https://pi.timeseer.ai/piwebapi/elements/A2"
+                                    },
+                                },
+                            ]
+                        },
+                    },
+                },
+                207,
+            )
+        if start_index == 2:
+            return MockResponse(
+                {
+                    "GetElement": {
+                        "Status": 400,
+                        "Headers": {},
+                        "Content": "Some JSON paths did not select any tokens: $.GetAttributes.Content.Items[*].Links.Element.",
+                    },
+                    "GetAttributes": {
+                        "Status": 200,
+                        "Headers": {"Content-Type": "application/json; charset=utf-8"},
+                        "Content": {"Items": []},
+                    },
+                },
+                207,
+            )
+
+    raise Exception(args[0])
+
+
 def mocked_requests_batch_global_error_attributes(*args, **kwargs):
     if args[0] == f"{WEB_API_URI}batch":
         return MockResponse(BATCH_GLOBAL_ERROR_ATTRIBUTES, 200)
@@ -903,6 +1029,20 @@ def test_search_by_category_use_path(_post) -> None:
     assert len(all_series) == 2
     assert all_series[1].series.tags["series name"] == "Status|Active"
     assert all_series[1].series.tags["element"] == "Reactor02"
+
+
+@patch("requests.Session.post", side_effect=mocked_requests_category_paginated)
+def test_search_by_category_pagination(_post) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "attribute_category": "Validation",
+            "max_returned_metadata_items_per_call": 1,
+        }
+    )
+    all_series = list(source.search(SeriesSearch("Test")))
+    assert len(all_series) == 2
+    assert all_series[0].series.tags["series name"] == "Reactor01"
 
 
 @patch(
