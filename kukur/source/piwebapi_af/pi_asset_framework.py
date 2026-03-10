@@ -368,79 +368,98 @@ class PIAssetFramework:
         if self._config.root_id is not None:
             raise InvalidSourceException("Cannot search attributes with element root")
 
-        attribute_params = {
-            "databaseWebId": self._url.database_id(),
-            "query": f"Element:{{ Name:=* }} category:{self._config.attribute_category}",
-            "searchFullHierarchy": "true",
-            "selectedFields": ";".join(
-                [
-                    "Items.WebId",
-                    "Items.Name",
-                    "Items.Description",
-                    "Items.Path",
-                    "Items.CategoryNames",
-                    "Items.DataReferencePlugin",
-                    "Items.Type",
-                    "Items.TypeQualifier",
-                    "Items.DefaultUnitsNameAbbreviation",
-                    "Items.Step",
-                    "Items.Span",
-                    "Items.Zero",
-                    "Items.Links.EnumerationValues",
-                    "Items.Links.Element",
-                ]
-            ),
-            "maxCount": self._request_properties.max_returned_items_per_call,
-            "webIdType": self._request_properties.web_id_type,
-        }
-
-        element_params = {
-            "selectedFields": ";".join(
-                [
-                    "Name",
-                    "WebId",
-                    "Description",
-                    "TemplateName",
-                    "CategoryNames",
-                ]
-            ),
-            "maxCount": self._request_properties.max_returned_items_per_call,
-            "webIdType": self._request_properties.web_id_type,
-        }
-        if self._config.element_category is not None:
-            element_params["categoryName"] = self._config.element_category
-
-        batch_query = {
-            "GetAttributes": {
-                "Method": "GET",
-                "Resource": add_query_params(
-                    self._url.root(["attributes", "search"]),
-                    attribute_params,
+        start_index = 0
+        while True:
+            attribute_params = {
+                "databaseWebId": self._url.database_id(),
+                "query": f"Element:{{ Name:=* }} category:{self._config.attribute_category}",
+                "searchFullHierarchy": "true",
+                "selectedFields": ";".join(
+                    [
+                        "Items.WebId",
+                        "Items.Name",
+                        "Items.Description",
+                        "Items.Path",
+                        "Items.CategoryNames",
+                        "Items.DataReferencePlugin",
+                        "Items.Type",
+                        "Items.TypeQualifier",
+                        "Items.DefaultUnitsNameAbbreviation",
+                        "Items.Step",
+                        "Items.Span",
+                        "Items.Zero",
+                        "Items.Links.EnumerationValues",
+                        "Items.Links.Element",
+                    ]
                 ),
-            },
-            "GetElement": {
-                "Method": "GET",
-                "RequestTemplate": {
-                    "Resource": "{0}?"
-                    + urllib.parse.urlencode(
-                        element_params,
-                        doseq=True,
+                "maxCount": self._request_properties.max_returned_metadata_items_per_call,
+                "startIndex": start_index,
+                "webIdType": self._request_properties.web_id_type,
+            }
+
+            element_params = {
+                "selectedFields": ";".join(
+                    [
+                        "Name",
+                        "WebId",
+                        "Description",
+                        "TemplateName",
+                        "CategoryNames",
+                    ]
+                ),
+                "webIdType": self._request_properties.web_id_type,
+            }
+            if self._config.element_category is not None:
+                element_params["categoryName"] = self._config.element_category
+
+            batch_query = {
+                "GetAttributes": {
+                    "Method": "GET",
+                    "Resource": add_query_params(
+                        self._url.root(["attributes", "search"]),
+                        attribute_params,
                     ),
                 },
-                "Parameters": ["$.GetAttributes.Content.Items[*].Links.Element"],
-                "ParentIds": ["GetAttributes"],
-            },
-        }
+                "GetElement": {
+                    "Method": "GET",
+                    "RequestTemplate": {
+                        "Resource": "{0}?"
+                        + urllib.parse.urlencode(
+                            element_params,
+                            doseq=True,
+                        ),
+                    },
+                    "Parameters": ["$.GetAttributes.Content.Items[*].Links.Element"],
+                    "ParentIds": ["GetAttributes"],
+                },
+            }
 
-        response = self._session.post(
-            self._get_batch_url(),
-            timeout=self._request_properties.metadata_request_timeout_seconds,
-            json=batch_query,
-        )
-        response.raise_for_status()
-        result = response.json()
-        validate_batch_response(result)
+            response = self._session.post(
+                self._get_batch_url(),
+                timeout=self._request_properties.metadata_request_timeout_seconds,
+                json=batch_query,
+            )
+            response.raise_for_status()
+            result = response.json()
 
+            result = validate_batch_response(result)
+            if result is None:
+                break
+
+            yield from self._create_metadata(selector.source, result)
+
+            attribute_count = len(result["GetAttributes"]["Content"].get("Items", []))
+            if (
+                attribute_count
+                != self._request_properties.max_returned_metadata_items_per_call
+            ):
+                break
+
+            start_index = start_index + attribute_count
+
+    def _create_metadata(
+        self, source_name: str, result: dict
+    ) -> Generator[Metadata, None, None]:
         dictionary_lookup = _DictionaryLookup(self._request_properties, self._session)
         for i, element_request in enumerate(
             result["GetElement"]["Content"].get("Items")
@@ -481,7 +500,7 @@ class PIAssetFramework:
                 in self._config.allowed_data_references
             ):
                 metadata = _get_metadata(
-                    SeriesSelector(selector.source, tags, field_name),
+                    SeriesSelector(source_name, tags, field_name),
                     attribute,
                     element_metadata,
                 )
@@ -732,12 +751,14 @@ class PIAssetFramework:
         return attribute["Name"]
 
 
-def validate_batch_response(result: dict):
+def validate_batch_response(result: dict) -> dict | None:
     """Validate a batch controller result.
 
     Successful queries return 200 or 207 (for templated queries).
     Queries fail with 400.
     Queries that were not executed because their parent failed return 409.
+
+    Sometimes queries return a 400 when the parent list is empty. `None` is returned in this case.
     """
     errors = []
 
@@ -748,12 +769,17 @@ def validate_batch_response(result: dict):
                 if item["Status"] >= HTTP_BAD_REQUEST:
                     errors.append((batch_id, _extract_error(item)))
         elif batch_status >= HTTP_BAD_REQUEST:
-            errors.append((batch_id, _extract_error(batch_response)))
+            error_message = _extract_error(batch_response)
+            if "Some JSON paths did not select any tokens" in error_message:
+                return None
+            errors.append((batch_id, error_message))
 
     if len(errors) > 0:
         raise BatchRequestFailedException(
             ";".join([f"{batch_id}: {error}" for batch_id, error in errors])
         )
+
+    return result
 
 
 def _extract_error(item: dict) -> str:
