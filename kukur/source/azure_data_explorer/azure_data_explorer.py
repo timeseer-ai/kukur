@@ -142,9 +142,13 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
             for field in self.__config.field_columns:
                 metadata = Metadata(SeriesSelector(selector.source, tags, field))
                 for metadata_field in self.__config.metadata_columns:
+                    if row[metadata_field] is None:
+                        continue
                     metadata.coerce_field(
                         metadata_field,
-                        row[metadata_field],
+                        self.__metadata_value_mapper.from_source(
+                            metadata_field, row[metadata_field]
+                        ),
                     )
                 yield metadata
 
