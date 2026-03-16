@@ -1,0 +1,39 @@
+[source.tdengine]
+type = "tdengine"
+tag_columns = ["name", "location"]
+list_query = """
+show table tags from data from kukur
+"""
+list_columns = ["table", "name", "location"]
+data_query = """
+select ts, v from kukur.data where name = '{}' and location = '{}' and ts >= '{}' and ts < '{}'
+"""
+query_string_parameters = true
+
+[source.tdengine.connection]
+host = "tdengine"
+port = 6041
+
+[source.tdengine-local]
+type = "tdengine"
+tag_columns = ["name", "location"]
+list_query = """
+show table tags from data from kukur
+"""
+list_columns = ["table", "name", "location"]
+data_query = """
+select ts, v from kukur.data where name = '{}' and location = '{}' and ts >= '{}' and ts < '{}'
+"""
+query_string_parameters = true
+
+[source.tdengine-linux]
+type = "tdengine"
+tag_columns = ["name", "location"]
+list_query = """
+show table tags from data from kukur
+"""
+list_columns = ["table", "name", "location"]
+data_query = """
+select ts, v from kukur.data where name = '{}' and location = '{}' and ts >= '{}' and ts < '{}'
+"""
+query_string_parameters = true

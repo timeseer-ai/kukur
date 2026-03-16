@@ -196,7 +196,7 @@ class BaseSQLSource(ABC):
         qualities = []
         type_count: dict[str, int] = defaultdict(int)
         detected_type = None
-        for row in cursor:
+        for row in cursor.fetchall():
             if self._config.enable_trace_logging:
                 logger.info(
                     'Data from "%s (%s)" at %s has value %s with type %s',
@@ -291,7 +291,7 @@ class BaseSQLSource(ABC):
         cursor = connection.cursor()
         cursor.execute(self._config.list_query)
 
-        for tag_values in cursor:
+        for tag_values in cursor.fetchall():
             if len(tag_values) != len(self._config.tag_columns):
                 raise InvalidConfigurationError(
                     "number of tag_columns does not match result of list_query"
@@ -319,7 +319,7 @@ class BaseSQLSource(ABC):
         cursor.execute(self._config.list_query)
         tag_column_indices = []
 
-        for row in cursor:
+        for row in cursor.fetchall():
             tags = {}
             for i, name in enumerate(self._config.list_columns):
                 if name in self._config.tag_columns:

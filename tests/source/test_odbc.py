@@ -51,6 +51,9 @@ class MockSQLCursor:
     def __iter__(self):
         return MockSQLIterator()
 
+    def fetchall(self):
+        return []
+
 
 class MockSQLConnection:
     def __init__(self, execute_fn):
@@ -77,7 +80,7 @@ class MockSQLSource(BaseSQLSource):
         return MockSQLConnection(self.execute_fn)
 
 
-def test_metadata_value():
+def test_metadata_value() -> None:
     config = SQLConfig(
         ":memory:",
         metadata_query="select dictionary_name from Metadata where series_name = ?",
@@ -101,7 +104,7 @@ def test_metadata_value():
     assert metadata.get_field(fields.DictionaryName) == "prisma"
 
 
-def test_metadata_none_value_on_empty_return():
+def test_metadata_none_value_on_empty_return() -> None:
     config = SQLConfig(
         ":memory:",
         metadata_query="select dictionary_name from Metadata where series_name = ?",
@@ -125,7 +128,7 @@ def test_metadata_none_value_on_empty_return():
     assert metadata.get_field(fields.DictionaryName) is None
 
 
-def test_list_none_value_on_empty_return():
+def test_list_none_value_on_empty_return() -> None:
     config = SQLConfig(
         ":memory:",
         list_query="select series_name, dictionary_name from Metadata",
@@ -343,7 +346,7 @@ def test_accuracy_percentage_search_with_wrong_string_value() -> None:
     assert metadata.get_field(fields.Accuracy) is None
 
 
-def test_blob_values():
+def test_blob_values() -> None:
     config = SQLConfig(
         ":memory:",
         data_query="select ts, value from Data where series_name = ? and ts between ? and ?",
@@ -386,7 +389,7 @@ def test_blob_values():
     assert math.isnan(data["value"][0].as_py())
 
 
-def test_datetime_values():
+def test_datetime_values() -> None:
     config = SQLConfig(
         ":memory:",
         data_query="select ts, value from Data where series_name = ? and ts between ? and ?",
@@ -424,7 +427,7 @@ def test_datetime_values():
     )
 
 
-def test_timezone_on_queries():
+def test_timezone_on_queries() -> None:
     config = SQLConfig.from_dict(
         dict(
             connection_string=":memory:",
@@ -448,7 +451,7 @@ def test_timezone_on_queries():
     assert start_date == datetime.fromisoformat("2021-07-31T19:00:00")
 
 
-def test_string_in_timezone_on_queries():
+def test_string_in_timezone_on_queries() -> None:
     config = SQLConfig.from_dict(
         dict(
             connection_string=":memory:",
@@ -524,7 +527,7 @@ def test_quality_flag():
     assert data["quality"][1].as_py() == 0
 
 
-def test_null_values_on_string_column():
+def test_null_values_on_string_column() -> None:
     config = SQLConfig(
         ":memory:",
         data_query="select ts, value from Data where series_name = ? and ts between ? and ?",
@@ -578,7 +581,7 @@ def test_null_values_on_string_column():
     assert data["value"][2].as_py() == "second-value"
 
 
-def test_null_values_on_string_column_with_quality():
+def test_null_values_on_string_column_with_quality() -> None:
     config = SQLConfig(
         ":memory:",
         data_query="select ts, value, quality from Data where series_name = ? and ts between ? and ?",
@@ -640,7 +643,7 @@ def test_null_values_on_string_column_with_quality():
     assert data["quality"][1].as_py() == 0
 
 
-def test_single_string_in_nulls_column_inside_type_checking_range():
+def test_single_string_in_nulls_column_inside_type_checking_range() -> None:
     config = SQLConfig(
         ":memory:",
         data_query="select ts, value, quality from Data where series_name = ? and ts between ? and ?",
@@ -704,7 +707,7 @@ def test_single_string_in_nulls_column_inside_type_checking_range():
     ] + [None] * 5
 
 
-def test_numbers_inside_string_column():
+def test_numbers_inside_string_column() -> None:
     config = SQLConfig(
         ":memory:",
         data_query="select ts, value, quality from Data where series_name = ? and ts between ? and ?",

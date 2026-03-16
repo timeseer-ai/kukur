@@ -1,0 +1,38 @@
+// SPDX-FileCopyrightText: 2026 Timeseer.AI
+// SPDX-License-Identifier: Apache-2.0
+
+== TDengine
+
+Sources with `type = "tdengine"` configure https://tdengine.com/tsdb/[TDengine] sources.
+Websockets are used to query TDengine.
+
+```toml
+[source.<name>]
+type = "tdengine"
+connection_string = "" # optional: DSN
+query_string_parameters = true
+... # all options supported by ODBC sources
+
+[source.<name>.connection]
+... # optional: connection properties
+```
+
+All options supported by sources with `type = "odbc"` are supported.
+
+It is required to pass `query_string_parameters = true` since true parameterizable queries are not supported by the driver.
+
+The example below connect to a supertable `data` with two tags (`name` and `location`):
+
+```toml
+[source.tdengine]
+type = "tdengine"
+tag_columns = ["name", "location"]
+list_query = """
+show table tags from data from kukur
+"""
+list_columns = ["table", "name", "location"]
+data_query = """
+select ts, v from kukur.data where name = '{}' and location = '{}' and ts >= '{}' and ts < '{}'
+"""
+query_string_parameters = true
+```

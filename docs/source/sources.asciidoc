@@ -44,6 +44,7 @@ ifdef::sources[]
 - `redshift`
 endif::sources[]
 - `sqlite`
+- `tdengine`
 
 `type` is required.
 
@@ -67,6 +68,7 @@ ifdef::sources[]
 - `redshift`
 endif::sources[]
 - `sqlite`
+- `tdengine`
 
 `metadata_type` is optional.
 The `type` is used when not specified.
@@ -192,6 +194,7 @@ ifndef::sources[]
 - link:piwebapi-da.asciidoc[PI Data Archive] using PI Web API
 - link:postgresql.asciidoc[PostgreSQL] databases
 - link:sqlite.asciidoc[SQLite] databases
+- link:tdengine.asciidoc[TDengine] time series databases
 
 Source-specific parameters are documented in the linked documents.
 endif::sources[]
@@ -218,6 +221,7 @@ ifdef::sources[]
 - <<PostgreSQL>> databases
 - <<Redshift>> data warehouses
 - <<SQLite>> databases
+- <<TDengine>> time series databases
 
 Source-specific parameters are documented in the linked sources reference.
 endif::sources[]
