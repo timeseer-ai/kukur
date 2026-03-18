@@ -45,6 +45,7 @@ from kukur.source import (
     redshift,
     simulator,
     sqlite,
+    tdengine,
 )
 from kukur.source import json as json_source
 from kukur.source import kukur as kukur_source
@@ -82,6 +83,7 @@ _FACTORY: dict[str, Callable[..., SourceProtocol]] = {
     "redshift": redshift.from_config,
     "simulator": simulator.from_config,
     "sqlite": sqlite.from_config,
+    "tdengine": tdengine.from_config,
 }
 
 

@@ -1,0 +1,19 @@
+services:
+  tdengine:
+    image: tdengine/tsdb-ee
+    ports:
+      - "6041:6041"
+    volumes:
+      - tdengine-data:/var/lib/taos
+      - tdengine-logs:/var/log/taos
+      - ./tdengine/data.sql:/docker-entrypoint-initdb.d/data.sql
+    healthcheck:
+      test: ["CMD", "taos", "--check"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+volumes:
+  tdengine-data:
+  tdengine-logs:

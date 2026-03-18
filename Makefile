@@ -75,6 +75,10 @@ integration-test-odbc: ## Run ODBC integration tests
 integration-test-postgres: ## Run PostgreSQL integration tests
 	uv run pytest tests/integration -m postgresql
 
+.PHONY: integration-test-tdengine
+integration-test-tdengine: ## Run TDengine integration tests
+	uv run pytest tests/integration -m tdengine
+
 .PHONY: deps
 deps: ## Install runtime dependencies
 	uv sync --frozen --all-extras

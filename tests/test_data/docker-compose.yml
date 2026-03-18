@@ -66,6 +66,22 @@ services:
       timeout: 5s
       retries: 18
       start_period: 5s
+  tdengine:
+    image: tdengine/tsdb-ee
+    ports:
+      - "6041:6041"
+    volumes:
+      - tdengine-data:/var/lib/taos
+      - tdengine-logs:/var/log/taos
+      - ./tdengine/data.sql:/docker-entrypoint-initdb.d/data.sql
+    environment:
+      TAOS_FQDN: tdengine
+    healthcheck:
+      test: ["CMD", "taos", "--check"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
 
 volumes:
     crate-data:
@@ -73,3 +89,5 @@ volumes:
     elasticsearch-data:
     influx-data:
     postgres-data:
+    tdengine-data:
+    tdengine-logs:

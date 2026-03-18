@@ -466,13 +466,13 @@ name = "cx-freeze"
 version = "8.5.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "filelock", marker = "sys_platform == 'linux'" },
-    { name = "freeze-core" },
+    { name = "filelock", marker = "python_full_version >= '3.14' and platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64' and sys_platform == 'linux'" },
+    { name = "freeze-core", marker = "(python_full_version >= '3.14' and platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or (python_full_version >= '3.14' and sys_platform != 'linux') or sys_platform == 'win32'" },
     { name = "lief", marker = "(python_full_version < '3.14' and sys_platform == 'win32') or (platform_machine != 'ARM64' and sys_platform == 'win32')" },
-    { name = "packaging" },
+    { name = "packaging", marker = "(python_full_version >= '3.14' and platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or (python_full_version >= '3.14' and sys_platform != 'linux') or sys_platform == 'win32'" },
     { name = "python-msilib", marker = "python_full_version >= '3.13' and sys_platform == 'win32'" },
-    { name = "setuptools" },
-    { name = "tomli", marker = "python_full_version < '3.11'" },
+    { name = "setuptools", marker = "(python_full_version >= '3.14' and platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or (python_full_version >= '3.14' and sys_platform != 'linux') or sys_platform == 'win32'" },
+    { name = "tomli", marker = "python_full_version < '3.11' and sys_platform == 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/9b/89/6423aa0756dae0465e244ddfe3fe1b69474ce6ae3d34feb093154983eb11/cx_freeze-8.5.3.tar.gz", hash = "sha256:772e41ada72467365342d521f42f124663db51882f6ba495bf88dec399dc6511", size = 1373867, upload-time = "2026-01-03T09:07:12.409Z" }
 wheels = [
@@ -587,7 +587,7 @@ version = "0.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cabarchive", marker = "sys_platform == 'win32'" },
-    { name = "filelock" },
+    { name = "filelock", marker = "(python_full_version >= '3.14' and platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or (python_full_version >= '3.14' and sys_platform != 'linux') or sys_platform == 'win32'" },
     { name = "striprtf", marker = "sys_platform == 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/6d/00/3475df084f01a4118bd59d572edcf7280720301da232045883b42c6556ec/freeze_core-0.5.0.tar.gz", hash = "sha256:6178c3e40cda56b41187452cfd60347c343db067a4f6a157196e634050a5fe57", size = 1636109, upload-time = "2026-01-12T01:37:52.318Z" }
@@ -834,6 +834,9 @@ redshift = [
 simulator = [
     { name = "pyyaml" },
 ]
+tdengine = [
+    { name = "taos-ws-py" },
+]
 
 [package.dev-dependencies]
 dev = [
@@ -870,9 +873,10 @@ requires-dist = [
     { name = "redshift-connector", marker = "extra == 'redshift'" },
     { name = "requests", marker = "extra == 'piwebapi'" },
     { name = "requests-kerberos", marker = "extra == 'piwebapi'" },
+    { name = "taos-ws-py", marker = "extra == 'tdengine'" },
     { name = "toml", marker = "python_full_version < '3.11'", specifier = ">=0.10.2" },
 ]
-provides-extras = ["adodb", "cratedb", "datafusion", "delta", "excel", "influxdb", "kusto", "odbc", "numpy", "piwebapi", "postgresql", "redshift", "simulator"]
+provides-extras = ["adodb", "cratedb", "datafusion", "delta", "excel", "influxdb", "kusto", "odbc", "numpy", "piwebapi", "postgresql", "redshift", "simulator", "tdengine"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -2065,6 +2069,21 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f3/86/7154b7c625a3ff704581dab70c05389e1de90233b7a751f79f712c2ca0e9/striprtf-0.0.29.tar.gz", hash = "sha256:5a822d075e17417934ed3add6fc79b5fc8fb544fe4370b2f894cdd28f0ddd78e", size = 7533, upload-time = "2025-03-27T22:55:56.874Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/08/3e/1418afacc4aae04690cff282078f22620c89a99490499878ececc3021654/striprtf-0.0.29-py3-none-any.whl", hash = "sha256:0fc6a41999d015358d19627776b616424dd501ad698105c81d76734d1e14d91b", size = 7879, upload-time = "2025-03-27T22:55:55.977Z" },
+]
+
+[[package]]
+name = "taos-ws-py"
+version = "0.6.6"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ec/ae/1398c77d1d981f15e092f451865ed1296c6b763add06687b83f31ad6efa7/taos_ws_py-0.6.6-cp37-abi3-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:62c549fc2e4d42062c9f125de660391afa1dd8cfbc38d72c5be4d2f906e25393", size = 8092467, upload-time = "2026-03-12T05:56:47.583Z" },
+    { url = "https://files.pythonhosted.org/packages/2b/ee/b54f033c3cc7629c19e6f860b8655f9195cea458f680bb6119c8fba1f72b/taos_ws_py-0.6.6-cp37-abi3-macosx_10_12_x86_64.whl", hash = "sha256:f009f2e4c0bbfc2ad9e86590b11ce53832d970c1ec7eb17238f149aaf4a2f144", size = 4130395, upload-time = "2026-03-12T05:56:49.655Z" },
+    { url = "https://files.pythonhosted.org/packages/a5/ed/949d03408b27af71f2c5794b75c9069732aecce2a9895cd39a1492727efc/taos_ws_py-0.6.6-cp37-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:791b77688061c65bdd5f9b85eebaaed4015e065705dfb54625d34bda26ad3fd6", size = 4302494, upload-time = "2026-03-12T05:56:51.497Z" },
+    { url = "https://files.pythonhosted.org/packages/78/36/772590e43672168c4d4fdcc2be4d8293c49b1eedeb979ab1e183e772f369/taos_ws_py-0.6.6-cp37-abi3-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:a54e1da8469b332c9f762ff52ee060bd97f7a9cbb0bf4be405cbc14f3735371e", size = 4026865, upload-time = "2026-03-12T05:56:53.32Z" },
+    { url = "https://files.pythonhosted.org/packages/56/77/6ac8979c8275163d626133bcea40c79e85e91170beec85f8a9bd75ef5e97/taos_ws_py-0.6.6-cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:64b8904fcc6b4f96a2100daedc5dc7b3e02b02a7c1b1fec64efa9f21447c8f95", size = 4496034, upload-time = "2026-03-12T05:56:55.092Z" },
+    { url = "https://files.pythonhosted.org/packages/4f/95/8d50c218dd508018a0b167f4b8bb22e2c5ccf5628ef8a5f299e15e80e4a3/taos_ws_py-0.6.6-cp37-abi3-win_amd64.whl", hash = "sha256:984e5f42efa542746db2a8be8ebbbc984f3b79c5d8186b6173a54be3a8b325d6", size = 4759817, upload-time = "2026-03-12T05:56:56.964Z" },
+    { url = "https://files.pythonhosted.org/packages/12/63/0a9a88aa9f08906f7633a6099ec4a3c92702e7fad729ae30f6dad9220481/taos_ws_py-0.6.6-pp310-pypy310_pp73-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:ab440e2225ed422665014c9739225c8ac1412c7f55ee7148b016c73a9c00b68e", size = 4305354, upload-time = "2026-03-12T05:56:58.844Z" },
+    { url = "https://files.pythonhosted.org/packages/c2/63/005ff92284969274493e27b7c939394e721383e3d9d4eede106ee525688c/taos_ws_py-0.6.6-pp310-pypy310_pp73-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:929e490d30742b6754ba0c1e4c8a0122aaabe7712b9fc94ce796f19005d84070", size = 4027714, upload-time = "2026-03-12T05:57:00.486Z" },
 ]
 
 [[package]]

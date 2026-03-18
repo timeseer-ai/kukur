@@ -43,6 +43,7 @@ piwebapi = ["requests", "requests-kerberos"]
 postgresql = ["psycopg[binary]", "pg8000"]
 redshift = ["redshift_connector"]
 simulator = ["PyYAML"]
+tdengine = ["taos-ws-py"]
 
 [dependency-groups]
 dev = [
@@ -109,7 +110,16 @@ convention = "google"
 "tests/**.py" = ["ARG001", "ARG002", "D", "PLR"]
 
 [tool.pytest.ini_options]
-markers = ["config", "crate", "elasticsearch", "influxdb", "kukur", "odbc", "postgresql"]
+markers = [
+    "config",
+    "crate",
+    "elasticsearch",
+    "influxdb",
+    "kukur",
+    "odbc",
+    "postgresql",
+    "tdengine",
+]
 
 [[tool.cxfreeze.executables]]
 script = "kukur/cli.py"
