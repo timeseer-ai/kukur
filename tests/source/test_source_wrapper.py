@@ -110,6 +110,11 @@ class SomeStringTypesSource:
         return pa.Table.from_pydict({"ts": [start_date], "value": [2.5]})
 
 
+class NotImplementedSource:
+    def get_metadata(self, selector: SeriesSelector) -> Metadata:
+        raise NotImplementedError()
+
+
 class DummyError(Exception):
     """Raised by the FailureSource."""
 
@@ -333,6 +338,13 @@ def test_get_source_structure_not_implemented():
 
     result = wrapper.get_source_structure(SELECTOR)
     assert result is None
+
+
+def test_not_implemented_metadata() -> None:
+    source = NotImplementedSource()
+    wrapper = SourceWrapper(Source(source, source), [], {})
+    metadata = wrapper.get_metadata(SELECTOR)
+    assert metadata is not None
 
 
 def _make_source():
