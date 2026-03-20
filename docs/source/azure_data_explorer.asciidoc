@@ -11,6 +11,9 @@ The https://github.com/Azure/azure-kusto-python[azure-kusto-data] Python package
 [source.<name>]
 type = "azure-data-explorer"
 connection_string = "<connection_string>"
+client_id = "" # optional: Client ID for authentication
+client_secret = "" # optional: Client Secret for authentication
+tenant_id = "" # optional: Entra Id Tenant for authentication.
 database = "<database>"
 table = "<table>" # optional when `list_query` and `data_query` are defined
 timestamp_column = "ts"
@@ -29,8 +32,11 @@ max_items_per_call = 500000
 
 See https://learn.microsoft.com/en-us/azure/data-explorer/kusto/api/connection-strings/kusto[here] to learn more about connection strings.
 
-The https://github.com/Azure/azure-sdk-for-python/tree/main/sdk/identity/azure-identity#defaultazurecredential[DefaultAzureCredential]
+By default,
+the https://github.com/Azure/azure-sdk-for-python/tree/main/sdk/identity/azure-identity#defaultazurecredential[DefaultAzureCredential]
 from the https://pypi.org/project/azure-identity/[azure-identity] package is used for authentication.
+
+To use a Service Principal, configure all three of `client_id`, `client_secret` and `tenant_id`.
 
 `max_items_per_call` configures the maximum number of rows to return in one response.
 This can be adapted to conform to the https://learn.microsoft.com/en-us/kusto/concepts/query-limits[Kusto Query Limits].
