@@ -52,6 +52,9 @@ class DataExplorerConfiguration:
     """Data Explorer source configuration."""
 
     connection_string: str
+    client_id: str | None
+    client_secret: str | None
+    tenant_id: str | None
     database: str
     table: str | None
     timestamp_column: str
@@ -81,6 +84,9 @@ def from_config(
     return DataExplorerSource(
         DataExplorerConfiguration(
             connection_string,
+            config.get("client_id"),
+            config.get("client_secret"),
+            config.get("tenant_id"),
             database,
             table,
             timestamp_column,
@@ -305,16 +311,29 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
 
         The client should be closed after use.
         """
-        azure_credential = DefaultAzureCredential()
+        if (
+            self.__config.client_id is not None
+            and self.__config.client_secret is not None
+            and self.__config.tenant_id is not None
+        ):
+            kcsb = KustoConnectionStringBuilder.with_aad_application_key_authentication(
+                self.__config.connection_string,
+                self.__config.client_id,
+                self.__config.client_secret,
+                self.__config.tenant_id,
+            )
+        else:
+            azure_credential = DefaultAzureCredential()
 
-        def _get_token():
-            return azure_credential.get_token(
-                self.__config.connection_string + "//.default"
-            )[0]
+            def _get_token():
+                return azure_credential.get_token(
+                    self.__config.connection_string + "//.default"
+                )[0]
 
-        kcsb = KustoConnectionStringBuilder.with_token_provider(
-            self.__config.connection_string, _get_token
-        )
+            kcsb = KustoConnectionStringBuilder.with_token_provider(
+                self.__config.connection_string, _get_token
+            )
+
         return KustoClient(kcsb)
 
 
