@@ -3,6 +3,8 @@
 # SPDX-FileCopyrightText: 2022 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
+import logging
+import time
 from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import datetime
@@ -23,7 +25,7 @@ try:
         KustoClient,
         KustoConnectionStringBuilder,
     )
-    from azure.kusto.data.exceptions import KustoMultiApiError
+    from azure.kusto.data.exceptions import KustoMultiApiError, KustoThrottlingError
 
     HAS_KUSTO = True
 except ImportError:
@@ -38,6 +40,9 @@ from kukur.exceptions import (
 from kukur.source.metadata import MetadataMapper, MetadataValueMapper
 
 MAX_ITEMS_PER_CALL = 500_000
+MAX_THROTTLE_COUNT = 8  # 4.5 minutes
+
+logger = logging.getLogger(__name__)
 
 
 class InvalidClientConnection(KukurException):
@@ -221,15 +226,11 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
         if selector.field not in self.__config.field_columns:
             raise KukurException(f"Unknown field: {selector.field}")
 
-        if self.__config.data_query is not None:
-            query, props = self._prepare_custom_data_query(
-                selector, start_date, end_date
-            )
-        else:
-            query, props = self._prepare_data_query(selector, start_date, end_date)
+        query, props = self._prepare_data_query(selector, start_date, end_date)
 
         ts = self.__config.timestamp_column
         max_items_per_call = self.__config.max_items_per_call
+        throttle_count = 1
 
         timestamps = []
         values = []
@@ -253,6 +254,7 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
                     if len(result.primary_results[0]) < max_items_per_call:
                         break
                     offset += max_items_per_call
+                    throttle_count = 1
                 except KustoMultiApiError as e:
                     if _is_result_set_too_large(e):
                         max_items_per_call = max_items_per_call // 2
@@ -260,10 +262,25 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
                             raise e
                     else:
                         raise e
+                except KustoThrottlingError as err:
+                    logger.info(
+                        "request throttled, sleeping for %s seconds", 2**throttle_count
+                    )
+                    time.sleep(2**throttle_count)
+                    throttle_count = throttle_count + 1
+                    if throttle_count > MAX_THROTTLE_COUNT:
+                        raise err
 
         return pa.Table.from_pydict({"ts": timestamps, "value": values})
 
     def _prepare_data_query(
+        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
+    ):
+        if self.__config.data_query is not None:
+            return self._prepare_custom_data_query(selector, start_date, end_date)
+        return self._prepare_simple_data_query(selector, start_date, end_date)
+
+    def _prepare_simple_data_query(
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ):
         params = ["startDate: string", "endDate: string"]
