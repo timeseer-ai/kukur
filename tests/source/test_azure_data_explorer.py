@@ -8,11 +8,13 @@ from random import random
 from typing import Any
 from unittest.mock import patch
 
-from azure.kusto.data.exceptions import KustoMultiApiError
+import pytest
+from azure.kusto.data.exceptions import KustoMultiApiError, KustoThrottlingError
 
 from kukur import DataType, SeriesSearch, SeriesSelector
 from kukur.metadata import Metadata, fields
 from kukur.source.azure_data_explorer import from_config
+from kukur.source.azure_data_explorer.azure_data_explorer import _Sleeper
 from kukur.source.metadata import MetadataMapper, MetadataValueMapper
 
 
@@ -281,6 +283,21 @@ def _get_offset_from_query(query) -> int | None:
     return offset
 
 
+def get_throttle_all(_database, query, props):
+    raise KustoThrottlingError()
+
+
+class _ThrottleMock:
+    def __init__(self):
+        self.count = 0
+
+    def get_throttle_3_times(self, _database, query, props):
+        if self.count < 3:
+            self.count = self.count + 1
+            raise KustoThrottlingError()
+        return get_data_response_custom_query(_database, query, props)
+
+
 @patch("azure.kusto.data.KustoClient.execute", side_effect=get_data_response)
 def test_get_data(kusto_client) -> None:
     source = from_config(
@@ -462,3 +479,68 @@ def test_get_data_custom_query(kusto_client) -> None:
     final_date = datetime.now(tz=timezone.utc)
     data = source.get_data(selector, initial_date, final_date)
     assert len(data) == 10
+
+
+class _TestSleeper(_Sleeper):
+    def __init__(self):
+        self.count = 0
+
+    def sleep(self, _sleep_seconds: int):
+        self.count = self.count + 1
+
+
+@patch("azure.kusto.data.KustoClient.execute", side_effect=get_throttle_all)
+def test_get_data_throttle(kusto_client) -> None:
+    source = from_config(
+        {
+            "connection_string": "https://test_cluster.net",
+            "database": "telemetry",
+            "tag_columns": ["deviceId", "plant", "location"],
+            "field_columns": ["pressure", "temperature"],
+            "data_query": "['telemetry-custom-data'] | where ['location'] == loc",
+            "data_query_named_parameters": {"loc": "location"},
+            "max_items_per_call": 3,
+        },
+        MetadataMapper(),
+        MetadataValueMapper(),
+    )
+    source._sleeper = _TestSleeper()
+    selector = SeriesSelector(
+        "my_source", {"location": "Antwerp", "plant": "Plant02"}, "pressure"
+    )
+    initial_date = datetime.now(tz=timezone.utc) - timedelta(minutes=20)
+    final_date = datetime.now(tz=timezone.utc)
+
+    with pytest.raises(KustoThrottlingError):
+        source.get_data(selector, initial_date, final_date)
+    assert source._sleeper.count == 8
+
+
+@patch(
+    "azure.kusto.data.KustoClient.execute",
+    side_effect=_ThrottleMock().get_throttle_3_times,
+)
+def test_get_data_throttle_resolved(kusto_client) -> None:
+    source = from_config(
+        {
+            "connection_string": "https://test_cluster.net",
+            "database": "telemetry",
+            "tag_columns": ["deviceId", "plant", "location"],
+            "field_columns": ["pressure", "temperature"],
+            "data_query": "['telemetry-custom-data'] | where ['location'] == loc",
+            "data_query_named_parameters": {"loc": "location"},
+            "max_items_per_call": 3,
+        },
+        MetadataMapper(),
+        MetadataValueMapper(),
+    )
+    source._sleeper = _TestSleeper()
+    selector = SeriesSelector(
+        "my_source", {"location": "Antwerp", "plant": "Plant02"}, "pressure"
+    )
+    initial_date = datetime.now(tz=timezone.utc) - timedelta(minutes=20)
+    final_date = datetime.now(tz=timezone.utc)
+
+    data = source.get_data(selector, initial_date, final_date)
+    assert len(data) == 10
+    assert source._sleeper.count == 3

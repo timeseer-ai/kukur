@@ -109,6 +109,11 @@ def from_config(
     )
 
 
+class _Sleeper:
+    def sleep(self, sleep_seconds: int):
+        time.sleep(sleep_seconds)
+
+
 class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
     """An Azure Data Explorer data source."""
 
@@ -127,6 +132,7 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
         self.__metadata_mapper = metadata_mapper
         self.__metadata_value_mapper = metadata_value_mapper
         self.__config = config
+        self._sleeper = _Sleeper()
 
     def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
         """Search for series matching the given selector."""
@@ -266,7 +272,7 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
                     logger.info(
                         "request throttled, sleeping for %s seconds", 2**throttle_count
                     )
-                    time.sleep(2**throttle_count)
+                    self._sleeper.sleep(2**throttle_count)
                     throttle_count = throttle_count + 1
                     if throttle_count > MAX_THROTTLE_COUNT:
                         raise err
