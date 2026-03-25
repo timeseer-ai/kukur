@@ -500,6 +500,7 @@ def test_get_data_throttle(kusto_client) -> None:
             "data_query": "['telemetry-custom-data'] | where ['location'] == loc",
             "data_query_named_parameters": {"loc": "location"},
             "max_items_per_call": 3,
+            "throttle_backoff_count": 7,
         },
         MetadataMapper(),
         MetadataValueMapper(),
@@ -513,7 +514,7 @@ def test_get_data_throttle(kusto_client) -> None:
 
     with pytest.raises(KustoThrottlingError):
         source.get_data(selector, initial_date, final_date)
-    assert source._sleeper.count == 8
+    assert source._sleeper.count == 7
 
 
 @patch(

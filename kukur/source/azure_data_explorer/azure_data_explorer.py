@@ -71,6 +71,7 @@ class DataExplorerConfiguration:
     list_columns: list[str] | None
     data_query: str | None
     data_query_named_parameters: dict[str, str] | None
+    throttle_backoff_count: int
 
 
 def from_config(
@@ -103,6 +104,7 @@ def from_config(
             config.get("list_columns"),
             config.get("data_query"),
             config.get("data_query_named_parameters"),
+            config.get("throttle_backoff_count", MAX_THROTTLE_COUNT),
         ),
         metadata_mapper,
         metadata_value_mapper,
@@ -274,7 +276,7 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
                     )
                     self._sleeper.sleep(2**throttle_count)
                     throttle_count = throttle_count + 1
-                    if throttle_count > MAX_THROTTLE_COUNT:
+                    if throttle_count > self.__config.throttle_backoff_count:
                         raise err
 
         return pa.Table.from_pydict({"ts": timestamps, "value": values})
