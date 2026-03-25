@@ -184,7 +184,7 @@ class PIDataArchive:
             page = page + 1
             for point in points:
                 metadata = _get_metadata(
-                    SeriesSelector(selector.source, point["Name"]),
+                    selector.source,
                     point,
                     dictionary_lookup,
                 )
@@ -204,7 +204,7 @@ class PIDataArchive:
         response = self._session.get(
             data_archive["Links"]["Points"],
             timeout=self._request_properties.timeout_seconds,
-            params=dict(nameFilter=selector.name),
+            params=dict(nameFilter=selector.tags["series name"]),
         )
         response.raise_for_status()
 
@@ -216,7 +216,7 @@ class PIDataArchive:
         if len(items) == 0:
             raise InvalidDataError("Series not found")
 
-        metadata = _get_metadata(selector, items[0], dictionary_lookup)
+        metadata = _get_metadata(selector.source, items[0], dictionary_lookup)
         if metadata is None:
             return Metadata(selector)
         return metadata
@@ -364,9 +364,13 @@ class PIDataArchive:
 
 
 def _get_metadata(
-    selector: SeriesSelector, point: dict, dictionary_lookup: _DictionaryLookup
+    source_name: str, point: dict, dictionary_lookup: _DictionaryLookup
 ) -> Metadata | None:
-    metadata = Metadata(SeriesSelector(selector.source, point["Name"]))
+    metadata = Metadata(
+        SeriesSelector(
+            source_name, {"series name": point["Name"], "__id__": point["WebId"]}
+        )
+    )
     metadata.set_field(fields.Description, point["Descriptor"])
     metadata.set_field(fields.Unit, point["EngineeringUnits"])
 
