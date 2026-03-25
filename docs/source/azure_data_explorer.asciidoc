@@ -26,6 +26,7 @@ list_query = "" # optional when `table` is defined
 data_query = "" # optional when `table` is defined
 data_query_named_parameters = {}
 max_items_per_call = 500000
+throttle_backoff_count = 8 # The number of times to retry requests using exponential backoff when throttled
 ```
 
 `connection_string` and `database` are required.
