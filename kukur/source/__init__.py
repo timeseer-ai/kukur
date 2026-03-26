@@ -110,6 +110,8 @@ def _retry(retry_count: int, retry_delay: float, data_fn, log_message: str):
     while True:
         try:
             return data_fn()
+        except NotImplementedError as err:
+            raise err
         except Exception as err:  # pylint: disable=broad-except
             retry_count = retry_count - 1
             if retry_count < 0:

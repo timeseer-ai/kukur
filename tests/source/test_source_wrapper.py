@@ -111,7 +111,11 @@ class SomeStringTypesSource:
 
 
 class NotImplementedSource:
+    def __init__(self):
+        self.count = 0
+
     def get_metadata(self, selector: SeriesSelector) -> Metadata:
+        self.count = self.count + 1
         raise NotImplementedError()
 
 
@@ -345,6 +349,14 @@ def test_not_implemented_metadata() -> None:
     wrapper = SourceWrapper(Source(source, source), [], {})
     metadata = wrapper.get_metadata(SELECTOR)
     assert metadata is not None
+
+
+def test_not_implemented_metadata_does_not_retry() -> None:
+    source = NotImplementedSource()
+    wrapper = SourceWrapper(Source(source, source), [], {"query_retry_count": 3})
+    metadata = wrapper.get_metadata(SELECTOR)
+    assert metadata is not None
+    assert source.count == 1
 
 
 def _make_source():
