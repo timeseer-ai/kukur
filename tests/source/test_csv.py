@@ -228,6 +228,14 @@ def test_metadata_with_different_encoding() -> None:
     assert metadata.get_field(fields.InterpolationType) == InterpolationType.LINEAR
 
 
+def test_metadata_with_bom() -> None:
+    all_metadata = list(get_source("bom").search(SeriesSearch("bom")))
+    assert len(all_metadata) == 1
+    metadata = all_metadata[0]
+    assert isinstance(metadata, Metadata)
+    assert metadata.get_field_by_name("location") == "bom"
+
+
 def test_row_format_with_header() -> None:
     table = get_source("row_header").get_data(
         make_series("row_header"), START_DATE, END_DATE

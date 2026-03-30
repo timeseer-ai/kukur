@@ -93,6 +93,16 @@ metadata = "tests/test_data/csv/cp1252-encoding/row-metadata.csv"
 dictionary_dir = "tests/test_data/csv/cp1252-encoding/dictionary"
 file_encoding = "cp1252"
 
+[source.bom]
+type = "csv"
+metadata = "tests/test_data/csv/bom-metadata.csv"
+metadata_sources = ["bom"]
+
+[metadata.bom]
+type = "csv"
+metadata = "tests/test_data/csv/bom-extra-metadata.csv"
+metadata_fields = ["location"]
+
 [metadata.custom-fields-extra]
 fields = ["process type"]
 type = "csv"

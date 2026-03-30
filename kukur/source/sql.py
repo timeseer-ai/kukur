@@ -68,29 +68,29 @@ class SQLConfig:  # pylint: disable=too-many-instance-attributes
         if "connection_string" in data:
             connection_string = data["connection_string"]
         elif "connection_string_path" in data:
-            with open(data["connection_string_path"], encoding="utf-8") as f:
+            with open(data["connection_string_path"], encoding="utf-8-sig") as f:
                 connection_string = f.read().strip()
 
         config = SQLConfig(connection_string, data.get("tag_columns", ["series name"]))
 
         config.list_query = data.get("list_query")
         if config.list_query is None and "list_query_path" in data:
-            with open(data["list_query_path"], encoding="utf-8") as f:
+            with open(data["list_query_path"], encoding="utf-8-sig") as f:
                 config.list_query = f.read()
         config.list_columns = data.get("list_columns", [])
         config.field_columns = data.get("field_columns")
         config.metadata_query = data.get("metadata_query")
         if config.metadata_query is None and "metadata_query_path" in data:
-            with open(data["metadata_query_path"], encoding="utf-8") as f:
+            with open(data["metadata_query_path"], encoding="utf-8-sig") as f:
                 config.metadata_query = f.read()
         config.metadata_columns = data.get("metadata_columns", [])
         config.dictionary_query = data.get("dictionary_query")
         if config.dictionary_query is None and "dictionary_query_path" in data:
-            with open(data["dictionary_query_path"], encoding="utf-8") as f:
+            with open(data["dictionary_query_path"], encoding="utf-8-sig") as f:
                 config.dictionary_query = f.read()
         config.data_query = data.get("data_query")
         if config.data_query is None and "data_query_path" in data:
-            with open(data["data_query_path"], encoding="utf-8") as f:
+            with open(data["data_query_path"], encoding="utf-8-sig") as f:
                 config.data_query = f.read()
 
         config.data_query_datetime_format = data.get("data_query_datetime_format")

@@ -876,7 +876,7 @@ class SimulatorSource:
             self.__signal_generators["sine"].append(SineSignalGenerator())
             self.__signal_generators["counter"].append(CounterSignalGenerator())
         else:
-            with self.__yaml_path.open(encoding="utf-8") as file:
+            with self.__yaml_path.open(encoding="utf-8-sig") as file:
                 yaml_data = yaml.safe_load(file)
                 for signal_config in yaml_data.get("signals", []):
                     self._register_generator(signal_config)
