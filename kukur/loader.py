@@ -265,7 +265,10 @@ def from_config(
     loader_type = config.get("loader", "file")
     if loader_type == "file":
         return FileLoader(
-            Path(config[key]), mode, files_as_path, config.get("file_encoding", "UTF-8")
+            Path(config[key]),
+            mode,
+            files_as_path,
+            config.get("file_encoding", "utf-8-sig"),
         )
     if loader_type == "azure-blob":
         if not HAS_AZURE_IDENTITY:

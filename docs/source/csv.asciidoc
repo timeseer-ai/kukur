@@ -30,7 +30,7 @@ data_column_separator = ","
 `path` is required for time series sources.
 It is optional when used as a metadata source.
 
-`file_encoding` is optional and defaults to `UTF-8`.
+`file_encoding` is optional and defaults to `utf-8-sig`.
 A list of all supported codecs can be found https://docs.python.org/3/library/codecs.html#standard-encodings[here].
 
 Three CSV data models are supported:
