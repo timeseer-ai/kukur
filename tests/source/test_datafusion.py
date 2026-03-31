@@ -2,9 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
+from datetime import datetime
+
 import kukur.config
-from kukur import Metadata, Source
-from kukur.base import DataType, SeriesSearch
+from kukur import DataType, Metadata, SeriesSearch, SeriesSelector, Source
 from kukur.metadata import fields
 from kukur.source import SourceFactory
 
@@ -17,7 +18,7 @@ def get_source(source_name: str) -> Source:
     return source
 
 
-def test_data_fusion():
+def test_datafusion() -> None:
     all_metadata = list(get_source("datafusion").search(SeriesSearch("datafusion")))
     assert len(all_metadata) == 3
     test_1 = _get_metadata(all_metadata, "test-tag-1")
@@ -26,7 +27,7 @@ def test_data_fusion():
     assert test_1.get_field(fields.DataType) == DataType.FLOAT64
 
 
-def test_data_fusion_tags():
+def test_datafusion_tags() -> None:
     all_metadata = list(
         get_source("datafusion_tags_fields").search(
             SeriesSearch("datafusion_tags_fields")
@@ -35,10 +36,22 @@ def test_data_fusion_tags():
     assert len(all_metadata) == 8
 
 
-def _get_metadata(all_metadata: list[Metadata], series_name: str) -> Metadata:
+def _get_metadata(
+    all_metadata: list[Metadata | SeriesSelector], series_name: str
+) -> Metadata:
     matching_series = None
     for metadata in all_metadata:
+        assert isinstance(metadata, Metadata)
         if metadata.series.tags["series name"] == series_name:
             matching_series = metadata
     assert matching_series is not None
     return matching_series
+
+
+def test_datafusion_data() -> None:
+    data = get_source("datafusion").get_data(
+        SeriesSelector("datafusion", "test-tag-1"),
+        datetime.fromisoformat("2020-01-01T00:00:00+00:00"),
+        datetime.fromisoformat("2020-01-05T00:00:00+00:00"),
+    )
+    assert len(data) == 4

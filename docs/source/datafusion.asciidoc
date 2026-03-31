@@ -12,12 +12,14 @@ Data queries are not supported and neither are individual time series metadata l
 ```toml
 [source.<name>]
 type = "datafusion"
-list_query = "" # required: SQL query
 tag_columns = ["series name"]
 field_columns = ["value"]
 metadata_value_mapping = "" # optional: convert metadata values
+list_query = "" # optional: SQL query to list metadata
+data_query = "" # optional: SQL query to fetch data for a time series
+data_query_named_paramaters = {} # optional: mapping of named query parameters to tags
 
-[[source.datafusion.table]]
+[[source.<name>.table]]
 type = "csv|delta|json|parquet"
 name = "" # name of the table in SQL queries
 location = "" # path to a file or URI of a Delta Table
@@ -68,4 +70,28 @@ location = "tests/test_data/datafusion/datatype"
 
 [metadata_value_mapping.datafusion_mapping.unit]
 "m" = "M"
+```
+
+Data can be queried as well.
+Two query parameters `startDate` and `endDate` are always provided.
+Tags in the series selector should be mapped to query parameters using `data_query_named_parameters`.
+
+```toml
+[[source.datafusion]]
+type = "datafusion"
+data_query = """
+select ts, value
+from series_data
+where name = $name
+  and ts >= $startDate
+  and ts < $endDate
+
+[[source.datafusion.table]]
+type = "csv"
+name = "series_data"
+location = "tests/test_data/datafusion/series_data.csv"
+"""
+
+[[source.datafusion.data_query_named_parameters]]
+name = "series name"
 ```

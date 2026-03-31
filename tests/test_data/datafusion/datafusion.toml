@@ -11,6 +11,16 @@ list_query = """
         left join datatype t on s.name = t.name
 """
 metadata_value_mapping = "datafusion_mapping"
+data_query = """
+select ts, value
+from series_data
+where name = $name
+  and ts >= $startDate
+  and ts < $endDate
+"""
+
+[source.datafusion.data_query_named_parameters]
+name = "series name"
 
 [[source.datafusion.table]]
 type = "csv"
@@ -26,6 +36,11 @@ location = "tests/test_data/datafusion/description.json"
 type = "delta"
 name = "datatype"
 location = "tests/test_data/datafusion/datatype"
+
+[[source.datafusion.table]]
+type = "csv"
+name = "series_data"
+location = "tests/test_data/datafusion/series_data.csv"
 
 [metadata_value_mapping.datafusion_mapping.unit]
 "m" = "M"
@@ -45,4 +60,3 @@ field_columns = ["pressure", "temperature"]
 type = "csv"
 name = "series"
 location = "tests/test_data/datafusion/tags.csv"
-
