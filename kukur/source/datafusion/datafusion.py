@@ -62,6 +62,8 @@ class DataFusionSourceOptions:
     tag_columns: list[str]
     field_columns: list[str]
     list_query: str | None
+    data_query: str | None
+    data_query_named_parameters: dict | None
 
     @classmethod
     def from_data(cls, data: dict) -> "DataFusionSourceOptions":
@@ -71,6 +73,8 @@ class DataFusionSourceOptions:
             data.get("tag_columns", ["series name"]),
             data.get("field_columns", ["value"]),
             data.get("list_query"),
+            data.get("data_query"),
+            data.get("data_query_named_parameters"),
         )
 
 
@@ -120,7 +124,20 @@ class DataFusionSource:
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         """Return data for the given time series in the given time period."""
-        raise NotImplementedError()
+        if self.__options.data_query is None:
+            raise InvalidSourceException("Missing data query")
+
+        params: dict = {
+            "startDate": start_date,
+            "endDate": end_date,
+        }
+        if self.__options.data_query_named_parameters is not None:
+            for k, v in self.__options.data_query_named_parameters.items():
+                params[k] = selector.tags[v]
+
+        context = self._get_context()
+        table = context.sql(self.__options.data_query, param_values=params)
+        return table.to_arrow_table()
 
     def _get_context(self):
         config = SessionConfig().set(
