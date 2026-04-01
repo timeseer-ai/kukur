@@ -67,7 +67,7 @@ def from_config(
     list_query = config.get("list_query")
     metadata_query = config.get("metadata_query")
     if index is None and list_query is None and metadata_query is None:
-        InvalidConfigurationException(
+        raise InvalidConfigurationException(
             "No `index`, `list_query` or `metadata_query` is defined"
         )
     options = ElasticsearchSourceOptions(
