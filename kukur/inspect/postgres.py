@@ -80,7 +80,7 @@ class PostgresPg8000:
         cursor = connection.cursor()
         split_path = path.split("/")
         if len(split_path) == 1:
-            InvalidInspectURI("No schema or table provided.")
+            raise InvalidInspectURI("No schema or table provided.")
         if options is not None and options.column_names is not None:
             column_names = options.column_names
         else:

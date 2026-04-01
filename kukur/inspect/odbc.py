@@ -72,7 +72,7 @@ def preview_odbc_database(
     cursor = connection.cursor()
     split_path = path.split("/")
     if len(split_path) == 1:
-        InvalidInspectURI("No schema or table provided.")
+        raise InvalidInspectURI("No schema or table provided.")
 
     catalog = ""
     if config.catalog is not None:
