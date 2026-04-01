@@ -17,7 +17,7 @@ field_columns = ["value"]
 metadata_value_mapping = "" # optional: convert metadata values
 list_query = "" # optional: SQL query to list metadata
 data_query = "" # optional: SQL query to fetch data for a time series
-data_query_named_paramaters = {} # optional: mapping of named query parameters to tags
+data_query_named_parameters = {} # optional: mapping of named query parameters to tags
 
 [[source.<name>.table]]
 type = "csv|delta|json|parquet"
@@ -77,7 +77,7 @@ Two query parameters `startDate` and `endDate` are always provided.
 Tags in the series selector should be mapped to query parameters using `data_query_named_parameters`.
 
 ```toml
-[[source.datafusion]]
+[source.datafusion]
 type = "datafusion"
 data_query = """
 select ts, value
@@ -85,13 +85,13 @@ from series_data
 where name = $name
   and ts >= $startDate
   and ts < $endDate
+"""
+
+[source.datafusion.data_query_named_parameters]
+name = "series name"
 
 [[source.datafusion.table]]
 type = "csv"
 name = "series_data"
 location = "tests/test_data/datafusion/series_data.csv"
-"""
-
-[[source.datafusion.data_query_named_parameters]]
-name = "series name"
 ```
