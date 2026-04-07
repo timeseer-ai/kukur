@@ -23,7 +23,7 @@ jobs:
         run: docker tag kukur-documentation:latest docker.timeseer.ai/kukur-documentation:latest
 
       - name: Login to container registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: docker.timeseer.ai
           username: ${{ secrets.DOCKER_USERNAME }}
