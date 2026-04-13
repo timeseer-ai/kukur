@@ -26,6 +26,10 @@ resolution-markers = [
     "(python_full_version < '3.11' and platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or (python_full_version < '3.11' and sys_platform != 'linux')",
 ]
 
+[options]
+exclude-newer = "2026-04-06T13:06:58.524696702Z"
+exclude-newer-span = "P1W"
+
 [[package]]
 name = "arro3-core"
 version = "0.8.0"
@@ -490,13 +494,13 @@ name = "cx-freeze"
 version = "8.6.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "filelock", marker = "sys_platform == 'linux'" },
-    { name = "freeze-core" },
+    { name = "filelock", marker = "platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64' and sys_platform == 'linux'" },
+    { name = "freeze-core", marker = "(platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or sys_platform != 'linux'" },
     { name = "lief", marker = "sys_platform == 'win32'" },
-    { name = "packaging" },
+    { name = "packaging", marker = "(platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or sys_platform != 'linux'" },
     { name = "python-msilib", marker = "python_full_version >= '3.13' and sys_platform == 'win32'" },
-    { name = "setuptools" },
-    { name = "tomli", marker = "python_full_version < '3.11'" },
+    { name = "setuptools", marker = "(platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or sys_platform != 'linux'" },
+    { name = "tomli", marker = "(python_full_version < '3.11' and platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or (python_full_version < '3.11' and sys_platform != 'linux')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/d8/5a/d9b3e85db1639374652ff540e84a4912cb777053a30582d8c365d114f115/cx_freeze-8.6.3.tar.gz", hash = "sha256:d3bcdd0891f78d96f65d4879f362f163ad292bad76a42a1bddf58bcc9dcdb67b", size = 1377551, upload-time = "2026-03-23T22:18:45.68Z" }
 wheels = [
@@ -611,7 +615,7 @@ version = "0.6.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cabarchive", marker = "sys_platform == 'win32'" },
-    { name = "filelock" },
+    { name = "filelock", marker = "(platform_machine != 'aarch64' and platform_machine != 'armv7l' and platform_machine != 'i686' and platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_machine != 'x86_64') or sys_platform != 'linux'" },
     { name = "striprtf", marker = "sys_platform == 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/15/0d/1415721fce1b24d88c1460f67059678d7e5a5975baccf5dde790f2158bf7/freeze_core-0.6.1.tar.gz", hash = "sha256:819642aa58b4e2c19e1ade025d9563e437c07c90fe6ac5c891e8ecee2044a2ef", size = 1636378, upload-time = "2026-03-10T13:24:03.726Z" }

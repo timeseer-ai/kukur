@@ -50,6 +50,11 @@ from kukur.source import (
 from kukur.source import json as json_source
 from kukur.source import kukur as kukur_source
 from kukur.source.quality import QualityMapper
+from kukur.source.token_cache import (
+    InMemoryTokenCacheFactory,
+    TokenCache,
+    TokenCacheFactory,
+)
 
 from .metadata import MetadataMapper, MetadataValueMapper
 
@@ -320,8 +325,12 @@ class SourceFactory:
     __config: dict[str, Any]
     __factory: dict[str, Callable]
 
-    def __init__(self, config):
+    def __init__(self, config: dict, token_cache: TokenCacheFactory | None = None):
         self.__config = config
+
+        if token_cache is None:
+            token_cache = InMemoryTokenCacheFactory()
+        self._token_cache = token_cache
         self.__factory = _FACTORY.copy()
 
     def register_source(
@@ -348,7 +357,9 @@ class SourceFactory:
                     raise InvalidSourceException(
                         f'Source "{name}" has unknown type "{source_type}"'
                     )
-                data_source = self._make_source(source_type, options)
+                data_source = self._make_source(
+                    f"data-{source_name}", source_type, options
+                )
                 return self.make_wrapper(data_source, name, options)
         return None
 
@@ -367,7 +378,9 @@ class SourceFactory:
                 raise InvalidSourceException(
                     f'"Source {source_name}" has unknown metadata type "{metadata_source_type}"'
                 )
-            metadata_source = self._make_source(metadata_source_type, source_config)
+            metadata_source = self._make_source(
+                f"metadata-{source_name}", metadata_source_type, source_config
+            )
 
         extra_metadata = []
         for metadata_source_name in source_config.get("metadata_sources", []):
@@ -392,12 +405,13 @@ class SourceFactory:
                     f'Metadata source "{name}" has unknown type "{source_type}"'
                 )
             metadata_sources[name] = MetadataSource(
-                self._make_source(source_type, options), options.get("fields", [])
+                self._make_source(f"extra-{name}", source_type, options),
+                options.get("fields", []),
             )
         return metadata_sources
 
     def _make_source(
-        self, source_type: str, source_config: dict[str, Any]
+        self, source_id: str, source_type: str, source_config: dict[str, Any]
     ) -> SourceProtocol | TagSource:
         metadata_mapper = self._get_metadata_mapper(
             source_config.get("metadata_mapping")
@@ -417,6 +431,8 @@ class SourceFactory:
                 arguments.append(metadata_value_mapper)
             elif parameter.annotation == QualityMapper:
                 arguments.append(quality_mapper)
+            elif parameter.annotation == TokenCache:
+                arguments.append(self._token_cache.get_cache(source_id))
             else:
                 arguments.append(source_config)
 

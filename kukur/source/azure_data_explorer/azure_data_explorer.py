@@ -7,13 +7,15 @@ import logging
 import time
 from collections.abc import Generator
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import pyarrow as pa
 
+from kukur.source.token_cache import Token, TokenCache
+
 try:
-    from azure.identity import DefaultAzureCredential
+    from azure.identity import ClientSecretCredential, DefaultAzureCredential
 
     HAS_AZURE_IDENTITY = True
 except ImportError:
@@ -78,6 +80,7 @@ def from_config(
     config: dict[str, Any],
     metadata_mapper: MetadataMapper,
     metadata_value_mapper: MetadataValueMapper,
+    token_cache: TokenCache,
 ):
     """Create a new Azure Data Explorer data source."""
     connection_string = config["connection_string"]
@@ -108,6 +111,7 @@ def from_config(
         ),
         metadata_mapper,
         metadata_value_mapper,
+        token_cache,
     )
 
 
@@ -124,6 +128,7 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
         config: DataExplorerConfiguration,
         metadata_mapper: MetadataMapper,
         metadata_value_mapper: MetadataValueMapper,
+        token_cache: TokenCache,
     ):
         if not HAS_AZURE_IDENTITY:
             raise MissingModuleException("azure-identity")
@@ -134,6 +139,7 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
         self.__metadata_mapper = metadata_mapper
         self.__metadata_value_mapper = metadata_value_mapper
         self.__config = config
+        self.__token_cache = token_cache
         self._sleeper = _Sleeper()
 
     def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
@@ -341,23 +347,28 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
             and self.__config.client_secret is not None
             and self.__config.tenant_id is not None
         ):
-            kcsb = KustoConnectionStringBuilder.with_aad_application_key_authentication(
-                self.__config.connection_string,
-                self.__config.client_id,
-                self.__config.client_secret,
-                self.__config.tenant_id,
+            azure_credential = ClientSecretCredential(
+                client_id=self.__config.client_id,
+                client_secret=self.__config.client_secret,
+                tenant_id=self.__config.tenant_id,
             )
         else:
             azure_credential = DefaultAzureCredential()
 
-            def _get_token():
-                return azure_credential.get_token(
-                    self.__config.connection_string + "//.default"
-                )[0]
-
-            kcsb = KustoConnectionStringBuilder.with_token_provider(
-                self.__config.connection_string, _get_token
+        def _get_azure_token(_refresh_token):
+            token = azure_credential.get_token(
+                self.__config.connection_string + "//.default"
             )
+            return Token(
+                token.token, datetime.fromtimestamp(token.expires_on, tz=timezone.utc)
+            )
+
+        def _get_token():
+            return self.__token_cache.get_token(_get_azure_token)
+
+        kcsb = KustoConnectionStringBuilder.with_token_provider(
+            self.__config.connection_string, _get_token
+        )
 
         return KustoClient(kcsb)
 
