@@ -16,6 +16,7 @@ from kukur.metadata import Metadata, fields
 from kukur.source.azure_data_explorer import from_config
 from kukur.source.azure_data_explorer.azure_data_explorer import _Sleeper
 from kukur.source.metadata import MetadataMapper, MetadataValueMapper
+from kukur.source.token_cache import NullTokenCache
 
 
 class MockKustoResponse:
@@ -310,6 +311,7 @@ def test_get_data(kusto_client) -> None:
         },
         MetadataMapper(),
         MetadataValueMapper(),
+        NullTokenCache(),
     )
     selector = SeriesSelector(
         "my_source", {"location": "Curitiba", "plant": "Plant02"}, "pressure"
@@ -342,6 +344,7 @@ def test_get_data_multiple_calls(kusto_client) -> None:
         },
         MetadataMapper(),
         MetadataValueMapper(),
+        NullTokenCache(),
     )
     selector = SeriesSelector(
         "my_source", {"location": "Curitiba", "plant": "Plant02"}, "pressure"
@@ -375,6 +378,7 @@ def test_result_set_too_large(kusto_client) -> None:
         },
         MetadataMapper(),
         MetadataValueMapper(),
+        NullTokenCache(),
     )
     selector = SeriesSelector(
         "my_source", {"location": "Curitiba", "plant": "Plant02"}, "pressure"
@@ -399,6 +403,7 @@ def test_search_with_metadata(_kusto_client) -> None:
         },
         MetadataMapper(),
         MetadataValueMapper(),
+        NullTokenCache(),
     )
     metadata_list = list(source.search(SeriesSearch("my_source")))
     assert len(metadata_list) == 6
@@ -419,6 +424,7 @@ def test_search_without_metadata(_kusto_client) -> None:
         },
         MetadataMapper(),
         MetadataValueMapper(),
+        NullTokenCache(),
     )
     metadata_list = list(source.search(SeriesSearch("my_source")))
     assert len(metadata_list) == 6
@@ -441,6 +447,7 @@ def test_search_with_custom_query(_kusto_client) -> None:
         },
         MetadataMapper(),
         MetadataValueMapper.from_config({"data type": {"FLOAT64": ["float"]}}),
+        NullTokenCache(),
     )
     all_metadata = list(source.search(SeriesSearch("my_source")))
     assert len(all_metadata) == 4
@@ -471,6 +478,7 @@ def test_get_data_custom_query(kusto_client) -> None:
         },
         MetadataMapper(),
         MetadataValueMapper(),
+        NullTokenCache(),
     )
     selector = SeriesSelector(
         "my_source", {"location": "Antwerp", "plant": "Plant02"}, "pressure"
@@ -504,6 +512,7 @@ def test_get_data_throttle(kusto_client) -> None:
         },
         MetadataMapper(),
         MetadataValueMapper(),
+        NullTokenCache(),
     )
     source._sleeper = _TestSleeper()
     selector = SeriesSelector(
@@ -534,6 +543,7 @@ def test_get_data_throttle_resolved(kusto_client) -> None:
         },
         MetadataMapper(),
         MetadataValueMapper(),
+        NullTokenCache(),
     )
     source._sleeper = _TestSleeper()
     selector = SeriesSelector(
