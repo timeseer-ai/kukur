@@ -26,7 +26,7 @@ class Token:
     refresh_token: str | None = None
 
     def is_expired(self) -> bool:
-        """Return True when the token is (about ot be) expired."""
+        """Return True when the token is (about to be) expired."""
         now = datetime.now(tz=timezone.utc)
         if self.expires is None:
             return True
