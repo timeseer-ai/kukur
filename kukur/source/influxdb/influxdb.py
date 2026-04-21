@@ -6,6 +6,7 @@
 
 import json
 from collections.abc import Generator
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
@@ -31,46 +32,64 @@ class InvalidClientConnection(KukurException):
         KukurException.__init__(self, f"Connection error: {message}")
 
 
+@dataclass
+class InfluxConfiguration:
+    """Configuration for an Influx source."""
+
+    host: str
+    port: int
+    ssl: bool
+    database: str
+    username: str | None
+    password: str | None
+
+    @classmethod
+    def from_data(cls, data: dict) -> "InfluxConfiguration":
+        """Create from a data dictionary."""
+        return cls(
+            host=data.get("host", "localhost"),
+            port=data.get("port", 8086),
+            ssl=data.get("ssl", False),
+            database=data["database"],
+            username=data.get("username"),
+            password=data.get("password"),
+        )
+
+
 def from_config(config: dict[str, Any]):
     """Create a new Influx data source."""
     if not HAS_INFLUX:
         raise MissingModuleException("influxdb", "influxdb")
-    host = config.get("host", "localhost")
-    port = config.get("port", 8086)
-    ssl = config.get("ssl", False)
-    database = config["database"]
-    username = config.get("username", "")
-    password = config.get("password", "")
-    return InfluxSource(host, port, ssl, database, username=username, password=password)
+    return InfluxSource(InfluxConfiguration.from_data(config))
 
 
 class InfluxSource:
     """An InfluxDB data source."""
 
-    if HAS_INFLUX:
-        __client: InfluxDBClient
+    def __init__(self, config: InfluxConfiguration):
+        if not HAS_INFLUX:
+            raise MissingModuleException("influxdb", "influxdb")
+        self._config = config
 
-    def __init__(  # noqa: PLR0913
-        self,
-        host: str,
-        port: int,
-        ssl: bool,
-        database: str,
-        *,
-        username: str,
-        password: str,
-    ):
+    def _get_client(self):
         if not HAS_INFLUX:
             raise MissingModuleException("influxdb", "influxdb")
         try:
-            if username != "" and password != "":
-                self.__client = InfluxDBClient(
-                    host=host, port=port, ssl=ssl, username=username, password=password
+            if self._config.username is not None and self._config.password is not None:
+                client = InfluxDBClient(
+                    host=self._config.host,
+                    port=self._config.port,
+                    ssl=self._config.ssl,
+                    username=self._config.username,
+                    password=self._config.password,
                 )
             else:
-                self.__client = InfluxDBClient(host=host, port=port, ssl=ssl)
+                client = InfluxDBClient(
+                    host=self._config.host, port=self._config.port, ssl=self._config.ssl
+                )
 
-            self.__client.switch_database(database)
+            client.switch_database(self._config.database)
+            return client
         except InfluxDBClientError as err:
             raise InvalidClientConnection(err) from err
 
@@ -80,10 +99,11 @@ class InfluxSource:
         if "series name" in selector.tags:
             measurement = selector.tags["series name"]
             del selector.tags["series name"]
-        many_series = self.__client.get_list_series(
-            measurement=measurement, tags=selector.tags
-        )
-        fields = self.__client.query("SHOW FIELD KEYS")
+        with self._get_client() as client:
+            many_series = client.get_list_series(
+                measurement=measurement, tags=selector.tags
+            )
+            fields = client.query("SHOW FIELD KEYS")
         for series in many_series:
             measurement, tags = _parse_influx_series(series)
             for field in fields.get_points(measurement=measurement):
@@ -125,36 +145,36 @@ class InfluxSource:
         timestamps = []
         values = []
 
-        for item in self.__client.query(
-            query=query, bind_params=bind_params
-        ).get_points():
-            timestamps.append(dateutil.parser.parse(item["time"]))
-            values.append(item[selector.field])
+        with self._get_client() as client:
+            for item in client.query(query=query, bind_params=bind_params).get_points():
+                timestamps.append(dateutil.parser.parse(item["time"]))
+                values.append(item[selector.field])
 
         return pa.Table.from_pydict({"ts": timestamps, "value": values})
 
     def get_source_structure(self, _: SeriesSelector) -> SourceStructure | None:
         """Return the available tag keys, tag value and tag fields."""
-        query_tag_keys = "SHOW TAG KEYS"
-        tag_keys = []
-        for results in self.__client.query(query=query_tag_keys).get_points():
-            tag_keys.extend(list(results.values()))
-        tag_keys = list(set(tag_keys))
+        with self._get_client() as client:
+            query_tag_keys = "SHOW TAG KEYS"
+            tag_keys = []
+            for results in client.query(query=query_tag_keys).get_points():
+                tag_keys.extend(list(results.values()))
+            tag_keys = list(set(tag_keys))
 
-        query_fields = "SHOW FIELD KEYS"
-        fields = []
-        for results in self.__client.query(query=query_fields).get_points():
-            for key, value in results.items():
-                if key == "fieldKey":
-                    fields.append(value)
+            query_fields = "SHOW FIELD KEYS"
+            fields = []
+            for results in client.query(query=query_fields).get_points():
+                for key, value in results.items():
+                    if key == "fieldKey":
+                        fields.append(value)
 
-        tag_key_placeholder = json.dumps(tag_keys)
-        query_tag_values = f"SHOW TAG VALUES WITH KEY IN {tag_key_placeholder.replace('[', '(').replace(']', ')')}"
-        tag_values = []
-        for result in self.__client.query(query=query_tag_values).get_points():
-            if result not in tag_values:
-                tag_values.append(result)
-        return SourceStructure(fields, tag_keys, tag_values)
+            tag_key_placeholder = json.dumps(tag_keys)
+            query_tag_values = f"SHOW TAG VALUES WITH KEY IN {tag_key_placeholder.replace('[', '(').replace(']', ')')}"
+            tag_values = []
+            for result in client.query(query=query_tag_values).get_points():
+                if result not in tag_values:
+                    tag_values.append(result)
+            return SourceStructure(fields, tag_keys, tag_values)
 
 
 def _parse_influx_series(series: str) -> tuple[str, dict[str, str]]:
