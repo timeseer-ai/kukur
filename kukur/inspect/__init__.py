@@ -68,11 +68,14 @@ class DataOptions:
     `default_resource_type` assumes files without extension are of this type.
     """
 
+    DEFAULT_RETRY_COUNT = 5
+
     column_names: list[str] | None = None
     csv_delimiter: str | None = None
     csv_header_row: bool = True
     excel_header_row: bool = True
     default_resource_type: ResourceType | None = None
+    retry_count: int = DEFAULT_RETRY_COUNT
 
 
 @dataclass
