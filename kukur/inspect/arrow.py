@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+import time
 from collections.abc import Generator
 from pathlib import PurePath
 
@@ -66,7 +67,24 @@ class BlobResource:
             stream = self.__fs.open_input_file(str(self.__path))
             rdr = parquet.ParquetFile(stream)
             column_names = _get_column_names(options)
-            yield from rdr.iter_batches(columns=column_names)
+            if options is not None:
+                retry_count = options.retry_count
+            else:
+                retry_count = DataOptions.DEFAULT_RETRY_COUNT
+            for i in range(rdr.num_row_groups):
+                for retry_index in range(retry_count):
+                    try:
+                        yield from rdr.read_row_group(
+                            i, columns=column_names
+                        ).to_batches()
+                    except (
+                        OSError
+                    ) as err:  # raised by PyArrow for internal errors on AWS
+                        if retry_index == retry_count - 1:
+                            raise err
+                        time.sleep(retry_index)
+                    break
+
         else:
             data_set = self.get_data_set(options)
             column_names = _get_column_names(options)
