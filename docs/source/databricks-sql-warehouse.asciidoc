@@ -65,13 +65,13 @@ from tsdeltalake.poc.tsai_antwerp
 where `series name` = :series_name
   and ts >= :start_date
   and ts < :end_date
+"""
 
 [source.Databricks.connection]
 host = "adb-5136731089164599.19.azuredatabricks.net"
 warehouse_id = "2cf2d4cd375bb81a"
 oauth_client_id = ""
 oauth_client_secret = ""
-"""
 ```
 
 Follow the steps in https://learn.microsoft.com/en-us/azure/databricks/dev-tools/auth/oauth-m2m[Authorize service principal access to Azure Databricks with OAuth] to generate `oauth_client_id` and `oauth_client_secret`.
