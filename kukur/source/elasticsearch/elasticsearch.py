@@ -45,12 +45,12 @@ def from_config(
     if not HAS_REQUESTS:
         raise MissingModuleException("requests")
     credentials = config.get("credentials")
-    username = ""
-    password = ""
+    username = None
+    password = None
     api_key = None
     if credentials is not None:
-        username = credentials.get("username", "")
-        password = credentials.get("password", "")
+        username = credentials.get("username")
+        password = credentials.get("password")
         api_key = credentials.get("api_key")
 
     configuration = ElasticsearchSourceConfiguration(
@@ -61,6 +61,7 @@ def from_config(
         password,
         api_key,
         config.get("query_timeout_seconds", 60),
+        config.get("query_page_size", 10_000),
     )
 
     index = config.get("index")
@@ -94,10 +95,11 @@ class ElasticsearchSourceConfiguration:
     scheme: str
     host: str
     port: int | None
-    username: str
-    password: str
+    username: str | None
+    password: str | None
     api_key: str | None
     query_timeout_seconds: int
+    query_page_size: int
 
 
 @dataclass
@@ -264,27 +266,30 @@ class ElasticsearchSource:
             "_source": False,
         }
 
-        timestamps = []
-        values = []
-        search_after = None
-        while True:
-            if search_after is not None:
-                data_query = {
-                    "query": query,
-                    "fields": [self.__options.timestamp_column, selector.field],
-                    "search_after": search_after,
-                    "sort": [{self.__options.timestamp_column: "asc"}],
-                }
-            data = self._send_query(data_query, f"{self.__options.index}/_search")
-            for row in data["hits"]["hits"]:
-                fields = row["fields"]
-                timestamps.extend(fields[self.__options.timestamp_column])
-                values.extend(fields[selector.field])
-                search_after = row["sort"]
-            if len(timestamps) >= data["hits"]["total"]["value"]:
-                break
+        with ElasticSearchConnection(self.__configuration) as connection:
+            timestamps = []
+            values = []
+            search_after = None
+            while True:
+                if search_after is not None:
+                    data_query = {
+                        "query": query,
+                        "fields": [self.__options.timestamp_column, selector.field],
+                        "search_after": search_after,
+                        "sort": [{self.__options.timestamp_column: "asc"}],
+                    }
+                data = connection.send_query(
+                    data_query, f"{self.__options.index}/_search"
+                )
+                for row in data["hits"]["hits"]:
+                    fields = row["fields"]
+                    timestamps.extend(fields[self.__options.timestamp_column])
+                    values.extend(fields[selector.field])
+                    search_after = row["sort"]
+                if len(timestamps) >= data["hits"]["total"]["value"]:
+                    break
 
-        return pa.Table.from_pydict({"ts": timestamps, "value": values})
+            return pa.Table.from_pydict({"ts": timestamps, "value": values})
 
     def get_source_structure(self, _: SeriesSelector) -> SourceStructure | None:
         """Return the available tag keys, tag value and tag fields."""
@@ -293,67 +298,91 @@ class ElasticsearchSource:
     def _list_query_dsl(self, list_query: dict, sort: list) -> list:
         if self.__options.metadata_index is None:
             raise KukurException("Define a `metadata_index` to search time series.")
-        table = []
-        search_after = None
-        query: dict = {}
-        if len(list_query) != 0:
-            query["query"] = list_query
-        query["sort"] = sort
-        while True:
-            if search_after is not None:
-                query = {}
-                if len(list_query) != 0:
-                    query["query"] = list_query
-                query["search_after"] = search_after
-                query["sort"] = sort
-            rows = self._send_query(query, f"{self.__options.metadata_index}/_search")
-            table.extend(rows["hits"]["hits"])
-            if len(table) >= rows["hits"]["total"]["value"]:
-                break
-            search_after = rows["hits"]["hits"][-1]["sort"]
-        return table
+
+        with ElasticSearchConnection(self.__configuration) as connection:
+            table = []
+            search_after = None
+            query: dict = {"size": self.__configuration.query_page_size}
+            if len(list_query) != 0:
+                query["query"] = list_query
+            query["sort"] = sort
+            while True:
+                if search_after is not None:
+                    query = {"size": self.__configuration.query_page_size}
+                    if len(list_query) != 0:
+                        query["query"] = list_query
+                    query["search_after"] = search_after
+                    query["sort"] = sort
+                rows = connection.send_query(
+                    query, f"{self.__options.metadata_index}/_search"
+                )
+                new_hits = rows["hits"]["hits"]
+                table.extend(new_hits)
+                if len(new_hits) < self.__configuration.query_page_size:
+                    break
+                search_after = new_hits[-1]["sort"]
+            return table
 
     def _search_sql(self, query: dict) -> pa.Table:
-        columns = {}
-        while True:
-            content = self._send_query(query, "_sql")
-            if "columns" in content:
-                for index, column in enumerate(content["columns"]):
-                    if (
-                        column["name"] in self.__options.tag_columns
-                        or column["name"] in self.__options.metadata_columns
-                        or column["name"] in self.__options.field_columns
-                        or column["name"] == self.__options.metadata_field_column
-                    ):
-                        columns[column["name"]] = content["values"][index]
-            else:
-                for index, column in enumerate(columns.keys()):
-                    columns[column].extend(content["values"][index])
-            if "cursor" not in content:
-                break
-            query = {
-                "cursor": content["cursor"],
-                "columnar": True,
-            }
-        return pa.Table.from_pydict(columns)
+        with ElasticSearchConnection(self.__configuration) as connection:
+            columns = {}
+            while True:
+                content = connection.send_query(query, "_sql")
+                if "columns" in content:
+                    for index, column in enumerate(content["columns"]):
+                        if (
+                            column["name"] in self.__options.tag_columns
+                            or column["name"] in self.__options.metadata_columns
+                            or column["name"] in self.__options.field_columns
+                            or column["name"] == self.__options.metadata_field_column
+                        ):
+                            columns[column["name"]] = content["values"][index]
+                else:
+                    for index, column in enumerate(columns.keys()):
+                        columns[column].extend(content["values"][index])
+                if "cursor" not in content:
+                    break
+                query = {
+                    "cursor": content["cursor"],
+                    "columnar": True,
+                }
+            return pa.Table.from_pydict(columns)
 
-    def _send_query(self, query: dict, path: str) -> dict:
+
+class ElasticSearchConnection:
+    """Stateful connection to ElasticSearch.
+
+    Should be used as a context manager.
+    """
+
+    def __init__(self, config: ElasticsearchSourceConfiguration):
+        self._config = config
+
+    def __enter__(self) -> "ElasticSearchConnection":
+        self.session = requests.Session()
+        self.session.headers["X-Requested-With"] = "Kukur"
+        if self._config.api_key is not None:
+            self.session.headers["Authorization"] = f"ApiKey {self._config.api_key}"
+        elif self._config.username is not None and self._config.password is not None:
+            self.session.auth = (self._config.username, self._config.password)
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        if self.session is not None:
+            self.session.close()
+
+    def send_query(self, query: dict, path: str) -> dict:
+        """Query ElasticSearch."""
         headers = {"Content-Type": "application/json"}
-        auth = None
-        if self.__configuration.api_key is not None:
-            headers["Authorization"] = f"ApiKey {self.__configuration.api_key}"
-        else:
-            auth = (self.__configuration.username, self.__configuration.password)
 
-        url = f"{self.__configuration.scheme}://{self.__configuration.host}:{self.__configuration.port}/{path}"
-        if self.__configuration.port is None:
-            url = f"{self.__configuration.scheme}://{self.__configuration.host}/{path}"
-        response = requests.post(
+        url = f"{self._config.scheme}://{self._config.host}:{self._config.port}/{path}"
+        if self._config.port is None:
+            url = f"{self._config.scheme}://{self._config.host}/{path}"
+        response = self.session.post(
             url,
-            auth=auth,
             headers=headers,
             json=query,
-            timeout=self.__configuration.query_timeout_seconds,
+            timeout=self._config.query_timeout_seconds,
         )
         if response.status_code >= http.HTTPStatus.BAD_REQUEST:
             logger.error("error for query '%s': %s", json.dumps(query), response.text)
