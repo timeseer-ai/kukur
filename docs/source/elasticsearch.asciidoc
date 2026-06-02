@@ -14,6 +14,7 @@ host = "localhost"
 port = "" # Defaults to the default port of the scheme. Set to 9200 to connect locally.
 index = ""
 metadata_index = ""
+metadata_index_filter = {} # optional Elasticsearch Query DSL filter for metadata
 list_query = ""
 metadata_query = ""
 tag_columns = ["series name"]
@@ -39,6 +40,7 @@ When `metadata_query` is provided the https://www.elastic.co/guide/en/elasticsea
 
 `metadata_index` is optional and defaults to `index` if not provided.
 It can be used to refer to a different Elasticsearch index for listing time series and their metadata.
+The index can optionally be filtered by a https://www.elastic.co/docs/reference/query-languages/querydsl[Query DSL] filter.
 
 `timestamp_column` is an optional parameter used to define the name
 of the database column that contains timestamps for the series.
