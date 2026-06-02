@@ -152,6 +152,16 @@ def test_search_doc_optional_metadata(client: Client):
     assert series.get_field_by_name("sensor model") == "A"
 
 
+def test_search_doc_filter(client: Client):
+    """Test searching for metadata in a source with nested documents and tags in a list.
+
+    The metadata field can potentially not exist."""
+    many_series = list(client.search(SeriesSearch(suffix_source("noaa-es-doc-filter"))))
+    assert len(many_series) == 1
+    for series in many_series:
+        assert series.series.tags["location"] == "santa_monica"
+
+
 def test_search_sql(client: Client):
     many_series = list(client.search(SeriesSearch(suffix_source("noaa-es-sql"))))
     assert len(many_series) == 3

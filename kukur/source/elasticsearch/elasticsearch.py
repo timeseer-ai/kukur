@@ -81,6 +81,7 @@ def from_config(
         config.get("metadata_field_column"),
         list_query,
         metadata_query,
+        config.get("metadata_index_filter"),
     )
 
     return ElasticsearchSource(
@@ -115,6 +116,7 @@ class ElasticsearchSourceOptions:
     metadata_field_column: str | None = None
     list_query: str | None = None
     metadata_query: str | None = None
+    metadata_index_filter: dict | None = None
 
 
 class ElasticsearchSource:
@@ -144,7 +146,9 @@ class ElasticsearchSource:
                 for metadata in self._get_metadata(selector.source, row):
                     yield metadata
         else:
-            rows = self._list_query_dsl({}, [{"_doc": "asc"}])
+            rows = self._list_query_dsl(
+                self.__options.metadata_index_filter or {}, [{"_doc": "asc"}]
+            )
             for row in rows:
                 for metadata in self._get_metadata(selector.source, row["_source"]):
                     yield metadata

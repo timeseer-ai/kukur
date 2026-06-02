@@ -76,6 +76,54 @@ index = "tsai_metadata_doc"
 metadata_field_column = "field"
 timestamp_column = "ts"
 
+[source.noaa-es-doc-filter]
+type = "elasticsearch"
+host = "elasticsearch"
+port = 9200
+query_page_size = 1
+tag_columns = ["name", "location"]
+field_columns = ["water_level", "temperature"]
+metadata_columns = ["name", "description", "limits.low", "limits.high", "sensor.model"]
+metadata_mapping = "noaa_es_mapping"
+index = "tsai_metadata_doc"
+metadata_field_column = "field"
+timestamp_column = "ts"
+
+[source.noaa-es-doc-filter.metadata_index_filter]
+term = { "location" = "santa_monica" }
+
+[source.noaa-es-doc-filter-linux]
+type = "elasticsearch"
+host = "localhost"
+port = 9200
+query_page_size = 1
+tag_columns = ["name", "location"]
+field_columns = ["water_level", "temperature"]
+metadata_columns = ["name", "description", "limits.low", "limits.high", "sensor.model"]
+metadata_mapping = "noaa_es_mapping"
+index = "tsai_metadata_doc"
+metadata_field_column = "field"
+timestamp_column = "ts"
+
+[source.noaa-es-doc-filter-linux.metadata_index_filter]
+term = { "location" = "santa_monica" }
+
+[source.noaa-es-doc-filter-local]
+type = "elasticsearch"
+host = "localhost"
+port = 9200
+query_page_size = 1
+tag_columns = ["name", "location"]
+field_columns = ["water_level", "temperature"]
+metadata_columns = ["name", "description", "limits.low", "limits.high", "sensor.model"]
+metadata_mapping = "noaa_es_mapping"
+index = "tsai_metadata_doc"
+metadata_field_column = "field"
+timestamp_column = "ts"
+
+[source.noaa-es-doc-filter-local.metadata_index_filter]
+term = { "location" = "santa_monica" }
+
 [source.noaa-es-minimal]
 type = "elasticsearch"
 host = "elasticsearch"
