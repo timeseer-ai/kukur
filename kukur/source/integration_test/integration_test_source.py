@@ -58,6 +58,7 @@ class IntegrationTestSource:
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ) -> Table:
         """Get data from the Flight service."""
+        raise NotImplementedError()
 
 
 def from_config() -> IntegrationTestSource:

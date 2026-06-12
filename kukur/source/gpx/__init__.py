@@ -2,13 +2,19 @@
 
 import math
 from collections import defaultdict
-from xml.etree import ElementTree
 
 from dateutil.parser import isoparse
 from pyarrow import Table, array, concat_tables, float64, int64
 from pyarrow import compute as pc
 
-from kukur.exceptions import KukurException
+from kukur.exceptions import KukurException, MissingModuleException
+
+try:
+    from defusedxml import ElementTree
+
+    HAS_DEFUSED_XML = True
+except ImportError:
+    HAS_DEFUSED_XML = False
 
 # SPDX-FileCopyrightText: 2024 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
@@ -37,6 +43,8 @@ def parse_gpx(readable) -> Table:  # noqa: PLR0912
     This concatenates all track segments of all tracks.
     Elevation and all extension data points of the first trackpoint will be included as columns.
     """
+    if not HAS_DEFUSED_XML:
+        raise MissingModuleException("defusedxml")
     tables = []
 
     tree = ElementTree.parse(readable)

@@ -248,7 +248,7 @@ def map_pivot_columns(column_mapping: dict[str, str], data: pa.Table) -> pa.Tabl
         ts_column_name = column_mapping["ts"]
 
     ts_column = data[ts_column_name]
-    return data.drop([ts_column_name]).add_column(0, "ts", ts_column)
+    return data.drop_columns([ts_column_name]).add_column(0, "ts", ts_column)
 
 
 def cast_ts_column(

@@ -16,7 +16,7 @@ jobs:
     steps:
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v7
+      uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39
 
     - name: Set up Python
       uses: actions/setup-python@v6
@@ -30,7 +30,7 @@ jobs:
       run: uv build
 
     - name: Publish a Python distribution to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
+      uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b
 
   docker_hub:
     name: Publish docker container for this version to Docker Hub

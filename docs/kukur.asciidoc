@@ -89,6 +89,7 @@ Use these to install requirements for the given source.
 - `[cratedb]` for connections to CrateDB
 - `[datafusion]` for connections using Apache Arrow DataFusion
 - `[delta]` for connections to Delta Lakes
+- `[gpx]` to read GPX files
 - `[influxdb]` for connections to InfluxDB
 - `[inspect]` for inspection of storage containers
 - `[kusto]` for connections to Azure Data Explorer
