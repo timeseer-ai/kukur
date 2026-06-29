@@ -26,6 +26,7 @@ include_system_states = false # optional: include digital states with IsSystem =
 verify_ssl = true
 timeout_seconds = 60 # The maximum time to wait for a response
 metadata_request_timeout_seconds = 10 # The maximum time to wait for a response for a metadata request
+enable_trace_logging = false # optional: log all PI Web API requests and responses
 username = "" # optional: username for basic authentication
 password = "" # optional: password for basic authentication
 oidc_token_url = "" # optional: URL for OIDC token request
@@ -106,6 +107,10 @@ Increase `timeout_seconds` when responses could take longer than the already lon
 Use with `query_retry_count` and `query_retry_delay` to work around flaky connections.
 
 Set `verify_ssl` to `false` when PI Web API uses a self-signed certificate.
+
+Set `enable_trace_logging` to `true` to log all HTTP requests to PI Web API,
+including the JSON sent and the JSON received.
+This is useful to debug batch queries.
 
 By default,
 Kerberos https://docs.osisoft.com/bundle/pi-web-api/page/authentication-methods.html[authentication] is tried.

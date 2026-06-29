@@ -156,20 +156,71 @@ class PIWebAPIConnection:
     def __init__(self, config: dict):
         self._auth = AuthenticationProperties.from_data(config)
         self._verify_ssl = config.get("verify_ssl", True)
+        self._enable_trace_logging = config.get("enable_trace_logging", False)
 
         if not self._verify_ssl:
             urllib3.disable_warnings()
 
     def __enter__(self) -> "PIWebAPIConnection":
-        self.session = Session()
-        self.session.headers["X-Requested-With"] = "Kukur"
-        self.session.verify = self._verify_ssl
-        self._auth.apply(self.session)
+        session = Session()
+        session.headers["X-Requested-With"] = "Kukur"
+        session.verify = self._verify_ssl
+        self._auth.apply(session)
+        self.session = _TracingSession(session, self._enable_trace_logging)
         return self
 
     def __exit__(self, exc_type, exc, tb):
         if self.session is not None:
             self.session.close()
+
+
+class _TracingSession:
+    """Wrap a requests Session to optionally log all HTTP traffic.
+
+    When trace logging is enabled, every request logs its method, URL and the
+    JSON or query parameters sent, together with the JSON received.
+    """
+
+    def __init__(self, session: "Session", enable_trace_logging: bool):
+        self._session = session
+        self._enable_trace_logging = enable_trace_logging
+
+    def get(self, url: str, **kwargs):
+        """Send a GET request, tracing it when enabled."""
+        response = self._session.get(url, **kwargs)
+        self._trace("GET", url, kwargs, response)
+        return response
+
+    def post(self, url: str, **kwargs):
+        """Send a POST request, tracing it when enabled."""
+        response = self._session.post(url, **kwargs)
+        self._trace("POST", url, kwargs, response)
+        return response
+
+    def close(self) -> None:
+        """Close the wrapped session."""
+        self._session.close()
+
+    def _trace(self, method: str, url: str, kwargs: dict, response) -> None:
+        if not self._enable_trace_logging:
+            return
+        sent = kwargs.get("json")
+        if sent is None:
+            sent = kwargs.get("params")
+        logger.info(
+            "PI Web API %s %s\nrequest:\n%s\nresponse:\n%s",
+            method,
+            url,
+            json.dumps(sent, indent=2, default=str),
+            _format_response_body(response),
+        )
+
+
+def _format_response_body(response) -> str:
+    try:
+        return json.dumps(response.json(), indent=2, default=str)
+    except ValueError:
+        return response.text
 
 
 class DatabaseURLBuilder:
