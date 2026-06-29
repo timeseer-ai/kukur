@@ -250,88 +250,115 @@ class PIAssetFramework:
     def _search_template(
         self, selector: SeriesSearch
     ) -> Generator[Metadata, None, None]:
-        element_params = {
-            "templateName": self._config.element_template,
-            "searchFullHierarchy": "true",
-            "selectedFields": ";".join(
-                [
-                    "Items.Name",
-                    "Items.WebId",
-                    "Items.Description",
-                    "Items.CategoryNames",
-                    "Items.Links.Attributes",
-                ]
-            ),
-            "maxCount": self._request_properties.max_returned_items_per_call,
-            "webIdFormat": self._request_properties.web_id_type,
-        }
-        if self._config.element_category is not None:
-            element_params["categoryName"] = self._config.element_category
-        attribute_params = {
-            "searchFullHierarchy": "true",
-            "selectedFields": ";".join(
-                [
-                    "Items.WebId",
-                    "Items.Name",
-                    "Items.Description",
-                    "Items.Path",
-                    "Items.CategoryNames",
-                    "Items.DataReferencePlugin",
-                    "Items.Type",
-                    "Items.TypeQualifier",
-                    "Items.DefaultUnitsNameAbbreviation",
-                    "Items.Step",
-                    "Items.Span",
-                    "Items.Zero",
-                    "Items.Links.EnumerationValues",
-                ]
-            ),
-            "maxCount": self._request_properties.max_returned_items_per_call,
-            "webIdType": self._request_properties.web_id_type,
-        }
-        if self._config.attribute_category is not None:
-            attribute_params["categoryName"] = self._config.attribute_category
-        batch_query = {
-            "GetElements": {
-                "Method": "GET",
-                "Resource": add_query_params(
-                    self._get_element_search_url(),
-                    element_params,
+        dictionary_lookup = _DictionaryLookup(self._request_properties, self._session)
+        start_index = 0
+        while True:
+            element_params = {
+                "templateName": self._config.element_template,
+                "searchFullHierarchy": "true",
+                "selectedFields": ";".join(
+                    [
+                        "Items.Name",
+                        "Items.WebId",
+                        "Items.Description",
+                        "Items.CategoryNames",
+                        "Items.Links.Attributes",
+                    ]
                 ),
-            },
-            "GetAttributes": {
-                "Method": "GET",
-                "RequestTemplate": {
-                    "Resource": "{0}?"
-                    + urllib.parse.urlencode(
-                        attribute_params,
-                        doseq=True,
+                "maxCount": self._request_properties.max_returned_metadata_items_per_call,
+                "startIndex": start_index,
+                "webIdFormat": self._request_properties.web_id_type,
+            }
+            if self._config.element_category is not None:
+                element_params["categoryName"] = self._config.element_category
+            attribute_params = {
+                "searchFullHierarchy": "true",
+                "selectedFields": ";".join(
+                    [
+                        "Items.WebId",
+                        "Items.Name",
+                        "Items.Description",
+                        "Items.Path",
+                        "Items.CategoryNames",
+                        "Items.DataReferencePlugin",
+                        "Items.Type",
+                        "Items.TypeQualifier",
+                        "Items.DefaultUnitsNameAbbreviation",
+                        "Items.Step",
+                        "Items.Span",
+                        "Items.Zero",
+                        "Items.Links.EnumerationValues",
+                    ]
+                ),
+                "maxCount": self._request_properties.max_returned_metadata_items_per_call,
+                "webIdType": self._request_properties.web_id_type,
+            }
+            if self._config.attribute_category is not None:
+                attribute_params["categoryName"] = self._config.attribute_category
+            batch_query = {
+                "GetElements": {
+                    "Method": "GET",
+                    "Resource": add_query_params(
+                        self._get_element_search_url(),
+                        element_params,
                     ),
                 },
-                "Parameters": ["$.GetElements.Content.Items[*].Links.Attributes"],
-                "ParentIds": ["GetElements"],
-            },
-        }
+                "GetAttributes": {
+                    "Method": "GET",
+                    "RequestTemplate": {
+                        "Resource": "{0}?"
+                        + urllib.parse.urlencode(
+                            attribute_params,
+                            doseq=True,
+                        ),
+                    },
+                    "Parameters": ["$.GetElements.Content.Items[*].Links.Attributes"],
+                    "ParentIds": ["GetElements"],
+                },
+            }
 
-        response = self._session.post(
-            self._get_batch_url(),
-            timeout=self._request_properties.metadata_request_timeout_seconds,
-            json=batch_query,
-        )
-        response.raise_for_status()
-        result = response.json()
-        validate_batch_response(result)
+            response = self._session.post(
+                self._get_batch_url(),
+                timeout=self._request_properties.metadata_request_timeout_seconds,
+                json=batch_query,
+            )
+            response.raise_for_status()
+            result = response.json()
 
-        dictionary_lookup = _DictionaryLookup(self._request_properties, self._session)
-        for i, element in enumerate(result["GetElements"]["Content"].get("Items")):
+            result = validate_batch_response(result)
+            if result is None:
+                break
+
+            elements = result["GetElements"]["Content"].get("Items", [])
+            attributes = result["GetAttributes"]["Content"]["Items"]
+            yield from self._create_template_metadata(
+                selector, elements, attributes, dictionary_lookup
+            )
+
+            element_count = len(elements)
+            if (
+                element_count
+                != self._request_properties.max_returned_metadata_items_per_call
+            ):
+                break
+
+            start_index = start_index + element_count
+
+    def _create_template_metadata(
+        self,
+        selector: SeriesSearch,
+        elements: list,
+        attributes: list,
+        dictionary_lookup: "_DictionaryLookup",
+    ) -> Generator[Metadata, None, None]:
+        for i, element in enumerate(elements):
             element_metadata = {self._config.element_template: element["Name"]}
             if len(element["CategoryNames"]) > 0:
                 element_metadata["Element category"] = ";".join(
                     element["CategoryNames"]
                 )
 
-            attributes = result["GetAttributes"]["Content"]["Items"][i]
-            for attribute in attributes["Content"].get("Items", []):
+            for attribute in attributes[i]["Content"].get("Items", []):
                 if self._config.attribute_names is not None:
                     attribute_path = attribute["Path"].split("|", maxsplit=1)[1]
                     if attribute_path not in self._config.attribute_names:

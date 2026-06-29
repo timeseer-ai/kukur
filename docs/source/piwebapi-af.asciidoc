@@ -97,6 +97,11 @@ The default setting is `150000`.
 
 Adapt the number in the Kukur configuration when it has been increased or decreased on the server.
 
+`max_returned_metadata_items_per_call` controls how many elements matching a template - or attributes matching a category - are requested in one metadata batch call.
+The default setting is `150`.
+Decrease it when the batch endpoint runs into rate limit errors because the server has a low `max_returned_items_per_call`.
+Kukur paginates through all matching items regardless of this setting.
+
 Increase `timeout_seconds` when responses could take longer than the already long 2 minutes.
 Use with `query_retry_count` and `query_retry_delay` to work around flaky connections.
 
