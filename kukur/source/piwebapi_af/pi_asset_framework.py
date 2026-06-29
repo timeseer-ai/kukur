@@ -61,6 +61,7 @@ class AFTemplateSourceConfiguration:
     allowed_data_references: list[str]
     attributes_as_fields: bool
     use_attribute_path: bool
+    include_system_states: bool
 
     @classmethod
     def from_data(cls, config: dict) -> "AFTemplateSourceConfiguration":
@@ -75,6 +76,7 @@ class AFTemplateSourceConfiguration:
             config.get("allowed_data_references", ["PI Point"]),
             config.get("attributes_as_fields", True),
             config.get("use_attribute_path", False),
+            config.get("include_system_states", False),
         )
 
 
@@ -142,6 +144,7 @@ class DataRequest:
     start_date: datetime
     end_date: datetime
     interval_count: int | None
+    include_system_states: bool = False
 
 
 class PIWebAPIConnection:
@@ -518,7 +521,13 @@ class PIAssetFramework:
         return _read_data(
             self._session,
             self._request_properties,
-            DataRequest(data_url, start_date, end_date, None),
+            DataRequest(
+                data_url,
+                start_date,
+                end_date,
+                None,
+                self._config.include_system_states,
+            ),
         )
 
     def get_plot_data(
@@ -533,7 +542,13 @@ class PIAssetFramework:
         return _read_data(
             self._session,
             self._request_properties,
-            DataRequest(plot_url, start_date, end_date, interval_count),
+            DataRequest(
+                plot_url,
+                start_date,
+                end_date,
+                interval_count,
+                self._config.include_system_states,
+            ),
         )
 
     def list_elements(self, element_id: str | None) -> list[Element]:
@@ -921,7 +936,10 @@ def _read_data(
             last_timestamp = timestamp
             value = data_point["Value"]
             if isinstance(value, dict):
-                if value.get("IsSystem", False):
+                if (
+                    value.get("IsSystem", False)
+                    and not data_request.include_system_states
+                ):
                     continue
                 values.append(value["Value"])
             else:

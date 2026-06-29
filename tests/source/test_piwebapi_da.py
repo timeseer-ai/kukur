@@ -322,6 +322,29 @@ def test_get_data_dates_outside_limits(_) -> None:
 
 
 @patch("requests.Session.get", side_effect=mocked_requests_get_system)
+def test_get_data_include_system_points(_) -> None:
+    source = from_config(
+        {
+            "data_archive_uri": "https://test_pi.net",
+            "max_returned_items_per_call": 4,
+            "include_system_states": True,
+            "username": "test",
+            "password": "test",
+            "verify_ssl": "false",
+        }
+    )
+    start_date = parse_date("2019-10-01T00:00:00Z")
+    end_date = parse_date("2020-02-01T10:56:25Z")
+
+    data = source.get_data(SeriesSelector("Test", "CDT158"), start_date, end_date)
+    assert len(data) == 5
+    assert data["ts"][0].as_py() == parse_date("2020-01-01T17:24:18Z")
+    assert data["quality"][0].as_py() == 0
+    assert data["ts"][-1].as_py() == parse_date("2020-01-02T00:00:00Z")
+    assert data["quality"][-1].as_py() == 1
+
+
+@patch("requests.Session.get", side_effect=mocked_requests_get_system)
 def test_get_data_ignore_system_points(_) -> None:
     source = from_config(
         {

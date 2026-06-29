@@ -10,6 +10,7 @@ Sources with `type = "piwebapi-da"` configure connections to OSIsoft PI Data Arc
 type = "piwebapi-da"
 data_archive_uri = "The self-URI of the DataServer"
 max_returned_items_per_call = 150000
+include_system_states = false # optional: include digital states with IsSystem = true as bad quality data points
 verify_ssl = true
 timeout_seconds = 60 # The maximum time to wait for a response
 username = "" # optional: username for basic authentication
