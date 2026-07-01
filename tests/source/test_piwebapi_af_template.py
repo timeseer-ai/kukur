@@ -3,6 +3,7 @@
 
 import re
 from unittest.mock import patch
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 
@@ -601,6 +602,8 @@ class MockResponse:
 def mocked_requests_post(*args, **kwargs):
     if args[0] == f"{WEB_API_URI}batch":
         if "GetElement" in kwargs["json"]:
+            uri = kwargs["json"]["GetAttributes"]["Resource"]
+            assert '"Validation Series"' in parse_qs(urlparse(uri).query)["query"][0]
             return MockResponse(BATCH_ATTRIBUTE_CATEGORY_RESPONSE, 200)
 
         if "categoryName=Invalid" in kwargs["json"]["GetElements"]["Resource"]:
@@ -1075,7 +1078,7 @@ def test_search_by_category(_post) -> None:
     source = from_config(
         {
             "database_uri": DATABASE_URI,
-            "attribute_category": "Validation",
+            "attribute_category": "Validation Series",
         }
     )
     all_series = list(source.search(SeriesSearch("Test")))
@@ -1088,7 +1091,7 @@ def test_search_by_category_field_tag(_post) -> None:
     source = from_config(
         {
             "database_uri": DATABASE_URI,
-            "attribute_category": "Validation",
+            "attribute_category": "Validation Series",
             "attributes_as_fields": False,
         }
     )
@@ -1103,7 +1106,7 @@ def test_search_by_category_use_path(_post) -> None:
     source = from_config(
         {
             "database_uri": DATABASE_URI,
-            "attribute_category": "Validation",
+            "attribute_category": "Validation Series",
             "attributes_as_fields": False,
             "use_attribute_path": True,
         }
