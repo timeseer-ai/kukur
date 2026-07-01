@@ -22,9 +22,11 @@ use_attribute_path = true # set to false to use the attribute name instead for t
 web_id_type = "Full" # one of Full, IDOnly, PathOnly
 max_returned_items_per_call = 150000
 max_returned_metadata_items_per_call = 150
+include_system_states = false # optional: include digital states with IsSystem = true as bad quality data points
 verify_ssl = true
 timeout_seconds = 60 # The maximum time to wait for a response
 metadata_request_timeout_seconds = 10 # The maximum time to wait for a response for a metadata request
+enable_trace_logging = false # optional: log all PI Web API requests and responses
 username = "" # optional: username for basic authentication
 password = "" # optional: password for basic authentication
 oidc_token_url = "" # optional: URL for OIDC token request
@@ -96,10 +98,19 @@ The default setting is `150000`.
 
 Adapt the number in the Kukur configuration when it has been increased or decreased on the server.
 
+`max_returned_metadata_items_per_call` controls how many elements matching a template - or attributes matching a category - are requested in one metadata batch call.
+The default setting is `150`.
+Decrease it when the batch endpoint runs into rate limit errors because the server has a low `max_returned_items_per_call`.
+Kukur paginates through all matching items regardless of this setting.
+
 Increase `timeout_seconds` when responses could take longer than the already long 2 minutes.
 Use with `query_retry_count` and `query_retry_delay` to work around flaky connections.
 
 Set `verify_ssl` to `false` when PI Web API uses a self-signed certificate.
+
+Set `enable_trace_logging` to `true` to log all HTTP requests to PI Web API,
+including the JSON sent and the JSON received.
+This is useful to debug batch queries.
 
 By default,
 Kerberos https://docs.osisoft.com/bundle/pi-web-api/page/authentication-methods.html[authentication] is tried.

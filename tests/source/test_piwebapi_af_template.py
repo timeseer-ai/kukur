@@ -743,6 +743,89 @@ def mocked_requests_category_paginated(*args, **kwargs):
     raise Exception(args[0])
 
 
+def _template_page(element_web_id, element_name, attribute_web_id):
+    return {
+        "GetElements": {
+            "Status": 200,
+            "Headers": {"Content-Type": "application/json; charset=utf-8"},
+            "Content": {
+                "Items": [
+                    {
+                        "WebId": element_web_id,
+                        "Name": element_name,
+                        "Description": "",
+                        "CategoryNames": [],
+                        "Links": {
+                            "Attributes": f"https://pi.example.org/piwebapi/elements/{element_web_id}/attributes"
+                        },
+                    },
+                ]
+            },
+        },
+        "GetAttributes": {
+            "Status": 207,
+            "Headers": {},
+            "Content": {
+                "Total": 1,
+                "Items": [
+                    {
+                        "Status": 200,
+                        "Headers": {"Content-Type": "application/json; charset=utf-8"},
+                        "Content": {
+                            "Items": [
+                                {
+                                    "WebId": attribute_web_id,
+                                    "Name": "Level",
+                                    "Description": "",
+                                    "Path": f"\\\\vm-ts-pi\\Timeseer\\{element_name}|Level",
+                                    "Type": "Double",
+                                    "DefaultUnitsNameAbbreviation": "",
+                                    "DataReferencePlugIn": "PI Point",
+                                    "CategoryNames": ["Measurement"],
+                                    "Step": False,
+                                    "Span": 100.0,
+                                    "Zero": 0.0,
+                                },
+                            ]
+                        },
+                    },
+                ],
+            },
+        },
+    }
+
+
+def mocked_requests_template_paginated(*args, **kwargs):
+    if args[0] == f"{WEB_API_URI}batch":
+        match = re.search(
+            "startIndex=(\\d+)", kwargs["json"]["GetElements"]["Resource"]
+        )
+        assert match is not None
+        start_index = int(match.group(1))
+        if start_index == 0:
+            return MockResponse(_template_page("R1", "Reactor01", "A1"), 207)
+        if start_index == 1:
+            return MockResponse(_template_page("R2", "Reactor02", "A2"), 207)
+        if start_index == 2:
+            return MockResponse(
+                {
+                    "GetElements": {
+                        "Status": 200,
+                        "Headers": {},
+                        "Content": {"Items": []},
+                    },
+                    "GetAttributes": {
+                        "Status": 400,
+                        "Headers": {},
+                        "Content": "Some JSON paths did not select any tokens: $.GetElements.Content.Items[*].Links.Attributes.",
+                    },
+                },
+                207,
+            )
+
+    raise Exception(args[0])
+
+
 def mocked_requests_batch_global_error_attributes(*args, **kwargs):
     if args[0] == f"{WEB_API_URI}batch":
         return MockResponse(BATCH_GLOBAL_ERROR_ATTRIBUTES, 200)
@@ -1043,6 +1126,21 @@ def test_search_by_category_pagination(_post) -> None:
     all_series = list(source.search(SeriesSearch("Test")))
     assert len(all_series) == 2
     assert all_series[0].series.tags["series name"] == "Reactor01"
+
+
+@patch("requests.Session.post", side_effect=mocked_requests_template_paginated)
+def test_search_template_pagination(_post) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "element_template": "Reactor",
+            "max_returned_metadata_items_per_call": 1,
+        }
+    )
+    all_series = list(source.search(SeriesSearch("Test")))
+    assert len(all_series) == 2
+    assert all_series[0].series.tags["series name"] == "Reactor01"
+    assert all_series[1].series.tags["series name"] == "Reactor02"
 
 
 @patch(

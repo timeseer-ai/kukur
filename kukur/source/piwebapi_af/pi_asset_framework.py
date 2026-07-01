@@ -61,6 +61,7 @@ class AFTemplateSourceConfiguration:
     allowed_data_references: list[str]
     attributes_as_fields: bool
     use_attribute_path: bool
+    include_system_states: bool
 
     @classmethod
     def from_data(cls, config: dict) -> "AFTemplateSourceConfiguration":
@@ -75,6 +76,7 @@ class AFTemplateSourceConfiguration:
             config.get("allowed_data_references", ["PI Point"]),
             config.get("attributes_as_fields", True),
             config.get("use_attribute_path", False),
+            config.get("include_system_states", False),
         )
 
 
@@ -142,6 +144,7 @@ class DataRequest:
     start_date: datetime
     end_date: datetime
     interval_count: int | None
+    include_system_states: bool = False
 
 
 class PIWebAPIConnection:
@@ -153,20 +156,71 @@ class PIWebAPIConnection:
     def __init__(self, config: dict):
         self._auth = AuthenticationProperties.from_data(config)
         self._verify_ssl = config.get("verify_ssl", True)
+        self._enable_trace_logging = config.get("enable_trace_logging", False)
 
         if not self._verify_ssl:
             urllib3.disable_warnings()
 
     def __enter__(self) -> "PIWebAPIConnection":
-        self.session = Session()
-        self.session.headers["X-Requested-With"] = "Kukur"
-        self.session.verify = self._verify_ssl
-        self._auth.apply(self.session)
+        session = Session()
+        session.headers["X-Requested-With"] = "Kukur"
+        session.verify = self._verify_ssl
+        self._auth.apply(session)
+        self.session = _TracingSession(session, self._enable_trace_logging)
         return self
 
     def __exit__(self, exc_type, exc, tb):
         if self.session is not None:
             self.session.close()
+
+
+class _TracingSession:
+    """Wrap a requests Session to optionally log all HTTP traffic.
+
+    When trace logging is enabled, every request logs its method, URL and the
+    JSON or query parameters sent, together with the JSON received.
+    """
+
+    def __init__(self, session: "Session", enable_trace_logging: bool):
+        self._session = session
+        self._enable_trace_logging = enable_trace_logging
+
+    def get(self, url: str, **kwargs):
+        """Send a GET request, tracing it when enabled."""
+        response = self._session.get(url, **kwargs)
+        self._trace("GET", url, kwargs, response)
+        return response
+
+    def post(self, url: str, **kwargs):
+        """Send a POST request, tracing it when enabled."""
+        response = self._session.post(url, **kwargs)
+        self._trace("POST", url, kwargs, response)
+        return response
+
+    def close(self) -> None:
+        """Close the wrapped session."""
+        self._session.close()
+
+    def _trace(self, method: str, url: str, kwargs: dict, response) -> None:
+        if not self._enable_trace_logging:
+            return
+        sent = kwargs.get("json")
+        if sent is None:
+            sent = kwargs.get("params")
+        logger.info(
+            "PI Web API %s %s\nrequest:\n%s\nresponse:\n%s",
+            method,
+            url,
+            json.dumps(sent, indent=2, default=str),
+            _format_response_body(response),
+        )
+
+
+def _format_response_body(response) -> str:
+    try:
+        return json.dumps(response.json(), indent=2, default=str)
+    except ValueError:
+        return response.text
 
 
 class DatabaseURLBuilder:
@@ -247,88 +301,115 @@ class PIAssetFramework:
     def _search_template(
         self, selector: SeriesSearch
     ) -> Generator[Metadata, None, None]:
-        element_params = {
-            "templateName": self._config.element_template,
-            "searchFullHierarchy": "true",
-            "selectedFields": ";".join(
-                [
-                    "Items.Name",
-                    "Items.WebId",
-                    "Items.Description",
-                    "Items.CategoryNames",
-                    "Items.Links.Attributes",
-                ]
-            ),
-            "maxCount": self._request_properties.max_returned_items_per_call,
-            "webIdFormat": self._request_properties.web_id_type,
-        }
-        if self._config.element_category is not None:
-            element_params["categoryName"] = self._config.element_category
-        attribute_params = {
-            "searchFullHierarchy": "true",
-            "selectedFields": ";".join(
-                [
-                    "Items.WebId",
-                    "Items.Name",
-                    "Items.Description",
-                    "Items.Path",
-                    "Items.CategoryNames",
-                    "Items.DataReferencePlugin",
-                    "Items.Type",
-                    "Items.TypeQualifier",
-                    "Items.DefaultUnitsNameAbbreviation",
-                    "Items.Step",
-                    "Items.Span",
-                    "Items.Zero",
-                    "Items.Links.EnumerationValues",
-                ]
-            ),
-            "maxCount": self._request_properties.max_returned_items_per_call,
-            "webIdType": self._request_properties.web_id_type,
-        }
-        if self._config.attribute_category is not None:
-            attribute_params["categoryName"] = self._config.attribute_category
-        batch_query = {
-            "GetElements": {
-                "Method": "GET",
-                "Resource": add_query_params(
-                    self._get_element_search_url(),
-                    element_params,
+        dictionary_lookup = _DictionaryLookup(self._request_properties, self._session)
+        start_index = 0
+        while True:
+            element_params = {
+                "templateName": self._config.element_template,
+                "searchFullHierarchy": "true",
+                "selectedFields": ";".join(
+                    [
+                        "Items.Name",
+                        "Items.WebId",
+                        "Items.Description",
+                        "Items.CategoryNames",
+                        "Items.Links.Attributes",
+                    ]
                 ),
-            },
-            "GetAttributes": {
-                "Method": "GET",
-                "RequestTemplate": {
-                    "Resource": "{0}?"
-                    + urllib.parse.urlencode(
-                        attribute_params,
-                        doseq=True,
+                "maxCount": self._request_properties.max_returned_metadata_items_per_call,
+                "startIndex": start_index,
+                "webIdFormat": self._request_properties.web_id_type,
+            }
+            if self._config.element_category is not None:
+                element_params["categoryName"] = self._config.element_category
+            attribute_params = {
+                "searchFullHierarchy": "true",
+                "selectedFields": ";".join(
+                    [
+                        "Items.WebId",
+                        "Items.Name",
+                        "Items.Description",
+                        "Items.Path",
+                        "Items.CategoryNames",
+                        "Items.DataReferencePlugin",
+                        "Items.Type",
+                        "Items.TypeQualifier",
+                        "Items.DefaultUnitsNameAbbreviation",
+                        "Items.Step",
+                        "Items.Span",
+                        "Items.Zero",
+                        "Items.Links.EnumerationValues",
+                    ]
+                ),
+                "maxCount": self._request_properties.max_returned_metadata_items_per_call,
+                "webIdType": self._request_properties.web_id_type,
+            }
+            if self._config.attribute_category is not None:
+                attribute_params["categoryName"] = self._config.attribute_category
+            batch_query = {
+                "GetElements": {
+                    "Method": "GET",
+                    "Resource": add_query_params(
+                        self._get_element_search_url(),
+                        element_params,
                     ),
                 },
-                "Parameters": ["$.GetElements.Content.Items[*].Links.Attributes"],
-                "ParentIds": ["GetElements"],
-            },
-        }
+                "GetAttributes": {
+                    "Method": "GET",
+                    "RequestTemplate": {
+                        "Resource": "{0}?"
+                        + urllib.parse.urlencode(
+                            attribute_params,
+                            doseq=True,
+                        ),
+                    },
+                    "Parameters": ["$.GetElements.Content.Items[*].Links.Attributes"],
+                    "ParentIds": ["GetElements"],
+                },
+            }
 
-        response = self._session.post(
-            self._get_batch_url(),
-            timeout=self._request_properties.metadata_request_timeout_seconds,
-            json=batch_query,
-        )
-        response.raise_for_status()
-        result = response.json()
-        validate_batch_response(result)
+            response = self._session.post(
+                self._get_batch_url(),
+                timeout=self._request_properties.metadata_request_timeout_seconds,
+                json=batch_query,
+            )
+            response.raise_for_status()
+            result = response.json()
 
-        dictionary_lookup = _DictionaryLookup(self._request_properties, self._session)
-        for i, element in enumerate(result["GetElements"]["Content"].get("Items")):
+            result = validate_batch_response(result)
+            if result is None:
+                break
+
+            elements = result["GetElements"]["Content"].get("Items", [])
+            attributes = result["GetAttributes"]["Content"]["Items"]
+            yield from self._create_template_metadata(
+                selector, elements, attributes, dictionary_lookup
+            )
+
+            element_count = len(elements)
+            if (
+                element_count
+                != self._request_properties.max_returned_metadata_items_per_call
+            ):
+                break
+
+            start_index = start_index + element_count
+
+    def _create_template_metadata(
+        self,
+        selector: SeriesSearch,
+        elements: list,
+        attributes: list,
+        dictionary_lookup: "_DictionaryLookup",
+    ) -> Generator[Metadata, None, None]:
+        for i, element in enumerate(elements):
             element_metadata = {self._config.element_template: element["Name"]}
             if len(element["CategoryNames"]) > 0:
                 element_metadata["Element category"] = ";".join(
                     element["CategoryNames"]
                 )
 
-            attributes = result["GetAttributes"]["Content"]["Items"][i]
-            for attribute in attributes["Content"].get("Items", []):
+            for attribute in attributes[i]["Content"].get("Items", []):
                 if self._config.attribute_names is not None:
                     attribute_path = attribute["Path"].split("|", maxsplit=1)[1]
                     if attribute_path not in self._config.attribute_names:
@@ -518,7 +599,13 @@ class PIAssetFramework:
         return _read_data(
             self._session,
             self._request_properties,
-            DataRequest(data_url, start_date, end_date, None),
+            DataRequest(
+                data_url,
+                start_date,
+                end_date,
+                None,
+                self._config.include_system_states,
+            ),
         )
 
     def get_plot_data(
@@ -533,7 +620,13 @@ class PIAssetFramework:
         return _read_data(
             self._session,
             self._request_properties,
-            DataRequest(plot_url, start_date, end_date, interval_count),
+            DataRequest(
+                plot_url,
+                start_date,
+                end_date,
+                interval_count,
+                self._config.include_system_states,
+            ),
         )
 
     def list_elements(self, element_id: str | None) -> list[Element]:
@@ -921,7 +1014,10 @@ def _read_data(
             last_timestamp = timestamp
             value = data_point["Value"]
             if isinstance(value, dict):
-                if value.get("IsSystem", False):
+                if (
+                    value.get("IsSystem", False)
+                    and not data_request.include_system_states
+                ):
                     continue
                 values.append(value["Value"])
             else:

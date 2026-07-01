@@ -43,6 +43,7 @@ NOT_FOUND = 404
 class _RequestProperties:
     timeout_seconds: float
     max_returned_items_per_call: int
+    include_system_states: bool
 
 
 class _DictionaryLookup:  # pylint: disable=too-few-public-methods
@@ -148,6 +149,7 @@ class PIDataArchive:
             max_returned_items_per_call=config.get(
                 "max_returned_items_per_call", 150000
             ),
+            include_system_states=config.get("include_system_states", False),
         )
 
     def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
@@ -279,7 +281,10 @@ class PIDataArchive:
                 last_timestamp = timestamp
                 value = data_point["Value"]
                 if isinstance(value, dict):
-                    if value.get("IsSystem", False):
+                    if (
+                        value.get("IsSystem", False)
+                        and not self._request_properties.include_system_states
+                    ):
                         continue
                     values.append(value["Value"])
                 else:
