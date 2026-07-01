@@ -453,7 +453,7 @@ class PIAssetFramework:
         while True:
             attribute_params = {
                 "databaseWebId": self._url.database_id(),
-                "query": f"Element:{{ Name:=* }} category:{self._config.attribute_category}",
+                "query": f'Element:{{ Name:=* }} category:"{self._config.attribute_category}"',
                 "searchFullHierarchy": "true",
                 "selectedFields": ";".join(
                     [
