@@ -9,7 +9,11 @@ from datetime import datetime
 
 import pyarrow as pa
 
-from kukur.source.piwebapi_af.pi_asset_framework import PIWebAPIConnection
+from kukur.source.piwebapi_af.pi_asset_framework import (
+    PIWebAPIConnection,
+    extract_value,
+    is_system_state,
+)
 
 try:
     import requests  # noqa: F401
@@ -249,7 +253,7 @@ class PIDataArchive:
         interval_count: int | None = None,
     ) -> pa.Table:
         timestamps = []
-        values = []
+        values: list[float | int | str | None] = []
         quality_flags = []
 
         while True:
@@ -280,15 +284,12 @@ class PIDataArchive:
                 timestamp = parse_date(data_point["Timestamp"])
                 last_timestamp = timestamp
                 value = data_point["Value"]
-                if isinstance(value, dict):
-                    if (
-                        value.get("IsSystem", False)
-                        and not self._request_properties.include_system_states
-                    ):
-                        continue
-                    values.append(value["Value"])
-                else:
-                    values.append(value)
+                if (
+                    is_system_state(value)
+                    and not self._request_properties.include_system_states
+                ):
+                    continue
+                values.append(extract_value(value))
                 timestamps.append(timestamp)
                 if data_point["Good"]:
                     quality_flags.append(1)
