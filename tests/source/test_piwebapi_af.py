@@ -240,6 +240,28 @@ def test_get_data_include_system_points(_) -> None:
 
 
 @patch("requests.Session.get", side_effect=mocked_requests_get_system_points)
+def test_get_data_include_system_points_value_is_null(_) -> None:
+    source = from_config(
+        {
+            "database_uri": "https://test_pi.net",
+            "max_returned_items_per_call": 4,
+            "include_system_states": True,
+            "username": "test",
+            "password": "test",
+            "verify_ssl": "false",
+        }
+    )
+    start_date = parse_date("2019-10-01T00:00:00Z")
+    end_date = parse_date("2020-02-01T10:56:25Z")
+
+    data = source.get_data(
+        SeriesSelector("Test", {"__id__": "A9"}), start_date, end_date
+    )
+    assert data["value"][0].as_py() is None
+    assert data["value"][-1].as_py() == 81.83204
+
+
+@patch("requests.Session.get", side_effect=mocked_requests_get_system_points)
 def test_get_data_system_points(_) -> None:
     source = from_config(
         {

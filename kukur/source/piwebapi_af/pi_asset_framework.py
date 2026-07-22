@@ -973,6 +973,20 @@ class _DictionaryLookup:
             metadata.set_field(fields.Dictionary, self._lookup.get(dictionary_name))
 
 
+def is_system_state(value) -> bool:
+    """Return whether value represents a PI system state."""
+    return isinstance(value, dict) and value.get("IsSystem", False)
+
+
+def extract_value(value):
+    """Return the numeric/string reading from a PI value, or None for a system state."""
+    if isinstance(value, dict):
+        if value.get("IsSystem", False):
+            return None
+        return value["Value"]
+    return value
+
+
 def _read_data(
     session, request_properties: RequestProperties, data_request: DataRequest
 ):
@@ -981,7 +995,7 @@ def _read_data(
     This handles pagination.
     """
     timestamps = []
-    values = []
+    values: list[float | int | str | None] = []
     quality_flags = []
 
     start_date = data_request.start_date
@@ -1013,15 +1027,9 @@ def _read_data(
             timestamp = parse_date(data_point["Timestamp"])
             last_timestamp = timestamp
             value = data_point["Value"]
-            if isinstance(value, dict):
-                if (
-                    value.get("IsSystem", False)
-                    and not data_request.include_system_states
-                ):
-                    continue
-                values.append(value["Value"])
-            else:
-                values.append(value)
+            if is_system_state(value) and not data_request.include_system_states:
+                continue
+            values.append(extract_value(value))
             timestamps.append(timestamp)
             if data_point["Good"]:
                 quality_flags.append(1)
