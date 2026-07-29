@@ -2,6 +2,7 @@
 
 import functools
 import inspect
+import json as py_json
 import logging
 import time
 from collections.abc import Callable, Generator
@@ -112,9 +113,10 @@ class Source:
 
 
 def _retry(retry_count: int, retry_delay: float, data_fn, log_message: str):
+    max_retry_count = retry_count
     while True:
         try:
-            return data_fn()
+            return data_fn(), max_retry_count - retry_count
         except NotImplementedError as err:
             raise err
         except Exception as err:  # pylint: disable=broad-except
@@ -172,7 +174,7 @@ class SourceWrapper:
         source for each series.
         """
         query_fn = functools.partial(self.__source.metadata.search, selector)
-        results = _retry(
+        results, _ = _retry(
             self.__query_retry_count,
             self.__query_retry_delay,
             query_fn,
@@ -215,7 +217,7 @@ class SourceWrapper:
             query_fn = functools.partial(metadata_source.source.get_metadata, selector)
 
             try:
-                received_metadata = _retry(
+                received_metadata, _ = _retry(
                     self.__query_retry_count,
                     self.__query_retry_delay,
                     query_fn,
@@ -241,11 +243,13 @@ class SourceWrapper:
         """Return the data for the given series in the given time frame, taking into account the request policy."""
         if start_date == end_date:
             return pa.Table.from_pydict({"ts": [], "value": [], "quality": []})
-        tables = [
+        chunk_results = [
             self._get_data_chunk(selector, start, end)
             for start, end in self.__to_intervals(start_date, end_date)
         ]
-        return concat_tables(tables)
+        table = concat_tables([result[0] for result in chunk_results])
+        retry_count = sum(result[1] for result in chunk_results)
+        return _add_query_statistics(table, retry_count)
 
     def get_plot_data(
         self,
@@ -271,12 +275,13 @@ class SourceWrapper:
             end_date,
             interval_count,
         )
-        return _retry(
+        table, retry_count = _retry(
             self.__query_retry_count,
             self.__query_retry_delay,
             query_fn,
             f'Plot data query for "{selector.name}" ({selector.source}) ({start_date} to {end_date}) failed',
         )
+        return _add_query_statistics(table, retry_count)
 
     def get_source_structure(self, selector: SeriesSelector) -> SourceStructure | None:
         """Return the structure of the source for the given series."""
@@ -285,12 +290,13 @@ class SourceWrapper:
         query_fn = functools.partial(
             self.__source.metadata.get_source_structure, selector
         )
-        return _retry(
+        structure, _ = _retry(
             self.__query_retry_count,
             self.__query_retry_delay,
             query_fn,
             f"Source structure query for {selector.source} failed",
         )
+        return structure
 
     def _get_data_chunk(
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
@@ -520,3 +526,11 @@ def _is_all_integer(tables: list[pa.Table]) -> bool:
 def _has_quality_data_flag(tables: list[pa.Table]) -> bool:
     quality_table = [table for table in tables if "quality" in table.column_names]
     return len(quality_table) > 0
+
+
+def _add_query_statistics(table: pa.Table, retry_count: int) -> pa.Table:
+    metadata = table.schema.metadata
+    if metadata is None:
+        metadata = {}
+    metadata["kukur.statistics"] = py_json.dumps({"retryCount": retry_count})
+    return table.replace_schema_metadata(metadata)
