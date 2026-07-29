@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 from collections.abc import Generator
 from datetime import datetime, timedelta
 
@@ -305,12 +306,13 @@ def test_retry_on_metadata_failure():
     wrapper.get_metadata(SELECTOR)
 
 
-def test_retry_on_data_failure():
+def test_retry_on_data_failure() -> None:
     source = FailureSource()
     wrapper = SourceWrapper(
         Source(source, source), [], {"query_retry_count": 1, "query_retry_delay": 0.05}
     )
-    wrapper.get_data(SELECTOR, START_DATE, END_DATE)
+    table = wrapper.get_data(SELECTOR, START_DATE, END_DATE)
+    assert json.loads(table.schema.metadata[b"kukur.statistics"])["retryCount"] == 1
 
 
 def test_exception_after_too_many_retries():
