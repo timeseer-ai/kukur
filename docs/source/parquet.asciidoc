@@ -30,6 +30,10 @@ For example:
 metadata_type = "csv"
 ```
 
+In cases where the `row` or `pivot` format is used for pre-sorted data,
+using a `type = "datafusion"` source will improve memory usage and performance,
+because `datafusion` supports selectively reading the `parquet` file.
+
 === Column mapping
 
 Accepted by Apache Parquet sources that use the row based or directory based
