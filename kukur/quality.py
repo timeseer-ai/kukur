@@ -57,7 +57,7 @@ class QualityMapper:
     """
 
     __good_mapping: list[Any]
-    __display_mapping: dict[str, str]
+    __display_mapping: dict[str, list[Any]]
 
     @classmethod
     def from_config(cls, config: dict[str, Any]) -> "QualityMapper":
@@ -65,8 +65,10 @@ class QualityMapper:
         mapper = cls()
         for quality, quality_values in config.items():
             if quality == DISPLAY_MAPPING_KEY:
-                for quality_value, display_value in quality_values.items():
-                    mapper.add_display_mapping(quality_value, str(display_value))
+                for display_value, display_quality_values in quality_values.items():
+                    mapper.add_display_mapping(
+                        str(display_value), display_quality_values
+                    )
                 continue
             if quality != Quality.GOOD.name:
                 continue
@@ -103,19 +105,23 @@ class QualityMapper:
         """
         self.__good_mapping.append([quality_values.start, quality_values.stop - 1])
 
-    def add_display_mapping(self, quality_value: str | int, display_value: str):
-        """Add the display value of one quality value of the source.
+    def add_display_mapping(
+        self, display_value: str, quality_values: list[Any] | str | int
+    ):
+        """Add the quality values of the source that are shown as one display value.
 
-        Quality values are keyed by their string representation, since both TOML
-        and JSON keys are strings.
+        A display value can name multiple quality values of the source. One
+        quality value does not have to be a list of one.
         """
-        self.__display_mapping[str(quality_value)] = display_value
+        if not isinstance(quality_values, list):
+            quality_values = [quality_values]
+        self.__display_mapping.setdefault(display_value, []).extend(quality_values)
 
     def to_metadata(self) -> dict[str, Any]:
         """Return the mapping in the form that is embedded in Arrow schema metadata."""
         metadata: dict[str, Any] = {Quality.GOOD.name: list(self.__good_mapping)}
         if self.__display_mapping:
-            metadata[DISPLAY_MAPPING_KEY] = dict(self.__display_mapping)
+            metadata[DISPLAY_MAPPING_KEY] = self.display_values()
         return metadata
 
     def good_values(self) -> list[str | int]:
@@ -131,13 +137,29 @@ class QualityMapper:
             values.append(entry)
         return values
 
-    def display_values(self) -> dict[str, str]:
+    def display_values(self) -> dict[str, list[str | int]]:
+        """Return the quality values of the source that each display value names.
+
+        A display value can name multiple quality values. Not every quality value
+        of a source necessarily has a display value.
+        """
+        return {
+            display_value: list(quality_values)
+            for display_value, quality_values in self.__display_mapping.items()
+        }
+
+    def display_value_lookup(self) -> dict[str, str]:
         """Return the display value of every quality value of the source that has one.
 
-        The quality values are keyed by their string representation. Not every
-        quality value of a source necessarily has a display value.
+        The quality values are keyed by their string representation, since the
+        quality values in the mapping are not necessarily of the type of the
+        quality column of the source.
         """
-        return dict(self.__display_mapping)
+        return {
+            str(quality_value): display_value
+            for display_value, quality_values in self.__display_mapping.items()
+            for quality_value in quality_values
+        }
 
     def is_present(self) -> bool:
         """Check if there is a quality mapping present."""
@@ -248,30 +270,34 @@ def describe(table: pa.Table) -> pa.Table:
         return table
 
     mapper = QualityMapper.from_metadata(get_mapping(table))
-    display_values = mapper.display_values()
+    display_lookup = mapper.display_value_lookup()
     index = table.column_names.index("quality")
-    quality = _describe_array(table.column(index), display_values)
+    quality = _describe_array(table.column(index), display_lookup)
     table = table.set_column(index, pa.field("quality", pa.string()), quality)
 
     described = QualityMapper()
-    for quality_value in mapper.good_values():
-        described.add_mapping(_display_value(quality_value, display_values))
-    for quality_value, display_value in display_values.items():
-        described.add_display_mapping(quality_value, display_value)
+    good_display_values = dict.fromkeys(
+        _display_value(good_value, display_lookup)
+        for good_value in mapper.good_values()
+    )
+    for display_value in good_display_values:
+        described.add_mapping(display_value)
+    for display_value, quality_values in mapper.display_values().items():
+        described.add_display_mapping(display_value, quality_values)
     return set_mapping(table, described.to_metadata())
 
 
-def _display_value(quality_value: str | int, display_values: dict[str, str]) -> str:
-    return display_values.get(str(quality_value), str(quality_value))
+def _display_value(quality_value: str | int, display_lookup: dict[str, str]) -> str:
+    return display_lookup.get(str(quality_value), str(quality_value))
 
 
-def _describe_array(array: pa.Array, display_values: dict[str, str]) -> pa.Array:
+def _describe_array(array: pa.Array, display_lookup: dict[str, str]) -> pa.Array:
     # pylint: disable=no-member
     raw = pc.cast(array, pa.string())
-    if len(display_values) == 0:
+    if len(display_lookup) == 0:
         return raw
-    value_set = _to_value_set(list(display_values.keys()), array.type)
-    labels = pa.array(list(display_values.values()), pa.string())
+    value_set = _to_value_set(list(display_lookup.keys()), array.type)
+    labels = pa.array(list(display_lookup.values()), pa.string())
     index = pc.index_in(array, value_set)
     return pc.if_else(pc.is_valid(index), pc.take(labels, index), raw)
 

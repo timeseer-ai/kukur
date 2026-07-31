@@ -58,17 +58,35 @@ def test_from_config_ignores_other_keys() -> None:
 
 
 def test_from_config_display() -> None:
-    """Quality values are keyed by their string representation, also when they are digits."""
+    """A display value names the quality values of the source that it describes."""
     mapper = QualityMapper.from_config(
-        {"GOOD": [192], "display": {"192": "good", "194": "very good"}}
+        {"GOOD": [192], "display": {"good": [192, 194], "sensor failure": 401}}
     )
     assert mapper.good_values() == [192]
-    assert mapper.display_values() == {"192": "good", "194": "very good"}
+    assert mapper.display_values() == {"good": [192, 194], "sensor failure": [401]}
+
+
+def test_from_config_display_lookup() -> None:
+    """Quality values are keyed by their string representation, also when they are digits."""
+    mapper = QualityMapper.from_config(
+        {"display": {"good": [192, 194], "sensor failure": 401}}
+    )
+    assert mapper.display_value_lookup() == {
+        "192": "good",
+        "194": "good",
+        "401": "sensor failure",
+    }
+
+
+def test_from_config_display_strings() -> None:
+    mapper = QualityMapper.from_config({"display": {"good": "GoodQuality"}})
+    assert mapper.display_values() == {"good": ["GoodQuality"]}
+    assert mapper.display_value_lookup() == {"GoodQuality": "good"}
 
 
 def test_from_config_display_only() -> None:
     """A source can describe its quality values without declaring which are good."""
-    mapper = QualityMapper.from_config({"display": {"192": "good"}})
+    mapper = QualityMapper.from_config({"display": {"good": 192}})
     assert mapper.is_present()
     assert mapper.good_values() == []
 
@@ -91,8 +109,14 @@ def test_metadata_round_trip_strings() -> None:
 
 
 def test_metadata_round_trip_display() -> None:
-    mapper = QualityMapper.from_config({"GOOD": [192], "display": {"192": "good"}})
-    assert mapper.to_metadata() == {"GOOD": [192], "display": {"192": "good"}}
+    """A single quality value is embedded as a list, to keep the mapping one shape."""
+    mapper = QualityMapper.from_config(
+        {"GOOD": [192], "display": {"good": [192, 194], "sensor failure": 401}}
+    )
+    assert mapper.to_metadata() == {
+        "GOOD": [192],
+        "display": {"good": [192, 194], "sensor failure": [401]},
+    }
     assert QualityMapper.from_metadata(mapper.to_metadata()).display_values() == (
         mapper.display_values()
     )
@@ -221,11 +245,22 @@ def test_normalize_keeps_simplified_quality() -> None:
 def test_describe_numbers() -> None:
     table = _table(
         pa.array([192, 194], pa.int16()),
-        {"GOOD": [192, 194], "display": {"192": "good", "194": "very good"}},
+        {"GOOD": [192, 194], "display": {"good": [192], "very good": [194]}},
     )
     described = quality.describe(table)
     assert described.schema.field("quality").type == pa.string()
     assert described["quality"].to_pylist() == ["good", "very good"]
+
+
+def test_describe_shared_display_value() -> None:
+    """One display value can name multiple quality values of the source."""
+    table = _table(
+        pa.array([192, 194, 401], pa.int16()),
+        {"GOOD": [192, 194], "display": {"good": [192, 194], "sensor failure": [401]}},
+    )
+    described = quality.describe(table)
+    assert described["quality"].to_pylist() == ["good", "good", "sensor failure"]
+    assert quality.get_mapping(described)["GOOD"] == ["good"]
 
 
 def test_describe_strings() -> None:
@@ -233,7 +268,7 @@ def test_describe_strings() -> None:
         pa.array(["GoodQuality", "BadQuality"]),
         {
             "GOOD": ["GoodQuality"],
-            "display": {"GoodQuality": "good", "BadQuality": "bad"},
+            "display": {"good": ["GoodQuality"], "bad": ["BadQuality"]},
         },
     )
     assert quality.describe(table)["quality"].to_pylist() == ["good", "bad"]
@@ -242,14 +277,14 @@ def test_describe_strings() -> None:
 def test_describe_falls_back_to_the_quality_value() -> None:
     """Not every quality value of a source necessarily has a display value."""
     table = _table(
-        pa.array([192, 3], pa.int16()), {"GOOD": [192], "display": {"192": "good"}}
+        pa.array([192, 3], pa.int16()), {"GOOD": [192], "display": {"good": [192]}}
     )
     assert quality.describe(table)["quality"].to_pylist() == ["good", "3"]
 
 
 def test_describe_keeps_nulls() -> None:
     table = _table(
-        pa.array([192, None], pa.int16()), {"GOOD": [192], "display": {"192": "good"}}
+        pa.array([192, None], pa.int16()), {"GOOD": [192], "display": {"good": [192]}}
     )
     assert quality.describe(table)["quality"].to_pylist() == ["good", None]
 
@@ -262,7 +297,7 @@ def test_describe_without_display_mapping() -> None:
 
 def test_describe_numerical_mapping_on_string_column() -> None:
     """The quality values of a source are not necessarily of the mapped type."""
-    table = _table(pa.array(["192", "3"]), {"GOOD": [192], "display": {"192": "good"}})
+    table = _table(pa.array(["192", "3"]), {"GOOD": [192], "display": {"good": [192]}})
     assert quality.describe(table)["quality"].to_pylist() == ["good", "3"]
 
 
@@ -270,18 +305,18 @@ def test_describe_translates_the_mapping() -> None:
     """Ranges are expanded, since a range of display values is not a range."""
     table = _table(
         pa.array([192, 195], pa.int16()),
-        {"GOOD": [192, [194, 195]], "display": {"192": "good", "194": "very good"}},
+        {"GOOD": [192, [194, 195]], "display": {"good": [192], "very good": [194]}},
     )
     assert quality.get_mapping(quality.describe(table)) == {
         "GOOD": ["good", "very good", "195"],
-        "display": {"192": "good", "194": "very good"},
+        "display": {"good": [192], "very good": [194]},
     }
 
 
 def test_describe_can_still_be_simplified() -> None:
     table = _table(
         pa.array([192, 3, 195], pa.int16()),
-        {"GOOD": [192, [194, 195]], "display": {"192": "good", "194": "very good"}},
+        {"GOOD": [192, [194, 195]], "display": {"good": [192], "very good": [194]}},
     )
     assert quality.simplify(quality.describe(table))["quality"].to_pylist() == (
         quality.simplify(table)["quality"].to_pylist()
@@ -295,7 +330,7 @@ def test_describe_without_quality_column() -> None:
 
 def test_describe_empty_table() -> None:
     table = _table(
-        pa.array([], pa.int16()), {"GOOD": [192], "display": {"192": "good"}}
+        pa.array([], pa.int16()), {"GOOD": [192], "display": {"good": [192]}}
     )
     described = quality.describe(table)
     assert len(described) == 0

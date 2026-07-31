@@ -11,9 +11,9 @@ GOOD = [[192], [194, 198]]
 GOOD = [[192], [194, 198]]
 
 [quality_mapping.opc_mapping_display.display]
-3 = "bad"
-192 = "good"
-197 = "very good"
+"bad" = 3
+"good" = 192
+"very good" = 197
 
 [[include]]
 glob = "tests/test_data/*/*.toml"

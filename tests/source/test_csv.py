@@ -70,7 +70,7 @@ def test_dir_quality_display() -> None:
     )
     assert quality.get_mapping(table) == {
         "GOOD": [192, [194, 198]],
-        "display": {"3": "bad", "192": "good", "197": "very good"},
+        "display": {"bad": [3], "good": [192], "very good": [197]},
     }
     described = quality.describe(table)
     assert described.schema.field("quality").type == pa.string()

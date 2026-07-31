@@ -419,11 +419,11 @@ def test_display_mapping_of_the_source_is_embedded() -> None:
         [],
         {},
         quality_mapper=QualityMapper.from_config(
-            {"GOOD": [192], "display": {"192": "good"}}
+            {"GOOD": [192], "display": {"good": 192}}
         ),
     )
     table = wrapper.get_data(SELECTOR, START_DATE, END_DATE)
-    assert quality.get_mapping(table) == {"GOOD": [192], "display": {"192": "good"}}
+    assert quality.get_mapping(table) == {"GOOD": [192], "display": {"good": [192]}}
     assert quality.describe(table)["quality"].to_pylist() == ["good", "3"]
 
 
