@@ -8,17 +8,9 @@ from datetime import datetime, timedelta
 import pyarrow as pa
 import pytest
 
-from kukur import Metadata, SeriesSelector
+from kukur import Metadata, SeriesSelector, quality
 from kukur.base import SourceStructure
-from kukur.quality import (
-    DEFAULT_QUALITY_MAPPING,
-    Quality,
-    QualityMapper,
-    get_quality_mapping,
-    has_quality_mapping,
-    set_quality_mapping,
-    simplify_quality,
-)
+from kukur.quality import Quality, QualityMapper
 from kukur.source import Source, SourceWrapper, _add_query_statistics
 
 SELECTOR = SeriesSelector.from_tags("fake", {"series name": "test-tag-1"})
@@ -378,8 +370,8 @@ def _make_source():
 class QualitySource:
     """A source that returns the quality values of the source itself."""
 
-    def __init__(self, quality) -> None:
-        self.__quality = quality
+    def __init__(self, quality_values) -> None:
+        self.__quality = quality_values
 
     def get_metadata(self, selector: SeriesSelector) -> Metadata:
         return Metadata(selector)
@@ -403,7 +395,7 @@ class UpstreamQualitySource(QualitySource):
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         table = QualitySource.get_data(self, selector, start_date, end_date)
-        return set_quality_mapping(table, {"GOOD": ["upstream"]})
+        return quality.set_mapping(table, {"GOOD": ["upstream"]})
 
 
 def test_quality_mapping_of_the_source_is_embedded() -> None:
@@ -415,9 +407,24 @@ def test_quality_mapping_of_the_source_is_embedded() -> None:
         quality_mapper=QualityMapper.from_config({"GOOD": [[192], [194, 198]]}),
     )
     table = wrapper.get_data(SELECTOR, START_DATE, END_DATE)
-    assert get_quality_mapping(table) == {"GOOD": [192, [194, 198]]}
+    assert quality.get_mapping(table) == {"GOOD": [192, [194, 198]]}
     assert table.schema.field("quality").type == pa.int16()
-    assert simplify_quality(table)["quality"].to_pylist() == [0, 1]
+    assert quality.simplify(table)["quality"].to_pylist() == [0, 1]
+
+
+def test_display_mapping_of_the_source_is_embedded() -> None:
+    source = QualitySource([192, 3])
+    wrapper = SourceWrapper(
+        Source(source, source),
+        [],
+        {},
+        quality_mapper=QualityMapper.from_config(
+            {"GOOD": [192], "display": {"192": "good"}}
+        ),
+    )
+    table = wrapper.get_data(SELECTOR, START_DATE, END_DATE)
+    assert quality.get_mapping(table) == {"GOOD": [192], "display": {"192": "good"}}
+    assert quality.describe(table)["quality"].to_pylist() == ["good", "3"]
 
 
 def test_quality_mapping_defaults_to_zero_is_good() -> None:
@@ -425,16 +432,16 @@ def test_quality_mapping_defaults_to_zero_is_good() -> None:
     source = QualitySource([Quality.GOOD.value, Quality.BAD.value])
     wrapper = SourceWrapper(Source(source, source), [], {})
     table = wrapper.get_data(SELECTOR, START_DATE, END_DATE)
-    assert get_quality_mapping(table) == {"GOOD": [0]}
-    assert simplify_quality(table)["quality"].to_pylist() == [0, 1]
+    assert quality.get_mapping(table) == {"GOOD": [0]}
+    assert quality.simplify(table)["quality"].to_pylist() == [0, 1]
 
 
 def test_quality_mapping_of_upstream_source_is_kept() -> None:
     source = UpstreamQualitySource(["upstream", "other"])
     wrapper = SourceWrapper(Source(source, source), [], {})
     table = wrapper.get_data(SELECTOR, START_DATE, END_DATE)
-    assert get_quality_mapping(table) == {"GOOD": ["upstream"]}
-    assert simplify_quality(table)["quality"].to_pylist() == [0, 1]
+    assert quality.get_mapping(table) == {"GOOD": ["upstream"]}
+    assert quality.simplify(table)["quality"].to_pylist() == [0, 1]
 
 
 def test_string_quality_survives_concatenation() -> None:
@@ -447,14 +454,14 @@ def test_string_quality_survives_concatenation() -> None:
     )
     table = wrapper.get_data(SELECTOR, START_DATE, END_DATE)
     assert table.schema.field("quality").type == pa.string()
-    assert get_quality_mapping(table) == {"GOOD": ["GoodQuality"]}
+    assert quality.get_mapping(table) == {"GOOD": ["GoodQuality"]}
 
 
 def test_no_quality_mapping_without_quality_column() -> None:
     source = FakeSource()
     wrapper = SourceWrapper(Source(source, source), [], {})
     table = wrapper.get_data(SELECTOR, START_DATE, END_DATE)
-    assert not has_quality_mapping(table)
+    assert not quality.has_mapping(table)
 
 
 def test_empty_interval_has_typed_quality_column() -> None:
@@ -463,7 +470,7 @@ def test_empty_interval_has_typed_quality_column() -> None:
     table = wrapper.get_data(SELECTOR, START_DATE, START_DATE)
     assert len(table) == 0
     assert table.schema.field("quality").type == pa.int16()
-    assert simplify_quality(table)["quality"].to_pylist() == []
+    assert quality.simplify(table)["quality"].to_pylist() == []
 
 
 def test_query_statistics_are_replaced() -> None:
@@ -489,7 +496,7 @@ class SimplifiedQualitySource(QualitySource):
     ) -> pa.Table:
         table = QualitySource.get_data(self, selector, start_date, end_date)
         table = table.set_column(2, "quality", table["quality"].cast(pa.int8()))
-        return set_quality_mapping(table, DEFAULT_QUALITY_MAPPING)
+        return quality.set_mapping(table, quality.DEFAULT_MAPPING)
 
 
 def test_simplified_quality_is_not_widened() -> None:
@@ -500,5 +507,5 @@ def test_simplified_quality_is_not_widened() -> None:
     )
     table = wrapper.get_data(SELECTOR, START_DATE, END_DATE)
     assert table.schema.field("quality").type == pa.int8()
-    assert get_quality_mapping(table) == {"GOOD": [0]}
-    assert simplify_quality(table)["quality"] == table["quality"]
+    assert quality.get_mapping(table) == {"GOOD": [0]}
+    assert quality.simplify(table)["quality"] == table["quality"]

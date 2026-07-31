@@ -7,12 +7,7 @@ from unittest.mock import patch
 import pyarrow as pa
 from dateutil.parser import parse as parse_date
 
-from kukur import (
-    Quality,
-    SeriesSelector,
-    get_quality_mapping,
-    simplify_quality,
-)
+from kukur import Quality, SeriesSelector, quality
 from kukur.source.piwebapi_af import from_config
 
 _BASE_URL = "https://test_pi.net"
@@ -245,8 +240,8 @@ def test_get_data_include_system_points(_) -> None:
     assert data["quality"][-1].as_py() == Quality.GOOD.value
     # the quality flags of PI Web API are already simplified
     assert data.schema.field("quality").type == pa.int8()
-    assert get_quality_mapping(data) == {"GOOD": [0]}
-    assert simplify_quality(data)["quality"] == data["quality"]
+    assert quality.get_mapping(data) == {"GOOD": [0]}
+    assert quality.simplify(data)["quality"] == data["quality"]
 
 
 @patch("requests.Session.get", side_effect=mocked_requests_get_system_points)

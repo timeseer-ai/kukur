@@ -8,7 +8,7 @@ from datetime import datetime
 
 import pyarrow as pa
 
-from kukur import PlotSource, get_quality_mapping, simplify_quality
+from kukur import PlotSource, quality
 from kukur.base import SeriesSearch, SeriesSelector
 from kukur.metadata import Metadata
 from kukur.source import SourceFactory
@@ -67,8 +67,8 @@ def test_data() -> None:
     assert data["value"][1].as_py() == 42
     assert data["quality"][1].as_py() == "GOOD"
     assert data.schema.field("quality").type == pa.string()
-    assert get_quality_mapping(data) == {"GOOD": ["GOOD"]}
-    assert simplify_quality(data)["quality"].to_pylist() == [1, 0]
+    assert quality.get_mapping(data) == {"GOOD": ["GOOD"]}
+    assert quality.simplify(data)["quality"].to_pylist() == [1, 0]
 
 
 def test_plot_data() -> None:
@@ -86,5 +86,5 @@ def test_plot_data() -> None:
     assert data["value"][1].as_py() == 47
     assert data["quality"][1].as_py() == "GOOD"
     assert data.schema.field("quality").type == pa.string()
-    assert get_quality_mapping(data) == {"GOOD": ["GOOD"]}
-    assert simplify_quality(data)["quality"].to_pylist() == [1, 0]
+    assert quality.get_mapping(data) == {"GOOD": ["GOOD"]}
+    assert quality.simplify(data)["quality"].to_pylist() == [1, 0]

@@ -14,10 +14,10 @@ from decimal import Decimal
 import dateutil.parser
 import pyarrow as pa
 
-from kukur import Dictionary, Metadata, SeriesSearch, SeriesSelector
+from kukur import Dictionary, Metadata, SeriesSearch, SeriesSelector, quality
 from kukur.exceptions import KukurException
 from kukur.metadata import fields
-from kukur.quality import QualityMapper, normalize_quality_array
+from kukur.quality import QualityMapper
 from kukur.source.arrow import empty_table
 from kukur.source.metadata import MetadataValueMapper
 
@@ -257,7 +257,7 @@ class BaseSQLSource(ABC):
                 {"ts": timestamps, "value": values, "quality": qualities}
             )
             return table.set_column(
-                2, "quality", normalize_quality_array(table["quality"])
+                2, "quality", quality.normalize_array(table["quality"])
             )
         return pa.Table.from_pydict({"ts": timestamps, "value": values})
 

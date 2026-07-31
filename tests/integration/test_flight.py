@@ -10,13 +10,7 @@ from datetime import datetime
 
 import pytest
 
-from kukur import (
-    Client,
-    Metadata,
-    SeriesSelector,
-    get_quality_mapping,
-    simplify_quality,
-)
+from kukur import Client, Metadata, SeriesSelector, quality
 from kukur.base import SeriesSearch
 from kukur.metadata import fields
 
@@ -103,8 +97,8 @@ def test_data_with_quality(client: Client):
     assert data["value"][2].as_py() == 2.0
     assert data["quality"][2].as_py() == "BadQuality"
     # the quality mapping survives the Flight round trip
-    assert get_quality_mapping(data) == {"GOOD": ["GoodQuality", "Decent"]}
-    assert simplify_quality(data)["quality"].to_pylist() == [0, 0, 1, 0, 0]
+    assert quality.get_mapping(data) == {"GOOD": ["GoodQuality", "Decent"]}
+    assert quality.simplify(data)["quality"].to_pylist() == [0, 0, 1, 0, 0]
 
 
 def test_plot_data_fallback(client: Client):

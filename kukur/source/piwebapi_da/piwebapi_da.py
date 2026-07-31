@@ -31,6 +31,7 @@ from kukur import (
     Metadata,
     SeriesSearch,
     SeriesSelector,
+    quality,
 )
 from kukur.exceptions import (
     DataNotFoundException,
@@ -39,7 +40,7 @@ from kukur.exceptions import (
     MissingModuleException,
 )
 from kukur.metadata import fields
-from kukur.quality import DEFAULT_QUALITY_MAPPING, Quality, set_quality_mapping
+from kukur.quality import Quality
 
 NOT_FOUND = 404
 
@@ -316,7 +317,7 @@ class PIDataArchive:
                 "quality": pa.array(quality_flags, pa.int8()),
             }
         )
-        return set_quality_mapping(table, DEFAULT_QUALITY_MAPPING)
+        return quality.set_mapping(table, quality.DEFAULT_MAPPING)
 
     def _get_data_url(self, selector: SeriesSelector) -> str:
         response = self._session.get(

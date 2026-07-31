@@ -17,8 +17,7 @@ from kukur import (
     SeriesSearch,
     SeriesSelector,
     Source,
-    get_quality_mapping,
-    simplify_quality,
+    quality,
 )
 from kukur.metadata import fields
 from kukur.source import SourceFactory
@@ -60,9 +59,28 @@ def test_dir_quality() -> None:
     assert table["ts"][0].as_py() == START_DATE
     assert table["value"][0].as_py() == 1.0
     assert table["quality"].to_pylist() == [192, 192, 3, 197, 192]
-    assert get_quality_mapping(table) == {"GOOD": [192, [194, 198]]}
-    simplified = simplify_quality(table)
+    assert quality.get_mapping(table) == {"GOOD": [192, [194, 198]]}
+    simplified = quality.simplify(table)
     assert simplified["quality"].to_pylist() == [0, 0, 1, 0, 0]
+
+
+def test_dir_quality_display() -> None:
+    table = get_source("dir-quality-display").get_data(
+        make_series("dir-quality-display"), START_DATE, END_DATE
+    )
+    assert quality.get_mapping(table) == {
+        "GOOD": [192, [194, 198]],
+        "display": {"3": "bad", "192": "good", "197": "very good"},
+    }
+    described = quality.describe(table)
+    assert described.schema.field("quality").type == pa.string()
+    assert described["quality"].to_pylist() == [
+        "good",
+        "good",
+        "bad",
+        "very good",
+        "good",
+    ]
 
 
 def test_search_row() -> None:
@@ -90,8 +108,8 @@ def test_row_quality() -> None:
     assert table["value"][0].as_py() == 1.0
     assert table["quality"][0].as_py() == "GoodQuality"
     assert table["quality"][2].as_py() == "BadQuality"
-    assert get_quality_mapping(table) == {"GOOD": ["GoodQuality", "Decent"]}
-    simplified = simplify_quality(table)
+    assert quality.get_mapping(table) == {"GOOD": ["GoodQuality", "Decent"]}
+    simplified = quality.simplify(table)
     assert simplified["quality"].to_pylist() == [0, 0, 1, 0, 0]
 
 
@@ -381,7 +399,7 @@ def test_row_tags_quality() -> None:
     assert len(data) == 3
     assert data["value"].to_pylist() == [1, 2, 1]
     assert data["quality"].to_pylist() == ["GoodQuality", "Bad", "Decent"]
-    assert simplify_quality(data)["quality"].to_pylist() == [0, 1, 0]
+    assert quality.simplify(data)["quality"].to_pylist() == [0, 1, 0]
 
 
 def test_row_tags_custom() -> None:

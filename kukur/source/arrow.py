@@ -15,11 +15,11 @@ import pyarrow as pa
 import pyarrow.compute
 import pyarrow.types
 
-from kukur import Metadata, SeriesSelector
+from kukur import Metadata, SeriesSelector, quality
 from kukur.base import SeriesSearch
 from kukur.exceptions import InvalidDataError, InvalidSourceException
 from kukur.loader import Loader
-from kukur.quality import QualityMapper, normalize_quality_array
+from kukur.quality import QualityMapper
 
 
 @dataclass
@@ -225,9 +225,9 @@ class BaseArrowSource(ABC):
             ]
         )
         if self.__quality_mapper.is_present():
-            quality = normalize_quality_array(data["quality"])
-            schema = schema.append(pa.field("quality", quality.type))
-            data = data.set_column(2, "quality", quality)
+            quality_array = quality.normalize_array(data["quality"])
+            schema = schema.append(pa.field("quality", quality_array.type))
+            data = data.set_column(2, "quality", quality_array)
         return data.cast(schema)
 
 
@@ -326,9 +326,9 @@ def conform_to_schema(table: pa.Table) -> pa.Table:
         ]
     )
     if "quality" in table.column_names:
-        quality = normalize_quality_array(table["quality"])
-        schema = schema.append(pa.field("quality", quality.type))
-        table = table.set_column(2, "quality", quality)
+        quality_array = quality.normalize_array(table["quality"])
+        schema = schema.append(pa.field("quality", quality_array.type))
+        table = table.set_column(2, "quality", quality_array)
 
     return table.cast(schema)
 

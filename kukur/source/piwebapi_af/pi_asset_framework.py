@@ -14,7 +14,7 @@ from pathlib import PurePosixPath
 import pyarrow as pa
 from dateutil.parser import isoparse as parse_date
 
-from kukur import Metadata, SeriesSearch, SeriesSelector
+from kukur import Metadata, SeriesSearch, SeriesSelector, quality
 from kukur.auth import AuthenticationProperties
 from kukur.base import DataType, Dictionary, InterpolationType
 from kukur.exceptions import (
@@ -23,7 +23,7 @@ from kukur.exceptions import (
     KukurException,
 )
 from kukur.metadata import fields
-from kukur.quality import DEFAULT_QUALITY_MAPPING, Quality, set_quality_mapping
+from kukur.quality import Quality
 
 try:
     import urllib3
@@ -1056,7 +1056,7 @@ def _read_data(
             "quality": pa.array(quality_flags, pa.int8()),
         }
     )
-    return set_quality_mapping(table, DEFAULT_QUALITY_MAPPING)
+    return quality.set_mapping(table, quality.DEFAULT_MAPPING)
 
 
 def add_query_params(url: str, params: dict) -> str:

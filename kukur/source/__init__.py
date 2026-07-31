@@ -20,16 +20,11 @@ from kukur import (
     SeriesSelector,
     SourceStructure,
     TagSource,
+    quality,
 )
 from kukur import Source as SourceProtocol
 from kukur.exceptions import InvalidSourceException
-from kukur.quality import (
-    DEFAULT_QUALITY_MAPPING,
-    QualityMapper,
-    encode_metadata,
-    has_quality_mapping,
-    set_quality_mapping,
-)
+from kukur.quality import QualityMapper
 from kukur.source import (
     adodb,
     arrows,
@@ -318,19 +313,19 @@ class SourceWrapper:
         """Embed the quality mapping of the source in the metadata of the table.
 
         Sources that provide a quality column without configuring a quality
-        mapping return 1 for good data points.
+        mapping return 0 for good data points.
 
         A quality mapping that is already present is kept. It belongs to the
         source that produced the data, which is not necessarily this one.
         """
         if "quality" not in table.column_names:
             return table
-        if has_quality_mapping(table):
+        if quality.has_mapping(table):
             return table
-        quality_mapping = DEFAULT_QUALITY_MAPPING
+        quality_mapping = quality.DEFAULT_MAPPING
         if self.__quality_mapper is not None and self.__quality_mapper.is_present():
             quality_mapping = self.__quality_mapper.to_metadata()
-        return set_quality_mapping(table, quality_mapping)
+        return quality.set_mapping(table, quality_mapping)
 
     def _get_data_chunk(
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
@@ -578,7 +573,7 @@ def _get_metadata(tables: list[pa.Table]) -> dict[bytes, bytes]:
     """
     for table in tables:
         if table.schema.metadata:
-            return encode_metadata(table)
+            return quality.encode_metadata(table)
     return {}
 
 
@@ -604,6 +599,6 @@ def _get_quality_type(tables: list[pa.Table]) -> pa.DataType:
 
 
 def _add_query_statistics(table: pa.Table, retry_count: int) -> pa.Table:
-    metadata = encode_metadata(table)
+    metadata = quality.encode_metadata(table)
     metadata[b"kukur.statistics"] = py_json.dumps({"retryCount": retry_count}).encode()
     return table.replace_schema_metadata(metadata)

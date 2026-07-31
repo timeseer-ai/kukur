@@ -170,6 +170,36 @@ GOOD = ["GoodQuality", "ExcellentQuality"]
 ```
 In this example we map the "GoodQuality" and "ExcellentQuality" defined in the source as a good quality point in Kukur.
 
+=== Display values
+
+The quality mapping states which quality values of a source are good,
+not what they mean.
+A `display` mapping states what each quality value means to a person.
+
+Example:
+
+```toml
+[quality_mapping.example_mapping]
+GOOD = [192, 194]
+
+[quality_mapping.example_mapping.display]
+192 = "good"
+194 = "very good"
+```
+In this example the OPC quality of 192 is shown as "good" and 194 as "very good".
+
+The display mapping is a lookup of its own.
+It can name quality values that are not good,
+and not every quality value needs a display value.
+
+```toml
+[quality_mapping.example_mapping.display]
+GoodQuality = "good"
+BadQuality = "bad"
+```
+
+See <<Describing quality>> to replace the quality values of the data by their display values.
+
 === Quality values in the data
 
 Kukur does not replace the quality values of a source.
@@ -181,8 +211,12 @@ The quality mapping travels along in the metadata of the Arrow schema,
 in the `kukur.quality` entry.
 
 ```json
-{"GOOD": [192, [194, 200]]}
+{"GOOD": [192, [194, 200]], "display": {"192": "good", "194": "very good"}}
 ```
+
+The `display` entry is only present when the source configures one.
+Since both TOML and JSON keys are strings,
+the quality values in it are keyed by their string representation.
 
 Sources that provide quality flags instead of status codes,
 such as the PI Web API sources,
@@ -193,27 +227,27 @@ See <<Simplifying quality>>.
 
 === Simplifying quality
 
-Use `kukur.simplify_quality` to reduce a quality column to good and bad.
+Use `kukur.quality.simplify` to reduce a quality column to good and bad.
 It uses the embedded quality mapping,
 so it works for every source.
 
 ```python
-from kukur import Client, simplify_quality
+from kukur import Client, quality
 
 client = Client()
-data = simplify_quality(client.get_data(selector, start_date, end_date))
+data = quality.simplify(client.get_data(selector, start_date, end_date))
 ```
 
 The resulting `quality` column is an `int8` column that follows the convention of Unix exit codes:
 `0` means good,
 non-zero means not good.
 Its embedded mapping is `{"GOOD": [0]}`,
-which makes calling `simplify_quality` again return the same data.
+which makes calling `quality.simplify` again return the same data.
 
 Sources that provide quality flags rather than status codes,
 such as the PI Web API sources,
 return a simplified quality column directly.
-Calling `simplify_quality` on their data returns the same data.
+Calling `quality.simplify` on their data returns the same data.
 
 Data points that have no quality value are considered bad.
 
@@ -221,7 +255,27 @@ NOTE: Never assume what a quality value means.
 A status code of `0` is bad for most sources,
 while a simplified `0` is good.
 Read the `kukur.quality` metadata,
-or call `simplify_quality` first.
+or call `quality.simplify` first.
+
+=== Describing quality
+
+Use `kukur.quality.describe` to replace the quality values of a column by their display values.
+It uses the embedded display mapping,
+as described in <<Display values>>.
+
+```python
+from kukur import Client, quality
+
+client = Client()
+data = quality.describe(client.get_data(selector, start_date, end_date))
+```
+
+The resulting `quality` column is a `string` column.
+A quality value that has no display value is rendered as the quality value itself,
+so no data point loses its quality information.
+
+The embedded quality mapping is translated along with the column,
+which means the result can still be simplified by `kukur.quality.simplify`.
 
 == Supported Sources
 

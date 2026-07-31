@@ -322,12 +322,21 @@ Sources that provide the quality of a data point return a third column `quality`
 It contains the quality values of the source itself,
 described by the quality mapping in the `kukur.quality` metadata of the schema.
 
-Use `simplify_quality` to reduce that column to good (`0`) and bad (`1`):
+Use `kukur.quality.simplify` to reduce that column to good (`0`) and bad (`1`):
 
 [source,python]
 ----
->>> simplify_quality(table).to_pydict()
+>>> quality.simplify(table).to_pydict()
 {'ts': [...], 'value': [1, 2, 3], 'quality': [0, 0, 1]}
+----
+
+Sources that declare what their quality values mean can render them with
+`kukur.quality.describe`:
+
+[source,python]
+----
+>>> quality.describe(table).to_pydict()
+{'ts': [...], 'value': [1, 2, 3], 'quality': ['good', 'good', 'bad']}
 ----
 
 See the
