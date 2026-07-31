@@ -14,8 +14,8 @@ from pyarrow import Table, ipc
 from kukur.base import SeriesSearch, SeriesSelector
 from kukur.exceptions import InvalidSourceException
 from kukur.metadata import Metadata
+from kukur.quality import QualityMapper
 from kukur.source.arrow import conform_to_schema
-from kukur.source.quality import QualityMapper
 
 logger = logging.getLogger(__name__)
 

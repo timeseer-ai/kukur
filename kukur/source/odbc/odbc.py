@@ -11,8 +11,8 @@ except ImportError:
     HAS_ODBC = False
 
 from kukur.exceptions import InvalidSourceException, MissingModuleException
+from kukur.quality import QualityMapper
 from kukur.source.metadata import MetadataValueMapper
-from kukur.source.quality import QualityMapper
 from kukur.source.sql import BaseSQLSource, SQLConfig
 
 

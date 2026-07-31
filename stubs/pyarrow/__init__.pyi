@@ -4,6 +4,7 @@ import typing
 from . import compute, csv, ipc
 from .lib import Array as Array
 from .lib import ArrowInvalid as ArrowInvalid
+from .lib import ArrowNotImplementedError as ArrowNotImplementedError
 from .lib import ArrowTypeError as ArrowTypeError
 from .lib import DataType as DataType
 from .lib import Field as Field
@@ -35,6 +36,9 @@ def float64() -> DataType:
     ...
 
 def int8() -> DataType:
+    ...
+
+def int16() -> DataType:
     ...
 
 def int64() -> DataType:

@@ -309,7 +309,11 @@ class PIDataArchive:
                 quality_flags.pop()
 
         return pa.Table.from_pydict(
-            {"ts": timestamps, "value": values, "quality": quality_flags}
+            {
+                "ts": timestamps,
+                "value": values,
+                "quality": pa.array(quality_flags, pa.int16()),
+            }
         )
 
     def _get_data_url(self, selector: SeriesSelector) -> str:

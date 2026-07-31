@@ -24,8 +24,8 @@ from kukur.exceptions import InvalidDataError, InvalidSourceException, KukurExce
 from kukur.loader import Loader
 from kukur.loader import from_config as loader_from_config
 from kukur.metadata import fields
+from kukur.quality import QualityMapper, normalize_quality_array
 from kukur.source.metadata import MetadataMapper, MetadataValueMapper
-from kukur.source.quality import QualityMapper
 
 
 class InvalidMetadataError(KukurException):
@@ -461,7 +461,7 @@ class CSVSource:
         return all_data
 
     def _map_quality(self, quality_data: pa.Array) -> pa.Array:
-        return self.__mappers.quality.map_array(quality_data)
+        return normalize_quality_array(quality_data)
 
     def _get_read_options(self, columns: list[str]) -> pyarrow.csv.ReadOptions:
         if not self.__options.header_row:

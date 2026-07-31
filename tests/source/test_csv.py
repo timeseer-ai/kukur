@@ -3,6 +3,7 @@
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
+import pyarrow as pa
 import pytz
 from dateutil.parser import parse as parse_date
 from pytest import approx
@@ -16,6 +17,8 @@ from kukur import (
     SeriesSearch,
     SeriesSelector,
     Source,
+    get_quality_mapping,
+    simplify_quality,
 )
 from kukur.metadata import fields
 from kukur.source import SourceFactory
@@ -53,11 +56,13 @@ def test_dir_quality() -> None:
     )
     assert len(table) == 5
     assert table.column_names == ["ts", "value", "quality"]
+    assert table.schema.field("quality").type == pa.int16()
     assert table["ts"][0].as_py() == START_DATE
     assert table["value"][0].as_py() == 1.0
-    assert table["quality"][0].as_py() == 1
-    assert table["quality"][2].as_py() == 0
-    assert table["quality"][3].as_py() == 1
+    assert table["quality"].to_pylist() == [192, 192, 3, 197, 192]
+    assert get_quality_mapping(table) == {"GOOD": [192, [194, 198]]}
+    simplified = simplify_quality(table)
+    assert simplified["quality"].to_pylist() == [0, 0, 1, 0, 0]
 
 
 def test_search_row() -> None:
@@ -80,10 +85,14 @@ def test_row_quality() -> None:
     )
     assert len(table) == 5
     assert table.column_names == ["ts", "value", "quality"]
+    assert table.schema.field("quality").type == pa.string()
     assert table["ts"][0].as_py() == START_DATE
     assert table["value"][0].as_py() == 1.0
-    assert table["quality"][0].as_py() == 1
-    assert table["quality"][2].as_py() == 0
+    assert table["quality"][0].as_py() == "GoodQuality"
+    assert table["quality"][2].as_py() == "BadQuality"
+    assert get_quality_mapping(table) == {"GOOD": ["GoodQuality", "Decent"]}
+    simplified = simplify_quality(table)
+    assert simplified["quality"].to_pylist() == [0, 0, 1, 0, 0]
 
 
 def test_search_pivot() -> None:
@@ -371,7 +380,8 @@ def test_row_tags_quality() -> None:
     data = get_source("row_tags_quality").get_data(selector, START_DATE, END_DATE)
     assert len(data) == 3
     assert data["value"].to_pylist() == [1, 2, 1]
-    assert data["quality"].to_pylist() == [1, 0, 1]
+    assert data["quality"].to_pylist() == ["GoodQuality", "Bad", "Decent"]
+    assert simplify_quality(data)["quality"].to_pylist() == [0, 1, 0]
 
 
 def test_row_tags_custom() -> None:

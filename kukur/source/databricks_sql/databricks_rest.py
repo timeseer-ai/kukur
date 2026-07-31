@@ -23,9 +23,9 @@ from kukur.exceptions import (
     KukurException,
     MissingModuleException,
 )
+from kukur.quality import QualityMapper, normalize_quality_array
 from kukur.source.arrow import empty_table
 from kukur.source.metadata import MetadataValueMapper
-from kukur.source.quality import QualityMapper
 
 try:
     import requests
@@ -241,7 +241,7 @@ class DatabricksStatementExecutionSource:
                 if table.num_columns == 3:  # noqa: PLR2004
                     table = table.rename_columns(["ts", "value", "quality"])
                     table = table.set_column(
-                        2, "quality", self.__quality_mapper.map_array(table["quality"])
+                        2, "quality", normalize_quality_array(table["quality"])
                     )
                 tables.append(table)
             if len(tables) == 0:

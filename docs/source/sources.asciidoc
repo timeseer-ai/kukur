@@ -170,6 +170,51 @@ GOOD = ["GoodQuality", "ExcellentQuality"]
 ```
 In this example we map the "GoodQuality" and "ExcellentQuality" defined in the source as a good quality point in Kukur.
 
+=== Quality values in the data
+
+Kukur does not replace the quality values of a source.
+The `quality` column of the returned data contains the quality values of the source itself,
+either as `int16` for numerical status codes or as `string`.
+
+The quality mapping travels along in the metadata of the Arrow schema,
+in the `kukur.quality` entry.
+
+```json
+{"GOOD": [192, [194, 200]]}
+```
+
+Sources that provide quality flags without a configured quality mapping,
+such as the PI Web API sources,
+return `1` for good data points.
+Their embedded mapping is `{"GOOD": [1]}`.
+
+=== Simplifying quality
+
+Use `kukur.simplify_quality` to reduce a quality column to good and bad.
+It uses the embedded quality mapping,
+so it works for every source.
+
+```python
+from kukur import Client, simplify_quality
+
+client = Client()
+data = simplify_quality(client.get_data(selector, start_date, end_date))
+```
+
+The resulting `quality` column is an `int8` column that follows the convention of Unix exit codes:
+`0` means good,
+non-zero means not good.
+
+WARNING: This is the opposite of the convention used by sources that provide quality flags,
+where `1` means good.
+The two are told apart by the type of the column:
+a simplified quality column is `int8`,
+while the raw quality column of a source is `int16` or `string`.
+The `kukur.quality` metadata always describes the column in the same table:
+after simplifying it is `{"GOOD": [0]}`.
+
+Data points that have no quality value are considered bad.
+
 == Supported Sources
 
 Multiple types of time series sources are supported:

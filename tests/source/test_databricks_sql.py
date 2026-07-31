@@ -13,13 +13,13 @@ from pyarrow import ipc
 
 from kukur import SeriesSearch, SeriesSelector
 from kukur.metadata import Metadata
+from kukur.quality import QualityMapper
 from kukur.source.databricks_sql.databricks_rest import (
     DatabricksError,
     DatabricksStatementExecutionSource,
     StatementExecutionConfiguration,
 )
 from kukur.source.metadata import MetadataValueMapper
-from kukur.source.quality import QualityMapper
 
 HOST = "example.org"
 WAREHOUSE_ID = "4t2"

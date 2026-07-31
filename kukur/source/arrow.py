@@ -19,7 +19,7 @@ from kukur import Metadata, SeriesSelector
 from kukur.base import SeriesSearch
 from kukur.exceptions import InvalidDataError, InvalidSourceException
 from kukur.loader import Loader
-from kukur.source.quality import QualityMapper
+from kukur.quality import QualityMapper, normalize_quality_array
 
 
 @dataclass
@@ -225,10 +225,9 @@ class BaseArrowSource(ABC):
             ]
         )
         if self.__quality_mapper.is_present():
-            schema = schema.append(pa.field("quality", pa.int8()))
-            data = data.set_column(
-                2, "quality", _map_quality(data["quality"], self.__quality_mapper)
-            )
+            quality = normalize_quality_array(data["quality"])
+            schema = schema.append(pa.field("quality", quality.type))
+            data = data.set_column(2, "quality", quality)
         return data.cast(schema)
 
 
@@ -323,15 +322,16 @@ def conform_to_schema(table: pa.Table, quality_mapper: QualityMapper) -> pa.Tabl
         ]
     )
     if quality_mapper.is_present():
-        schema = schema.append(pa.field("quality", pa.int8()))
-        table = table.set_column(
-            2, "quality", _map_quality(table["quality"], quality_mapper)
-        )
+        quality = normalize_quality_array(table["quality"])
+        schema = schema.append(pa.field("quality", quality.type))
+        table = table.set_column(2, "quality", quality)
 
     return table.cast(schema)
 
 
-def empty_table(*, include_quality: bool) -> pa.Table:
+def empty_table(
+    *, include_quality: bool, quality_type: pa.DataType | None = None
+) -> pa.Table:
     """Create a new empty table, optionally including a quality column."""
     data: dict = {"ts": [], "value": []}
     fields = [
@@ -340,12 +340,8 @@ def empty_table(*, include_quality: bool) -> pa.Table:
     ]
     if include_quality:
         data["quality"] = []
-        fields.append(("quality", pa.int8()))
+        fields.append(("quality", quality_type or pa.int16()))
     return pa.Table.from_pydict(data, schema=pa.schema(fields))
-
-
-def _map_quality(quality_data: pa.Array, quality_mapper: QualityMapper) -> pa.Array:
-    return quality_mapper.map_array(quality_data)
 
 
 def map_row_columns(

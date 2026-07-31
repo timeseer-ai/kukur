@@ -7,8 +7,8 @@ This uses the Websocket library.
 # SPDX-License-Identifier: Apache-2.0
 
 from kukur.exceptions import MissingModuleException
+from kukur.quality import QualityMapper
 from kukur.source.metadata import MetadataValueMapper
-from kukur.source.quality import QualityMapper
 from kukur.source.sql import BaseSQLSource, SQLConfig
 
 HAS_TAOSWS = False

@@ -1049,7 +1049,11 @@ def _read_data(
             quality_flags.pop()
 
     return pa.Table.from_pydict(
-        {"ts": timestamps, "value": values, "quality": quality_flags}
+        {
+            "ts": timestamps,
+            "value": values,
+            "quality": pa.array(quality_flags, pa.int16()),
+        }
     )
 
 

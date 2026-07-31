@@ -9,8 +9,8 @@ import sqlite3
 from dateutil.parser import parse as parse_date
 
 from kukur.exceptions import InvalidSourceException
+from kukur.quality import QualityMapper
 from kukur.source.metadata import MetadataValueMapper
-from kukur.source.quality import QualityMapper
 from kukur.source.sql import BaseSQLSource, SQLConfig
 
 sqlite3.register_converter("datetime", parse_date)

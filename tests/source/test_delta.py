@@ -5,10 +5,11 @@
 
 from datetime import timedelta
 
+import pyarrow as pa
 from dateutil.parser import parse as parse_date
 
 import kukur.config
-from kukur import SeriesSelector, Source
+from kukur import SeriesSelector, Source, get_quality_mapping, simplify_quality
 from kukur.base import SeriesSearch
 from kukur.source import SourceFactory
 
@@ -48,7 +49,16 @@ def test_row_quality():
     assert table.column_names == ["ts", "value", "quality"]
     assert table["ts"][0].as_py() == START_DATE
     assert table["value"][0].as_py() == 1.0
-    assert table["quality"][0].as_py() == 1
+    assert table.schema.field("quality").type == pa.string()
+    assert table["quality"].to_pylist() == [
+        "GoodQuality",
+        "GoodQuality",
+        "BadQuality",
+        "GoodQuality",
+        "GoodQuality",
+    ]
+    assert get_quality_mapping(table) == {"GOOD": ["GoodQuality", "Decent"]}
+    assert simplify_quality(table)["quality"].to_pylist() == [0, 0, 1, 0, 0]
 
 
 def test_row_no_tz():

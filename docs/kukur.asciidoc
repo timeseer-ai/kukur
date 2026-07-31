@@ -318,6 +318,22 @@ Data is always returned as an Apache Arrow table with two columns: a timestamp a
 {'ts': [datetime.datetime(2020, 1, 2, 0, 0, tzinfo=<UTC>), datetime.datetime(2020, 1, 2, 1, 0, tzinfo=<UTC>), datetime.datetime(2020, 1, 2, 2, 0, tzinfo=<UTC>)], 'value': [1, 2, 3]}
 ----
 
+Sources that provide the quality of a data point return a third column `quality`.
+It contains the quality values of the source itself,
+described by the quality mapping in the `kukur.quality` metadata of the schema.
+
+Use `simplify_quality` to reduce that column to good (`0`) and bad (`1`):
+
+[source,python]
+----
+>>> simplify_quality(table).to_pydict()
+{'ts': [...], 'value': [1, 2, 3], 'quality': [0, 0, 1]}
+----
+
+See the
+link:sources.asciidoc#Quality[quality documentation]
+for details.
+
 Using Kukur, we now have metadata and data in a format that allows us to correctly analyze our outside temperature.
 
 More importantly: we have made data access scalable,

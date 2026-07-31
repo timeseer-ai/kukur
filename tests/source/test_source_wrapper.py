@@ -10,7 +10,14 @@ import pytest
 
 from kukur import Metadata, SeriesSelector
 from kukur.base import SourceStructure
-from kukur.source import Source, SourceWrapper
+from kukur.quality import (
+    QualityMapper,
+    get_quality_mapping,
+    has_quality_mapping,
+    set_quality_mapping,
+    simplify_quality,
+)
+from kukur.source import Source, SourceWrapper, _add_query_statistics
 
 SELECTOR = SeriesSelector.from_tags("fake", {"series name": "test-tag-1"})
 START_DATE = datetime.fromisoformat("2020-01-01T00:00:00+00:00")
@@ -364,3 +371,109 @@ def test_not_implemented_metadata_does_not_retry() -> None:
 def _make_source():
     source = FakeSource()
     return Source(source, source)
+
+
+class QualitySource:
+    """A source that returns the quality values of the source itself."""
+
+    def __init__(self, quality) -> None:
+        self.__quality = quality
+
+    def get_metadata(self, selector: SeriesSelector) -> Metadata:
+        return Metadata(selector)
+
+    def get_data(
+        self, _: SeriesSelector, start_date: datetime, end_date: datetime
+    ) -> pa.Table:
+        return pa.Table.from_pydict(
+            {
+                "ts": [start_date, end_date],
+                "value": [42, 24],
+                "quality": self.__quality,
+            }
+        )
+
+
+class UpstreamQualitySource(QualitySource):
+    """A source that returns data of another Kukur instance, mapping included."""
+
+    def get_data(
+        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
+    ) -> pa.Table:
+        table = QualitySource.get_data(self, selector, start_date, end_date)
+        return set_quality_mapping(table, {"GOOD": ["upstream"]})
+
+
+def test_quality_mapping_of_the_source_is_embedded() -> None:
+    source = QualitySource([192, 3])
+    wrapper = SourceWrapper(
+        Source(source, source),
+        [],
+        {},
+        quality_mapper=QualityMapper.from_config({"GOOD": [[192], [194, 198]]}),
+    )
+    table = wrapper.get_data(SELECTOR, START_DATE, END_DATE)
+    assert get_quality_mapping(table) == {"GOOD": [192, [194, 198]]}
+    assert table.schema.field("quality").type == pa.int16()
+    assert simplify_quality(table)["quality"].to_pylist() == [0, 1]
+
+
+def test_quality_mapping_defaults_to_one_is_good() -> None:
+    """Sources like PI Web API return quality flags without a mapping."""
+    source = QualitySource([1, 0])
+    wrapper = SourceWrapper(Source(source, source), [], {})
+    table = wrapper.get_data(SELECTOR, START_DATE, END_DATE)
+    assert get_quality_mapping(table) == {"GOOD": [1]}
+    assert simplify_quality(table)["quality"].to_pylist() == [0, 1]
+
+
+def test_quality_mapping_of_upstream_source_is_kept() -> None:
+    source = UpstreamQualitySource(["upstream", "other"])
+    wrapper = SourceWrapper(Source(source, source), [], {})
+    table = wrapper.get_data(SELECTOR, START_DATE, END_DATE)
+    assert get_quality_mapping(table) == {"GOOD": ["upstream"]}
+    assert simplify_quality(table)["quality"].to_pylist() == [0, 1]
+
+
+def test_string_quality_survives_concatenation() -> None:
+    source = QualitySource(["GoodQuality", "BadQuality"])
+    wrapper = SourceWrapper(
+        Source(source, source),
+        [],
+        {"data_query_interval_seconds": 60 * 60 * 24 * 7},
+        quality_mapper=QualityMapper.from_config({"GOOD": ["GoodQuality"]}),
+    )
+    table = wrapper.get_data(SELECTOR, START_DATE, END_DATE)
+    assert table.schema.field("quality").type == pa.string()
+    assert get_quality_mapping(table) == {"GOOD": ["GoodQuality"]}
+
+
+def test_no_quality_mapping_without_quality_column() -> None:
+    source = FakeSource()
+    wrapper = SourceWrapper(Source(source, source), [], {})
+    table = wrapper.get_data(SELECTOR, START_DATE, END_DATE)
+    assert not has_quality_mapping(table)
+
+
+def test_empty_interval_has_typed_quality_column() -> None:
+    source = QualitySource([1, 0])
+    wrapper = SourceWrapper(Source(source, source), [], {})
+    table = wrapper.get_data(SELECTOR, START_DATE, START_DATE)
+    assert len(table) == 0
+    assert table.schema.field("quality").type == pa.int16()
+    assert simplify_quality(table)["quality"].to_pylist() == []
+
+
+def test_query_statistics_are_replaced() -> None:
+    """The statistics of an upstream Kukur instance are not the statistics here."""
+    source = FailureSource()
+    wrapper = SourceWrapper(
+        Source(source, source), [], {"query_retry_count": 1, "query_retry_delay": 0.05}
+    )
+    table = wrapper.get_data(SELECTOR, START_DATE, END_DATE)
+    table = table.replace_schema_metadata(
+        {"kukur.statistics": json.dumps({"retryCount": 99})}
+    )
+    wrapper = SourceWrapper(Source(source, source), [], {})
+    table = _add_query_statistics(table, 0)
+    assert json.loads(table.schema.metadata[b"kukur.statistics"])["retryCount"] == 0

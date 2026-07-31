@@ -174,10 +174,10 @@ Kukur will try to convert timestamps to `Timestamp[unit: us, timezone: UTC]`.
 A column with the name `value` contains the data values.
 
 An optional column `quality` contains quality flags for the data values.
-`0` is considered bad,
-`1` is considered good.
+When no quality mapping is configured for the source,
+`1` is considered good and everything else is considered bad.
 
-To support other quality values,
+To provide other quality values,
 a quality mapping can be configured for the source as provided by the
 ifdef::sources[]
 <<Quality, source documentation>>
@@ -186,6 +186,11 @@ ifndef::sources[]
 link:sources.asciidoc#Quality[source documentation]
 endif::sources[]
 .
+The quality values of the plugin are returned as-is,
+the mapping is embedded in the metadata of the Arrow schema.
+
+Note that a quality column that has been simplified by `kukur.simplify_quality` uses the opposite convention,
+where `0` means good.
 
 
 === Plot

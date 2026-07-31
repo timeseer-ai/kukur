@@ -3,11 +3,18 @@
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
+import pyarrow as pa
 import pytz
 from dateutil.parser import parse as parse_date
 
 import kukur.config
-from kukur import SeriesSearch, SeriesSelector, Source
+from kukur import (
+    SeriesSearch,
+    SeriesSelector,
+    Source,
+    get_quality_mapping,
+    simplify_quality,
+)
 from kukur.source import SourceFactory
 
 START_DATE = parse_date("2020-01-01T00:00:00Z")
@@ -56,7 +63,10 @@ def test_dir_quality():
     assert table.column_names == ["ts", "value", "quality"]
     assert table["ts"][0].as_py() == START_DATE
     assert table["value"][0].as_py() == 1.0
-    assert table["quality"][0].as_py() == 1
+    assert table.schema.field("quality").type == pa.int16()
+    assert table["quality"].to_pylist() == [192, 192, 3, 197, 192]
+    assert get_quality_mapping(table) == {"GOOD": [192, [194, 198]]}
+    assert simplify_quality(table)["quality"].to_pylist() == [0, 0, 1, 0, 0]
 
 
 def test_search_row():
@@ -83,7 +93,16 @@ def test_row_quality():
     assert table.column_names == ["ts", "value", "quality"]
     assert table["ts"][0].as_py() == START_DATE
     assert table["value"][0].as_py() == 1.0
-    assert table["quality"][0].as_py() == 1
+    assert table.schema.field("quality").type == pa.string()
+    assert table["quality"].to_pylist() == [
+        "GoodQuality",
+        "GoodQuality",
+        "BadQuality",
+        "GoodQuality",
+        "GoodQuality",
+    ]
+    assert get_quality_mapping(table) == {"GOOD": ["GoodQuality", "Decent"]}
+    assert simplify_quality(table)["quality"].to_pylist() == [0, 0, 1, 0, 0]
 
 
 def test_row_map_columns():

@@ -261,3 +261,6 @@ class ArrowTypeError(TypeError, ArrowException):
 
 class ArrowInvalid(ArrowException):
     ...
+
+class ArrowNotImplementedError(NotImplementedError, ArrowException):
+    ...

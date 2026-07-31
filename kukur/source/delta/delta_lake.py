@@ -31,6 +31,7 @@ from kukur.exceptions import (
     MissingModuleException,
 )
 from kukur.metadata import Metadata
+from kukur.quality import QualityMapper
 from kukur.source.arrow import (
     cast_ts_column,
     conform_to_schema,
@@ -39,7 +40,6 @@ from kukur.source.arrow import (
     map_pivot_columns,
     map_row_columns,
 )
-from kukur.source.quality import QualityMapper
 
 
 class PartitionOrigin(Enum):
