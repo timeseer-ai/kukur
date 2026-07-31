@@ -483,7 +483,6 @@ def test_query_statistics_are_replaced() -> None:
     table = table.replace_schema_metadata(
         {"kukur.statistics": json.dumps({"retryCount": 99})}
     )
-    wrapper = SourceWrapper(Source(source, source), [], {})
     table = _add_query_statistics(table, 0)
     assert json.loads(table.schema.metadata[b"kukur.statistics"])["retryCount"] == 0
 
