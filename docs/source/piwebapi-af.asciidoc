@@ -158,3 +158,19 @@ username = "auser"
 password = "apassword"
 element_template = "Reactor"
 ```
+
+=== Quality
+
+The `Good` flag of a data point is returned in the `quality` column.
+Since this is a flag and not a status code,
+the column is already simplified:
+`0` means good,
+`1` means bad.
+Check the
+ifdef::sources[]
+<<Quality, source documentation>>
+endif::sources[]
+ifndef::sources[]
+link:sources.asciidoc#Quality[source documentation]
+endif::sources[]
+for details.

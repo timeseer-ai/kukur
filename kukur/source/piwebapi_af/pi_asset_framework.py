@@ -23,6 +23,7 @@ from kukur.exceptions import (
     KukurException,
 )
 from kukur.metadata import fields
+from kukur.quality import DEFAULT_QUALITY_MAPPING, Quality, set_quality_mapping
 
 try:
     import urllib3
@@ -1032,9 +1033,9 @@ def _read_data(
             values.append(extract_value(value))
             timestamps.append(timestamp)
             if data_point["Good"]:
-                quality_flags.append(1)
+                quality_flags.append(Quality.GOOD.value)
             else:
-                quality_flags.append(0)
+                quality_flags.append(Quality.BAD.value)
 
         if (
             len(data_points) != request_properties.max_returned_items_per_call
@@ -1048,13 +1049,14 @@ def _read_data(
             values.pop()
             quality_flags.pop()
 
-    return pa.Table.from_pydict(
+    table = pa.Table.from_pydict(
         {
             "ts": timestamps,
             "value": values,
-            "quality": pa.array(quality_flags, pa.int16()),
+            "quality": pa.array(quality_flags, pa.int8()),
         }
     )
+    return set_quality_mapping(table, DEFAULT_QUALITY_MAPPING)
 
 
 def add_query_params(url: str, params: dict) -> str:

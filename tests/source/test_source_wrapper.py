@@ -11,6 +11,8 @@ import pytest
 from kukur import Metadata, SeriesSelector
 from kukur.base import SourceStructure
 from kukur.quality import (
+    DEFAULT_QUALITY_MAPPING,
+    Quality,
     QualityMapper,
     get_quality_mapping,
     has_quality_mapping,
@@ -418,12 +420,12 @@ def test_quality_mapping_of_the_source_is_embedded() -> None:
     assert simplify_quality(table)["quality"].to_pylist() == [0, 1]
 
 
-def test_quality_mapping_defaults_to_one_is_good() -> None:
-    """Sources like PI Web API return quality flags without a mapping."""
-    source = QualitySource([1, 0])
+def test_quality_mapping_defaults_to_zero_is_good() -> None:
+    """Sources that provide quality flags use the quality mapping of Kukur."""
+    source = QualitySource([Quality.GOOD.value, Quality.BAD.value])
     wrapper = SourceWrapper(Source(source, source), [], {})
     table = wrapper.get_data(SELECTOR, START_DATE, END_DATE)
-    assert get_quality_mapping(table) == {"GOOD": [1]}
+    assert get_quality_mapping(table) == {"GOOD": [0]}
     assert simplify_quality(table)["quality"].to_pylist() == [0, 1]
 
 
@@ -477,3 +479,26 @@ def test_query_statistics_are_replaced() -> None:
     wrapper = SourceWrapper(Source(source, source), [], {})
     table = _add_query_statistics(table, 0)
     assert json.loads(table.schema.metadata[b"kukur.statistics"])["retryCount"] == 0
+
+
+class SimplifiedQualitySource(QualitySource):
+    """A source that provides quality flags, like the PI Web API sources."""
+
+    def get_data(
+        self, selector: SeriesSelector, start_date: datetime, end_date: datetime
+    ) -> pa.Table:
+        table = QualitySource.get_data(self, selector, start_date, end_date)
+        table = table.set_column(2, "quality", table["quality"].cast(pa.int8()))
+        return set_quality_mapping(table, DEFAULT_QUALITY_MAPPING)
+
+
+def test_simplified_quality_is_not_widened() -> None:
+    """Chunking a query keeps an already simplified quality column simplified."""
+    source = SimplifiedQualitySource([Quality.GOOD.value, Quality.BAD.value])
+    wrapper = SourceWrapper(
+        Source(source, source), [], {"data_query_interval_seconds": 60 * 60 * 24 * 7}
+    )
+    table = wrapper.get_data(SELECTOR, START_DATE, END_DATE)
+    assert table.schema.field("quality").type == pa.int8()
+    assert get_quality_mapping(table) == {"GOOD": [0]}
+    assert simplify_quality(table)["quality"] == table["quality"]

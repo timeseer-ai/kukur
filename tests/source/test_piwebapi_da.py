@@ -4,9 +4,15 @@
 from datetime import datetime
 from unittest.mock import patch
 
+import pyarrow as pa
 from dateutil.parser import parse as parse_date
 
-from kukur import SeriesSelector
+from kukur import (
+    Quality,
+    SeriesSelector,
+    get_quality_mapping,
+    simplify_quality,
+)
 from kukur.base import SeriesSearch
 from kukur.source.piwebapi_da import from_config
 
@@ -339,9 +345,13 @@ def test_get_data_include_system_points(_) -> None:
     data = source.get_data(SeriesSelector("Test", "CDT158"), start_date, end_date)
     assert len(data) == 5
     assert data["ts"][0].as_py() == parse_date("2020-01-01T17:24:18Z")
-    assert data["quality"][0].as_py() == 0
+    assert data["quality"][0].as_py() == Quality.BAD.value
     assert data["ts"][-1].as_py() == parse_date("2020-01-02T00:00:00Z")
-    assert data["quality"][-1].as_py() == 1
+    assert data["quality"][-1].as_py() == Quality.GOOD.value
+    # the quality flags of PI Web API are already simplified
+    assert data.schema.field("quality").type == pa.int8()
+    assert get_quality_mapping(data) == {"GOOD": [0]}
+    assert simplify_quality(data)["quality"] == data["quality"]
 
 
 @patch("requests.Session.get", side_effect=mocked_requests_get_system)

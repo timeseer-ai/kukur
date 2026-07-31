@@ -135,8 +135,8 @@ def test_simplify_strings() -> None:
 
 
 def test_simplify_default_mapping() -> None:
-    """Sources that provide quality flags without a mapping return 1 for good."""
-    table = _table(pa.array([1, 0], pa.int16()))
+    """A quality column that declares no mapping already uses 0 for good."""
+    table = _table(pa.array([0, 1], pa.int16()))
     assert simplify_quality(table)["quality"].to_pylist() == [0, 1]
 
 
@@ -191,3 +191,8 @@ def test_simplify_keeps_column_order() -> None:
         }
     )
     assert simplify_quality(table).column_names == ["ts", "quality", "value"]
+
+
+def test_normalize_keeps_simplified_quality() -> None:
+    """An already simplified quality column stays simplified."""
+    assert normalize_quality_array(pa.array([0, 1], pa.int8())).type == pa.int8()

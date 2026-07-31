@@ -310,18 +310,22 @@ def filter_row_data(
     )
     if quality_mapper.is_present():
         filtered_data = filtered_data.set_column(2, "quality", all_data["quality"])
-    return conform_to_schema(filtered_data, quality_mapper)
+    return conform_to_schema(filtered_data)
 
 
-def conform_to_schema(table: pa.Table, quality_mapper: QualityMapper) -> pa.Table:
-    """Conform the table to the schema expected in Kukur."""
+def conform_to_schema(table: pa.Table) -> pa.Table:
+    """Conform the table to the schema expected in Kukur.
+
+    A quality column is kept when the data contains one, whether or not a
+    quality mapping is configured for the source.
+    """
     schema = pa.schema(
         [
             ("ts", pa.timestamp("us", "UTC")),
             ("value", get_value_schema_type(table)),
         ]
     )
-    if quality_mapper.is_present():
+    if "quality" in table.column_names:
         quality = normalize_quality_array(table["quality"])
         schema = schema.append(pa.field("quality", quality.type))
         table = table.set_column(2, "quality", quality)

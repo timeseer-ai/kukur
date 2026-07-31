@@ -20,9 +20,9 @@ class Quality(Enum):
     Following the convention of Unix exit codes, GOOD is 0 and anything that is
     not good is non-zero.
 
-    Note that these values do not occur in the quality column returned by a
-    source: that column contains the quality codes of the source itself. Use
-    :func:`simplify_quality` to convert such a column to these values.
+    Note that a source that provides quality status codes returns those codes,
+    not these values. Use :func:`simplify_quality` to convert such a column to
+    these values.
     """
 
     GOOD = 0
@@ -32,13 +32,12 @@ class Quality(Enum):
 # The key of the quality mapping in the metadata of an Arrow schema.
 QUALITY_METADATA_KEY = "kukur.quality"
 
-# The quality mapping of a source that provides quality flags without
-# configuring a quality mapping. These sources return 1 for good data points.
-DEFAULT_QUALITY_MAPPING: dict[str, list] = {"GOOD": [1]}
-
-# The quality mapping of a quality column that has been simplified by
-# simplify_quality.
-SIMPLIFIED_QUALITY_MAPPING: dict[str, list] = {"GOOD": [Quality.GOOD.value]}
+# The quality mapping of Kukur itself.
+#
+# This is the mapping of a simplified quality column, of sources that provide
+# quality flags instead of status codes and of any quality column that does not
+# declare a mapping of its own.
+DEFAULT_QUALITY_MAPPING: dict[str, list] = {"GOOD": [Quality.GOOD.value]}
 
 
 class QualityMapper:
@@ -116,8 +115,9 @@ class QualityMapper:
 def normalize_quality_array(array: pa.Array) -> pa.Array:
     """Normalize the quality column of a source to a type supported by Kukur.
 
-    String quality columns are returned as ``string``, all others as ``int16``.
-    The quality values themselves are not changed.
+    String quality columns are returned as ``string`` and already simplified
+    quality columns as ``int8``. All others are returned as ``int16``. The
+    quality values themselves are not changed.
     """
     if pyarrow.types.is_dictionary(array.type):
         array = pc.cast(array, array.type.value_type)
@@ -125,6 +125,8 @@ def normalize_quality_array(array: pa.Array) -> pa.Array:
         return array
     if pyarrow.types.is_large_string(array.type):
         return pc.cast(array, pa.string())
+    if array.type == pa.int8():
+        return array
     try:
         return pc.cast(array, pa.int16())
     except (pa.ArrowInvalid, pa.ArrowNotImplementedError) as err:
@@ -136,8 +138,8 @@ def normalize_quality_array(array: pa.Array) -> pa.Array:
 def get_quality_mapping(table: pa.Table) -> dict[str, Any]:
     """Return the quality mapping embedded in the metadata of the table.
 
-    Tables that do not contain a quality mapping are assumed to use the default
-    mapping, where 1 means good.
+    Tables that do not contain a quality mapping are assumed to use the quality
+    mapping of Kukur itself, where 0 means good.
     """
     metadata = table.schema.metadata
     if metadata is None:
@@ -193,7 +195,7 @@ def simplify_quality(table: pa.Table) -> pa.Table:
     index = table.column_names.index("quality")
     quality = _simplify_quality_array(table.column(index), mapper)
     table = table.set_column(index, pa.field("quality", pa.int8()), quality)
-    return set_quality_mapping(table, SIMPLIFIED_QUALITY_MAPPING)
+    return set_quality_mapping(table, DEFAULT_QUALITY_MAPPING)
 
 
 def _simplify_quality_array(array: pa.Array, mapper: QualityMapper) -> pa.Array:

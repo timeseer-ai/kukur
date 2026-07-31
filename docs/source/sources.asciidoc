@@ -175,6 +175,7 @@ In this example we map the "GoodQuality" and "ExcellentQuality" defined in the s
 Kukur does not replace the quality values of a source.
 The `quality` column of the returned data contains the quality values of the source itself,
 either as `int16` for numerical status codes or as `string`.
+An `int8` column contains simplified quality, as described in <<Simplifying quality>>.
 
 The quality mapping travels along in the metadata of the Arrow schema,
 in the `kukur.quality` entry.
@@ -183,10 +184,12 @@ in the `kukur.quality` entry.
 {"GOOD": [192, [194, 200]]}
 ```
 
-Sources that provide quality flags without a configured quality mapping,
+Sources that provide quality flags instead of status codes,
 such as the PI Web API sources,
-return `1` for good data points.
-Their embedded mapping is `{"GOOD": [1]}`.
+return them already simplified.
+The same holds for a quality column that declares no mapping at all,
+such as the one of a plugin source without a configured `quality_mapping`.
+See <<Simplifying quality>>.
 
 === Simplifying quality
 
@@ -204,16 +207,21 @@ data = simplify_quality(client.get_data(selector, start_date, end_date))
 The resulting `quality` column is an `int8` column that follows the convention of Unix exit codes:
 `0` means good,
 non-zero means not good.
+Its embedded mapping is `{"GOOD": [0]}`,
+which makes calling `simplify_quality` again return the same data.
 
-WARNING: This is the opposite of the convention used by sources that provide quality flags,
-where `1` means good.
-The two are told apart by the type of the column:
-a simplified quality column is `int8`,
-while the raw quality column of a source is `int16` or `string`.
-The `kukur.quality` metadata always describes the column in the same table:
-after simplifying it is `{"GOOD": [0]}`.
+Sources that provide quality flags rather than status codes,
+such as the PI Web API sources,
+return a simplified quality column directly.
+Calling `simplify_quality` on their data returns the same data.
 
 Data points that have no quality value are considered bad.
+
+NOTE: Never assume what a quality value means.
+A status code of `0` is bad for most sources,
+while a simplified `0` is good.
+Read the `kukur.quality` metadata,
+or call `simplify_quality` first.
 
 == Supported Sources
 

@@ -39,6 +39,7 @@ from kukur.exceptions import (
     MissingModuleException,
 )
 from kukur.metadata import fields
+from kukur.quality import DEFAULT_QUALITY_MAPPING, Quality, set_quality_mapping
 
 NOT_FOUND = 404
 
@@ -292,9 +293,9 @@ class PIDataArchive:
                 values.append(extract_value(value))
                 timestamps.append(timestamp)
                 if data_point["Good"]:
-                    quality_flags.append(1)
+                    quality_flags.append(Quality.GOOD.value)
                 else:
-                    quality_flags.append(0)
+                    quality_flags.append(Quality.BAD.value)
 
             if (
                 len(data_points) != self._request_properties.max_returned_items_per_call
@@ -308,13 +309,14 @@ class PIDataArchive:
                 values.pop()
                 quality_flags.pop()
 
-        return pa.Table.from_pydict(
+        table = pa.Table.from_pydict(
             {
                 "ts": timestamps,
                 "value": values,
-                "quality": pa.array(quality_flags, pa.int16()),
+                "quality": pa.array(quality_flags, pa.int8()),
             }
         )
+        return set_quality_mapping(table, DEFAULT_QUALITY_MAPPING)
 
     def _get_data_url(self, selector: SeriesSelector) -> str:
         response = self._session.get(

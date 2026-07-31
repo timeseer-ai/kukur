@@ -586,12 +586,20 @@ def _get_quality_type(tables: list[pa.Table]) -> pa.DataType:
     """Return the type of the quality column.
 
     Quality values of a source are either strings or numerical status codes.
+    Sources that provide quality flags instead of status codes return them
+    simplified, which keeps them narrower.
     """
-    for table in tables:
-        if "quality" not in table.column_names:
-            continue
-        if pyarrow.types.is_string(table.schema.field("quality").type):
-            return pa.string()
+    quality_types = [
+        table.schema.field("quality").type
+        for table in tables
+        if "quality" in table.column_names
+    ]
+    if any(pyarrow.types.is_string(quality_type) for quality_type in quality_types):
+        return pa.string()
+    if quality_types and all(
+        quality_type == pa.int8() for quality_type in quality_types
+    ):
+        return pa.int8()
     return pa.int16()
 
 

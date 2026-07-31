@@ -14,7 +14,6 @@ from pyarrow import Table, ipc
 from kukur.base import SeriesSearch, SeriesSelector
 from kukur.exceptions import InvalidSourceException
 from kukur.metadata import Metadata
-from kukur.quality import QualityMapper
 from kukur.source.arrow import conform_to_schema
 
 logger = logging.getLogger(__name__)
@@ -23,10 +22,9 @@ logger = logging.getLogger(__name__)
 class PluginSource:
     """PluginSource defines a json/binary interface for external programs."""
 
-    def __init__(self, cmd: list[str], config: dict, quality_mapper: QualityMapper):
+    def __init__(self, cmd: list[str], config: dict):
         self.__cmd = cmd
         self.__config = config
-        self.__quality_mapper = quality_mapper
 
     def search(
         self, selector: SeriesSearch
@@ -68,7 +66,7 @@ class PluginSource:
         result = self._run(selector.source, "data", data)
         with ipc.open_stream(result) as reader:
             table = reader.read_all()
-            return conform_to_schema(table, self.__quality_mapper)
+            return conform_to_schema(table)
 
     def get_plot_data(
         self,
@@ -94,7 +92,7 @@ class PluginSource:
             result = self._run(selector.source, "data", data)
         with ipc.open_stream(result) as reader:
             table = reader.read_all()
-            return conform_to_schema(table, self.__quality_mapper)
+            return conform_to_schema(table)
 
     def _run(self, name: str, action: str, data: dict) -> bytes:
         try:
@@ -112,11 +110,11 @@ class PluginSource:
         return output.stdout
 
 
-def from_config(data: dict, quality_mapper: QualityMapper) -> PluginSource:
+def from_config(data: dict) -> PluginSource:
     """Create a new pluggable data source with the given configuration."""
     if "cmd" not in data:
         raise InvalidSourceException('Plugin sources require a "cmd" entry')
     cmd = data["cmd"]
     if isinstance(cmd, str):
         cmd = [cmd]
-    return PluginSource(cmd, data, quality_mapper)
+    return PluginSource(cmd, data)
