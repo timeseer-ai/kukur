@@ -9,11 +9,7 @@ from datetime import datetime
 
 import pyarrow as pa
 
-from kukur.source.piwebapi_af.pi_asset_framework import (
-    PIWebAPIConnection,
-    extract_value,
-    is_system_state,
-)
+from kukur.source.piwebapi_af.pi_asset_framework import PIWebAPIConnection
 
 try:
     import requests  # noqa: F401
@@ -49,7 +45,6 @@ NOT_FOUND = 404
 class _RequestProperties:
     timeout_seconds: float
     max_returned_items_per_call: int
-    include_system_states: bool
 
 
 class _DictionaryLookup:  # pylint: disable=too-few-public-methods
@@ -155,7 +150,6 @@ class PIDataArchive:
             max_returned_items_per_call=config.get(
                 "max_returned_items_per_call", 150000
             ),
-            include_system_states=config.get("include_system_states", False),
         )
 
     def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
@@ -285,14 +279,17 @@ class PIDataArchive:
             for data_point in data_points:
                 timestamp = parse_date(data_point["Timestamp"])
                 last_timestamp = timestamp
-                value = data_point["Value"]
-                if (
-                    is_system_state(value)
-                    and not self._request_properties.include_system_states
-                ):
-                    continue
-                values.append(extract_value(value))
                 timestamps.append(timestamp)
+                value = data_point["Value"]
+                if isinstance(value, dict):
+                    if value.get("IsSystem", False):
+                        values.append(None)
+                        quality_flags.append(value["Value"])
+                        continue
+                    values.append(value["Value"])
+                else:
+                    values.append(value)
+
                 if data_point["Good"]:
                     quality_flags.append(Quality.GOOD.value)
                 else:
@@ -314,7 +311,7 @@ class PIDataArchive:
             {
                 "ts": timestamps,
                 "value": values,
-                "quality": pa.array(quality_flags, pa.int8()),
+                "quality": pa.array(quality_flags, pa.int16()),
             }
         )
         return quality.set_mapping(table, quality.DEFAULT_MAPPING)

@@ -216,57 +216,6 @@ def test_get_data_dates_outside_limits(_) -> None:
 
 
 @patch("requests.Session.get", side_effect=mocked_requests_get_system_points)
-def test_get_data_include_system_points(_) -> None:
-    source = from_config(
-        {
-            "database_uri": "https://test_pi.net",
-            "max_returned_items_per_call": 4,
-            "include_system_states": True,
-            "username": "test",
-            "password": "test",
-            "verify_ssl": "false",
-        }
-    )
-    start_date = parse_date("2019-10-01T00:00:00Z")
-    end_date = parse_date("2020-02-01T10:56:25Z")
-
-    data = source.get_data(
-        SeriesSelector("Test", {"__id__": "A9"}), start_date, end_date
-    )
-    assert len(data) == 5
-    assert data["ts"][0].as_py() == parse_date("2020-01-01T17:24:18Z")
-    assert data["quality"][0].as_py() == Quality.BAD.value
-    assert data["ts"][-1].as_py() == parse_date("2020-01-02T00:00:00Z")
-    assert data["quality"][-1].as_py() == Quality.GOOD.value
-    # the quality flags of PI Web API are already simplified
-    assert data.schema.field("quality").type == pa.int8()
-    assert quality.get_mapping(data) == {"GOOD": [0]}
-    assert quality.simplify(data)["quality"] == data["quality"]
-
-
-@patch("requests.Session.get", side_effect=mocked_requests_get_system_points)
-def test_get_data_include_system_points_value_is_null(_) -> None:
-    source = from_config(
-        {
-            "database_uri": "https://test_pi.net",
-            "max_returned_items_per_call": 4,
-            "include_system_states": True,
-            "username": "test",
-            "password": "test",
-            "verify_ssl": "false",
-        }
-    )
-    start_date = parse_date("2019-10-01T00:00:00Z")
-    end_date = parse_date("2020-02-01T10:56:25Z")
-
-    data = source.get_data(
-        SeriesSelector("Test", {"__id__": "A9"}), start_date, end_date
-    )
-    assert data["value"][0].as_py() is None
-    assert data["value"][-1].as_py() == 81.83204
-
-
-@patch("requests.Session.get", side_effect=mocked_requests_get_system_points)
 def test_get_data_system_points(_) -> None:
     source = from_config(
         {
@@ -283,5 +232,34 @@ def test_get_data_system_points(_) -> None:
     data = source.get_data(
         SeriesSelector("Test", {"__id__": "A9"}), start_date, end_date
     )
-    assert len(data) == 1
-    assert data["ts"][0].as_py() == parse_date("2020-01-02T00:00:00Z")
+    assert len(data) == 5
+    assert data["ts"][0].as_py() == parse_date("2020-01-01T17:24:18Z")
+    assert data["quality"][0].as_py() == 254
+    assert data["ts"][-1].as_py() == parse_date("2020-01-02T00:00:00Z")
+    assert data["quality"][-1].as_py() == Quality.GOOD.value
+    assert data.schema.field("quality").type == pa.int16()
+    assert quality.get_mapping(data) == {"GOOD": [0]}
+    simplified = quality.simplify(data)["quality"]
+    assert simplified[0].as_py() == Quality.BAD.value
+    assert simplified[-1].as_py() == Quality.GOOD.value
+
+
+@patch("requests.Session.get", side_effect=mocked_requests_get_system_points)
+def test_get_data_system_points_value_is_null(_) -> None:
+    source = from_config(
+        {
+            "database_uri": "https://test_pi.net",
+            "max_returned_items_per_call": 4,
+            "username": "test",
+            "password": "test",
+            "verify_ssl": "false",
+        }
+    )
+    start_date = parse_date("2019-10-01T00:00:00Z")
+    end_date = parse_date("2020-02-01T10:56:25Z")
+
+    data = source.get_data(
+        SeriesSelector("Test", {"__id__": "A9"}), start_date, end_date
+    )
+    assert data["value"][0].as_py() is None
+    assert data["value"][-1].as_py() == 81.83204

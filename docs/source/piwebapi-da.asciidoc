@@ -10,7 +10,6 @@ Sources with `type = "piwebapi-da"` configure connections to OSIsoft PI Data Arc
 type = "piwebapi-da"
 data_archive_uri = "The self-URI of the DataServer"
 max_returned_items_per_call = 150000
-include_system_states = false # optional: include digital states with IsSystem = true as bad quality data points
 verify_ssl = true
 timeout_seconds = 60 # The maximum time to wait for a response
 username = "" # optional: username for basic authentication
@@ -96,11 +95,11 @@ password = "apassword"
 
 === Quality
 
-The `Good` flag of a data point is returned in the `quality` column.
-Since this is a flag and not a status code,
-the column is already simplified:
-`0` means good,
-`1` means bad.
+The `Good` flag of a data point is returned in the `quality` column as `0` (good) or `1` (bad).
+
+PI system digital states (e.g. `Shutdown`, `No Data`, ...) are always included in the data.
+Their `value` is `null`;
+the numeric code of the digital state is returned as the `quality` value instead.
 Check the
 ifdef::sources[]
 <<Quality, source documentation>>
