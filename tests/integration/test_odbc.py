@@ -174,10 +174,10 @@ def test_quality_data(client: Client, suffix_source):
     assert len(data) == 5
     assert data["ts"][0].as_py() == start_date
     assert data["value"][0].as_py() == 1.0
-    assert data["quality"][0].as_py() == 1
+    assert data["quality"][0].as_py() == 192
     assert data["ts"][4].as_py() == datetime.fromisoformat("2020-05-01T00:00:00+00:00")
     assert data["value"][4].as_py() == 1.0
-    assert data["quality"][4].as_py() == 0
+    assert data["quality"][4].as_py() == 1
 
 
 def test_string_quality_data(client: Client, suffix_source):
@@ -191,10 +191,10 @@ def test_string_quality_data(client: Client, suffix_source):
     assert len(data) == 5
     assert data["ts"][0].as_py() == start_date
     assert data["value"][0].as_py() == 1.0
-    assert data["quality"][0].as_py() == 1
+    assert data["quality"][0].as_py() == "GoodQuality"
     assert data["ts"][4].as_py() == datetime.fromisoformat("2020-05-01T00:00:00+00:00")
     assert data["value"][4].as_py() == 1.0
-    assert data["quality"][4].as_py() == 0
+    assert data["quality"][4].as_py() == "BadQuality"
 
 
 def test_metadata_backwards_compatibility(client: Client, suffix_source):

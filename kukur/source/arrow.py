@@ -15,11 +15,11 @@ import pyarrow as pa
 import pyarrow.compute
 import pyarrow.types
 
-from kukur import Metadata, SeriesSelector
+from kukur import Metadata, SeriesSelector, quality
 from kukur.base import SeriesSearch
 from kukur.exceptions import InvalidDataError, InvalidSourceException
 from kukur.loader import Loader
-from kukur.source.quality import QualityMapper
+from kukur.quality import QualityMapper
 
 
 @dataclass
@@ -225,10 +225,9 @@ class BaseArrowSource(ABC):
             ]
         )
         if self.__quality_mapper.is_present():
-            schema = schema.append(pa.field("quality", pa.int8()))
-            data = data.set_column(
-                2, "quality", _map_quality(data["quality"], self.__quality_mapper)
-            )
+            quality_array = quality.normalize_array(data["quality"])
+            schema = schema.append(pa.field("quality", quality_array.type))
+            data = data.set_column(2, "quality", quality_array)
         return data.cast(schema)
 
 
@@ -311,27 +310,32 @@ def filter_row_data(
     )
     if quality_mapper.is_present():
         filtered_data = filtered_data.set_column(2, "quality", all_data["quality"])
-    return conform_to_schema(filtered_data, quality_mapper)
+    return conform_to_schema(filtered_data)
 
 
-def conform_to_schema(table: pa.Table, quality_mapper: QualityMapper) -> pa.Table:
-    """Conform the table to the schema expected in Kukur."""
+def conform_to_schema(table: pa.Table) -> pa.Table:
+    """Conform the table to the schema expected in Kukur.
+
+    A quality column is kept when the data contains one, whether or not a
+    quality mapping is configured for the source.
+    """
     schema = pa.schema(
         [
             ("ts", pa.timestamp("us", "UTC")),
             ("value", get_value_schema_type(table)),
         ]
     )
-    if quality_mapper.is_present():
-        schema = schema.append(pa.field("quality", pa.int8()))
-        table = table.set_column(
-            2, "quality", _map_quality(table["quality"], quality_mapper)
-        )
+    if "quality" in table.column_names:
+        quality_array = quality.normalize_array(table["quality"])
+        schema = schema.append(pa.field("quality", quality_array.type))
+        table = table.set_column(2, "quality", quality_array)
 
     return table.cast(schema)
 
 
-def empty_table(*, include_quality: bool) -> pa.Table:
+def empty_table(
+    *, include_quality: bool, quality_type: pa.DataType | None = None
+) -> pa.Table:
     """Create a new empty table, optionally including a quality column."""
     data: dict = {"ts": [], "value": []}
     fields = [
@@ -340,12 +344,8 @@ def empty_table(*, include_quality: bool) -> pa.Table:
     ]
     if include_quality:
         data["quality"] = []
-        fields.append(("quality", pa.int8()))
+        fields.append(("quality", quality_type or pa.int16()))
     return pa.Table.from_pydict(data, schema=pa.schema(fields))
-
-
-def _map_quality(quality_data: pa.Array, quality_mapper: QualityMapper) -> pa.Array:
-    return quality_mapper.map_array(quality_data)
 
 
 def map_row_columns(

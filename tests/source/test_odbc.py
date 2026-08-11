@@ -7,12 +7,13 @@ import math
 import sqlite3
 from datetime import datetime, timedelta
 
+import pyarrow as pa
 from dateutil.parser import parse as parse_date
 
 from kukur import InterpolationType, Metadata, SeriesSelector
 from kukur.metadata import fields
+from kukur.quality import QualityMapper
 from kukur.source.metadata import MetadataValueMapper
-from kukur.source.quality import QualityMapper
 from kukur.source.sql import BaseSQLSource, SQLConfig
 
 
@@ -521,10 +522,11 @@ def test_quality_flag():
     )
 
     assert len(data) == 2
+    assert data.schema.field("quality").type == pa.int16()
     assert data["value"][0].as_py() == "good-quality"
-    assert data["quality"][0].as_py() == 1
+    assert data["quality"][0].as_py() == 192
     assert data["value"][1].as_py() == "bad-quality"
-    assert data["quality"][1].as_py() == 0
+    assert data["quality"][1].as_py() == 1
 
 
 def test_null_values_on_string_column() -> None:
@@ -636,11 +638,11 @@ def test_null_values_on_string_column_with_quality() -> None:
 
     assert len(data) == 3
     assert data["value"][0].as_py() == "good-quality"
-    assert data["quality"][0].as_py() == 1
+    assert data["quality"][0].as_py() == 192
     assert data["value"][1].as_py() is None
-    assert data["quality"][1].as_py() == 0
+    assert data["quality"][1].as_py() == 10
     assert data["value"][2].as_py() == "bad-quality"
-    assert data["quality"][1].as_py() == 0
+    assert data["quality"][2].as_py() == 1
 
 
 def test_single_string_in_nulls_column_inside_type_checking_range() -> None:

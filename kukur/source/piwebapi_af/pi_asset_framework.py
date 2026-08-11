@@ -14,7 +14,7 @@ from pathlib import PurePosixPath
 import pyarrow as pa
 from dateutil.parser import isoparse as parse_date
 
-from kukur import Metadata, SeriesSearch, SeriesSelector
+from kukur import Metadata, SeriesSearch, SeriesSelector, quality
 from kukur.auth import AuthenticationProperties
 from kukur.base import DataType, Dictionary, InterpolationType
 from kukur.exceptions import (
@@ -23,6 +23,7 @@ from kukur.exceptions import (
     KukurException,
 )
 from kukur.metadata import fields
+from kukur.quality import Quality
 
 try:
     import urllib3
@@ -61,7 +62,6 @@ class AFTemplateSourceConfiguration:
     allowed_data_references: list[str]
     attributes_as_fields: bool
     use_attribute_path: bool
-    include_system_states: bool
 
     @classmethod
     def from_data(cls, config: dict) -> "AFTemplateSourceConfiguration":
@@ -76,7 +76,6 @@ class AFTemplateSourceConfiguration:
             config.get("allowed_data_references", ["PI Point"]),
             config.get("attributes_as_fields", True),
             config.get("use_attribute_path", False),
-            config.get("include_system_states", False),
         )
 
 
@@ -144,7 +143,6 @@ class DataRequest:
     start_date: datetime
     end_date: datetime
     interval_count: int | None
-    include_system_states: bool = False
 
 
 class PIWebAPIConnection:
@@ -604,7 +602,6 @@ class PIAssetFramework:
                 start_date,
                 end_date,
                 None,
-                self._config.include_system_states,
             ),
         )
 
@@ -625,7 +622,6 @@ class PIAssetFramework:
                 start_date,
                 end_date,
                 interval_count,
-                self._config.include_system_states,
             ),
         )
 
@@ -973,20 +969,6 @@ class _DictionaryLookup:
             metadata.set_field(fields.Dictionary, self._lookup.get(dictionary_name))
 
 
-def is_system_state(value) -> bool:
-    """Return whether value represents a PI system state."""
-    return isinstance(value, dict) and value.get("IsSystem", False)
-
-
-def extract_value(value):
-    """Return the numeric/string reading from a PI value, or None for a system state."""
-    if isinstance(value, dict):
-        if value.get("IsSystem", False):
-            return None
-        return value["Value"]
-    return value
-
-
 def _read_data(
     session, request_properties: RequestProperties, data_request: DataRequest
 ):
@@ -1026,15 +1008,21 @@ def _read_data(
         for data_point in data_points:
             timestamp = parse_date(data_point["Timestamp"])
             last_timestamp = timestamp
-            value = data_point["Value"]
-            if is_system_state(value) and not data_request.include_system_states:
-                continue
-            values.append(extract_value(value))
             timestamps.append(timestamp)
-            if data_point["Good"]:
-                quality_flags.append(1)
+            value = data_point["Value"]
+            if isinstance(value, dict):
+                if value.get("IsSystem", False):
+                    values.append(None)
+                    quality_flags.append(value["Value"])
+                    continue
+                values.append(value["Value"])
             else:
-                quality_flags.append(0)
+                values.append(value)
+
+            if data_point["Good"]:
+                quality_flags.append(Quality.GOOD.value)
+            else:
+                quality_flags.append(Quality.BAD.value)
 
         if (
             len(data_points) != request_properties.max_returned_items_per_call
@@ -1048,9 +1036,14 @@ def _read_data(
             values.pop()
             quality_flags.pop()
 
-    return pa.Table.from_pydict(
-        {"ts": timestamps, "value": values, "quality": quality_flags}
+    table = pa.Table.from_pydict(
+        {
+            "ts": timestamps,
+            "value": values,
+            "quality": pa.array(quality_flags, pa.int16()),
+        }
     )
+    return quality.set_mapping(table, quality.DEFAULT_MAPPING)
 
 
 def add_query_params(url: str, params: dict) -> str:

@@ -170,6 +170,49 @@ GOOD = ["GoodQuality", "ExcellentQuality"]
 ```
 In this example we map the "GoodQuality" and "ExcellentQuality" defined in the source as a good quality point in Kukur.
 
+=== Display values
+
+The quality mapping states which quality values of a source are good,
+not what they mean.
+A `display` mapping states what each quality value means to a person.
+
+Example:
+
+```toml
+[quality_mapping.example_mapping]
+GOOD = [192, 194]
+
+[quality_mapping.example_mapping.display]
+"good" = [192, 194]
+"sensor failure" = 401
+"connection failure" = 402
+```
+
+In this example the quality of 192 and 194 is shown as "good" and 401 and 402 have specific error states.
+
+The display mapping is a lookup of its own.
+It can name quality values that are not good,
+and not every quality value needs a display value.
+
+Use `kukur.quality.describe` to replace the quality values of the data by their display values.
+
+=== Quality values in the data
+
+Kukur does not replace the quality values of a source.
+The `quality` column of the returned data contains the quality values of the source itself,
+either as `int16` for numerical status codes or as `string`.
+
+The quality mapping travels along in the metadata of the Arrow schema,
+in the `kukur.quality` entry.
+
+```json
+{"GOOD": [192, [194, 200]], "display": {"good": [192, 194]}}
+```
+
+The `display` entry is only present when the source configures one.
+The quality values that a display value names are always embedded as a list,
+also when the source configures only one of them.
+
 == Supported Sources
 
 Multiple types of time series sources are supported:

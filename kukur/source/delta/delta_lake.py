@@ -31,6 +31,7 @@ from kukur.exceptions import (
     MissingModuleException,
 )
 from kukur.metadata import Metadata
+from kukur.quality import QualityMapper
 from kukur.source.arrow import (
     cast_ts_column,
     conform_to_schema,
@@ -39,7 +40,6 @@ from kukur.source.arrow import (
     map_pivot_columns,
     map_row_columns,
 )
-from kukur.source.quality import QualityMapper
 
 
 class PartitionOrigin(Enum):
@@ -271,7 +271,7 @@ class DeltaLakeSource:
         if not is_timestamp:
             table = filter_by_timerange(table, start_date, end_date)
 
-        return conform_to_schema(table, self.__quality_mapper)
+        return conform_to_schema(table)
 
     def _to_data_column_name(self, column_name: str) -> str:
         return self.__options.column_mapping.get(column_name, column_name)

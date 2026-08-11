@@ -21,6 +21,8 @@ from .base import (
 from .exceptions import KukurException  # noqa
 from .metadata import Metadata
 from .client import Client, TLSOptions  # noqa
+from . import quality  # noqa
+from .quality import Quality, QualityMapper  # noqa
 
 
 @typing.runtime_checkable
@@ -91,4 +93,5 @@ __all__ = [
     "Metadata",
     "SeriesSearch",
     "SeriesSelector",
+    "quality",
 ]

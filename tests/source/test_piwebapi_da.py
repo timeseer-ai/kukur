@@ -4,9 +4,10 @@
 from datetime import datetime
 from unittest.mock import patch
 
+import pyarrow as pa
 from dateutil.parser import parse as parse_date
 
-from kukur import SeriesSelector
+from kukur import Quality, SeriesSelector, quality
 from kukur.base import SeriesSearch
 from kukur.source.piwebapi_da import from_config
 
@@ -278,7 +279,7 @@ def test_get_data_without_limits(_) -> None:
     start_date = parse_date("2020-01-01T00:00:00Z")
     end_date = parse_date("2020-01-02T00:00:00Z")
     data = source.get_data(SeriesSelector("Test", "CDT158"), start_date, end_date)
-    assert len(data) == 8
+    assert len(data) == 9
 
 
 @patch("requests.Session.get", side_effect=mocked_requests_get)
@@ -296,7 +297,7 @@ def test_get_data_multiple_requests(_) -> None:
     end_date = parse_date("2020-01-02T10:56:25Z")
 
     data = source.get_data(SeriesSelector("Test", "CDT158"), start_date, end_date)
-    assert len(data) == 12
+    assert len(data) == 13
     assert data["ts"][0].as_py() == parse_date("2020-01-01T00:00:00Z")
     assert data["ts"][-1].as_py() == parse_date("2020-01-02T10:56:25Z")
 
@@ -316,18 +317,17 @@ def test_get_data_dates_outside_limits(_) -> None:
     end_date = parse_date("2020-02-01T10:56:25Z")
 
     data = source.get_data(SeriesSelector("Test", "CDT158"), start_date, end_date)
-    assert len(data) == 17
+    assert len(data) == 18
     assert data["ts"][0].as_py() == parse_date("2020-01-01T00:00:00Z")
     assert data["ts"][-1].as_py() == parse_date("2020-01-03T10:56:25Z")
 
 
 @patch("requests.Session.get", side_effect=mocked_requests_get_system)
-def test_get_data_include_system_points(_) -> None:
+def test_get_data_system_points(_) -> None:
     source = from_config(
         {
             "data_archive_uri": "https://test_pi.net",
             "max_returned_items_per_call": 4,
-            "include_system_states": True,
             "username": "test",
             "password": "test",
             "verify_ssl": "false",
@@ -339,18 +339,22 @@ def test_get_data_include_system_points(_) -> None:
     data = source.get_data(SeriesSelector("Test", "CDT158"), start_date, end_date)
     assert len(data) == 5
     assert data["ts"][0].as_py() == parse_date("2020-01-01T17:24:18Z")
-    assert data["quality"][0].as_py() == 0
+    assert data["quality"][0].as_py() == 254
     assert data["ts"][-1].as_py() == parse_date("2020-01-02T00:00:00Z")
-    assert data["quality"][-1].as_py() == 1
+    assert data["quality"][-1].as_py() == Quality.GOOD.value
+    assert data.schema.field("quality").type == pa.int16()
+    assert quality.get_mapping(data) == {"GOOD": [0]}
+    simplified = quality.simplify(data)["quality"]
+    assert simplified[0].as_py() == Quality.BAD.value
+    assert simplified[-1].as_py() == Quality.GOOD.value
 
 
 @patch("requests.Session.get", side_effect=mocked_requests_get_system)
-def test_get_data_include_system_points_value_is_null(_) -> None:
+def test_get_data_system_points_value_is_null(_) -> None:
     source = from_config(
         {
             "data_archive_uri": "https://test_pi.net",
             "max_returned_items_per_call": 4,
-            "include_system_states": True,
             "username": "test",
             "password": "test",
             "verify_ssl": "false",
@@ -362,25 +366,6 @@ def test_get_data_include_system_points_value_is_null(_) -> None:
     data = source.get_data(SeriesSelector("Test", "CDT158"), start_date, end_date)
     assert data["value"][0].as_py() is None
     assert data["value"][-1].as_py() == 81.83204
-
-
-@patch("requests.Session.get", side_effect=mocked_requests_get_system)
-def test_get_data_ignore_system_points(_) -> None:
-    source = from_config(
-        {
-            "data_archive_uri": "https://test_pi.net",
-            "max_returned_items_per_call": 4,
-            "username": "test",
-            "password": "test",
-            "verify_ssl": "false",
-        }
-    )
-    start_date = parse_date("2019-10-01T00:00:00Z")
-    end_date = parse_date("2020-02-01T10:56:25Z")
-
-    data = source.get_data(SeriesSelector("Test", "CDT158"), start_date, end_date)
-    assert len(data) == 1
-    assert data["ts"][0].as_py() == parse_date("2020-01-02T00:00:00Z")
 
 
 @patch("requests.Session.get", side_effect=mocked_requests_get)
@@ -399,4 +384,4 @@ def test_get_plot_data_without_limits(_) -> None:
     data = source.get_plot_data(
         SeriesSelector("Test", "CDT158"), start_date, end_date, interval_count=200
     )
-    assert len(data) == 8
+    assert len(data) == 9

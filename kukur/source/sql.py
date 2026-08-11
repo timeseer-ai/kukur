@@ -14,11 +14,12 @@ from decimal import Decimal
 import dateutil.parser
 import pyarrow as pa
 
-from kukur import Dictionary, Metadata, SeriesSearch, SeriesSelector
+from kukur import Dictionary, Metadata, SeriesSearch, SeriesSelector, quality
 from kukur.exceptions import KukurException
 from kukur.metadata import fields
+from kukur.quality import QualityMapper
+from kukur.source.arrow import empty_table
 from kukur.source.metadata import MetadataValueMapper
-from kukur.source.quality import QualityMapper
 
 logger = logging.getLogger(__name__)
 
@@ -184,7 +185,7 @@ class BaseSQLSource(ABC):
     ) -> pa.Table:
         """Return data using the specified DB-API query."""
         if self._config.data_query is None:
-            return pa.Table.from_pydict({"ts": [], "value": [], "quality": []})
+            return empty_table(include_quality=self._quality_mapper.is_present())
         connection = self.connect()
         cursor = connection.cursor()
 
@@ -243,8 +244,7 @@ class BaseSQLSource(ABC):
             elif isinstance(value, Decimal):
                 value = float(value)
             if self._quality_mapper.is_present():
-                quality = self._quality_mapper.from_source(row[2])
-                qualities.append(quality)
+                qualities.append(row[2])
             timestamps.append(ts)
             values.append(value)
 
@@ -253,8 +253,11 @@ class BaseSQLSource(ABC):
             _coerce_types(values, detected_type)
 
         if self._quality_mapper.is_present():
-            return pa.Table.from_pydict(
+            table = pa.Table.from_pydict(
                 {"ts": timestamps, "value": values, "quality": qualities}
+            )
+            return table.set_column(
+                2, "quality", quality.normalize_array(table["quality"])
             )
         return pa.Table.from_pydict({"ts": timestamps, "value": values})
 

@@ -16,8 +16,8 @@ from pyarrow import feather
 
 from kukur.exceptions import InvalidSourceException
 from kukur.loader import from_config as loader_from_config
+from kukur.quality import QualityMapper
 from kukur.source.arrow import BaseArrowSource, BaseArrowSourceOptions
-from kukur.source.quality import QualityMapper
 
 
 def from_config(config: dict[str, Any], quality_mapper: QualityMapper):

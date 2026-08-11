@@ -55,6 +55,13 @@ metadata = "tests/test_data/csv/dir-metadata.csv"
 format = "dir"
 quality_mapping = "opc_mapping_ranges"
 
+[source.dir-quality-display]
+type = "csv"
+path = "tests/test_data/csv/dir_quality"
+metadata = "tests/test_data/csv/dir-metadata.csv"
+format = "dir"
+quality_mapping = "opc_mapping_display"
+
 [source.dir-header]
 type = "csv"
 path = "tests/test_data/csv/dir_header"

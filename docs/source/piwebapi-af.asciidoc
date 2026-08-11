@@ -22,7 +22,6 @@ use_attribute_path = true # set to false to use the attribute name instead for t
 web_id_type = "Full" # one of Full, IDOnly, PathOnly
 max_returned_items_per_call = 150000
 max_returned_metadata_items_per_call = 150
-include_system_states = false # optional: include digital states with IsSystem = true as bad quality data points
 verify_ssl = true
 timeout_seconds = 60 # The maximum time to wait for a response
 metadata_request_timeout_seconds = 10 # The maximum time to wait for a response for a metadata request
@@ -158,3 +157,19 @@ username = "auser"
 password = "apassword"
 element_template = "Reactor"
 ```
+
+=== Quality
+
+The `Good` flag of a data point is returned in the `quality` column as `0` (good) or `1` (bad).
+
+PI system digital states (e.g. `Shutdown`, `No Data`, ...) are always included in the data.
+Their `value` is `null`;
+the numeric code of the digital state is returned as the `quality` value instead.
+Check the
+ifdef::sources[]
+<<Quality, source documentation>>
+endif::sources[]
+ifndef::sources[]
+link:sources.asciidoc#Quality[source documentation]
+endif::sources[]
+for details.

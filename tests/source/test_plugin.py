@@ -6,7 +6,9 @@
 import sys
 from datetime import datetime
 
-from kukur import PlotSource
+import pyarrow as pa
+
+from kukur import PlotSource, quality
 from kukur.base import SeriesSearch, SeriesSelector
 from kukur.metadata import Metadata
 from kukur.source import SourceFactory
@@ -60,10 +62,13 @@ def test_data() -> None:
     assert len(data) == 2
     assert data["ts"][0].as_py() == start_date
     assert data["value"][0].as_py() == 0
-    assert data["quality"][0].as_py() == 0
+    assert data["quality"][0].as_py() == "BAD"
     assert data["ts"][1].as_py() == end_date
     assert data["value"][1].as_py() == 42
-    assert data["quality"][1].as_py() == 1
+    assert data["quality"][1].as_py() == "GOOD"
+    assert data.schema.field("quality").type == pa.string()
+    assert quality.get_mapping(data) == {"GOOD": ["GOOD"]}
+    assert quality.simplify(data)["quality"].to_pylist() == [1, 0]
 
 
 def test_plot_data() -> None:
@@ -76,7 +81,10 @@ def test_plot_data() -> None:
     assert len(data) == 2
     assert data["ts"][0].as_py() == start_date
     assert data["value"][0].as_py() == 0
-    assert data["quality"][0].as_py() == 0
+    assert data["quality"][0].as_py() == "BAD"
     assert data["ts"][1].as_py() == end_date
     assert data["value"][1].as_py() == 47
-    assert data["quality"][1].as_py() == 1
+    assert data["quality"][1].as_py() == "GOOD"
+    assert data.schema.field("quality").type == pa.string()
+    assert quality.get_mapping(data) == {"GOOD": ["GOOD"]}
+    assert quality.simplify(data)["quality"].to_pylist() == [1, 0]

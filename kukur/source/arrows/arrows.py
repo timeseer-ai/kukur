@@ -10,8 +10,8 @@ from pyarrow.ipc import open_stream
 
 from kukur.exceptions import InvalidSourceException
 from kukur.loader import from_config as loader_from_config
+from kukur.quality import QualityMapper
 from kukur.source.arrow import BaseArrowSource, BaseArrowSourceOptions
-from kukur.source.quality import QualityMapper
 
 
 class ArrowIPCStreamSource(BaseArrowSource):

@@ -20,9 +20,11 @@ from kukur import (
     SeriesSelector,
     SourceStructure,
     TagSource,
+    quality,
 )
 from kukur import Source as SourceProtocol
 from kukur.exceptions import InvalidSourceException
+from kukur.quality import QualityMapper
 from kukur.source import (
     adodb,
     arrows,
@@ -50,7 +52,7 @@ from kukur.source import (
 )
 from kukur.source import json as json_source
 from kukur.source import kukur as kukur_source
-from kukur.source.quality import QualityMapper
+from kukur.source.arrow import empty_table
 from kukur.source.token_cache import (
     InMemoryTokenCacheFactory,
     TokenCache,
@@ -145,15 +147,19 @@ class SourceWrapper:
     __query_retry_count: int
     __query_retry_delay: float
     __data_query_interval: timedelta | None = None
+    __quality_mapper: QualityMapper | None = None
 
     def __init__(
         self,
         source: Source,
         metadata_sources: list[MetadataSource],
         common_options,
+        *,
+        quality_mapper: QualityMapper | None = None,
     ):
         self.__source = source
         self.__metadata = metadata_sources
+        self.__quality_mapper = quality_mapper
         self.__query_retry_count = common_options.get("query_retry_count", 0)
         self.__query_retry_delay = common_options.get("query_retry_delay", 1.0)
         if "data_query_interval_seconds" in common_options:
@@ -242,14 +248,14 @@ class SourceWrapper:
     ) -> pa.Table:
         """Return the data for the given series in the given time frame, taking into account the request policy."""
         if start_date == end_date:
-            return pa.Table.from_pydict({"ts": [], "value": [], "quality": []})
+            return self.__add_metadata(empty_table(include_quality=True), 0)
         chunk_results = [
             self._get_data_chunk(selector, start, end)
             for start, end in self.__to_intervals(start_date, end_date)
         ]
         table = concat_tables([result[0] for result in chunk_results])
         retry_count = sum(result[1] for result in chunk_results)
-        return _add_query_statistics(table, retry_count)
+        return self.__add_metadata(table, retry_count)
 
     def get_plot_data(
         self,
@@ -265,7 +271,7 @@ class SourceWrapper:
         Returns normal data when plot data is not supported.
         """
         if start_date == end_date:
-            return pa.Table.from_pydict({"ts": [], "value": [], "quality": []})
+            return self.__add_metadata(empty_table(include_quality=True), 0)
         if not isinstance(self.__source.data, PlotSource):
             return self.get_data(selector, start_date, end_date)
         query_fn = functools.partial(
@@ -281,7 +287,7 @@ class SourceWrapper:
             query_fn,
             f'Plot data query for "{selector.name}" ({selector.source}) ({start_date} to {end_date}) failed',
         )
-        return _add_query_statistics(table, retry_count)
+        return self.__add_metadata(table, retry_count)
 
     def get_source_structure(self, selector: SeriesSelector) -> SourceStructure | None:
         """Return the structure of the source for the given series."""
@@ -297,6 +303,29 @@ class SourceWrapper:
             f"Source structure query for {selector.source} failed",
         )
         return structure
+
+    def __add_metadata(self, table: pa.Table, retry_count: int) -> pa.Table:
+        """Describe the returned data in the metadata of the Arrow schema."""
+        table = _add_query_statistics(table, retry_count)
+        return self.__add_quality_mapping(table)
+
+    def __add_quality_mapping(self, table: pa.Table) -> pa.Table:
+        """Embed the quality mapping of the source in the metadata of the table.
+
+        Sources that provide a quality column without configuring a quality
+        mapping return 0 for good data points.
+
+        A quality mapping that is already present is kept. It belongs to the
+        source that produced the data, which is not necessarily this one.
+        """
+        if "quality" not in table.column_names:
+            return table
+        if quality.has_mapping(table):
+            return table
+        quality_mapping = quality.DEFAULT_MAPPING
+        if self.__quality_mapper is not None and self.__quality_mapper.is_present():
+            quality_mapping = self.__quality_mapper.to_metadata()
+        return quality.set_mapping(table, quality_mapping)
 
     def _get_data_chunk(
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
@@ -397,7 +426,12 @@ class SourceFactory:
             extra_metadata.append(metadata_sources[metadata_source_name])
 
         return SourceWrapper(
-            Source(metadata_source, source), extra_metadata, source_config
+            Source(metadata_source, source),
+            extra_metadata,
+            source_config,
+            quality_mapper=self._get_quality_mapper(
+                source_config.get("quality_mapping")
+            ),
         )
 
     def _get_extra_metadata_sources(self) -> dict[str, MetadataSource]:
@@ -474,7 +508,7 @@ def concat_tables(tables: list[pa.Table]) -> pa.Table:
     """
     tables = [table for table in tables if len(table) > 0]
     if len(tables) == 0:
-        return pa.Table.from_pydict({"ts": [], "value": [], "quality": []})
+        return empty_table(include_quality=True)
 
     schema = pa.schema(
         [
@@ -500,7 +534,9 @@ def concat_tables(tables: list[pa.Table]) -> pa.Table:
         )
 
     if _has_quality_data_flag(tables):
-        schema = schema.append(pa.field("quality", pa.int8()))
+        schema = schema.append(pa.field("quality", _get_quality_type(tables)))
+
+    schema = schema.with_metadata(_get_metadata(tables))
 
     return pa.concat_tables([table.cast(schema) for table in tables])
 
@@ -528,9 +564,41 @@ def _has_quality_data_flag(tables: list[pa.Table]) -> bool:
     return len(quality_table) > 0
 
 
+def _get_metadata(tables: list[pa.Table]) -> dict[bytes, bytes]:
+    """Return the schema metadata of the concatenated tables.
+
+    Casting a table to a schema replaces its metadata by the metadata of that
+    schema. The chunks of one query all describe the same data, so the metadata
+    of the first chunk that has any describes all of them.
+    """
+    for table in tables:
+        if table.schema.metadata:
+            return quality.encode_metadata(table)
+    return {}
+
+
+def _get_quality_type(tables: list[pa.Table]) -> pa.DataType:
+    """Return the type of the quality column.
+
+    Quality values of a source are either strings or numerical status codes.
+    Sources that provide quality flags instead of status codes return them
+    simplified, which keeps them narrower.
+    """
+    quality_types = [
+        table.schema.field("quality").type
+        for table in tables
+        if "quality" in table.column_names
+    ]
+    if any(pyarrow.types.is_string(quality_type) for quality_type in quality_types):
+        return pa.string()
+    if quality_types and all(
+        quality_type == pa.int8() for quality_type in quality_types
+    ):
+        return pa.int8()
+    return pa.int16()
+
+
 def _add_query_statistics(table: pa.Table, retry_count: int) -> pa.Table:
-    metadata = table.schema.metadata
-    if metadata is None:
-        metadata = {}
-    metadata["kukur.statistics"] = py_json.dumps({"retryCount": retry_count})
+    metadata = quality.encode_metadata(table)
+    metadata[b"kukur.statistics"] = py_json.dumps({"retryCount": retry_count}).encode()
     return table.replace_schema_metadata(metadata)
