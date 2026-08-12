@@ -9,7 +9,7 @@ from typing import Any
 
 import pyarrow as pa
 
-from kukur import Metadata, SeriesSearch, SeriesSelector, SourceStructure
+from kukur import Metadata, SeriesSearch, SeriesSelector
 from kukur.client import Client
 
 
@@ -83,10 +83,3 @@ class KukurSource:
         return self.__client.get_plot_data(
             remote_selector, start_date, end_date, interval_count
         )
-
-    def get_source_structure(self, selector: SeriesSelector) -> SourceStructure | None:
-        """Return the source structure using the Flight service."""
-        remote_selector = SeriesSelector.from_tags(
-            self.__source_name, selector.tags, selector.field
-        )
-        return self.__client.get_source_structure(remote_selector)

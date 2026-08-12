@@ -16,7 +16,6 @@ from .base import (
     InterpolationType,
     SeriesSearch,
     SeriesSelector,
-    SourceStructure,
 )
 from .exceptions import KukurException  # noqa
 from .metadata import Metadata
@@ -43,15 +42,6 @@ class Source(Protocol):
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         """Return data for the given time series in the given time period."""
-        ...
-
-
-@typing.runtime_checkable
-class TagSource(Source, Protocol):
-    """TagSource is the interface that Kukur data sources that support tags and fields need to implement."""
-
-    def get_source_structure(self, selector: SeriesSelector) -> SourceStructure | None:
-        """Return the available tag keys and tag values and fields of a source."""
         ...
 
 
