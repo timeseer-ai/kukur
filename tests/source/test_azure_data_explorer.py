@@ -26,7 +26,7 @@ class MockKustoResponse:
         self.primary_results = [results_list]
 
 
-def source_structure_queries(_, query) -> MockKustoResponse:
+def search_queries(_, query) -> MockKustoResponse:
     if query == "['telemetry-data'] | distinct deviceId, plant, location":
         return MockKustoResponse(
             [
@@ -390,7 +390,7 @@ def test_result_set_too_large(kusto_client) -> None:
     assert len(data) == 10
 
 
-@patch("azure.kusto.data.KustoClient.execute", side_effect=source_structure_queries)
+@patch("azure.kusto.data.KustoClient.execute", side_effect=search_queries)
 def test_search_with_metadata(_kusto_client) -> None:
     source = from_config(
         {
@@ -412,7 +412,7 @@ def test_search_with_metadata(_kusto_client) -> None:
         assert metadata.get_field_by_name("sensorModel") == "AST20PT"
 
 
-@patch("azure.kusto.data.KustoClient.execute", side_effect=source_structure_queries)
+@patch("azure.kusto.data.KustoClient.execute", side_effect=search_queries)
 def test_search_without_metadata(_kusto_client) -> None:
     source = from_config(
         {
@@ -434,7 +434,7 @@ def test_search_without_metadata(_kusto_client) -> None:
         assert "location" in metadata.series.tags
 
 
-@patch("azure.kusto.data.KustoClient.execute", side_effect=source_structure_queries)
+@patch("azure.kusto.data.KustoClient.execute", side_effect=search_queries)
 def test_search_with_custom_query(_kusto_client) -> None:
     source = from_config(
         {

@@ -66,49 +66,6 @@ SHOW_FIELD_KEYS = {
     ]
 }
 
-SHOW_TAG_KEYS = {
-    "results": [
-        {
-            "statement_id": 0,
-            "series": [
-                {
-                    "name": "h2o_feet",
-                    "columns": ["tagKey"],
-                    "values": [["location"]],
-                },
-                {
-                    "name": "h2o_temperature",
-                    "columns": ["tagKey"],
-                    "values": [["location"]],
-                },
-            ],
-        }
-    ]
-}
-
-SHOW_TAG_VALUES = {
-    "results": [
-        {
-            "statement_id": 0,
-            "series": [
-                {
-                    "name": "h2o_feet",
-                    "columns": ["key", "value"],
-                    "values": [
-                        ["location", "coyote_creek"],
-                        ["location", "santa_monica"],
-                    ],
-                },
-                {
-                    "name": "h2o_temperature",
-                    "columns": ["key", "value"],
-                    "values": [["location", "coyote_creek"]],
-                },
-            ],
-        }
-    ]
-}
-
 DATA = {
     "results": [
         {
@@ -156,10 +113,6 @@ def mocked_requests_get(*args, **kwargs):
         return MockResponse(SHOW_SERIES)
     if query == "SHOW FIELD KEYS":
         return MockResponse(SHOW_FIELD_KEYS)
-    if query == "SHOW TAG KEYS":
-        return MockResponse(SHOW_TAG_KEYS)
-    if query.startswith("SHOW TAG VALUES"):
-        return MockResponse(SHOW_TAG_VALUES)
     if query.strip().startswith("SELECT"):
         return MockResponse(DATA)
 
@@ -233,23 +186,6 @@ def test_get_data(_) -> None:
     assert len(table) == 2
     assert table["ts"][0].as_py() == datetime.fromisoformat("2019-09-17T00:00:00+00:00")
     assert table["value"][0].as_py() == 8.412
-
-
-@patch("requests.Session.get", side_effect=mocked_requests_get)
-def test_get_source_structure(_) -> None:
-    source_structure = _source().get_source_structure(SeriesSelector("influx"))
-    assert source_structure is not None
-    assert source_structure.tag_keys == ["location"]
-    assert REQUESTS[-1]["q"] == 'SHOW TAG VALUES WITH KEY IN ("location")'
-    assert source_structure.tag_values == [
-        {"key": "location", "value": "coyote_creek"},
-        {"key": "location", "value": "santa_monica"},
-    ]
-    assert sorted(source_structure.fields) == [
-        "degrees",
-        "level description",
-        "water_level",
-    ]
 
 
 def _error_response(*args, **kwargs):

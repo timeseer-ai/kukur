@@ -18,8 +18,6 @@ from kukur import (
     PlotSource,
     SeriesSearch,
     SeriesSelector,
-    SourceStructure,
-    TagSource,
     quality,
 )
 from kukur import Source as SourceProtocol
@@ -110,7 +108,7 @@ class Source:
     Source keeps them together.
     """
 
-    metadata: SourceProtocol | TagSource
+    metadata: SourceProtocol
     data: SourceProtocol
 
 
@@ -289,21 +287,6 @@ class SourceWrapper:
         )
         return self.__add_metadata(table, retry_count)
 
-    def get_source_structure(self, selector: SeriesSelector) -> SourceStructure | None:
-        """Return the structure of the source for the given series."""
-        if not isinstance(self.__source.metadata, TagSource):
-            return None
-        query_fn = functools.partial(
-            self.__source.metadata.get_source_structure, selector
-        )
-        structure, _ = _retry(
-            self.__query_retry_count,
-            self.__query_retry_delay,
-            query_fn,
-            f"Source structure query for {selector.source} failed",
-        )
-        return structure
-
     def __add_metadata(self, table: pa.Table, retry_count: int) -> pa.Table:
         """Describe the returned data in the metadata of the Arrow schema."""
         table = _add_query_statistics(table, retry_count)
@@ -400,7 +383,7 @@ class SourceFactory:
 
     def make_wrapper(
         self,
-        source: SourceProtocol | TagSource,
+        source: SourceProtocol,
         source_name: str,
         source_config: dict[str, Any],
     ) -> SourceWrapper:
@@ -452,7 +435,7 @@ class SourceFactory:
 
     def _make_source(
         self, source_id: str, source_type: str, source_config: dict[str, Any]
-    ) -> SourceProtocol | TagSource:
+    ) -> SourceProtocol:
         metadata_mapper = self._get_metadata_mapper(
             source_config.get("metadata_mapping")
         )

@@ -37,7 +37,6 @@ from kukur import (
     SeriesSearch,
     SeriesSelector,
     SignalGenerator,
-    SourceStructure,
 )
 from kukur.exceptions import (
     InvalidSourceException,
@@ -911,9 +910,6 @@ class SimulatorSource:
         for generator in self.__signal_generators[selector.tags["signal_type"]]:
             return generator.generate(selector, start_date, end_date)
         raise UnknownSignalTypeError(selector.tags["signal_type"])
-
-    def get_source_structure(self, _: SeriesSelector) -> SourceStructure | None:
-        """Return the structure of a source."""
 
     def _register_generator(self, config: dict):
         """Register a generator."""
