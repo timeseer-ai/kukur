@@ -107,6 +107,7 @@ class TableGroupBy:
 class RecordBatch(typing.Sized):
 
     nbytes: int
+    num_columns: int
     num_rows: int
     schema: Schema
     column_names: list[str]
@@ -164,6 +165,7 @@ class UnionArray:
 class Table(typing.Sized):
 
     column_names: list[str]
+    num_columns: int
     num_rows: int
     schema: Schema
 

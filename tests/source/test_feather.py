@@ -3,8 +3,9 @@
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
+from datetime import timedelta
+
 import pyarrow as pa
-import pytz
 from dateutil.parser import parse as parse_date
 
 import kukur.config
@@ -162,7 +163,7 @@ def test_dir_data_datetime_format() -> None:
     assert len(table) == 5
     start_date = table["ts"][0].as_py()
     assert start_date == START_DATE
-    assert start_date.tzinfo == pytz.UTC
+    assert start_date.utcoffset() == timedelta(0)
 
 
 def test_dir_data_timezone() -> None:
@@ -172,7 +173,7 @@ def test_dir_data_timezone() -> None:
     assert len(table) == 5
     start_date = table["ts"][0].as_py()
     assert start_date == START_DATE
-    assert start_date.tzinfo == pytz.UTC
+    assert start_date.utcoffset() == timedelta(0)
 
 
 def test_pivot_data_datetime_format() -> None:
@@ -182,7 +183,7 @@ def test_pivot_data_datetime_format() -> None:
     assert len(table) == 5
     start_date = table["ts"][0].as_py()
     assert start_date == START_DATE
-    assert start_date.tzinfo == pytz.UTC
+    assert start_date.utcoffset() == timedelta(0)
 
 
 def test_pivot_data_timezone() -> None:
@@ -192,7 +193,7 @@ def test_pivot_data_timezone() -> None:
     assert len(table) == 5
     start_date = table["ts"][0].as_py()
     assert start_date == START_DATE
-    assert start_date.tzinfo == pytz.UTC
+    assert start_date.utcoffset() == timedelta(0)
 
 
 def test_row_data_datetime_format():
@@ -202,7 +203,7 @@ def test_row_data_datetime_format():
     assert len(table) == 5
     start_date = table["ts"][0].as_py()
     assert start_date == START_DATE
-    assert start_date.tzinfo == pytz.UTC
+    assert start_date.utcoffset() == timedelta(0)
 
 
 def test_row_data_timezone():
@@ -212,7 +213,7 @@ def test_row_data_timezone():
     assert len(table) == 5
     start_date = table["ts"][0].as_py()
     assert start_date == START_DATE
-    assert start_date.tzinfo == pytz.UTC
+    assert start_date.utcoffset() == timedelta(0)
 
 
 def test_row_timestamp():
@@ -222,7 +223,7 @@ def test_row_timestamp():
     assert len(table) == 5
     start_date = table["ts"][0].as_py()
     assert start_date == START_DATE
-    assert start_date.tzinfo == pytz.UTC
+    assert start_date.utcoffset() == timedelta(0)
 
 
 def test_row_data_timezone_timestamp_naive():
@@ -232,7 +233,7 @@ def test_row_data_timezone_timestamp_naive():
     assert len(table) == 5
     start_date = table["ts"][0].as_py()
     assert start_date == START_DATE
-    assert start_date.tzinfo == pytz.UTC
+    assert start_date.utcoffset() == timedelta(0)
 
 
 def test_row_data_timezone_timestamp_naive_string_microseconds():
@@ -242,7 +243,7 @@ def test_row_data_timezone_timestamp_naive_string_microseconds():
     assert len(table) == 5
     start_date = table["ts"][0].as_py()
     assert start_date == START_DATE
-    assert start_date.tzinfo == pytz.UTC
+    assert start_date.utcoffset() == timedelta(0)
 
 
 def test_row_tags_search():

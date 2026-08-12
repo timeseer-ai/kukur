@@ -12,7 +12,7 @@ Three formats are supported:
 from typing import Any
 
 import pyarrow as pa
-from pyarrow import feather
+from pyarrow import ipc
 
 from kukur.exceptions import InvalidSourceException
 from kukur.loader import from_config as loader_from_config
@@ -34,7 +34,8 @@ class FeatherSource(BaseArrowSource):
 
     def read_file(self, file_like) -> pa.Table:
         """Read the file_like object as Feather."""
-        return feather.read_table(file_like)
+        with ipc.open_file(file_like) as reader:
+            return reader.read_all()
 
     def get_file_extension(self) -> str:
         """Return the default feather file extension."""

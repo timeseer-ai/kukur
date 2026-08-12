@@ -1,7 +1,10 @@
 
 import typing
 
-from . import compute, csv, ipc
+from . import compute as compute
+from . import csv as csv
+from . import feather as feather
+from . import ipc as ipc
 from .lib import Array as Array
 from .lib import ArrowInvalid as ArrowInvalid
 from .lib import ArrowNotImplementedError as ArrowNotImplementedError
