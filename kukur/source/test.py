@@ -75,7 +75,7 @@ def data(
     return _yield_table(table)
 
 
-def plot(  # noqa: PLR0913
+def plot(  # noqa: PLR0913, PLR0917
     source: Source,
     source_name: str,
     series_name: str,
