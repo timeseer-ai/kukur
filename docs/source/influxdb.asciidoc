@@ -25,6 +25,8 @@ type = "influxdb"
 host = "<host IP / Address of the InfluxDB server>"
 port = <port of the InfluxDB server>
 ssl = <boolean to indicate if SSL needs to be used>
+verify_ssl = <boolean to indicate if the SSL certificate should be verified>
+timeout_seconds = <number of seconds before a request times out>
 database = "<name of the database to use>"
 username = "<username used to login into the database>"
 password = "<password used to login into the database>"
@@ -42,6 +44,10 @@ If `host`, `port` or `ssl` are not provided, the default will be used.
 - `host` (default: localhost)
 - `port` (default: 8086)
 - `ssl` (default: false)
+- `verify_ssl` (default: true)
+- `timeout_seconds` (default: 60)
+
+Set `verify_ssl` to `false` when InfluxDB uses a self-signed certificate.
 
 === Authentication
 

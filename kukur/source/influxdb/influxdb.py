@@ -6,92 +6,49 @@
 
 import json
 from collections.abc import Generator
-from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
 import dateutil.parser
 import pyarrow as pa
 
-try:
-    from influxdb import InfluxDBClient
-    from influxdb.exceptions import InfluxDBClientError
-
-    HAS_INFLUX = True
-except ImportError:
-    HAS_INFLUX = False
-
 from kukur import Metadata, SeriesSearch, SeriesSelector, SourceStructure
-from kukur.exceptions import InvalidDataError, KukurException, MissingModuleException
-
-
-class InvalidClientConnection(KukurException):
-    """Raised when an error occured when making the connection."""
-
-    def __init__(self, message: str):
-        KukurException.__init__(self, f"Connection error: {message}")
-
-
-@dataclass
-class InfluxConfiguration:
-    """Configuration for an Influx source."""
-
-    host: str
-    port: int
-    ssl: bool
-    database: str
-    username: str | None
-    password: str | None
-
-    @classmethod
-    def from_data(cls, data: dict) -> "InfluxConfiguration":
-        """Create from a data dictionary."""
-        return cls(
-            host=data.get("host", "localhost"),
-            port=data.get("port", 8086),
-            ssl=data.get("ssl", False),
-            database=data["database"],
-            username=data.get("username"),
-            password=data.get("password"),
-        )
+from kukur.exceptions import InvalidDataError, MissingModuleException
+from kukur.source.influxdb.client import HAS_REQUESTS, ClientOptions, InfluxDBClient
 
 
 def from_config(config: dict[str, Any]):
     """Create a new Influx data source."""
-    if not HAS_INFLUX:
-        raise MissingModuleException("influxdb", "influxdb")
-    return InfluxSource(InfluxConfiguration.from_data(config))
+    if not HAS_REQUESTS:
+        raise MissingModuleException("requests", "influxdb")
+    return InfluxSource(_get_client_options(config))
+
+
+def _get_client_options(config: dict[str, Any]) -> ClientOptions:
+    return ClientOptions(
+        database=config["database"],
+        host=config.get("host", "localhost"),
+        port=config.get("port", 8086),
+        ssl=config.get("ssl", False),
+        verify_ssl=config.get("verify_ssl", True),
+        timeout_seconds=config.get("timeout_seconds", 60.0),
+        username=config.get("username"),
+        password=config.get("password"),
+    )
 
 
 class InfluxSource:
     """An InfluxDB data source."""
 
-    def __init__(self, config: InfluxConfiguration):
-        if not HAS_INFLUX:
-            raise MissingModuleException("influxdb", "influxdb")
-        self._config = config
+    def __init__(self, options: ClientOptions):
+        if not HAS_REQUESTS:
+            raise MissingModuleException("requests", "influxdb")
+        self._options = options
 
-    def _get_client(self):
-        if not HAS_INFLUX:
-            raise MissingModuleException("influxdb", "influxdb")
-        try:
-            if self._config.username is not None and self._config.password is not None:
-                client = InfluxDBClient(
-                    host=self._config.host,
-                    port=self._config.port,
-                    ssl=self._config.ssl,
-                    username=self._config.username,
-                    password=self._config.password,
-                )
-            else:
-                client = InfluxDBClient(
-                    host=self._config.host, port=self._config.port, ssl=self._config.ssl
-                )
-
-            client.switch_database(self._config.database)
-            return client
-        except InfluxDBClientError as err:
-            raise InvalidClientConnection(err) from err
+    def _get_client(self) -> InfluxDBClient:
+        if not HAS_REQUESTS:
+            raise MissingModuleException("requests", "influxdb")
+        return InfluxDBClient(self._options)
 
     def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
         """Search for series matching the given selector."""
