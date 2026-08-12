@@ -3,7 +3,7 @@
 # SPDX-FileCopyrightText: 2022 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 import pytest
 
@@ -67,7 +67,7 @@ def test_metadata_directory_traversal() -> None:
 
 def test_data_unsupported() -> None:
     selector = SeriesSelector("json", "../../../test-tag-1")
+    start_date = datetime.fromisoformat("2024-01-01T00:00:00+00:00")
+    end_date = datetime.fromisoformat("2024-01-02T00:00:00+00:00")
     with pytest.raises(InvalidSourceException):
-        get_source("json").get_data(
-            selector, datetime.now(tz=timezone.utc), datetime.now(tz=timezone.utc)
-        )
+        get_source("json").get_data(selector, start_date, end_date)
