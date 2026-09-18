@@ -50,6 +50,13 @@ Each tag defined in `tag_columns` is provided as a named parameter,
 with spaces replaced by underscores.
 The time range is provided by the `start_date` and `end_date` named parameters of type `TIMESTAMP`.
 
+The `data_query` returns one column containing the timestamps,
+followed by one column for each field in `field_columns`,
+in the same order.
+When a `quality_mapping` is configured,
+a quality column is expected as the last column.
+The column of the requested field is returned as the `value` column.
+
 For example:
 
 ```
@@ -75,6 +82,22 @@ oauth_client_secret = ""
 ```
 
 Follow the steps in https://learn.microsoft.com/en-us/azure/databricks/dev-tools/auth/oauth-m2m[Authorize service principal access to Azure Databricks with OAuth] to generate `oauth_client_id` and `oauth_client_secret`.
+
+Multiple fields are supported by listing them in `field_columns`
+and returning one column per field in the `data_query`:
+
+```
+[source.Databricks]
+type = "databricks-sql"
+field_columns = ["value", "setpoint"]
+data_query = """
+select ts, value, setpoint
+from tsdeltalake.poc.tsai_antwerp
+where `series name` = :series_name
+  and ts >= :start_date
+  and ts < :end_date
+"""
+```
 
 ==== Connecting to Databricks SQL Warehouses on Azure using Managed Identities
 

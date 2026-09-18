@@ -19,6 +19,7 @@ from pyarrow import ipc
 from kukur import Metadata, SeriesSearch, SeriesSelector, quality
 from kukur.auth import IMDSTokenFetcher, OIDCConfig, get_oidc_auth
 from kukur.exceptions import (
+    InvalidDataError,
     InvalidSourceException,
     KukurException,
     MissingModuleException,
@@ -236,17 +237,46 @@ class DatabricksStatementExecutionSource:
                 response.raise_for_status()
                 stream = ipc.open_stream(response.content)
                 table = stream.read_all()
-                if table.num_columns == 2:  # noqa: PLR2004
-                    table = table.rename_columns(["ts", "value"])
-                if table.num_columns == 3:  # noqa: PLR2004
-                    table = table.rename_columns(["ts", "value", "quality"])
-                    table = table.set_column(
-                        2, "quality", quality.normalize_array(table["quality"])
-                    )
-                tables.append(table)
+                tables.append(self._map_data_columns(table, selector))
             if len(tables) == 0:
                 return empty_table(include_quality=self.__quality_mapper.is_present())
             return pa.concat_tables(tables)
+
+    def _map_data_columns(self, table: pa.Table, selector: SeriesSelector) -> pa.Table:
+        """Convert a table returned by the data query to the Kukur schema.
+
+        The data query returns a timestamp column, one column per configured
+        field and, when a quality mapping is configured, a quality column.
+        The column of the requested field becomes the value column.
+        """
+        column_names = ["ts"] + self._config.field_columns
+        include_quality = self.__quality_mapper.is_present()
+        if include_quality:
+            column_names.append("quality")
+
+        if table.num_columns != len(column_names):
+            raise InvalidDataError(
+                f"`data_query` returns {table.num_columns} columns,"
+                f" expected {len(column_names)}: {', '.join(column_names)}"
+            )
+
+        if selector.field not in self._config.field_columns:
+            raise InvalidDataError(
+                f'field "{selector.field}" is not in `field_columns`'
+            )
+
+        table = table.rename_columns(column_names)
+        selected_names = ["ts", selector.field]
+        result_names = ["ts", "value"]
+        if include_quality:
+            selected_names.append("quality")
+            result_names.append("quality")
+        table = table.select(selected_names)
+        if include_quality:
+            table = table.set_column(
+                2, "quality", quality.normalize_array(table["quality"])
+            )
+        return table.rename_columns(result_names)
 
     def _configure_session(self, session) -> None:
         if self._config.connection.proxy:

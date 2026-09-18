@@ -12,6 +12,7 @@ import pytest
 from pyarrow import ipc
 
 from kukur import SeriesSearch, SeriesSelector
+from kukur.exceptions import InvalidDataError
 from kukur.metadata import Metadata
 from kukur.quality import QualityMapper
 from kukur.source.databricks_sql.databricks_rest import (
@@ -196,6 +197,31 @@ class GetDataMock:
         raise Exception("unknown GET request")
 
 
+class GetFieldDataMock:
+    def __init__(self, *, include_quality: bool):
+        self.include_quality = include_quality
+
+    def mock_get(self, *args, **kwargs) -> MockResponse | MockBinaryResponse:
+        url = args[0]
+        if (
+            url
+            == f"https://{HOST}/api/2.0/sql/statements/{STATEMENT_ID}/result/chunks/2"
+        ):
+            return MockResponse(LAST_CHUNK, 200)
+        if url in ["https://provider/data/1", "https://provider/data/2"]:
+            index = 1 if url == "https://provider/data/1" else 2
+            columns: dict = {
+                "ts": [datetime.fromisoformat(f"2026-01-0{index}T00:00:00+00:00")],
+                "value": [index],
+                "setpoint": [index * 10],
+            }
+            if self.include_quality:
+                columns["quality"] = [1]
+            table = pa.Table.from_pydict(columns)
+            return MockBinaryResponse(_get_ipc_bytes(table), 200)
+        raise Exception("unknown GET request")
+
+
 def mock_no_data_post(*args, **kwargs) -> MockResponse:
     body = kwargs["json"]
     assert body["warehouse_id"] == WAREHOUSE_ID
@@ -205,27 +231,34 @@ def mock_no_data_post(*args, **kwargs) -> MockResponse:
     return MockResponse(STATEMENT_NO_DATA, 200)
 
 
-def get_source() -> DatabricksStatementExecutionSource:
-    config = StatementExecutionConfiguration.from_data(
-        {
-            "connection": {
-                "host": HOST,
-                "warehouse_id": WAREHOUSE_ID,
-                "password": PASSWORD,
-            },
-            "tag_columns": ["series name"],
-            "metadata_columns": ["description"],
-            "list_query": "select name, description from metadata",
-            "list_columns": ["series name", "description"],
-            "data_query": """
-                select ts, value
-                from data
-                where name = :series_name
-                  and ts >= :start_date and ts < :end_date""",
-        }
-    )
+def get_source(
+    *,
+    field_columns: list[str] | None = None,
+    quality_mapper: QualityMapper | None = None,
+) -> DatabricksStatementExecutionSource:
+    config_data = {
+        "connection": {
+            "host": HOST,
+            "warehouse_id": WAREHOUSE_ID,
+            "password": PASSWORD,
+        },
+        "tag_columns": ["series name"],
+        "metadata_columns": ["description"],
+        "list_query": "select name, description from metadata",
+        "list_columns": ["series name", "description"],
+        "data_query": """
+            select ts, value
+            from data
+            where name = :series_name
+              and ts >= :start_date and ts < :end_date""",
+    }
+    if field_columns is not None:
+        config_data["field_columns"] = field_columns
+    config = StatementExecutionConfiguration.from_data(config_data)
+    if quality_mapper is None:
+        quality_mapper = QualityMapper()
     return DatabricksStatementExecutionSource(
-        config, MetadataValueMapper(), QualityMapper()
+        config, MetadataValueMapper(), quality_mapper
     )
 
 
@@ -260,6 +293,62 @@ def test_data() -> None:
     )
     assert len(data) == 2
     assert data["value"].to_pylist() == [1, 2]
+
+
+@patch("requests.Session.post", mock_post)
+@patch("requests.Session.get", GetFieldDataMock(include_quality=False).mock_get)
+def test_data_multiple_fields() -> None:
+    source = get_source(field_columns=["value", "setpoint"])
+    data = source.get_data(
+        SeriesSelector("databricks", {"series name": "test-tag-1"}, "setpoint"),
+        datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
+        datetime.fromisoformat("2026-02-01T00:00:00+00:00"),
+    )
+    assert data.column_names == ["ts", "value"]
+    assert len(data) == 2
+    assert data["value"].to_pylist() == [10, 20]
+
+
+@patch("requests.Session.post", mock_post)
+@patch("requests.Session.get", GetFieldDataMock(include_quality=True).mock_get)
+def test_data_multiple_fields_with_quality() -> None:
+    source = get_source(
+        field_columns=["value", "setpoint"],
+        quality_mapper=QualityMapper.from_config({"GOOD": [1]}),
+    )
+    data = source.get_data(
+        SeriesSelector("databricks", {"series name": "test-tag-1"}, "setpoint"),
+        datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
+        datetime.fromisoformat("2026-02-01T00:00:00+00:00"),
+    )
+    assert data.column_names == ["ts", "value", "quality"]
+    assert len(data) == 2
+    assert data["value"].to_pylist() == [10, 20]
+    assert data["quality"].to_pylist() == [1, 1]
+
+
+@patch("requests.Session.post", mock_post)
+@patch("requests.Session.get", GetFieldDataMock(include_quality=False).mock_get)
+def test_data_unexpected_column_count() -> None:
+    source = get_source()
+    with pytest.raises(InvalidDataError):
+        source.get_data(
+            SeriesSelector("databricks", "test-tag-1"),
+            datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
+            datetime.fromisoformat("2026-02-01T00:00:00+00:00"),
+        )
+
+
+@patch("requests.Session.post", mock_post)
+@patch("requests.Session.get", GetFieldDataMock(include_quality=False).mock_get)
+def test_data_unknown_field() -> None:
+    source = get_source(field_columns=["value", "setpoint"])
+    with pytest.raises(InvalidDataError):
+        source.get_data(
+            SeriesSelector("databricks", {"series name": "test-tag-1"}, "other"),
+            datetime.fromisoformat("2026-01-01T00:00:00+00:00"),
+            datetime.fromisoformat("2026-02-01T00:00:00+00:00"),
+        )
 
 
 @patch("requests.Session.post", mock_no_data_post)
