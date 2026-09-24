@@ -392,22 +392,16 @@ def test_get_element_templates(_, af: PIAssetFramework) -> None:
     reactor_template = [
         template for template in element_templates if template.name == "Reactor"
     ][0]
-    assert len(reactor_template.attribute_templates) == 2
-    assert "Temperature" in [
-        attribute.name for attribute in reactor_template.attribute_templates
-    ]
-    temperature_template = [
-        attribute
-        for attribute in reactor_template.attribute_templates
-        if attribute.name == "Temperature"
-    ][0]
-    assert temperature_template.categories == ["Measurement"]
-    status_template = [
-        attribute
-        for attribute in reactor_template.attribute_templates
-        if attribute.name == "Status|Active"
-    ][0]
-    assert len(status_template.categories) == 0
+    assert len(reactor_template.attribute_templates) == 4
+    attribute_templates = {
+        attribute.name: attribute for attribute in reactor_template.attribute_templates
+    }
+    assert attribute_templates["Temperature"].categories == ["Measurement"]
+    assert attribute_templates["Temperature"].is_data
+    assert not attribute_templates["TemperatureKelvin"].is_data
+    assert not attribute_templates["Status"].is_data
+    assert len(attribute_templates["Status|Active"].categories) == 0
+    assert attribute_templates["Status|Active"].is_data
 
 
 @patch("requests.Session.post", side_effect=mocked_requests_batch_error_templates)
@@ -436,10 +430,12 @@ def test_get_element_templates_formula(_, af: PIAssetFramework) -> None:
     reactor_template = [
         template for template in element_templates if template.name == "Reactor"
     ][0]
-    assert len(reactor_template.attribute_templates) == 1
-    assert "TemperatureKelvin" in [
-        attribute.name for attribute in reactor_template.attribute_templates
-    ]
+    assert len(reactor_template.attribute_templates) == 4
+    assert [
+        attribute.name
+        for attribute in reactor_template.attribute_templates
+        if attribute.is_data
+    ] == ["TemperatureKelvin"]
 
 
 @patch("requests.Session.get", side_effect=mocked_requests_get)

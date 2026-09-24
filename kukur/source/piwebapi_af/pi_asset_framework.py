@@ -99,6 +99,7 @@ class AttributeTemplate:
     name: str
     description: str
     categories: list[str]
+    is_data: bool
 
 
 @dataclass
@@ -758,10 +759,10 @@ class PIAssetFramework:
                             item["Path"].split("|", maxsplit=1)[1],
                             item["Description"],
                             item["CategoryNames"],
+                            item["DataReferencePlugIn"]
+                            in self._config.allowed_data_references,
                         )
                         for item in attributes["Content"].get("Items", [])
-                        if item["DataReferencePlugIn"]
-                        in self._config.allowed_data_references
                     ],
                 )
             )
