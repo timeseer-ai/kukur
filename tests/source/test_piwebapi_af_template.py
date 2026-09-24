@@ -615,6 +615,7 @@ def mocked_requests_post(*args, **kwargs):
 
         if "templateName=Reactor" in kwargs["json"]["GetElements"]["Resource"]:
             uri = kwargs["json"]["GetElements"]["Resource"]
+            assert parse_qs(urlparse(uri).query)["webIdType"] == ["Full"]
             assert uri.startswith(f"{DATABASE_URI}/elements") or uri.startswith(
                 f"{ROOT_URI}/elements"
             )

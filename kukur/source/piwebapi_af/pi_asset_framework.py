@@ -322,7 +322,7 @@ class PIAssetFramework:
                 ),
                 "maxCount": self._request_properties.max_returned_metadata_items_per_call,
                 "startIndex": start_index,
-                "webIdFormat": self._request_properties.web_id_type,
+                "webIdType": self._request_properties.web_id_type,
             }
             if self._config.element_category is not None:
                 element_params["categoryName"] = self._config.element_category

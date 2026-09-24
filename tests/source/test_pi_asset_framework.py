@@ -176,75 +176,6 @@ ATTRIBUTE_CATEGORIES_RESPONSE = {
     ],
 }
 
-BATCH_ATTRIBUTE_CATEGORY_RESPONSE = {
-    "GetElement": {
-        "Status": 207,
-        "Headers": {},
-        "Content": {
-            "Total": 2,
-            "Items": [
-                {
-                    "Status": 200,
-                    "Content": {
-                        "WebId": "R1",
-                        "Name": "Reactor01",
-                        "Description": "",
-                        "TemplateName": "Reactor",
-                        "CategoryNames": [],
-                    },
-                },
-                {
-                    "Status": 200,
-                    "Content": {
-                        "WebId": "R2",
-                        "Name": "Reactor02",
-                        "Description": "",
-                        "TemplateName": "Reactor",
-                        "CategoryNames": [],
-                    },
-                },
-            ],
-        },
-    },
-    "GetAttributes": {
-        "Status": 200,
-        "Content": {
-            "Items": [
-                {
-                    "WebId": "A1",
-                    "Name": "Level",
-                    "Description": "",
-                    "Path": "\\\\vm-ts-pi\\WriteBack\\Reactors\\Reactor01|Level",
-                    "Type": "Double",
-                    "TypeQualifier": "",
-                    "DefaultUnitsNameAbbreviation": "",
-                    "DataReferencePlugIn": "PI Point",
-                    "CategoryNames": ["Validation"],
-                    "Step": False,
-                    "Span": 100.0,
-                    "Zero": 0.0,
-                    "Links": {"Element": "https://pi.timeseer.ai/piwebapi/elements/A1"},
-                },
-                {
-                    "WebId": "A2",
-                    "Name": "Level",
-                    "Description": "",
-                    "Path": "\\\\vm-ts-pi\\WriteBack\\Reactors\\Reactor02|Level",
-                    "Type": "Double",
-                    "TypeQualifier": "",
-                    "DefaultUnitsNameAbbreviation": "",
-                    "DataReferencePlugIn": "PI Point",
-                    "CategoryNames": ["Validation"],
-                    "Step": False,
-                    "Span": 100.0,
-                    "Zero": 0.0,
-                    "Links": {"Element": "https://pi.timeseer.ai/piwebapi/elements/A2"},
-                },
-            ]
-        },
-    },
-}
-
 
 class MockResponse:
     def __init__(self, json_data, status_code):
@@ -276,9 +207,6 @@ def mocked_requests_post(*args, **kwargs):
 
             response = BATCH_ELEMENT_TEMPLATES_RESPONSE
             return MockResponse(response, 200)
-        if "GetElement" in kwargs["json"]:
-            assert "webIdFormat" in kwargs["params"]
-            return MockResponse(BATCH_ATTRIBUTE_CATEGORY_RESPONSE, 200)
 
     raise Exception(args[0])
 
