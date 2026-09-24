@@ -1,15 +1,19 @@
 # SPDX-FileCopyrightText: 2025 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
+import copy
+import logging
 import re
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlparse
 
 import pytest
+import requests
 
 from kukur import DataType
 from kukur.base import SeriesSearch
 from kukur.exceptions import KukurException
+from kukur.metadata import fields
 from kukur.source.piwebapi_af.pi_asset_framework import (
     BatchRequestFailedException,
     ElementInOtherDatabaseException,
@@ -611,6 +615,7 @@ def mocked_requests_post(*args, **kwargs):
 
         if "templateName=Reactor" in kwargs["json"]["GetElements"]["Resource"]:
             uri = kwargs["json"]["GetElements"]["Resource"]
+            assert parse_qs(urlparse(uri).query)["webIdType"] == ["Full"]
             assert uri.startswith(f"{DATABASE_URI}/elements") or uri.startswith(
                 f"{ROOT_URI}/elements"
             )
@@ -1170,3 +1175,192 @@ def test_search_error_get_attributes(_) -> None:
     )
     with pytest.raises(BatchRequestFailedException):
         list(source.search(SeriesSearch("Test")))
+
+
+ELEMENT_PATHS = {
+    "R1": "\\\\vm-ts-pi\\Timeseer\\Reactor01",
+    "R2": "\\\\vm-ts-pi\\Timeseer\\Reactor02",
+}
+
+METADATA_ATTRIBUTE_VALUES = {
+    "R1": [
+        ("Location", {"Value": "Houston", "Good": True}),
+        ("Status|Active", {"Value": 1.0, "Good": True}),
+        ("Other|Active", {"Value": 0.0, "Good": True}),
+        (
+            "Status|Phase",
+            {"Value": {"Name": "Phase2", "Value": 1, "IsSystem": False}, "Good": True},
+        ),
+    ],
+    "R2": [
+        ("Location", {"Value": "Antwerp", "Good": False}),
+        (
+            "Status|Phase",
+            {
+                "Value": {"Name": "No Data", "Value": 248, "IsSystem": True},
+                "Good": True,
+            },
+        ),
+    ],
+}
+
+METADATA_ATTRIBUTES = {
+    "location": "Location",
+    "active": "Status|Active",
+    "phase": "Status|Phase",
+}
+
+
+def _with_element_paths(response: dict) -> dict:
+    response = copy.deepcopy(response)
+    if "GetElements" in response:
+        elements = response["GetElements"]["Content"]["Items"]
+    else:
+        elements = [
+            item["Content"] for item in response["GetElement"]["Content"]["Items"]
+        ]
+    for element in elements:
+        element["Path"] = ELEMENT_PATHS[element["WebId"]]
+    return response
+
+
+def _metadata_attribute_response(batch_query: dict) -> dict:
+    result = {}
+    for batch_id, request in batch_query.items():
+        url = urlparse(request["Resource"])
+        assert url.path.endswith("/value")
+        web_id = url.path.split("/")[-2]
+        query = parse_qs(url.query)
+        name_filter = query["nameFilter"][0]
+        search_full_hierarchy = query["searchFullHierarchy"][0] == "true"
+        if web_id == "R2" and name_filter == "Active":
+            result[batch_id] = {
+                "Status": 400,
+                "Headers": {},
+                "Content": {"Errors": ["Lookup failed"]},
+            }
+            continue
+        items = [
+            {"Path": f"{ELEMENT_PATHS[web_id]}|{path}", "Value": value}
+            for path, value in METADATA_ATTRIBUTE_VALUES[web_id]
+            if path.split("|")[-1] == name_filter
+            and (search_full_hierarchy or "|" not in path)
+        ]
+        result[batch_id] = {"Status": 200, "Headers": {}, "Content": {"Items": items}}
+    return result
+
+
+def mocked_requests_metadata_attributes(*args, **kwargs):
+    if args[0] == f"{WEB_API_URI}batch":
+        batch_query = kwargs["json"]
+        if "GetElements" in batch_query:
+            return MockResponse(_with_element_paths(BATCH_RESPONSE), 200)
+        if "GetElement" in batch_query:
+            return MockResponse(
+                _with_element_paths(BATCH_ATTRIBUTE_CATEGORY_RESPONSE), 200
+            )
+        assert kwargs["timeout"] == 10
+        return MockResponse(_metadata_attribute_response(batch_query), 207)
+    raise Exception(args[0])
+
+
+def mocked_requests_metadata_attributes_timeout(*args, **kwargs):
+    if args[0] == f"{WEB_API_URI}batch":
+        batch_query = kwargs["json"]
+        if "GetElements" in batch_query:
+            return MockResponse(_with_element_paths(BATCH_RESPONSE), 200)
+        raise requests.exceptions.ReadTimeout("Read timed out")
+    raise Exception(args[0])
+
+
+@patch("requests.Session.get", side_effect=mocked_requests_get)
+@patch("requests.Session.post", side_effect=mocked_requests_metadata_attributes)
+def test_search_metadata_attributes(post, _get, caplog) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "element_template": "Reactor",
+            "metadata_attributes": METADATA_ATTRIBUTES,
+        }
+    )
+    with caplog.at_level(logging.WARNING):
+        series_metadata = list(source.search(SeriesSearch("Test")))
+    assert len(series_metadata) == 10
+
+    assert len(post.call_args_list) == 2
+    assert len(post.call_args_list[1].kwargs["json"]) == 2 * len(METADATA_ATTRIBUTES)
+
+    for metadata in series_metadata:
+        if metadata.series.tags["series name"] == "Reactor01":
+            assert metadata.get_field_by_name("location") == "Houston"
+            assert metadata.get_field_by_name("active") == 1.0
+            assert metadata.get_field_by_name("phase") == "Phase2"
+        else:
+            assert metadata.get_field_by_name("location") is None
+            assert metadata.get_field_by_name("active") is None
+            assert metadata.get_field_by_name("phase") is None
+
+    assert "Lookup failed" in caplog.text
+
+
+@patch("requests.Session.post", side_effect=mocked_requests_metadata_attributes)
+def test_search_by_category_metadata_attributes(_post) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "attribute_category": "Validation Series",
+            "metadata_attributes": METADATA_ATTRIBUTES,
+        }
+    )
+    series_metadata = list(source.search(SeriesSearch("Test")))
+    assert len(series_metadata) == 2
+    assert series_metadata[0].series.tags["series name"] == "Reactor01"
+    assert series_metadata[0].get_field_by_name("location") == "Houston"
+    assert series_metadata[1].series.tags["series name"] == "Reactor02"
+    assert series_metadata[1].get_field_by_name("location") is None
+
+
+@patch("requests.Session.get", side_effect=mocked_requests_get)
+@patch("requests.Session.post", side_effect=mocked_requests_metadata_attributes)
+def test_search_metadata_attributes_known_field(_post, _get, caplog) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "element_template": "Reactor",
+            "metadata_attributes": {
+                "description": "Location",
+                "functional lower limit": "Status|Phase",
+                "functional upper limit": "Status|Active",
+            },
+        }
+    )
+    with caplog.at_level(logging.WARNING):
+        series_metadata = list(source.search(SeriesSearch("Test")))
+    metadata = [
+        metadata
+        for metadata in series_metadata
+        if metadata.series.tags["series name"] == "Reactor01"
+    ][0]
+    assert metadata.get_field(fields.Description) == "Houston"
+    assert metadata.get_field(fields.LimitLowFunctional) == 0.0
+    assert metadata.get_field(fields.LimitHighFunctional) == 1.0
+    assert caplog.text.count("Invalid value") == 1
+    assert "element Reactor01" in caplog.text
+
+
+@patch("requests.Session.get", side_effect=mocked_requests_get)
+@patch("requests.Session.post", side_effect=mocked_requests_metadata_attributes_timeout)
+def test_search_metadata_attributes_timeout(_post, _get, caplog) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "element_template": "Reactor",
+            "metadata_attributes": METADATA_ATTRIBUTES,
+        }
+    )
+    with caplog.at_level(logging.WARNING):
+        series_metadata = list(source.search(SeriesSearch("Test")))
+    assert len(series_metadata) == 10
+    for metadata in series_metadata:
+        assert metadata.get_field_by_name("location") is None
+    assert "Read timed out" in caplog.text
