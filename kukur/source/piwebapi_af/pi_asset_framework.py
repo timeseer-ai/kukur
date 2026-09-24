@@ -10,6 +10,7 @@ from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import PurePosixPath
+from typing import Any
 
 import pyarrow as pa
 from dateutil.parser import isoparse as parse_date
@@ -27,7 +28,7 @@ from kukur.quality import Quality
 
 try:
     import urllib3
-    from requests import Session
+    from requests import RequestException, Session
 
     HAS_REQUESTS = True
 except ImportError:
@@ -62,6 +63,7 @@ class AFTemplateSourceConfiguration:
     allowed_data_references: list[str]
     attributes_as_fields: bool
     use_attribute_path: bool
+    metadata_attributes: dict[str, str]
 
     @classmethod
     def from_data(cls, config: dict) -> "AFTemplateSourceConfiguration":
@@ -76,6 +78,7 @@ class AFTemplateSourceConfiguration:
             config.get("allowed_data_references", ["PI Point"]),
             config.get("attributes_as_fields", True),
             config.get("use_attribute_path", False),
+            config.get("metadata_attributes", {}),
         )
 
 
@@ -300,6 +303,7 @@ class PIAssetFramework:
         self, selector: SeriesSearch
     ) -> Generator[Metadata, None, None]:
         dictionary_lookup = _DictionaryLookup(self._request_properties, self._session)
+        metadata_attribute_lookup = self._create_metadata_attribute_lookup()
         start_index = 0
         while True:
             element_params = {
@@ -309,6 +313,7 @@ class PIAssetFramework:
                     [
                         "Items.Name",
                         "Items.WebId",
+                        "Items.Path",
                         "Items.Description",
                         "Items.CategoryNames",
                         "Items.Links.Attributes",
@@ -381,7 +386,11 @@ class PIAssetFramework:
             elements = result["GetElements"]["Content"].get("Items", [])
             attributes = result["GetAttributes"]["Content"]["Items"]
             yield from self._create_template_metadata(
-                selector, elements, attributes, dictionary_lookup
+                selector,
+                elements,
+                attributes,
+                dictionary_lookup,
+                metadata_attribute_lookup,
             )
 
             element_count = len(elements)
@@ -399,7 +408,9 @@ class PIAssetFramework:
         elements: list,
         attributes: list,
         dictionary_lookup: "_DictionaryLookup",
+        metadata_attribute_lookup: "_MetadataAttributeLookup",
     ) -> Generator[Metadata, None, None]:
+        metadata_attribute_values = metadata_attribute_lookup.lookup(elements)
         for i, element in enumerate(elements):
             element_metadata = {self._config.element_template: element["Name"]}
             if len(element["CategoryNames"]) > 0:
@@ -439,6 +450,11 @@ class PIAssetFramework:
                                 fields.Description, element["Description"]
                             )
                         dictionary_lookup.lookup_dictionary(metadata, attribute)
+                        _set_metadata_attribute_values(
+                            metadata,
+                            element,
+                            metadata_attribute_values.get(element["WebId"], {}),
+                        )
                         yield metadata
 
     def _search_attribute_category(
@@ -481,6 +497,7 @@ class PIAssetFramework:
                     [
                         "Name",
                         "WebId",
+                        "Path",
                         "Description",
                         "TemplateName",
                         "CategoryNames",
@@ -540,10 +557,14 @@ class PIAssetFramework:
         self, source_name: str, result: dict
     ) -> Generator[Metadata, None, None]:
         dictionary_lookup = _DictionaryLookup(self._request_properties, self._session)
-        for i, element_request in enumerate(
-            result["GetElement"]["Content"].get("Items")
-        ):
-            element = element_request["Content"]
+        elements = [
+            element_request["Content"]
+            for element_request in result["GetElement"]["Content"].get("Items")
+        ]
+        metadata_attribute_values = self._create_metadata_attribute_lookup().lookup(
+            elements
+        )
+        for i, element in enumerate(elements):
             element_metadata = {}
             if (
                 "TemplateName" in element
@@ -587,6 +608,11 @@ class PIAssetFramework:
                     if metadata.get_field(fields.Description) == "":
                         metadata.set_field(fields.Description, element["Description"])
                     dictionary_lookup.lookup_dictionary(metadata, attribute)
+                    _set_metadata_attribute_values(
+                        metadata,
+                        element,
+                        metadata_attribute_values.get(element["WebId"], {}),
+                    )
                     yield metadata
 
     def get_data(
@@ -800,6 +826,14 @@ class PIAssetFramework:
     def _get_batch_url(self) -> str:
         return self._url.root("batch")
 
+    def _create_metadata_attribute_lookup(self) -> "_MetadataAttributeLookup":
+        return _MetadataAttributeLookup(
+            self._config.metadata_attributes,
+            self._request_properties,
+            self._session,
+            self._url,
+        )
+
     def _get_data_url(self, selector: SeriesSelector) -> str:
         return self._url.root(["streams", selector.tags["__id__"], "recorded"])
 
@@ -967,6 +1001,128 @@ class _DictionaryLookup:
                 self._lookup[dictionary_name] = Dictionary(mapping)
 
             metadata.set_field(fields.Dictionary, self._lookup.get(dictionary_name))
+
+
+class _MetadataAttributeLookup:
+    """Look up the values of element attributes that provide metadata.
+
+    The values are requested in a separate batch request.
+    Value lookups can be slow or fail,
+    which should not prevent the series of an element from being found.
+    """
+
+    def __init__(
+        self,
+        metadata_attributes: dict[str, str],
+        request_properties: RequestProperties,
+        session,
+        url: DatabaseURLBuilder,
+    ):
+        self._metadata_attributes = metadata_attributes
+        self._request_properties = request_properties
+        self._session = session
+        self._url = url
+
+    def lookup(self, elements: list[dict]) -> dict[str, dict[str, Any]]:
+        """Return the metadata values of the given elements by element WebId."""
+        if len(self._metadata_attributes) == 0 or len(elements) == 0:
+            return {}
+
+        batch_query = {}
+        lookups = {}
+        unique_elements = {element["WebId"]: element for element in elements}
+        for i, element in enumerate(unique_elements.values()):
+            for j, (field_name, attribute_path) in enumerate(
+                self._metadata_attributes.items()
+            ):
+                params = {
+                    "nameFilter": attribute_path.split("|")[-1],
+                    "searchFullHierarchy": "true" if "|" in attribute_path else "false",
+                    "selectedFields": ";".join(
+                        [
+                            "Items.Path",
+                            "Items.Value.Value",
+                            "Items.Value.Good",
+                        ]
+                    ),
+                }
+                batch_id = f"{i}.{j}"
+                batch_query[batch_id] = {
+                    "Method": "GET",
+                    "Resource": add_query_params(
+                        self._url.root(["streamsets", element["WebId"], "value"]),
+                        params,
+                    ),
+                }
+                lookups[batch_id] = (
+                    element["WebId"],
+                    field_name,
+                    f"{element['Path']}|{attribute_path}",
+                )
+
+        try:
+            response = self._session.post(
+                self._url.root("batch"),
+                timeout=self._request_properties.metadata_request_timeout_seconds,
+                json=batch_query,
+            )
+            response.raise_for_status()
+            result = response.json()
+        except (RequestException, ValueError) as err:
+            logger.warning("Failed to look up metadata attribute values: %s", err)
+            return {}
+
+        values: dict[str, dict[str, Any]] = {}
+        for batch_id, (web_id, field_name, path) in lookups.items():
+            batch_response = result.get(batch_id)
+            if batch_response is None:
+                continue
+            if batch_response["Status"] != HTTP_OK:
+                logger.warning(
+                    "Failed to look up metadata attribute %s: %s",
+                    path,
+                    _extract_error(batch_response),
+                )
+                continue
+            for item in batch_response["Content"].get("Items", []):
+                if item["Path"] != path:
+                    continue
+                value = _get_metadata_attribute_value(item["Value"])
+                if value is not None:
+                    values.setdefault(web_id, {})[field_name] = value
+        return values
+
+
+def _get_metadata_attribute_value(value: dict) -> Any | None:
+    if not value.get("Good", True):
+        return None
+    attribute_value = value.get("Value")
+    if isinstance(attribute_value, dict):
+        if attribute_value.get("IsSystem", False):
+            return None
+        return attribute_value.get("Name")
+    return attribute_value
+
+
+def _set_metadata_attribute_values(
+    metadata: Metadata, element: dict, values: dict[str, Any]
+):
+    """Set the metadata attribute values of an element on the metadata of a series.
+
+    Invalid values are removed from the values of the element,
+    to warn only once for all series of the element.
+    """
+    for field_name, value in list(values.items()):
+        try:
+            metadata.coerce_field(field_name, value)
+        except ValueError:
+            logger.warning(
+                'Invalid value "%s" for metadata field "%s" of element %s',
+                value,
+                field_name,
+                element["Name"],
+            )
+            del values[field_name]
 
 
 def _read_data(
