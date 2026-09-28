@@ -64,6 +64,7 @@ class AFTemplateSourceConfiguration:
     attributes_as_fields: bool
     use_attribute_path: bool
     metadata_attributes: dict[str, str]
+    element_paths: list[str] | None
 
     @classmethod
     def from_data(cls, config: dict) -> "AFTemplateSourceConfiguration":
@@ -79,6 +80,7 @@ class AFTemplateSourceConfiguration:
             config.get("attributes_as_fields", True),
             config.get("use_attribute_path", False),
             config.get("metadata_attributes", {}),
+            config.get("element_paths"),
         )
 
 
@@ -285,7 +287,9 @@ class PIAssetFramework:
 
     def search(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
         """Return all attributes in the Asset Framework."""
-        if (
+        if self._config.element_paths is not None:
+            yield from self._search_element_paths(selector)
+        elif (
             self._config.element_template is not None
             and self._config.element_template.strip() != ""
         ):
@@ -326,30 +330,6 @@ class PIAssetFramework:
             }
             if self._config.element_category is not None:
                 element_params["categoryName"] = self._config.element_category
-            attribute_params = {
-                "searchFullHierarchy": "true",
-                "selectedFields": ";".join(
-                    [
-                        "Items.WebId",
-                        "Items.Name",
-                        "Items.Description",
-                        "Items.Path",
-                        "Items.CategoryNames",
-                        "Items.DataReferencePlugin",
-                        "Items.Type",
-                        "Items.TypeQualifier",
-                        "Items.DefaultUnitsNameAbbreviation",
-                        "Items.Step",
-                        "Items.Span",
-                        "Items.Zero",
-                        "Items.Links.EnumerationValues",
-                    ]
-                ),
-                "maxCount": self._request_properties.max_returned_metadata_items_per_call,
-                "webIdType": self._request_properties.web_id_type,
-            }
-            if self._config.attribute_category is not None:
-                attribute_params["categoryName"] = self._config.attribute_category
             batch_query = {
                 "GetElements": {
                     "Method": "GET",
@@ -363,7 +343,7 @@ class PIAssetFramework:
                     "RequestTemplate": {
                         "Resource": "{0}?"
                         + urllib.parse.urlencode(
-                            attribute_params,
+                            self._get_element_attribute_params(),
                             doseq=True,
                         ),
                     },
@@ -413,7 +393,10 @@ class PIAssetFramework:
     ) -> Generator[Metadata, None, None]:
         metadata_attribute_values = metadata_attribute_lookup.lookup(elements)
         for i, element in enumerate(elements):
-            element_metadata = {self._config.element_template: element["Name"]}
+            element_metadata = {}
+            template_name = element.get("TemplateName", self._config.element_template)
+            if template_name:
+                element_metadata[template_name] = element["Name"]
             if len(element["CategoryNames"]) > 0:
                 element_metadata["Element category"] = ";".join(
                     element["CategoryNames"]
@@ -457,6 +440,97 @@ class PIAssetFramework:
                             metadata_attribute_values.get(element["WebId"], {}),
                         )
                         yield metadata
+
+    def _search_element_paths(
+        self, selector: SeriesSearch
+    ) -> Generator[Metadata, None, None]:
+        assert self._config.element_paths is not None
+        dictionary_lookup = _DictionaryLookup(self._request_properties, self._session)
+        metadata_attribute_lookup = self._create_metadata_attribute_lookup()
+        page_size = self._request_properties.max_returned_metadata_items_per_call
+        for start_index in range(0, len(self._config.element_paths), page_size):
+            elements, attributes = self._get_elements_by_path(
+                self._config.element_paths[start_index : start_index + page_size]
+            )
+            yield from self._create_template_metadata(
+                selector,
+                elements,
+                attributes,
+                dictionary_lookup,
+                metadata_attribute_lookup,
+            )
+
+    def _get_elements_by_path(self, element_paths: list[str]) -> tuple[list, list]:
+        """Return the elements at the given paths and their attributes.
+
+        Each element is requested separately, as paths do not fit in one URL.
+        """
+        element_params = {
+            "selectedFields": ";".join(
+                [
+                    "Name",
+                    "WebId",
+                    "Path",
+                    "Description",
+                    "TemplateName",
+                    "CategoryNames",
+                    "Links.Attributes",
+                    "Links.Database",
+                ]
+            ),
+        }
+        attribute_resource = "{0}?" + urllib.parse.urlencode(
+            self._get_element_attribute_params(),
+            doseq=True,
+        )
+        batch_query: dict[str, dict] = {}
+        for i, element_path in enumerate(element_paths):
+            batch_query[f"GetElement{i}"] = {
+                "Method": "GET",
+                "Resource": add_query_params(
+                    self._url.root("elements"),
+                    {**element_params, "path": element_path},
+                ),
+            }
+            batch_query[f"GetAttributes{i}"] = {
+                "Method": "GET",
+                "Resource": attribute_resource,
+                "Parameters": [f"$.GetElement{i}.Content.Links.Attributes"],
+                "ParentIds": [f"GetElement{i}"],
+            }
+
+        response = self._session.post(
+            self._get_batch_url(),
+            timeout=self._request_properties.metadata_request_timeout_seconds,
+            json=batch_query,
+        )
+        response.raise_for_status()
+        result = response.json()
+
+        elements = []
+        attributes = []
+        for i, element_path in enumerate(element_paths):
+            element_response = result[f"GetElement{i}"]
+            if element_response["Status"] != HTTP_OK:
+                logger.warning(
+                    "Failed to find element %s: %s",
+                    element_path,
+                    _extract_error(element_response),
+                )
+                continue
+            element = element_response["Content"]
+            if element["Links"]["Database"] != self._config.database_uri:
+                raise ElementInOtherDatabaseException(
+                    f"element {element_path} is not in configured database"
+                )
+            attribute_response = result[f"GetAttributes{i}"]
+            if attribute_response["Status"] >= HTTP_BAD_REQUEST:
+                raise BatchRequestFailedException(
+                    f"GetAttributes{i}: {_extract_error(attribute_response)}"
+                )
+            elements.append(element)
+            attributes.append(attribute_response)
+        return elements, attributes
 
     def _search_attribute_category(
         self, selector: SeriesSearch
@@ -834,6 +908,33 @@ class PIAssetFramework:
             self._session,
             self._url,
         )
+
+    def _get_element_attribute_params(self) -> dict:
+        attribute_params = {
+            "searchFullHierarchy": "true",
+            "selectedFields": ";".join(
+                [
+                    "Items.WebId",
+                    "Items.Name",
+                    "Items.Description",
+                    "Items.Path",
+                    "Items.CategoryNames",
+                    "Items.DataReferencePlugin",
+                    "Items.Type",
+                    "Items.TypeQualifier",
+                    "Items.DefaultUnitsNameAbbreviation",
+                    "Items.Step",
+                    "Items.Span",
+                    "Items.Zero",
+                    "Items.Links.EnumerationValues",
+                ]
+            ),
+            "maxCount": self._request_properties.max_returned_metadata_items_per_call,
+            "webIdType": self._request_properties.web_id_type,
+        }
+        if self._config.attribute_category is not None:
+            attribute_params["categoryName"] = self._config.attribute_category
+        return attribute_params
 
     def _get_data_url(self, selector: SeriesSelector) -> str:
         return self._url.root(["streams", selector.tags["__id__"], "recorded"])
