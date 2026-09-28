@@ -1364,3 +1364,232 @@ def test_search_metadata_attributes_timeout(_post, _get, caplog) -> None:
     for metadata in series_metadata:
         assert metadata.get_field_by_name("location") is None
     assert "Read timed out" in caplog.text
+
+
+PLANT_PATH = "\\\\vm-ts-pi\\Timeseer\\TSAI Houston"
+MISSING_PATH = "\\\\vm-ts-pi\\Timeseer\\TSAI Nowhere"
+
+ELEMENTS_BY_PATH = {
+    PLANT_PATH: (
+        {
+            "WebId": "P1",
+            "Name": "TSAI Houston",
+            "Description": "Plant Houston",
+            "Path": PLANT_PATH,
+            "TemplateName": "Plant",
+            "CategoryNames": [],
+            "Links": {
+                "Attributes": "https://pi.example.org/piwebapi/elements/P1/attributes",
+                "Database": DATABASE_URI,
+            },
+        },
+        [
+            {
+                "WebId": "P1_1",
+                "Name": "Active",
+                "Description": "",
+                "Path": f"{PLANT_PATH}|Active",
+                "Type": "Double",
+                "DefaultUnitsNameAbbreviation": "",
+                "DataReferencePlugIn": "PI Point",
+                "CategoryNames": ["Status"],
+                "Step": True,
+                "Span": 1.0,
+                "Zero": 0.0,
+            },
+            {
+                "WebId": "P1_2",
+                "Name": "Capacity",
+                "Description": "",
+                "Path": f"{PLANT_PATH}|Capacity",
+                "Type": "Double",
+                "DefaultUnitsNameAbbreviation": "",
+                "DataReferencePlugIn": "PI Point",
+                "CategoryNames": [],
+                "Step": False,
+                "Span": 100.0,
+                "Zero": 0.0,
+            },
+        ],
+    ),
+    "\\\\vm-ts-pi\\Timeseer\\TSAI Houston\\Reactor01": (
+        {
+            "WebId": "R1",
+            "Name": "Reactor01",
+            "Description": "Reactor Houston",
+            "Path": "\\\\vm-ts-pi\\Timeseer\\TSAI Houston\\Reactor01",
+            "TemplateName": "Reactor",
+            "CategoryNames": ["Production"],
+            "Links": {
+                "Attributes": "https://pi.example.org/piwebapi/elements/R1/attributes",
+                "Database": DATABASE_URI,
+            },
+        },
+        BATCH_RESPONSE["GetAttributes"]["Content"]["Items"][0]["Content"]["Items"],
+    ),
+}
+
+
+def _element_path_response(batch_query: dict, database_uri: str) -> dict:
+    result = {}
+    for batch_id, request in batch_query.items():
+        if not batch_id.startswith("GetElement"):
+            continue
+        index = batch_id.removeprefix("GetElement")
+        url = urlparse(request["Resource"])
+        assert url.path == "/piwebapi/elements"
+        path = parse_qs(url.query)["path"][0]
+        if path not in ELEMENTS_BY_PATH:
+            result[batch_id] = {
+                "Status": 404,
+                "Headers": {},
+                "Content": {"Errors": [f"Not found: '{path}'."]},
+            }
+            result[f"GetAttributes{index}"] = {
+                "Status": 409,
+                "Headers": {},
+                "Content": f"The following ParentIds did not complete successfully: {batch_id}.",
+            }
+            continue
+        element, attributes = ELEMENTS_BY_PATH[path]
+        element = copy.deepcopy(element)
+        element["Links"]["Database"] = database_uri
+        attributes_request = batch_query[f"GetAttributes{index}"]
+        assert attributes_request["Parameters"] == [
+            f"$.{batch_id}.Content.Links.Attributes"
+        ]
+        category = parse_qs(urlparse(attributes_request["Resource"]).query).get(
+            "categoryName"
+        )
+        result[batch_id] = {"Status": 200, "Headers": {}, "Content": element}
+        result[f"GetAttributes{index}"] = {
+            "Status": 200,
+            "Headers": {},
+            "Content": {
+                "Items": [
+                    attribute
+                    for attribute in attributes
+                    if category is None or category[0] in attribute["CategoryNames"]
+                ]
+            },
+        }
+    return result
+
+
+def mocked_requests_element_paths(*args, **kwargs):
+    if args[0] == f"{WEB_API_URI}batch":
+        return MockResponse(_element_path_response(kwargs["json"], DATABASE_URI), 207)
+    raise Exception(args[0])
+
+
+def mocked_requests_element_paths_other_database(*args, **kwargs):
+    if args[0] == f"{WEB_API_URI}batch":
+        return MockResponse(
+            _element_path_response(
+                kwargs["json"], "https://pi.example.org/piwebapi/hacker"
+            ),
+            207,
+        )
+    raise Exception(args[0])
+
+
+@patch("requests.Session.post", side_effect=mocked_requests_element_paths)
+def test_search_element_paths(_post, caplog) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "element_template": "Reactor",
+            "element_paths": [PLANT_PATH, MISSING_PATH],
+            "attributes_as_fields": False,
+        }
+    )
+    with caplog.at_level(logging.WARNING):
+        series_metadata = list(source.search(SeriesSearch("Test")))
+    assert [metadata.series.tags["series name"] for metadata in series_metadata] == [
+        "Active",
+        "Capacity",
+    ]
+    active = series_metadata[0]
+    assert active.series.tags["element"] == "TSAI Houston"
+    assert active.series.tags["__id__"] == "P1_1"
+    assert active.get_field_by_name("Plant") == "TSAI Houston"
+    assert active.get_field_by_name("Reactor") is None
+    assert active.get_field_by_name("Path") == f"{PLANT_PATH}|Active"
+    assert active.get_field(fields.Description) == "Plant Houston"
+    assert MISSING_PATH in caplog.text
+
+
+@patch("requests.Session.post", side_effect=mocked_requests_element_paths)
+def test_search_element_paths_attribute_filter(_post) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "element_paths": list(ELEMENTS_BY_PATH),
+            "attribute_names": ["Active", "Status|Active"],
+        }
+    )
+    series_metadata = list(source.search(SeriesSearch("Test")))
+    assert [metadata.series.tags["__id__"] for metadata in series_metadata] == [
+        "P1_1",
+        "A1_1",
+    ]
+
+
+@patch("requests.Session.get", side_effect=mocked_requests_get)
+@patch("requests.Session.post", side_effect=mocked_requests_element_paths)
+def test_search_element_paths_attribute_category(_post, _get) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "element_paths": list(ELEMENTS_BY_PATH),
+            "attribute_category": "Status",
+        }
+    )
+    series_metadata = list(source.search(SeriesSearch("Test")))
+    assert [metadata.series.tags["__id__"] for metadata in series_metadata] == [
+        "P1_1",
+        "A1_1",
+        "A1_4",
+    ]
+
+
+@patch("requests.Session.get", side_effect=mocked_requests_get)
+@patch("requests.Session.post", side_effect=mocked_requests_element_paths)
+def test_search_element_paths_pagination(post, _get) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "element_paths": [*ELEMENTS_BY_PATH, MISSING_PATH],
+            "max_returned_metadata_items_per_call": 2,
+        }
+    )
+    series_metadata = list(source.search(SeriesSearch("Test")))
+    assert len(series_metadata) == 7
+    assert [len(call.kwargs["json"]) for call in post.call_args_list] == [4, 2]
+
+
+@patch("requests.Session.post", side_effect=mocked_requests_element_paths)
+def test_search_element_paths_empty(post) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "element_template": "Reactor",
+            "element_paths": [],
+        }
+    )
+    assert list(source.search(SeriesSearch("Test"))) == []
+    assert post.call_count == 0
+
+
+@patch(
+    "requests.Session.post", side_effect=mocked_requests_element_paths_other_database
+)
+def test_search_element_paths_other_database(_post) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "element_paths": [PLANT_PATH],
+        }
+    )
+    with pytest.raises(ElementInOtherDatabaseException):
+        list(source.search(SeriesSearch("Test")))
