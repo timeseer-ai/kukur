@@ -5,12 +5,13 @@
 
 import json
 import logging
+import time
 import urllib.parse
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import PurePosixPath
-from typing import Any
+from typing import Any, TypeVar
 
 import pyarrow as pa
 from dateutil.parser import isoparse as parse_date
@@ -29,6 +30,8 @@ from kukur.quality import Quality
 try:
     import urllib3
     from requests import RequestException, Session
+    from requests.exceptions import ConnectionError as RequestsConnectionError
+    from requests.exceptions import HTTPError, Timeout
 
     HAS_REQUESTS = True
 except ImportError:
@@ -40,6 +43,11 @@ HTTP_OK = 200
 HTTP_MULTI_STATUS = 207
 HTTP_BAD_REQUEST = 400
 HTTP_NOT_FOUND = 404
+HTTP_TOO_MANY_REQUESTS = 429
+HTTP_SERVICE_UNAVAILABLE = 503
+TRANSIENT_STATUS_CODES = (HTTP_TOO_MANY_REQUESTS, HTTP_SERVICE_UNAVAILABLE)
+
+T = TypeVar("T")
 
 
 class ElementInOtherDatabaseException(KukurException):
@@ -48,6 +56,10 @@ class ElementInOtherDatabaseException(KukurException):
 
 class BatchRequestFailedException(KukurException):
     """Raised when a batch query fails."""
+
+
+class TransientBatchRequestFailedException(BatchRequestFailedException):
+    """Raised when a batch query fails because PI Web API is rate limited or unavailable."""
 
 
 @dataclass
@@ -139,6 +151,8 @@ class RequestProperties:
     max_returned_items_per_call: int
     max_returned_metadata_items_per_call: int
     web_id_type: str
+    retry_count: int
+    retry_delay: float
 
 
 @dataclass
@@ -279,6 +293,8 @@ class PIAssetFramework:
                 "max_returned_metadata_items_per_call", 150
             ),
             web_id_type=config.get("web_id_type", "Full"),
+            retry_count=config.get("query_retry_count", 0),
+            retry_delay=config.get("query_retry_delay", 1.0),
         )
 
         self._config = AFTemplateSourceConfiguration.from_data(config)
@@ -352,15 +368,7 @@ class PIAssetFramework:
                 },
             }
 
-            response = self._session.post(
-                self._get_batch_url(),
-                timeout=self._request_properties.metadata_request_timeout_seconds,
-                json=batch_query,
-            )
-            response.raise_for_status()
-            result = response.json()
-
-            result = validate_batch_response(result)
+            result = validate_batch_response(self._send_batch(batch_query))
             if result is None:
                 break
 
@@ -499,13 +507,7 @@ class PIAssetFramework:
                 "ParentIds": [f"GetElement{i}"],
             }
 
-        response = self._session.post(
-            self._get_batch_url(),
-            timeout=self._request_properties.metadata_request_timeout_seconds,
-            json=batch_query,
-        )
-        response.raise_for_status()
-        result = response.json()
+        result = self._send_batch(batch_query)
 
         elements = []
         attributes = []
@@ -605,15 +607,7 @@ class PIAssetFramework:
                 },
             }
 
-            response = self._session.post(
-                self._get_batch_url(),
-                timeout=self._request_properties.metadata_request_timeout_seconds,
-                json=batch_query,
-            )
-            response.raise_for_status()
-            result = response.json()
-
-            result = validate_batch_response(result)
+            result = validate_batch_response(self._send_batch(batch_query))
             if result is None:
                 break
 
@@ -901,6 +895,20 @@ class PIAssetFramework:
     def _get_batch_url(self) -> str:
         return self._url.root("batch")
 
+    def _send_batch(self, batch_query: dict) -> dict:
+        def send() -> dict:
+            response = self._session.post(
+                self._get_batch_url(),
+                timeout=self._request_properties.metadata_request_timeout_seconds,
+                json=batch_query,
+            )
+            response.raise_for_status()
+            result = response.json()
+            _raise_for_transient_failure(result)
+            return result
+
+        return _retry_transient(self._request_properties, send)
+
     def _create_metadata_attribute_lookup(self) -> "_MetadataAttributeLookup":
         return _MetadataAttributeLookup(
             self._config.metadata_attributes,
@@ -1017,6 +1025,50 @@ def _extract_error(item: dict) -> str:
     return json.dumps(content)
 
 
+def _raise_for_transient_failure(result: dict) -> None:
+    for batch_id, batch_response in result.items():
+        responses = [batch_response]
+        if batch_response["Status"] == HTTP_MULTI_STATUS:
+            responses.extend(batch_response["Content"]["Items"])
+        for response in responses:
+            if response["Status"] in TRANSIENT_STATUS_CODES:
+                raise TransientBatchRequestFailedException(
+                    f"{batch_id}: {_extract_error(response)}"
+                )
+
+
+def _is_transient(err: Exception) -> bool:
+    if isinstance(
+        err, (Timeout, RequestsConnectionError, TransientBatchRequestFailedException)
+    ):
+        return True
+    return (
+        isinstance(err, HTTPError)
+        and err.response is not None
+        and err.response.status_code in TRANSIENT_STATUS_CODES
+    )
+
+
+def _retry_transient(request_properties: RequestProperties, fn: Callable[[], T]) -> T:
+    """Call fn, retrying when PI Web API is rate limited, unavailable or times out.
+
+    Search results are generated while paging through PI Web API,
+    so the query retries of the source cannot retry them.
+    """
+    retries_left = request_properties.retry_count
+    while True:
+        try:
+            return fn()
+        except Exception as err:  # pylint: disable=broad-except
+            if retries_left == 0 or not _is_transient(err):
+                raise
+            logger.info(
+                "PI Web API request failed, %d retries left: %s", retries_left, err
+            )
+            retries_left = retries_left - 1
+            time.sleep(request_properties.retry_delay)
+
+
 def _get_metadata(
     selector: SeriesSelector, attribute: dict, extra_metadata: dict
 ) -> Metadata | None:
@@ -1080,22 +1132,12 @@ class _DictionaryLookup:
                 dictionary_name not in self._lookup
                 and "EnumerationValues" in attribute.get("Links", {})
             ):
-                response = self._session.get(
-                    attribute["Links"]["EnumerationValues"],
-                    verify=self._request_properties.verify_ssl,
-                    timeout=self._request_properties.metadata_request_timeout_seconds,
-                    headers={"X-Requested-With": "Kukur"},
-                    params={
-                        "selectedFields": ";".join(
-                            [
-                                "Items.Name",
-                                "Items.Value",
-                            ]
-                        ),
-                    },
+                result = _retry_transient(
+                    self._request_properties,
+                    lambda: self._get_enumeration_values(
+                        attribute["Links"]["EnumerationValues"]
+                    ),
                 )
-                response.raise_for_status()
-                result = response.json()
 
                 mapping = {}
                 for item in result.get("Items", []):
@@ -1103,6 +1145,24 @@ class _DictionaryLookup:
                 self._lookup[dictionary_name] = Dictionary(mapping)
 
             metadata.set_field(fields.Dictionary, self._lookup.get(dictionary_name))
+
+    def _get_enumeration_values(self, url: str) -> dict:
+        response = self._session.get(
+            url,
+            verify=self._request_properties.verify_ssl,
+            timeout=self._request_properties.metadata_request_timeout_seconds,
+            headers={"X-Requested-With": "Kukur"},
+            params={
+                "selectedFields": ";".join(
+                    [
+                        "Items.Name",
+                        "Items.Value",
+                    ]
+                ),
+            },
+        )
+        response.raise_for_status()
+        return response.json()
 
 
 class _MetadataAttributeLookup:

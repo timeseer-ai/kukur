@@ -1593,3 +1593,143 @@ def test_search_element_paths_other_database(_post) -> None:
     )
     with pytest.raises(ElementInOtherDatabaseException):
         list(source.search(SeriesSearch("Test")))
+
+
+RATE_LIMIT_ERROR = {"Status": 429, "Content": {"Errors": ["Rate limit reached."]}}
+
+
+def _error_response(status_code: int) -> requests.Response:
+    response = requests.Response()
+    response.status_code = status_code
+    return response
+
+
+def _rate_limited_attributes_response() -> dict:
+    response = copy.deepcopy(BATCH_RESPONSE)
+    response["GetAttributes"]["Content"]["Items"][0] = RATE_LIMIT_ERROR
+    return response
+
+
+def mocked_requests_rate_limited(*args, **kwargs):
+    if args[0] == f"{WEB_API_URI}batch":
+        return _error_response(429)
+    raise Exception(args[0])
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        _error_response(429),
+        _error_response(503),
+        MockResponse(_rate_limited_attributes_response(), 207),
+        requests.exceptions.ReadTimeout("timed out"),
+        requests.exceptions.ConnectionError("connection reset"),
+    ],
+)
+@patch("requests.Session.get", side_effect=mocked_requests_get)
+def test_search_retries_transient_failure(_get, failure) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "element_template": "Reactor",
+            "query_retry_count": 1,
+            "query_retry_delay": 0,
+        }
+    )
+    with patch(
+        "requests.Session.post",
+        side_effect=[failure, MockResponse(BATCH_RESPONSE, 200)],
+    ) as post:
+        series_metadata = list(source.search(SeriesSearch("Test")))
+    assert len(series_metadata) == 10
+    assert post.call_count == 2
+
+
+@patch("requests.Session.post", side_effect=mocked_requests_rate_limited)
+def test_search_stops_retrying(post) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "element_template": "Reactor",
+            "query_retry_count": 2,
+            "query_retry_delay": 0,
+        }
+    )
+    with pytest.raises(requests.HTTPError):
+        list(source.search(SeriesSearch("Test")))
+    assert post.call_count == 3
+
+
+@patch("requests.Session.post", side_effect=mocked_requests_rate_limited)
+def test_search_without_retries(post) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "element_template": "Reactor",
+        }
+    )
+    with pytest.raises(requests.HTTPError):
+        list(source.search(SeriesSearch("Test")))
+    assert post.call_count == 1
+
+
+@patch("requests.Session.post", side_effect=mocked_requests_post)
+def test_search_does_not_retry_invalid_request(post) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "element_template": "Reactor",
+            "element_category": "Invalid",
+            "query_retry_count": 2,
+            "query_retry_delay": 0,
+        }
+    )
+    with pytest.raises(BatchRequestFailedException):
+        list(source.search(SeriesSearch("Test")))
+    assert post.call_count == 1
+
+
+@patch("requests.Session.post", side_effect=mocked_requests_post)
+def test_search_retries_enumeration_values(_post) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "element_template": "Reactor",
+            "query_retry_count": 1,
+            "query_retry_delay": 0,
+        }
+    )
+    with patch(
+        "requests.Session.get",
+        side_effect=[_error_response(503), MockResponse(PHASES_RESPONSE, 200)],
+    ) as get:
+        series_metadata = list(source.search(SeriesSearch("Test")))
+    assert len(series_metadata) == 10
+    assert get.call_count == 2
+
+
+def test_search_element_paths_retries_rate_limited_element() -> None:
+    def post(*args, **kwargs):
+        response = _element_path_response(kwargs["json"], DATABASE_URI)
+        if len(responses) == 0:
+            response["GetElement0"] = RATE_LIMIT_ERROR
+        responses.append(response)
+        return MockResponse(response, 207)
+
+    responses: list[dict] = []
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "element_paths": [PLANT_PATH],
+            "attributes_as_fields": False,
+            "query_retry_count": 1,
+            "query_retry_delay": 0,
+        }
+    )
+    with patch("requests.Session.post", side_effect=post):
+        series_metadata = list(source.search(SeriesSearch("Test")))
+    assert [metadata.series.tags["series name"] for metadata in series_metadata] == [
+        "Active",
+        "Capacity",
+    ]
+    assert len(responses) == 2
