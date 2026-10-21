@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from collections.abc import Generator
-from pathlib import PurePath
+from pathlib import PurePosixPath
 from urllib.parse import ParseResult
 
 import pyarrow as pa
@@ -54,11 +54,11 @@ def _get_resource(blob_uri: ParseResult) -> BlobResource:
     return BlobResource(blob_uri.geturl(), filesystem, blob_path)
 
 
-def _get_blob_path(blob_uri: ParseResult) -> PurePath:
+def _get_blob_path(blob_uri: ParseResult) -> PurePosixPath:
     bucket_name = blob_uri.netloc
     if bucket_name is None:
         raise InvalidInspectURI("missing bucket name")
-    return PurePath(bucket_name) / PurePath(blob_uri.path.lstrip("/"))
+    return PurePosixPath(bucket_name) / PurePosixPath(blob_uri.path.lstrip("/"))
 
 
 def _remove_bucket_from_path(
@@ -74,7 +74,7 @@ def _remove_bucket_from_path(
     return [
         InspectedPath(
             path.resource_type,
-            str(PurePath(path.path).relative_to(PurePath(bucket_name))),
+            str(PurePosixPath(path.path).relative_to(PurePosixPath(bucket_name))),
         )
         for path in paths
     ]

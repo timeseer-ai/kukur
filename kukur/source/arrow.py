@@ -8,7 +8,7 @@ from base64 import b64encode
 from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import datetime
-from pathlib import PurePath
+from pathlib import PurePosixPath
 from typing import Any
 
 import pyarrow as pa
@@ -205,7 +205,7 @@ class BaseArrowSource(ABC):
                 if partition.path_encoding == "base64":
                     partition_path = b64encode(partition_path.encode()).decode()
             if data_path is None:
-                data_path = PurePath(partition_path)
+                data_path = PurePosixPath(partition_path)
             else:
                 data_path = data_path / partition_path
 
