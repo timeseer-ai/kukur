@@ -4,15 +4,20 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from datetime import timedelta
+from io import BytesIO
 
 import pyarrow as pa
 import pytest
 from dateutil.parser import parse as parse_date
+from pyarrow import parquet
 
 import kukur.config
 from kukur import SeriesSearch, SeriesSelector, Source, quality
 from kukur.exceptions import InvalidDataError
+from kukur.quality import QualityMapper
 from kukur.source import SourceFactory
+from kukur.source.arrow import BaseArrowSourceOptions
+from kukur.source.parquet.parquet import ParquetSource
 
 START_DATE = parse_date("2020-01-01T00:00:00Z")
 END_DATE = parse_date("2020-11-01T00:00:00Z")
@@ -274,6 +279,57 @@ def test_partitions_traversal() -> None:
             START_DATE,
             END_DATE,
         )
+
+
+class RecordingLoader:
+    """Record the subpaths that are opened and return an empty data file."""
+
+    subpaths: list[str]
+
+    def __init__(self):
+        self.subpaths = []
+
+    def open(self):
+        raise NotImplementedError()
+
+    def has_child(self, subpath: str) -> bool:
+        return True
+
+    def open_child(self, subpath: str):
+        self.subpaths.append(subpath)
+        buffer = BytesIO()
+        parquet.write_table(
+            pa.table({"ts": pa.array([], pa.timestamp("us")), "value": []}), buffer
+        )
+        buffer.seek(0)
+        return buffer
+
+
+@pytest.mark.usefixtures("windows_paths")
+def test_partitions_use_forward_slashes() -> None:
+    loader = RecordingLoader()
+    source = ParquetSource(
+        BaseArrowSourceOptions.from_data(
+            {
+                "format": "dir",
+                "partitions": [
+                    {"origin": "tag", "key": "location"},
+                    {"origin": "tag", "key": "series name"},
+                ],
+            }
+        ),
+        loader,
+        QualityMapper(),
+    )
+    source.get_data(
+        make_series(
+            "partitioned-parquet",
+            {"location": "Antwerp", "series name": "test-tag-1"},
+        ),
+        START_DATE,
+        END_DATE,
+    )
+    assert loader.subpaths == ["Antwerp/test-tag-1.parquet"]
 
 
 def test_row_tags_search():

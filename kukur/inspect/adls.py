@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from collections.abc import Generator
-from pathlib import PurePath
+from pathlib import PurePosixPath
 from urllib.parse import ParseResult
 
 import pyarrow as pa
@@ -53,7 +53,7 @@ def _get_resource(blob_uri: ParseResult) -> BlobResource:
     return BlobResource(blob_uri.geturl(), filesystem, blob_path)
 
 
-def _get_filesystem_path(blob_uri: ParseResult) -> tuple[fs.FileSystem, PurePath]:
+def _get_filesystem_path(blob_uri: ParseResult) -> tuple[fs.FileSystem, PurePosixPath]:
     """Add the container name as the first path component."""
     if not HAS_AZURE_FS:
         raise MissingModuleException("azurefilesystem")
@@ -65,7 +65,7 @@ def _get_filesystem_path(blob_uri: ParseResult) -> tuple[fs.FileSystem, PurePath
     if container_name is None:
         raise InvalidInspectURI("missing container name")
 
-    path = PurePath(container_name) / PurePath(blob_uri.path.lstrip("/"))
+    path = PurePosixPath(container_name) / PurePosixPath(blob_uri.path.lstrip("/"))
     return AzureFileSystem(account_name), path
 
 
@@ -82,7 +82,7 @@ def _remove_container_from_path(
     return [
         InspectedPath(
             path.resource_type,
-            str(PurePath(path.path).relative_to(PurePath(container_name))),
+            str(PurePosixPath(path.path).relative_to(PurePosixPath(container_name))),
         )
         for path in paths
     ]
