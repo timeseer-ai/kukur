@@ -146,3 +146,8 @@ all_users = true
 [tool.cxfreeze.bdist_msi.summary_data]
 author = "Timeseer.AI"
 comments = "Kukur"
+
+[tool.uv]
+# Temporary: take certifi 2026.10.19 before the one-week cooldown ends.
+# Remove after 2026-10-27.
+exclude-newer-package = { certifi = "2026-10-21T00:00:00Z" }

@@ -5,6 +5,7 @@ from . import compute as compute
 from . import csv as csv
 from . import feather as feather
 from . import ipc as ipc
+from . import parquet as parquet
 from .lib import Array as Array
 from .lib import ArrowInvalid as ArrowInvalid
 from .lib import ArrowNotImplementedError as ArrowNotImplementedError
