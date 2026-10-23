@@ -14,7 +14,6 @@ from pathlib import PurePosixPath
 from typing import Any, TypeVar
 
 import pyarrow as pa
-from dateutil.parser import isoparse as parse_date
 
 from kukur import Metadata, SeriesSearch, SeriesSelector, quality
 from kukur.auth import AuthenticationProperties
@@ -26,6 +25,7 @@ from kukur.exceptions import (
 )
 from kukur.metadata import fields
 from kukur.quality import Quality
+from kukur.timestamp import parse_timestamp
 
 try:
     import urllib3
@@ -1324,7 +1324,7 @@ def _read_data(
 
         last_timestamp: datetime | None = None
         for data_point in data_points:
-            timestamp = parse_date(data_point["Timestamp"])
+            timestamp = parse_timestamp(data_point["Timestamp"])
             last_timestamp = timestamp
             timestamps.append(timestamp)
             value = data_point["Value"]

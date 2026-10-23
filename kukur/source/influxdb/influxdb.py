@@ -8,12 +8,12 @@ from collections.abc import Generator
 from datetime import datetime
 from typing import Any
 
-import dateutil.parser
 import pyarrow as pa
 
 from kukur import Metadata, SeriesSearch, SeriesSelector
 from kukur.exceptions import InvalidDataError, MissingModuleException
 from kukur.source.influxdb.client import HAS_REQUESTS, ClientOptions, InfluxDBClient
+from kukur.timestamp import parse_timestamp
 
 
 def from_config(config: dict[str, Any]):
@@ -103,7 +103,7 @@ class InfluxSource:
 
         with self._get_client() as client:
             for item in client.query(query=query, bind_params=bind_params).get_points():
-                timestamps.append(dateutil.parser.parse(item["time"]))
+                timestamps.append(parse_timestamp(item["time"]))
                 values.append(item[selector.field])
 
         return pa.Table.from_pydict({"ts": timestamps, "value": values})

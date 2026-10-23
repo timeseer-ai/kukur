@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timezone, tzinfo
 from decimal import Decimal
 
-import dateutil.parser
+import dateutil.tz
 import pyarrow as pa
 
 from kukur import Dictionary, Metadata, SeriesSearch, SeriesSelector, quality
@@ -20,6 +20,7 @@ from kukur.metadata import fields
 from kukur.quality import QualityMapper
 from kukur.source.arrow import empty_table
 from kukur.source.metadata import MetadataValueMapper
+from kukur.timestamp import parse_timestamp
 
 logger = logging.getLogger(__name__)
 
@@ -214,7 +215,7 @@ class BaseSQLSource(ABC):
                     row[0].year, row[0].month, row[0].day, tzinfo=timezone.utc
                 )
             else:
-                ts = dateutil.parser.parse(row[0])
+                ts = parse_timestamp(row[0])
             if self._config.data_timezone:
                 ts = ts.replace(tzinfo=self._config.data_timezone)
             ts = ts.astimezone(timezone.utc)

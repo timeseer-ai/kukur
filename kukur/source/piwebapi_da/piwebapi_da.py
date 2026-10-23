@@ -18,7 +18,6 @@ try:
 except ImportError:
     HAS_REQUESTS = False
 
-from dateutil.parser import isoparse as parse_date
 
 from kukur import (
     DataType,
@@ -37,6 +36,7 @@ from kukur.exceptions import (
 )
 from kukur.metadata import fields
 from kukur.quality import Quality
+from kukur.timestamp import parse_timestamp
 
 NOT_FOUND = 404
 
@@ -277,7 +277,7 @@ class PIDataArchive:
 
             last_timestamp: datetime | None = None
             for data_point in data_points:
-                timestamp = parse_date(data_point["Timestamp"])
+                timestamp = parse_timestamp(data_point["Timestamp"])
                 last_timestamp = timestamp
                 timestamps.append(timestamp)
                 value = data_point["Value"]
