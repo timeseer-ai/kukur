@@ -7,7 +7,7 @@ import abc
 import contextlib
 import sqlite3
 
-from dateutil.parser import parse as parse_date
+from kukur.timestamp import convert_sqlite_timestamp
 
 
 class BaseRepository:  # pylint: disable=too-few-public-methods
@@ -61,7 +61,7 @@ class MigrationRunner:
 
 
 def _open_db(connection_string: str):
-    sqlite3.register_converter("datetime", parse_date)
+    sqlite3.register_converter("datetime", convert_sqlite_timestamp)
     connection = sqlite3.connect(
         connection_string,
         uri=True,

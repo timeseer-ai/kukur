@@ -3,11 +3,11 @@
 import math
 from collections import defaultdict
 
-from dateutil.parser import isoparse
 from pyarrow import Table, array, concat_tables, float64, int64
 from pyarrow import compute as pc
 
 from kukur.exceptions import KukurException, MissingModuleException
+from kukur.timestamp import parse_timestamp
 
 try:
     from defusedxml import ElementTree
@@ -91,7 +91,7 @@ def parse_gpx(readable) -> Table:  # noqa: PLR0912
                         else:
                             tag_value.append(None)
 
-                required_data["ts"].append(isoparse(ts.text))
+                required_data["ts"].append(parse_timestamp(ts.text))
 
                 lon = float(point.attrib["lon"])
                 required_data["lon"].append(lon)

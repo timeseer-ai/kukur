@@ -6,14 +6,13 @@
 import re
 import sqlite3
 
-from dateutil.parser import parse as parse_date
-
 from kukur.exceptions import InvalidSourceException
 from kukur.quality import QualityMapper
 from kukur.source.metadata import MetadataValueMapper
 from kukur.source.sql import BaseSQLSource, SQLConfig
+from kukur.timestamp import convert_sqlite_timestamp
 
-sqlite3.register_converter("datetime", parse_date)
+sqlite3.register_converter("datetime", convert_sqlite_timestamp)
 
 
 def _match(pattern, value):
