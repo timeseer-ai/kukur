@@ -9,6 +9,8 @@ Sources with `type = "plugin"` call out to a separate binary that implements all
 [source.<name>]
 type = "plugin"
 cmd = ["/path/to/binary"]
+timeout_seconds = 120 # optional: the maximum time to wait for data
+metadata_request_timeout_seconds = 600 # optional: the maximum time to wait for a search or metadata request
 extra = "foo"
 
 [source.<name>.features]
@@ -19,6 +21,11 @@ plot = false
 All other fields are passed to the binary as provided.
 
 `cmd` can be either a simple string or a list of strings.
+
+`timeout_seconds` limits how long a `data` or `plot` call can take (default: 2 minutes).
+`metadata_request_timeout_seconds` limits how long a `search` or `metadata` call can take (default: 10 minutes).
+The binary is terminated when it runs longer.
+Set a timeout to `0` to disable it.
 
 `features` is an optional parameter with following option:
 - `plot` when the binary has a separate plot data function defined.
@@ -34,6 +41,9 @@ Input is sent on standard input.
 Output is expected on standard output.
 
 Any information sent by the binary to standard error is logged at the warning level.
+
+A binary that exits with a non-zero status fails the request.
+Standard error is then logged at the error level and included in the error message.
 
 === Search
 

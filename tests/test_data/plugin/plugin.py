@@ -7,25 +7,31 @@ import json
 import sys
 from datetime import datetime
 
-from pyarrow import Table, ipc
-
 
 def _run() -> None:
     """Perform the action requested by the first argument."""
+    query = json.load(sys.stdin)
+    config = query["config"]
+    if "stderr" in config:
+        sys.stderr.buffer.write(
+            config["stderr"].encode(config.get("stderr_encoding", "utf-8"))
+        )
+        sys.stderr.flush()
+    if "exit_code" in config:
+        sys.exit(config["exit_code"])
     if sys.argv[1] == "search":
-        _search()
+        _search(query)
     if sys.argv[1] == "metadata":
-        _metadata()
+        _metadata(query)
     if sys.argv[1] == "data":
-        _data()
+        _data(query)
     if sys.argv[1] == "plot":
-        _plot_data()
+        _plot_data(query)
     sys.exit(0)
 
 
-def _search() -> None:
+def _search(query: dict) -> None:
     """List all time series (or metadata)."""
-    query = json.load(sys.stdin)
     source_name = query["search"]["source"]
     data: dict = {
         "metadata": [
@@ -39,18 +45,18 @@ def _search() -> None:
     json.dump(data, sys.stdout)
 
 
-def _metadata() -> None:
+def _metadata(query: dict) -> None:
     """Return metadata for the time series received on stdin."""
-    query = json.load(sys.stdin)
     source_name = query["metadata"]["series"]["source"]
     series_name = query["metadata"]["series"]["tags"]["series name"]
     data: dict = {"description": f"Description of {series_name} ({source_name})"}
     json.dump(data, sys.stdout)
 
 
-def _data() -> None:
+def _data(query: dict) -> None:
     """Return Arrow IPC with that for the time series received on stdin."""
-    query = json.load(sys.stdin)
+    from pyarrow import Table, ipc  # noqa: PLC0415 - only import when needed
+
     start_date = datetime.fromisoformat(query["data"]["startDate"])
     end_date = datetime.fromisoformat(query["data"]["endDate"])
     table = Table.from_pydict(
@@ -60,9 +66,10 @@ def _data() -> None:
         writer.write_table(table)
 
 
-def _plot_data() -> None:
+def _plot_data(query: dict) -> None:
     """Return Arrow IPC with that for the time series received on stdin."""
-    query = json.load(sys.stdin)
+    from pyarrow import Table, ipc  # noqa: PLC0415 - only import when needed
+
     start_date = datetime.fromisoformat(query["data"]["startDate"])
     end_date = datetime.fromisoformat(query["data"]["endDate"])
     table = Table.from_pydict(
