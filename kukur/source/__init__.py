@@ -99,6 +99,7 @@ class MetadataSource:
 
     source: SourceProtocol
     fields: list[str] = field(default_factory=list)
+    override_source_metadata: bool = False
 
 
 @dataclass
@@ -130,6 +131,18 @@ def _retry(retry_count: int, retry_delay: float, data_fn, log_message: str):
                 exc_info=True,
             )
             time.sleep(retry_delay)
+
+
+def _merge_fields(metadata: Metadata, received_metadata: Metadata, fields: list[str]):
+    if len(fields) == 0:
+        for k, v in received_metadata.iter_names():
+            if v is not None and v != "":
+                metadata.set_field_by_name(k, v)
+    else:
+        for field_name in fields:
+            field_value = received_metadata.get_field_by_name(field_name)
+            if field_value is not None and field_value != "":
+                metadata.set_field_by_name(field_name, field_value)
 
 
 class SourceWrapper:
@@ -194,11 +207,7 @@ class SourceWrapper:
                     result.series.source, result.series.tags, result.series.field
                 )
                 try:
-                    extra_metadata = self.get_metadata(series_selector)
-                    for k, v in result.iter_names():
-                        if v is not None and v != "":
-                            extra_metadata.set_field_by_name(k, v)
-                    yield extra_metadata
+                    yield self.__get_metadata(series_selector, result)
                 except Exception as err:
                     logger.error(
                         """Metadata query for "%s" (%s) failed all attempts: %s""",
@@ -213,33 +222,45 @@ class SourceWrapper:
 
         The resulting metadata is the combination of the metadata in the source itself and any additional
         metadata sources. Metadata sources earlier in the list of sources take precendence over later ones.
+        The metadata in the source itself takes precedence over additional metadata sources,
+        unless they set override_source_metadata.
         """
+        return self.__get_metadata(selector)
+
+    def __get_metadata(
+        self, selector: SeriesSelector, search_result: Metadata | None = None
+    ) -> Metadata:
         metadata = Metadata(selector)
-        for metadata_source in list(reversed(self.__metadata)) + [
-            MetadataSource(self.__source.metadata)
-        ]:
-            query_fn = functools.partial(metadata_source.source.get_metadata, selector)
-
-            try:
-                received_metadata, _ = _retry(
-                    self.__query_retry_count,
-                    self.__query_retry_delay,
-                    query_fn,
-                    f'Metadata query for "{selector.name}" ({selector.source}) failed',
-                )
-            except NotImplementedError:
-                continue
-
-            if len(metadata_source.fields) == 0:
-                for k, v in received_metadata.iter_names():
-                    if v is not None and v != "":
-                        metadata.set_field_by_name(k, v)
-            else:
-                for field_name in metadata_source.fields:
-                    field_value = received_metadata.get_field_by_name(field_name)
-                    if field_value is not None and field_value != "":
-                        metadata.set_field_by_name(field_name, field_value)
+        for metadata_source in reversed(self.__metadata):
+            if not metadata_source.override_source_metadata:
+                self.__merge_metadata(metadata, metadata_source, selector)
+        self.__merge_metadata(
+            metadata, MetadataSource(self.__source.metadata), selector
+        )
+        if search_result is not None:
+            _merge_fields(metadata, search_result, [])
+        for metadata_source in reversed(self.__metadata):
+            if metadata_source.override_source_metadata:
+                self.__merge_metadata(metadata, metadata_source, selector)
         return metadata
+
+    def __merge_metadata(
+        self,
+        metadata: Metadata,
+        metadata_source: MetadataSource,
+        selector: SeriesSelector,
+    ):
+        query_fn = functools.partial(metadata_source.source.get_metadata, selector)
+        try:
+            received_metadata, _ = _retry(
+                self.__query_retry_count,
+                self.__query_retry_delay,
+                query_fn,
+                f'Metadata query for "{selector.name}" ({selector.source}) failed',
+            )
+        except NotImplementedError:
+            return
+        _merge_fields(metadata, received_metadata, metadata_source.fields)
 
     def get_data(
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
@@ -430,6 +451,7 @@ class SourceFactory:
             metadata_sources[name] = MetadataSource(
                 self._make_source(f"extra-{name}", source_type, options),
                 options.get("fields", []),
+                options.get("override_source_metadata", False),
             )
         return metadata_sources
 
