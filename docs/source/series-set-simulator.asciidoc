@@ -1,0 +1,68 @@
+== Series Set Simulator
+
+Sources with `type = "series-set-simulator"` generate series that are grouped in series sets,
+in the shape of a PI Asset Framework hierarchy where attributes are fields.
+
+```
+[source.<name>]
+type = "series-set-simulator"
+path = "<path to the YAML configuration>"
+```
+
+`path` points to the YAML configuration file of the simulator.
+The `[simulator]` and `[numpy]` extras are required.
+
+```yaml
+seed: 42
+seriesSets: 200
+seriesPerSet: 20
+samplingInterval:
+  intervalSecondsMin: 10
+  intervalSecondsMax: 300
+severity: 0.3
+controlAttribute: active
+```
+
+`seed` (default `0`) makes the data reproducible:
+the same configuration always generates the same data for the same period.
+
+`seriesSets` is the number of series sets.
+Each series set is an element named `Plant <n>`.
+
+`seriesPerSet` is the number of series in each set, besides the control series.
+These series are named `Sensor <n>`.
+
+`controlAttribute` (default `active`) is the name of the control series that every set contains once.
+
+Every series has the tags `series name` (the element) and `Attribute` (the attribute),
+and the attribute as its field.
+Like a PI AF attribute, it also has an `__id__` tag that holds a 161-character, WebId-like identifier.
+
+`samplingInterval` bounds the sampling interval.
+Each series is sampled at its own fixed interval between `intervalSecondsMin` and `intervalSecondsMax`.
+
+`severity` (default `0`) sets the data quality, from `0` to `1`.
+Every series loses samples in archival gaps:
+
+- On average a series has `6 × severity` gaps per day.
+  Some series have more gaps than others.
+- A gap lasts between 5 and `5 + 995 × severity` times the sampling interval of the series,
+  with a maximum of 12 hours.
+
+A severity of `0` generates no gaps.
+
+The control series switches between two levels, `0` and `50`,
+with a jitter that has a standard deviation of `1`.
+It switches about 4 times per day,
+so a threshold such as `value > 40` segments it in active periods.
+
+Every other series follows one of these functions, picked at random:
+
+- `white noise`: noise around an offset.
+- `drift`: a trend that goes up and down over periods of 6 hours to 3 days.
+- `sine`: a sine with a period between 10 minutes and 2 days.
+
+Each series has its own scale, offset and noise.
+The description of a series names its function.
+
+Data is returned for the half-open interval `[start, end)`.
