@@ -7,9 +7,9 @@ from datetime import datetime, timedelta
 import pyarrow as pa
 import pytest
 
-from kukur import Metadata, SeriesSelector, quality
+from kukur import Metadata, SeriesSearch, SeriesSelector, quality
 from kukur.quality import Quality, QualityMapper
-from kukur.source import Source, SourceWrapper, _add_query_statistics
+from kukur.source import MetadataSource, Source, SourceWrapper, _add_query_statistics
 
 SELECTOR = SeriesSelector.from_tags("fake", {"series name": "test-tag-1"})
 START_DATE = datetime.fromisoformat("2020-01-01T00:00:00+00:00")
@@ -461,3 +461,115 @@ def test_simplified_quality_is_not_widened() -> None:
     assert table.schema.field("quality").type == pa.int8()
     assert quality.get_mapping(table) == {"GOOD": [0]}
     assert quality.simplify(table)["quality"] == table["quality"]
+
+
+class FieldsSource:
+    """A source that returns the given metadata field values for every series."""
+
+    def __init__(self, values: dict) -> None:
+        self.__values = values
+
+    def search(self, selector: SeriesSearch):
+        yield self.get_metadata(SELECTOR)
+
+    def get_metadata(self, selector: SeriesSelector) -> Metadata:
+        metadata = Metadata(selector)
+        for k, v in self.__values.items():
+            metadata.set_field_by_name(k, v)
+        return metadata
+
+
+def _make_fields_wrapper(
+    source_values: dict, metadata_sources: list[MetadataSource]
+) -> SourceWrapper:
+    source = FieldsSource(source_values)
+    return SourceWrapper(Source(source, source), metadata_sources, {})
+
+
+def test_source_metadata_takes_precedence() -> None:
+    wrapper = _make_fields_wrapper(
+        {"unit": "m", "description": "source"},
+        [MetadataSource(FieldsSource({"unit": "kg", "location": "extra"}))],
+    )
+    metadata = wrapper.get_metadata(SELECTOR)
+    assert metadata.get_field_by_name("unit") == "m"
+    assert metadata.get_field_by_name("description") == "source"
+    assert metadata.get_field_by_name("location") == "extra"
+
+
+def test_override_source_metadata() -> None:
+    wrapper = _make_fields_wrapper(
+        {"unit": "m", "description": "source"},
+        [
+            MetadataSource(
+                FieldsSource({"unit": "kg", "description": ""}),
+                override_source_metadata=True,
+            )
+        ],
+    )
+    metadata = wrapper.get_metadata(SELECTOR)
+    assert metadata.get_field_by_name("unit") == "kg"
+    assert metadata.get_field_by_name("description") == "source"
+
+
+def test_override_source_metadata_fields() -> None:
+    wrapper = _make_fields_wrapper(
+        {"unit": "m", "description": "source"},
+        [
+            MetadataSource(
+                FieldsSource({"unit": "kg", "description": "extra"}),
+                ["unit"],
+                override_source_metadata=True,
+            )
+        ],
+    )
+    metadata = wrapper.get_metadata(SELECTOR)
+    assert metadata.get_field_by_name("unit") == "kg"
+    assert metadata.get_field_by_name("description") == "source"
+
+
+def test_override_source_metadata_precedence() -> None:
+    wrapper = _make_fields_wrapper(
+        {"unit": "m"},
+        [
+            MetadataSource(FieldsSource({"unit": "kg", "location": "first"})),
+            MetadataSource(
+                FieldsSource({"unit": "s", "location": "second"}),
+                override_source_metadata=True,
+            ),
+            MetadataSource(
+                FieldsSource({"unit": "A", "location": "third"}),
+                override_source_metadata=True,
+            ),
+        ],
+    )
+    metadata = wrapper.get_metadata(SELECTOR)
+    assert metadata.get_field_by_name("unit") == "s"
+    assert metadata.get_field_by_name("location") == "second"
+
+
+def test_search_source_metadata_takes_precedence() -> None:
+    wrapper = _make_fields_wrapper(
+        {"unit": "m"},
+        [MetadataSource(FieldsSource({"unit": "kg", "location": "extra"}))],
+    )
+    [metadata] = list(wrapper.search(SeriesSearch("fake")))
+    assert isinstance(metadata, Metadata)
+    assert metadata.get_field_by_name("unit") == "m"
+    assert metadata.get_field_by_name("location") == "extra"
+
+
+def test_search_override_source_metadata() -> None:
+    wrapper = _make_fields_wrapper(
+        {"unit": "m", "description": "source"},
+        [
+            MetadataSource(
+                FieldsSource({"unit": "kg"}),
+                override_source_metadata=True,
+            )
+        ],
+    )
+    [metadata] = list(wrapper.search(SeriesSearch("fake")))
+    assert isinstance(metadata, Metadata)
+    assert metadata.get_field_by_name("unit") == "kg"
+    assert metadata.get_field_by_name("description") == "source"

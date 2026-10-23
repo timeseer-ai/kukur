@@ -76,7 +76,8 @@ The `type` is used when not specified.
 Additional metadata can be loaded from other sources as described in the section "Metadata Sources".
 When multiple sources return an entry for the same metadata field, the source that occurs first in this list
 gets priority.
-Metadata returned by the source itself or by the `metadata` type configuration takes precendence over any additional sources configured here.
+Metadata returned by the source itself or by the `metadata` type configuration takes precendence over any additional sources configured here,
+unless the additional source sets `override_source_metadata`.
 
 `query_retry_count` and `query_retry_delay` allow retrying all queries to a source in case of failure.
 By default no requests will be retried.
@@ -115,6 +116,11 @@ Possible metadata fields are:
 
 include::{include-path}/metadata-fields.asciidoc[]
 
+Set the optional `override_source_metadata` parameter to `true`
+to give the metadata of this source precedence over the metadata returned by the time series source itself.
+It defaults to `false`.
+When multiple metadata sources override the source metadata, the one that occurs first in `metadata_sources` gets priority.
+
 Example:
 
 ```toml
@@ -127,6 +133,7 @@ metadata_sources = ["noaa"]
 type = "csv"
 metadata = "examples/influxdb/noaa-metadata.csv"
 fields = ["lower limit", "upper limit"]
+override_source_metadata = false
 ```
 
 Note that sources that are fast when listing all time series in the source by returning metadata in the same query,
