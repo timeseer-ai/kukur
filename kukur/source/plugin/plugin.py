@@ -12,11 +12,18 @@ from datetime import datetime
 from pyarrow import Table, ipc
 
 from kukur.base import SeriesSearch, SeriesSelector
-from kukur.exceptions import InvalidSourceException
+from kukur.exceptions import InvalidSourceException, KukurException
 from kukur.metadata import Metadata
 from kukur.source.arrow import conform_to_schema
 
 logger = logging.getLogger(__name__)
+
+
+class PluginException(KukurException):
+    """Raised when the plugin binary fails."""
+
+    def __init__(self, message: str):
+        KukurException.__init__(self, f"plugin error: {message}")
 
 
 class PluginSource:
@@ -25,6 +32,11 @@ class PluginSource:
     def __init__(self, cmd: list[str], config: dict):
         self.__cmd = cmd
         self.__config = config
+        # A timeout of 0 disables it.
+        self.__timeout_seconds = config.get("timeout_seconds", 120) or None
+        self.__metadata_request_timeout_seconds = (
+            config.get("metadata_request_timeout_seconds", 600) or None
+        )
 
     def search(
         self, selector: SeriesSearch
@@ -36,7 +48,14 @@ class PluginSource:
                 "source": selector.source,
             },
         }
-        result = json.loads(self._run(selector.source, "search", data))
+        result = json.loads(
+            self._run(
+                selector.source,
+                "search",
+                data,
+                self.__metadata_request_timeout_seconds,
+            )
+        )
         for item in result.get("metadata", []):
             yield Metadata.from_data(item)
         for item in result.get("series", []):
@@ -48,13 +67,20 @@ class PluginSource:
             "config": self.__config,
             "metadata": {"series": selector.to_data()},
         }
-        result = json.loads(self._run(selector.source, "metadata", data))
+        result = json.loads(
+            self._run(
+                selector.source,
+                "metadata",
+                data,
+                self.__metadata_request_timeout_seconds,
+            )
+        )
         return Metadata.from_data(result, selector)
 
     def get_data(
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ) -> Table:
-        """Get data from the Flight service."""
+        """Get data from the binary."""
         data = {
             "config": self.__config,
             "data": {
@@ -63,7 +89,7 @@ class PluginSource:
                 "endDate": end_date.isoformat(),
             },
         }
-        result = self._run(selector.source, "data", data)
+        result = self._run(selector.source, "data", data, self.__timeout_seconds)
         with ipc.open_stream(result) as reader:
             table = reader.read_all()
             return conform_to_schema(table)
@@ -75,7 +101,10 @@ class PluginSource:
         end_date: datetime,
         interval_count: int,
     ) -> Table:
-        """Get data from the Flight service."""
+        """Get plot data from the binary.
+
+        Falls back to regular data when the binary does not support plot data.
+        """
         data = {
             "config": self.__config,
             "data": {
@@ -86,28 +115,42 @@ class PluginSource:
             },
         }
         if self.__config.get("features", {}).get("plot", False):
-            data["data"]["intervalCount"] = interval_count
-            result = self._run(selector.source, "plot", data)
+            result = self._run(selector.source, "plot", data, self.__timeout_seconds)
         else:
-            result = self._run(selector.source, "data", data)
+            result = self._run(selector.source, "data", data, self.__timeout_seconds)
         with ipc.open_stream(result) as reader:
             table = reader.read_all()
             return conform_to_schema(table)
 
-    def _run(self, name: str, action: str, data: dict) -> bytes:
+    def _run(
+        self, name: str, action: str, data: dict, timeout_seconds: float | None
+    ) -> bytes:
         try:
             output = subprocess.run(
                 self.__cmd + [action],
                 capture_output=True,
                 input=json.dumps(data).encode("utf-8"),
                 check=True,
+                timeout=timeout_seconds,
             )
         except subprocess.CalledProcessError as err:
-            logger.error('Source "%s" logged: %s', name, err.stderr)
-            raise err
-        if output.stderr != b"":
-            logger.warning('Source "%s" logged: %s', name, output.stderr)
+            stderr = _decode(err.stderr)
+            logger.error('Source "%s" logged: %s', name, stderr)
+            message = f'source "{name}" exited with status {err.returncode}'
+            if stderr != "":
+                message = f"{message}: {stderr}"
+            raise PluginException(message) from err
+        except subprocess.TimeoutExpired as err:
+            raise PluginException(
+                f'source "{name}" timed out after {err.timeout} seconds'
+            ) from err
+        if stderr := _decode(output.stderr):
+            logger.warning('Source "%s" logged: %s', name, stderr)
         return output.stdout
+
+
+def _decode(stderr: bytes) -> str:
+    return stderr.decode(errors="replace").strip()
 
 
 def from_config(data: dict) -> PluginSource:
