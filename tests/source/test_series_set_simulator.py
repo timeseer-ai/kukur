@@ -49,13 +49,13 @@ def _intervals(table: pa.Table) -> np.ndarray:
 def test_search_yields_one_control_series_per_set(tmp_path: Path):
     series = _series(_make_source(tmp_path))
     assert len(series) == 3 * (4 + 1)
-    elements = {metadata.series.tags["series name"] for metadata in series}
+    elements = {metadata.series.tags["plant"] for metadata in series}
     assert elements == {"Plant 1", "Plant 2", "Plant 3"}
     for element in elements:
         attributes = [
-            metadata.series.tags["Attribute"]
+            metadata.series.tags["series name"]
             for metadata in series
-            if metadata.series.tags["series name"] == element
+            if metadata.series.tags["plant"] == element
         ]
         assert attributes == [
             "active",
@@ -65,7 +65,7 @@ def test_search_yields_one_control_series_per_set(tmp_path: Path):
             "Sensor 4",
         ]
     for metadata in series:
-        assert metadata.series.field == metadata.series.tags["Attribute"]
+        assert metadata.series.field == "value"
 
 
 def test_every_series_has_a_web_id_like_pi_af(tmp_path: Path):
@@ -94,7 +94,7 @@ def test_control_attribute_defaults_to_active(tmp_path: Path):
         encoding="utf-8",
     )
     series = _series(from_config({"path": str(config_path)}))
-    assert [metadata.series.tags["Attribute"] for metadata in series] == [
+    assert [metadata.series.tags["series name"] for metadata in series] == [
         "active",
         "Sensor 1",
     ]
@@ -193,7 +193,7 @@ def test_value_series_use_every_function(tmp_path: Path):
     descriptions = [
         metadata.get_field(fields.Description)
         for metadata in _series(source)
-        if metadata.series.tags["Attribute"] != "active"
+        if metadata.series.tags["series name"] != "active"
     ]
     functions = {
         description.rsplit("(", 1)[1].rstrip(")") for description in descriptions

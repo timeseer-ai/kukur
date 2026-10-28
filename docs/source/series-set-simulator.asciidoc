@@ -1,7 +1,7 @@
 == Series Set Simulator
 
 Sources with `type = "series-set-simulator"` generate series that are grouped in series sets,
-in the shape of a PI Asset Framework hierarchy where attributes are fields.
+in the shape of a PI Asset Framework hierarchy.
 
 ```
 [source.<name>]
@@ -34,8 +34,8 @@ These series are named `Sensor <n>`.
 
 `controlAttribute` (default `active`) is the name of the control series that every set contains once.
 
-Every series has the tags `series name` (the element) and `Attribute` (the attribute),
-and the attribute as its field.
+Every series has the tags `series name` (the attribute) and `plant` (the element),
+and `value` as its field.
 Like a PI AF attribute, it also has an `__id__` tag that holds a 161-character, WebId-like identifier.
 
 `samplingInterval` bounds the sampling interval.
