@@ -3,6 +3,7 @@
 # SPDX-FileCopyrightText: 2026 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
+import itertools
 import json
 import logging
 import time
@@ -49,6 +50,9 @@ TRANSIENT_STATUS_CODES = (HTTP_TOO_MANY_REQUESTS, HTTP_SERVICE_UNAVAILABLE)
 
 T = TypeVar("T")
 
+# An element path starts with "\\server\database": 4 components when split on "\".
+ELEMENT_PATH_PREFIX_COMPONENTS = 4
+
 
 class ElementInOtherDatabaseException(KukurException):
     """Raised when an element is in another AF database."""
@@ -60,6 +64,68 @@ class BatchRequestFailedException(KukurException):
 
 class TransientBatchRequestFailedException(BatchRequestFailedException):
     """Raised when a batch query fails because PI Web API is rate limited or unavailable."""
+
+
+@dataclass
+class MetadataAttribute:
+    """An attribute that sets a metadata field of all series of an element.
+
+    The attribute belongs to the element itself,
+    to the nearest ancestor with the element template `template_name`
+    or to the ancestor `level` levels up.
+    """
+
+    attribute: str
+    template_name: str | None = None
+    level: int | None = None
+
+    @classmethod
+    def from_data(cls, data: str | dict) -> "MetadataAttribute":
+        """Create from an attribute path or a configuration dict."""
+        if isinstance(data, str):
+            return cls(data)
+        if not isinstance(data, dict):
+            raise InvalidSourceException(f"invalid metadata attribute: {data}")
+        unknown_keys = set(data.keys()) - {"attribute", "template_name", "level"}
+        if len(unknown_keys) > 0:
+            raise InvalidSourceException(
+                f"unknown metadata attribute keys: {', '.join(sorted(unknown_keys))}"
+            )
+        attribute = data.get("attribute")
+        if not isinstance(attribute, str) or attribute.strip() == "":
+            raise InvalidSourceException('metadata attributes require an "attribute"')
+        template_name = data.get("template_name")
+        if template_name is not None and (
+            not isinstance(template_name, str) or template_name.strip() == ""
+        ):
+            raise InvalidSourceException(
+                f'invalid "template_name" for metadata attribute {attribute}'
+            )
+        level = data.get("level")
+        if level is not None and (
+            not isinstance(level, int) or isinstance(level, bool) or level < 1
+        ):
+            raise InvalidSourceException(
+                f'invalid "level" for metadata attribute {attribute}'
+            )
+        if template_name is not None and level is not None:
+            raise InvalidSourceException(
+                f'metadata attribute {attribute} has both "template_name" and "level"'
+            )
+        return cls(attribute, template_name, level)
+
+    @classmethod
+    def list_from_data(cls, data: str | dict | list) -> list["MetadataAttribute"]:
+        """Create the metadata attributes to try in order for one metadata field."""
+        if not isinstance(data, list):
+            return [cls.from_data(data)]
+        if len(data) == 0:
+            raise InvalidSourceException("empty list of metadata attributes")
+        return [cls.from_data(item) for item in data]
+
+    def is_of_ancestor(self) -> bool:
+        """Return True when the attribute belongs to an ancestor of the element."""
+        return self.template_name is not None or self.level is not None
 
 
 @dataclass
@@ -75,7 +141,7 @@ class AFTemplateSourceConfiguration:
     allowed_data_references: list[str]
     attributes_as_fields: bool
     use_attribute_path: bool
-    metadata_attributes: dict[str, str]
+    metadata_attributes: dict[str, list[MetadataAttribute]]
     element_paths: list[str] | None
 
     @classmethod
@@ -91,7 +157,12 @@ class AFTemplateSourceConfiguration:
             config.get("allowed_data_references", ["PI Point"]),
             config.get("attributes_as_fields", True),
             config.get("use_attribute_path", False),
-            config.get("metadata_attributes", {}),
+            {
+                field_name: MetadataAttribute.list_from_data(metadata_attributes)
+                for field_name, metadata_attributes in config.get(
+                    "metadata_attributes", {}
+                ).items()
+            },
             config.get("element_paths"),
         )
 
@@ -540,6 +611,7 @@ class PIAssetFramework:
         if self._config.root_id is not None:
             raise InvalidSourceException("Cannot search attributes with element root")
 
+        metadata_attribute_lookup = self._create_metadata_attribute_lookup()
         start_index = 0
         while True:
             attribute_params = {
@@ -611,7 +683,9 @@ class PIAssetFramework:
             if result is None:
                 break
 
-            yield from self._create_metadata(selector.source, result)
+            yield from self._create_metadata(
+                selector.source, result, metadata_attribute_lookup
+            )
 
             attribute_count = len(result["GetAttributes"]["Content"].get("Items", []))
             if (
@@ -623,16 +697,17 @@ class PIAssetFramework:
             start_index = start_index + attribute_count
 
     def _create_metadata(
-        self, source_name: str, result: dict
+        self,
+        source_name: str,
+        result: dict,
+        metadata_attribute_lookup: "_MetadataAttributeLookup",
     ) -> Generator[Metadata, None, None]:
         dictionary_lookup = _DictionaryLookup(self._request_properties, self._session)
         elements = [
             element_request["Content"]
             for element_request in result["GetElement"]["Content"].get("Items")
         ]
-        metadata_attribute_values = self._create_metadata_attribute_lookup().lookup(
-            elements
-        )
+        metadata_attribute_values = metadata_attribute_lookup.lookup(elements)
         for i, element in enumerate(elements):
             element_metadata = {}
             if (
@@ -1171,11 +1246,15 @@ class _MetadataAttributeLookup:
     The values are requested in a separate batch request.
     Value lookups can be slow or fail,
     which should not prevent the series of an element from being found.
+
+    Attributes of ancestors require the ancestor elements,
+    which are requested in a batch request before the values.
+    Ancestors are shared by many elements and are kept for the whole search.
     """
 
     def __init__(
         self,
-        metadata_attributes: dict[str, str],
+        metadata_attributes: dict[str, list[MetadataAttribute]],
         request_properties: RequestProperties,
         session,
         url: DatabaseURLBuilder,
@@ -1184,44 +1263,153 @@ class _MetadataAttributeLookup:
         self._request_properties = request_properties
         self._session = session
         self._url = url
+        self._ancestors: dict[str, dict] = {}
 
     def lookup(self, elements: list[dict]) -> dict[str, dict[str, Any]]:
         """Return the metadata values of the given elements by element WebId."""
         if len(self._metadata_attributes) == 0 or len(elements) == 0:
             return {}
 
-        batch_query = {}
-        lookups = {}
         unique_elements = {element["WebId"]: element for element in elements}
-        for i, element in enumerate(unique_elements.values()):
-            for j, (field_name, attribute_path) in enumerate(
-                self._metadata_attributes.items()
-            ):
-                params = {
-                    "nameFilter": attribute_path.split("|")[-1],
-                    "searchFullHierarchy": "true" if "|" in attribute_path else "false",
-                    "selectedFields": ";".join(
-                        [
-                            "Items.Path",
-                            "Items.Value.Value",
-                            "Items.Value.Good",
-                        ]
-                    ),
-                }
-                batch_id = f"{i}.{j}"
-                batch_query[batch_id] = {
-                    "Method": "GET",
-                    "Resource": add_query_params(
-                        self._url.root(["streamsets", element["WebId"], "value"]),
-                        params,
-                    ),
-                }
-                lookups[batch_id] = (
-                    element["WebId"],
-                    field_name,
-                    f"{element['Path']}|{attribute_path}",
-                )
+        self._find_ancestors(list(unique_elements.values()))
 
+        batch_query = {}
+        lookups: dict[str, str] = {}
+        field_lookups = []
+        for web_id, element in unique_elements.items():
+            for field_name, metadata_attributes in self._metadata_attributes.items():
+                paths = []
+                for metadata_attribute in metadata_attributes:
+                    try:
+                        target = self._find_target(element, metadata_attribute)
+                    except _AncestorUnavailableException:
+                        break
+                    if target is None:
+                        continue
+                    attribute_path = metadata_attribute.attribute
+                    path = f"{target['Path']}|{attribute_path}"
+                    if path not in lookups:
+                        batch_id = str(len(lookups))
+                        batch_query[batch_id] = self._value_request(
+                            target["WebId"], attribute_path
+                        )
+                        lookups[path] = batch_id
+                    paths.append(path)
+                field_lookups.append((web_id, field_name, paths))
+
+        if len(batch_query) == 0:
+            return {}
+
+        result = self._send_batch(batch_query)
+        if result is None:
+            return {}
+
+        attribute_values = _read_attribute_values(lookups, result)
+        values: dict[str, dict[str, Any]] = {}
+        for web_id, field_name, paths in field_lookups:
+            value = _select_attribute_value(paths, attribute_values)
+            if value is not None:
+                values.setdefault(web_id, {})[field_name] = value
+        return values
+
+    def _value_request(self, element_web_id: str, attribute_path: str) -> dict:
+        params = {
+            "nameFilter": attribute_path.rsplit("|", maxsplit=1)[-1],
+            "searchFullHierarchy": "true" if "|" in attribute_path else "false",
+            "selectedFields": ";".join(
+                [
+                    "Items.Path",
+                    "Items.Value.Value",
+                    "Items.Value.Good",
+                ]
+            ),
+        }
+        return {
+            "Method": "GET",
+            "Resource": add_query_params(
+                self._url.root(["streamsets", element_web_id, "value"]),
+                params,
+            ),
+        }
+
+    def _find_target(
+        self, element: dict, metadata_attribute: MetadataAttribute
+    ) -> dict | None:
+        """Return the element that has the metadata attribute of the given element.
+
+        Returns None when the element has no such ancestor.
+        Ancestors always exist, so an ancestor that is not known failed to load.
+        """
+        if not metadata_attribute.is_of_ancestor():
+            return element
+        for level, path in enumerate(_ancestor_paths(element["Path"]), start=1):
+            if (
+                metadata_attribute.level is not None
+                and level != metadata_attribute.level
+            ):
+                continue
+            ancestor = self._ancestors.get(path)
+            if ancestor is None:
+                raise _AncestorUnavailableException(path)
+            if metadata_attribute.level is not None:
+                return ancestor
+            assert metadata_attribute.template_name is not None
+            template_name = ancestor.get("TemplateName") or ""
+            if template_name.casefold() == metadata_attribute.template_name.casefold():
+                return ancestor
+        return None
+
+    def _find_ancestors(self, elements: list[dict]):
+        """Request the ancestors of the elements that metadata attributes need."""
+        paths = set()
+        for element in elements:
+            ancestor_paths = _ancestor_paths(element["Path"])
+            for metadata_attribute in itertools.chain.from_iterable(
+                self._metadata_attributes.values()
+            ):
+                if metadata_attribute.template_name is not None:
+                    paths.update(ancestor_paths)
+                elif (
+                    metadata_attribute.level is not None
+                    and metadata_attribute.level <= len(ancestor_paths)
+                ):
+                    paths.add(ancestor_paths[metadata_attribute.level - 1])
+
+        unknown_paths = sorted(paths - self._ancestors.keys())
+        if len(unknown_paths) == 0:
+            return
+
+        params = {
+            "selectedFields": ";".join(["WebId", "Path", "TemplateName"]),
+            "webIdType": self._request_properties.web_id_type,
+        }
+        batch_query = {
+            str(i): {
+                "Method": "GET",
+                "Resource": add_query_params(
+                    self._url.root("elements"), {**params, "path": path}
+                ),
+            }
+            for i, path in enumerate(unknown_paths)
+        }
+        result = self._send_batch(batch_query)
+        if result is None:
+            return
+
+        for i, path in enumerate(unknown_paths):
+            batch_response = result.get(str(i))
+            if batch_response is None:
+                continue
+            if batch_response["Status"] != HTTP_OK:
+                logger.warning(
+                    "Failed to look up element %s: %s",
+                    path,
+                    _extract_error(batch_response),
+                )
+                continue
+            self._ancestors[path] = batch_response["Content"]
+
+    def _send_batch(self, batch_query: dict) -> dict | None:
         try:
             response = self._session.post(
                 self._url.root("batch"),
@@ -1229,30 +1417,58 @@ class _MetadataAttributeLookup:
                 json=batch_query,
             )
             response.raise_for_status()
-            result = response.json()
+            return response.json()
         except (RequestException, ValueError) as err:
             logger.warning("Failed to look up metadata attribute values: %s", err)
-            return {}
+            return None
 
-        values: dict[str, dict[str, Any]] = {}
-        for batch_id, (web_id, field_name, path) in lookups.items():
-            batch_response = result.get(batch_id)
-            if batch_response is None:
-                continue
-            if batch_response["Status"] != HTTP_OK:
-                logger.warning(
-                    "Failed to look up metadata attribute %s: %s",
-                    path,
-                    _extract_error(batch_response),
-                )
-                continue
-            for item in batch_response["Content"].get("Items", []):
-                if item["Path"] != path:
-                    continue
-                value = _get_metadata_attribute_value(item["Value"])
-                if value is not None:
-                    values.setdefault(web_id, {})[field_name] = value
-        return values
+
+class _AncestorUnavailableException(KukurException):
+    """Raised when an ancestor of an element failed to load."""
+
+
+def _read_attribute_values(lookups: dict[str, str], result: dict) -> dict[str, Any]:
+    """Return the attribute values in a batch response by attribute path.
+
+    Attributes that do not exist are left out.
+    Attributes that failed to load have a None value,
+    to prevent another metadata attribute from being used instead.
+    """
+    attribute_values: dict[str, Any] = {}
+    for path, batch_id in lookups.items():
+        batch_response = result.get(batch_id)
+        if batch_response is None:
+            attribute_values[path] = None
+            continue
+        if batch_response["Status"] != HTTP_OK:
+            logger.warning(
+                "Failed to look up metadata attribute %s: %s",
+                path,
+                _extract_error(batch_response),
+            )
+            attribute_values[path] = None
+            continue
+        for item in batch_response["Content"].get("Items", []):
+            if item["Path"] == path:
+                attribute_values[path] = _get_metadata_attribute_value(item["Value"])
+    return attribute_values
+
+
+def _select_attribute_value(paths: list[str], attribute_values: dict[str, Any]) -> Any:
+    """Return the value of the first attribute that exists."""
+    for path in paths:
+        if path in attribute_values:
+            return attribute_values[path]
+    return None
+
+
+def _ancestor_paths(element_path: str) -> list[str]:
+    """Return the paths of the ancestors of the element at the given path, nearest first."""
+    components = element_path.split("\\")
+    return [
+        "\\".join(components[:end])
+        for end in range(len(components) - 1, ELEMENT_PATH_PREFIX_COMPONENTS, -1)
+    ]
 
 
 def _get_metadata_attribute_value(value: dict) -> Any | None:
