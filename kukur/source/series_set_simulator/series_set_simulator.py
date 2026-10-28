@@ -160,11 +160,11 @@ class SeriesSetSimulatorSource:
                     SeriesSelector(
                         selector.source,
                         {
-                            "series name": element,
-                            "Attribute": attribute,
+                            "series name": attribute,
+                            "plant": element,
                             "__id__": self._web_id(element, attribute),
                         },
-                        attribute,
+                        "value",
                     )
                 )
 
@@ -176,8 +176,8 @@ class SeriesSetSimulatorSource:
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         """Return the data of a simulated series in [start_date, end_date)."""
-        element = selector.tags.get("series name")
-        attribute = selector.tags.get("Attribute")
+        element = selector.tags.get("plant")
+        attribute = selector.tags.get("series name")
         if element is None or attribute is None:
             return _to_table(np.empty(0, dtype=np.int64), np.empty(0))
         start_us = _to_epoch_microseconds(start_date)
@@ -213,8 +213,8 @@ class SeriesSetSimulatorSource:
 
     def _get_metadata(self, selector: SeriesSelector) -> Metadata:
         metadata = Metadata(selector)
-        attribute = selector.tags.get("Attribute")
-        element = selector.tags.get("series name")
+        attribute = selector.tags.get("series name")
+        element = selector.tags.get("plant")
         if attribute == self.__config.control_attribute:
             description = f"{attribute} of {element} (control series)"
         elif element is None or attribute is None:
