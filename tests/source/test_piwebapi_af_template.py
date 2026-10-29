@@ -1573,8 +1573,11 @@ def test_search_metadata_attributes_of_ancestors(caplog) -> None:
             {
                 "material": "Material",
                 "country": {"attribute": "Country", "template_name": "Plant"},
-                "parent country": {"attribute": "Country", "level": 1},
+                "parent country": {"attribute": "Country", "level": -2},
+                "grandparent country": {"attribute": "Country", "level": -3},
+                "own material": {"attribute": "Material", "level": -1},
                 "company": {"attribute": "Name", "level": 3},
+                "plant country": {"attribute": "Country", "level": 4},
             },
         )
     assert values == {
@@ -1582,19 +1585,28 @@ def test_search_metadata_attributes_of_ancestors(caplog) -> None:
             "material": "Steel",
             "country": "USA",
             "parent country": "Texas",
+            "grandparent country": "USA",
+            "own material": "Steel",
             "company": "TSAI Group",
+            "plant country": "USA",
         },
         "Reactor02": {
             "material": "Stainless steel",
             "country": "Belgium",
             "parent country": "Belgium",
-            "company": None,
+            "grandparent country": None,
+            "own material": "Stainless steel",
+            "company": "TSAI Group",
+            "plant country": "Belgium",
         },
         "Reactor03": {
             "material": None,
             "country": "Belgium",
             "parent country": "Belgium",
-            "company": None,
+            "grandparent country": None,
+            "own material": None,
+            "company": "TSAI Group",
+            "plant country": "Belgium",
         },
     }
     assert caplog.text == ""
@@ -1606,7 +1618,7 @@ def test_search_metadata_attributes_of_ancestors_once() -> None:
         asset_framework,
         {
             "country": {"attribute": "Country", "template_name": "Plant"},
-            "parent country": {"attribute": "Country", "level": 1},
+            "parent country": {"attribute": "Country", "level": -2},
         },
     )
     assert asset_framework.ancestor_requests == [
@@ -1643,12 +1655,18 @@ def test_search_metadata_attributes_of_missing_ancestor(caplog) -> None:
             asset_framework,
             {
                 "site": {"attribute": "Country", "template_name": "Site"},
-                "group": {"attribute": "Country", "level": 4},
+                "group": {"attribute": "Country", "level": -5},
+                "below": {"attribute": "Country", "level": 7},
                 "plant": {"attribute": "Missing", "template_name": "Plant"},
             },
         )
     for element_values in values.values():
-        assert element_values == {"site": None, "group": None, "plant": None}
+        assert element_values == {
+            "site": None,
+            "group": None,
+            "below": None,
+            "plant": None,
+        }
     assert caplog.text == ""
 
 
@@ -1679,8 +1697,8 @@ def test_search_metadata_attributes_first_found(caplog) -> None:
                     {"attribute": "Country", "template_name": "Plant"},
                 ],
                 "company": [
-                    {"attribute": "Name", "level": 3},
-                    {"attribute": "Name", "level": 2},
+                    {"attribute": "Name", "level": -4},
+                    {"attribute": "Name", "level": -3},
                 ],
             },
         )
@@ -1697,7 +1715,7 @@ def test_search_metadata_attributes_first_found_not_good() -> None:
     asset_framework = _AncestorAssetFramework()
     values = _search_ancestor_metadata(
         asset_framework,
-        {"country": ["Country", {"attribute": "Country", "level": 1}]},
+        {"country": ["Country", {"attribute": "Country", "level": -2}]},
     )
     assert values["Reactor01"]["country"] == "Texas"
     assert values["Reactor02"]["country"] == "Belgium"
@@ -1711,10 +1729,10 @@ def test_search_metadata_attributes_first_found_failing_ancestor(caplog) -> None
             asset_framework,
             {
                 "country": [
-                    {"attribute": "Country", "level": 1},
-                    {"attribute": "Country", "level": 2},
+                    {"attribute": "Country", "level": -2},
+                    {"attribute": "Country", "level": -3},
                 ],
-                "material": ["Material", {"attribute": "Country", "level": 1}],
+                "material": ["Material", {"attribute": "Country", "level": -2}],
             },
         )
     assert values["Reactor01"] == {"country": None, "material": "Steel"}
@@ -1729,7 +1747,7 @@ def test_search_metadata_attributes_first_found_failing_value(caplog) -> None:
             asset_framework,
             {
                 "country": [
-                    {"attribute": "Country", "level": 1},
+                    {"attribute": "Country", "level": -2},
                     {"attribute": "Country", "template_name": "Plant"},
                 ],
             },
@@ -1747,9 +1765,11 @@ def test_search_metadata_attributes_first_found_failing_value(caplog) -> None:
         {"attribute": "Country", "templateName": "Plant"},
         {"attribute": "Country", "template_name": ""},
         {"attribute": "Country", "level": 0},
+        {"attribute": "Country", "level": 1},
+        {"attribute": "Country", "level": 2},
         {"attribute": "Country", "level": True},
         {"attribute": "Country", "level": "1"},
-        {"attribute": "Country", "template_name": "Plant", "level": 1},
+        {"attribute": "Country", "template_name": "Plant", "level": -2},
         [],
         [["Country"]],
         ["Country", {"attribute": "Country", "level": 0}],

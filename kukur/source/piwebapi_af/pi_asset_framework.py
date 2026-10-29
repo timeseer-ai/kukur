@@ -50,8 +50,9 @@ TRANSIENT_STATUS_CODES = (HTTP_TOO_MANY_REQUESTS, HTTP_SERVICE_UNAVAILABLE)
 
 T = TypeVar("T")
 
-# An element path starts with "\\server\database": 4 components when split on "\".
-ELEMENT_PATH_PREFIX_COMPONENTS = 4
+# The components of an element path start with the server and the database.
+FIRST_ELEMENT_INDEX = 2
+FIRST_ELEMENT_LEVEL = FIRST_ELEMENT_INDEX + 1
 
 
 class ElementInOtherDatabaseException(KukurException):
@@ -72,7 +73,9 @@ class MetadataAttribute:
 
     The attribute belongs to the element itself,
     to the nearest ancestor with the element template `template_name`
-    or to the ancestor `level` levels up.
+    or to the element at `level` in the path of the element.
+    Positive levels count from the start of the path: 1 is the server, 2 the database.
+    Negative levels count back from the element: -1 is the element itself, -2 its parent.
     """
 
     attribute: str
@@ -103,7 +106,9 @@ class MetadataAttribute:
             )
         level = data.get("level")
         if level is not None and (
-            not isinstance(level, int) or isinstance(level, bool) or level < 1
+            not isinstance(level, int)
+            or isinstance(level, bool)
+            or 0 <= level < FIRST_ELEMENT_LEVEL
         ):
             raise InvalidSourceException(
                 f'invalid "level" for metadata attribute {attribute}'
@@ -122,10 +127,6 @@ class MetadataAttribute:
         if len(data) == 0:
             raise InvalidSourceException("empty list of metadata attributes")
         return [cls.from_data(item) for item in data]
-
-    def is_of_ancestor(self) -> bool:
-        """Return True when the attribute belongs to an ancestor of the element."""
-        return self.template_name is not None or self.level is not None
 
 
 @dataclass
@@ -1340,24 +1341,27 @@ class _MetadataAttributeLookup:
         Returns None when the element has no such ancestor.
         Ancestors always exist, so an ancestor that is not known failed to load.
         """
-        if not metadata_attribute.is_of_ancestor():
+        if metadata_attribute.level is not None:
+            path = _level_path(element["Path"], metadata_attribute.level)
+            if path is None:
+                return None
+            if path == element["Path"]:
+                return element
+            return self._get_ancestor(path)
+        if metadata_attribute.template_name is None:
             return element
-        for level, path in enumerate(_ancestor_paths(element["Path"]), start=1):
-            if (
-                metadata_attribute.level is not None
-                and level != metadata_attribute.level
-            ):
-                continue
-            ancestor = self._ancestors.get(path)
-            if ancestor is None:
-                raise _AncestorUnavailableException(path)
-            if metadata_attribute.level is not None:
-                return ancestor
-            assert metadata_attribute.template_name is not None
+        for path in _ancestor_paths(element["Path"]):
+            ancestor = self._get_ancestor(path)
             template_name = ancestor.get("TemplateName") or ""
             if template_name.casefold() == metadata_attribute.template_name.casefold():
                 return ancestor
         return None
+
+    def _get_ancestor(self, path: str) -> dict:
+        ancestor = self._ancestors.get(path)
+        if ancestor is None:
+            raise _AncestorUnavailableException(path)
+        return ancestor
 
     def _find_ancestors(self, elements: list[dict]):
         """Request the ancestors of the elements that metadata attributes need."""
@@ -1369,11 +1373,10 @@ class _MetadataAttributeLookup:
             ):
                 if metadata_attribute.template_name is not None:
                     paths.update(ancestor_paths)
-                elif (
-                    metadata_attribute.level is not None
-                    and metadata_attribute.level <= len(ancestor_paths)
-                ):
-                    paths.add(ancestor_paths[metadata_attribute.level - 1])
+                elif metadata_attribute.level is not None:
+                    path = _level_path(element["Path"], metadata_attribute.level)
+                    if path is not None and path != element["Path"]:
+                        paths.add(path)
 
         unknown_paths = sorted(paths - self._ancestors.keys())
         if len(unknown_paths) == 0:
@@ -1462,12 +1465,24 @@ def _select_attribute_value(paths: list[str], attribute_values: dict[str, Any]) 
     return None
 
 
+def _level_path(element_path: str, level: int) -> str | None:
+    """Return the path of the element at a level in the path of an element.
+
+    Returns None when that is not the element or one of its ancestors.
+    """
+    components = element_path.lstrip("\\").split("\\")
+    index = level - 1 if level > 0 else len(components) + level
+    if not FIRST_ELEMENT_INDEX <= index < len(components):
+        return None
+    return "\\\\" + "\\".join(components[: index + 1])
+
+
 def _ancestor_paths(element_path: str) -> list[str]:
     """Return the paths of the ancestors of the element at the given path, nearest first."""
-    components = element_path.split("\\")
+    components = element_path.lstrip("\\").split("\\")
     return [
-        "\\".join(components[:end])
-        for end in range(len(components) - 1, ELEMENT_PATH_PREFIX_COMPONENTS, -1)
+        "\\\\" + "\\".join(components[:end])
+        for end in range(len(components) - 1, FIRST_ELEMENT_INDEX, -1)
     ]
 
 

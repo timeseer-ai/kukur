@@ -108,7 +108,9 @@ Instead of an attribute path, a value can be a table that reads the attribute of
 
 - `attribute`: the attribute path relative to the ancestor.
 - `template_name`: the nearest ancestor of the element with this element template.
-- `level`: the ancestor this number of levels up from the element: `1` is the element that contains it, `2` the element above that.
+- `level`: the element at this position in the path of the element.
+Positive values count from the start of the path: `1` is the server, `2` the database and `3` the first element.
+Negative values count back from the element: `-1` is the element itself, `-2` the element that contains it.
 
 For example,
 this sets the `country` metadata field to the value of the `Country` attribute of the `Plant` of the element
@@ -117,7 +119,7 @@ and the `line` metadata field to the value of the `Name` attribute of the elemen
 ```toml
 [source.<name>.metadata_attributes]
 country = { attribute = "Country", template_name = "Plant" }
-line = { attribute = "Name", level = 1 }
+line = { attribute = "Name", level = -2 }
 ```
 
 When an element has no matching ancestor, the metadata field is left empty.
