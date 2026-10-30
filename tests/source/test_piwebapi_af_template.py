@@ -12,7 +12,7 @@ import requests
 
 from kukur import DataType
 from kukur.base import SeriesSearch
-from kukur.exceptions import KukurException
+from kukur.exceptions import InvalidSourceException, KukurException
 from kukur.metadata import fields
 from kukur.source.piwebapi_af.pi_asset_framework import (
     BatchRequestFailedException,
@@ -1364,6 +1364,427 @@ def test_search_metadata_attributes_timeout(_post, _get, caplog) -> None:
     for metadata in series_metadata:
         assert metadata.get_field_by_name("location") is None
     assert "Read timed out" in caplog.text
+
+
+ANCESTOR_DATABASE_PATH = "\\\\vm-ts-pi\\Timeseer"
+
+# path relative to the database: (WebId, element template, attribute values)
+ANCESTOR_ELEMENTS: dict[str, tuple[str, str, dict]] = {
+    "TSAI": ("C1", "Company", {"Name": "TSAI Group"}),
+    "TSAI\\Houston": ("P1", "Plant", {"Country": "USA"}),
+    "TSAI\\Houston\\Line1": ("L1", "Line", {"Country": "Texas"}),
+    "TSAI\\Houston\\Line1\\Reactor01": ("R1", "Reactor", {"Material": "Steel"}),
+    "TSAI\\Antwerp": ("P2", "plant", {"Country": "Belgium"}),
+    "TSAI\\Antwerp\\Reactor02": ("R2", "Reactor", {"Material": "Stainless steel"}),
+    "TSAI\\Antwerp\\Reactor03": (
+        "R3",
+        "Reactor",
+        {"Country": {"Value": "Nowhere", "Good": False}},
+    ),
+}
+
+
+class _AncestorAssetFramework:
+    """Answer batch requests for an AF database with a hierarchy of elements."""
+
+    def __init__(
+        self,
+        failing_paths: list[str] | None = None,
+        failing_values: list[str] | None = None,
+    ):
+        self.elements = {
+            f"{ANCESTOR_DATABASE_PATH}\\{path}": element
+            for path, element in ANCESTOR_ELEMENTS.items()
+        }
+        self.failing_paths = [
+            f"{ANCESTOR_DATABASE_PATH}\\{path}" for path in failing_paths or []
+        ]
+        self.ancestor_requests: list[list[str]] = []
+        self.failing_values = failing_values or []
+        self.value_requests: list[list[str]] = []
+
+    def post(self, *args, **kwargs):
+        assert args[0] == f"{WEB_API_URI}batch"
+        batch_query = kwargs["json"]
+        if "GetElements" in batch_query:
+            return MockResponse(self._search(batch_query), 207)
+        resources = [urlparse(request["Resource"]) for request in batch_query.values()]
+        if all(url.path == "/piwebapi/elements" for url in resources):
+            return MockResponse(self._ancestors(batch_query), 207)
+        return MockResponse(self._values(batch_query), 207)
+
+    def _search(self, batch_query: dict) -> dict:
+        query = parse_qs(urlparse(batch_query["GetElements"]["Resource"]).query)
+        start_index = int(query["startIndex"][0])
+        max_count = int(query["maxCount"][0])
+        reactors = [
+            (path, web_id)
+            for path, (web_id, template_name, _) in self.elements.items()
+            if template_name == "Reactor"
+        ][start_index : start_index + max_count]
+        return {
+            "GetElements": {
+                "Status": 200,
+                "Headers": {},
+                "Content": {
+                    "Items": [
+                        {
+                            "WebId": web_id,
+                            "Name": path.rsplit("\\", 1)[1],
+                            "Path": path,
+                            "Description": "",
+                            "CategoryNames": [],
+                        }
+                        for path, web_id in reactors
+                    ]
+                },
+            },
+            "GetAttributes": {
+                "Status": 207,
+                "Headers": {},
+                "Content": {
+                    "Items": [
+                        {
+                            "Status": 200,
+                            "Headers": {},
+                            "Content": {
+                                "Items": [
+                                    {
+                                        "WebId": f"{web_id}_1",
+                                        "Name": "Level",
+                                        "Description": "",
+                                        "Path": f"{path}|Level",
+                                        "Type": "Double",
+                                        "DefaultUnitsNameAbbreviation": "",
+                                        "DataReferencePlugIn": "PI Point",
+                                        "CategoryNames": [],
+                                        "Step": False,
+                                        "Span": 100.0,
+                                        "Zero": 0.0,
+                                    }
+                                ]
+                            },
+                        }
+                        for path, web_id in reactors
+                    ]
+                },
+            },
+        }
+
+    def _ancestors(self, batch_query: dict) -> dict:
+        result = {}
+        paths = []
+        for batch_id, request in batch_query.items():
+            query = parse_qs(urlparse(request["Resource"]).query)
+            assert query["webIdType"] == ["Full"]
+            path = query["path"][0]
+            paths.append(path)
+            if path not in self.elements or path in self.failing_paths:
+                result[batch_id] = {
+                    "Status": 404,
+                    "Headers": {},
+                    "Content": {"Errors": [f"Not found: '{path}'."]},
+                }
+                continue
+            web_id, template_name, _ = self.elements[path]
+            result[batch_id] = {
+                "Status": 200,
+                "Headers": {},
+                "Content": {
+                    "WebId": web_id,
+                    "Path": path,
+                    "TemplateName": template_name,
+                },
+            }
+        self.ancestor_requests.append(paths)
+        return result
+
+    def _values(self, batch_query: dict) -> dict:
+        result = {}
+        lookups = []
+        for batch_id, request in batch_query.items():
+            url = urlparse(request["Resource"])
+            web_id = url.path.split("/")[-2]
+            name_filter = parse_qs(url.query)["nameFilter"][0]
+            lookups.append(f"{web_id}|{name_filter}")
+            if f"{web_id}|{name_filter}" in self.failing_values:
+                result[batch_id] = {
+                    "Status": 400,
+                    "Headers": {},
+                    "Content": {"Errors": ["Lookup failed"]},
+                }
+                continue
+            path, (_, _, values) = next(
+                (path, element)
+                for path, element in self.elements.items()
+                if element[0] == web_id
+            )
+            result[batch_id] = {
+                "Status": 200,
+                "Headers": {},
+                "Content": {
+                    "Items": [
+                        {
+                            "Path": f"{path}|{name}",
+                            "Value": (
+                                value
+                                if isinstance(value, dict)
+                                else {"Value": value, "Good": True}
+                            ),
+                        }
+                        for name, value in values.items()
+                        if name == name_filter
+                    ]
+                },
+            }
+        self.value_requests.append(lookups)
+        return result
+
+
+def _search_ancestor_metadata(
+    asset_framework: _AncestorAssetFramework,
+    metadata_attributes: dict,
+    max_returned_metadata_items_per_call: int = 150,
+) -> dict[str, dict]:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "element_template": "Reactor",
+            "metadata_attributes": metadata_attributes,
+            "max_returned_metadata_items_per_call": max_returned_metadata_items_per_call,
+        }
+    )
+    with patch("requests.Session.post", side_effect=asset_framework.post):
+        series_metadata = list(source.search(SeriesSearch("Test")))
+    return {
+        metadata.series.tags["series name"]: {
+            field_name: metadata.get_field_by_name(field_name)
+            for field_name in metadata_attributes
+        }
+        for metadata in series_metadata
+    }
+
+
+def test_search_metadata_attributes_of_ancestors(caplog) -> None:
+    asset_framework = _AncestorAssetFramework()
+    with caplog.at_level(logging.WARNING):
+        values = _search_ancestor_metadata(
+            asset_framework,
+            {
+                "material": "Material",
+                "country": {"attribute": "Country", "template_name": "Plant"},
+                "parent country": {"attribute": "Country", "level": -2},
+                "grandparent country": {"attribute": "Country", "level": -3},
+                "own material": {"attribute": "Material", "level": -1},
+                "company": {"attribute": "Name", "level": 3},
+                "plant country": {"attribute": "Country", "level": 4},
+            },
+        )
+    assert values == {
+        "Reactor01": {
+            "material": "Steel",
+            "country": "USA",
+            "parent country": "Texas",
+            "grandparent country": "USA",
+            "own material": "Steel",
+            "company": "TSAI Group",
+            "plant country": "USA",
+        },
+        "Reactor02": {
+            "material": "Stainless steel",
+            "country": "Belgium",
+            "parent country": "Belgium",
+            "grandparent country": None,
+            "own material": "Stainless steel",
+            "company": "TSAI Group",
+            "plant country": "Belgium",
+        },
+        "Reactor03": {
+            "material": None,
+            "country": "Belgium",
+            "parent country": "Belgium",
+            "grandparent country": None,
+            "own material": None,
+            "company": "TSAI Group",
+            "plant country": "Belgium",
+        },
+    }
+    assert caplog.text == ""
+
+
+def test_search_metadata_attributes_of_ancestors_once() -> None:
+    asset_framework = _AncestorAssetFramework()
+    _search_ancestor_metadata(
+        asset_framework,
+        {
+            "country": {"attribute": "Country", "template_name": "Plant"},
+            "parent country": {"attribute": "Country", "level": -2},
+        },
+    )
+    assert asset_framework.ancestor_requests == [
+        [
+            f"{ANCESTOR_DATABASE_PATH}\\TSAI",
+            f"{ANCESTOR_DATABASE_PATH}\\TSAI\\Antwerp",
+            f"{ANCESTOR_DATABASE_PATH}\\TSAI\\Houston",
+            f"{ANCESTOR_DATABASE_PATH}\\TSAI\\Houston\\Line1",
+        ]
+    ]
+    assert sorted(asset_framework.value_requests[0]) == [
+        "L1|Country",
+        "P1|Country",
+        "P2|Country",
+    ]
+
+
+def test_search_metadata_attributes_of_ancestors_cached() -> None:
+    asset_framework = _AncestorAssetFramework()
+    values = _search_ancestor_metadata(
+        asset_framework,
+        {"country": {"attribute": "Country", "template_name": "Plant"}},
+        max_returned_metadata_items_per_call=2,
+    )
+    assert values["Reactor03"]["country"] == "Belgium"
+    assert len(asset_framework.value_requests) == 2
+    assert len(asset_framework.ancestor_requests) == 1
+
+
+def test_search_metadata_attributes_of_missing_ancestor(caplog) -> None:
+    asset_framework = _AncestorAssetFramework()
+    with caplog.at_level(logging.WARNING):
+        values = _search_ancestor_metadata(
+            asset_framework,
+            {
+                "site": {"attribute": "Country", "template_name": "Site"},
+                "group": {"attribute": "Country", "level": -5},
+                "below": {"attribute": "Country", "level": 7},
+                "plant": {"attribute": "Missing", "template_name": "Plant"},
+            },
+        )
+    for element_values in values.values():
+        assert element_values == {
+            "site": None,
+            "group": None,
+            "below": None,
+            "plant": None,
+        }
+    assert caplog.text == ""
+
+
+def test_search_metadata_attributes_of_failing_ancestor(caplog) -> None:
+    asset_framework = _AncestorAssetFramework(failing_paths=["TSAI\\Houston\\Line1"])
+    with caplog.at_level(logging.WARNING):
+        values = _search_ancestor_metadata(
+            asset_framework,
+            {
+                "material": "Material",
+                "country": {"attribute": "Country", "template_name": "Plant"},
+            },
+        )
+    assert values["Reactor01"] == {"material": "Steel", "country": None}
+    assert values["Reactor02"] == {"material": "Stainless steel", "country": "Belgium"}
+    assert "Failed to look up element" in caplog.text
+    assert "Line1" in caplog.text
+
+
+def test_search_metadata_attributes_first_found(caplog) -> None:
+    asset_framework = _AncestorAssetFramework()
+    with caplog.at_level(logging.WARNING):
+        values = _search_ancestor_metadata(
+            asset_framework,
+            {
+                "nearest country": [
+                    {"attribute": "Country", "template_name": "Line"},
+                    {"attribute": "Country", "template_name": "Plant"},
+                ],
+                "company": [
+                    {"attribute": "Name", "level": -4},
+                    {"attribute": "Name", "level": -3},
+                ],
+            },
+        )
+    assert values["Reactor01"] == {"nearest country": "Texas", "company": "TSAI Group"}
+    assert values["Reactor02"] == {
+        "nearest country": "Belgium",
+        "company": "TSAI Group",
+    }
+    assert caplog.text == ""
+    assert len(asset_framework.value_requests) == 1
+
+
+def test_search_metadata_attributes_first_found_not_good() -> None:
+    asset_framework = _AncestorAssetFramework()
+    values = _search_ancestor_metadata(
+        asset_framework,
+        {"country": ["Country", {"attribute": "Country", "level": -2}]},
+    )
+    assert values["Reactor01"]["country"] == "Texas"
+    assert values["Reactor02"]["country"] == "Belgium"
+    assert values["Reactor03"]["country"] is None
+
+
+def test_search_metadata_attributes_first_found_failing_ancestor(caplog) -> None:
+    asset_framework = _AncestorAssetFramework(failing_paths=["TSAI\\Houston\\Line1"])
+    with caplog.at_level(logging.WARNING):
+        values = _search_ancestor_metadata(
+            asset_framework,
+            {
+                "country": [
+                    {"attribute": "Country", "level": -2},
+                    {"attribute": "Country", "level": -3},
+                ],
+                "material": ["Material", {"attribute": "Country", "level": -2}],
+            },
+        )
+    assert values["Reactor01"] == {"country": None, "material": "Steel"}
+    assert values["Reactor02"] == {"country": "Belgium", "material": "Stainless steel"}
+    assert "Line1" in caplog.text
+
+
+def test_search_metadata_attributes_first_found_failing_value(caplog) -> None:
+    asset_framework = _AncestorAssetFramework(failing_values=["L1|Country"])
+    with caplog.at_level(logging.WARNING):
+        values = _search_ancestor_metadata(
+            asset_framework,
+            {
+                "country": [
+                    {"attribute": "Country", "level": -2},
+                    {"attribute": "Country", "template_name": "Plant"},
+                ],
+            },
+        )
+    assert values["Reactor01"]["country"] is None
+    assert values["Reactor02"]["country"] == "Belgium"
+    assert "Lookup failed" in caplog.text
+
+
+@pytest.mark.parametrize(
+    "metadata_attribute",
+    [
+        {},
+        {"attribute": ""},
+        {"attribute": "Country", "templateName": "Plant"},
+        {"attribute": "Country", "template_name": ""},
+        {"attribute": "Country", "level": 0},
+        {"attribute": "Country", "level": 1},
+        {"attribute": "Country", "level": 2},
+        {"attribute": "Country", "level": True},
+        {"attribute": "Country", "level": "1"},
+        {"attribute": "Country", "template_name": "Plant", "level": -2},
+        [],
+        [["Country"]],
+        ["Country", {"attribute": "Country", "level": 0}],
+    ],
+)
+def test_search_invalid_metadata_attribute(metadata_attribute) -> None:
+    source = from_config(
+        {
+            "database_uri": DATABASE_URI,
+            "element_template": "Reactor",
+            "metadata_attributes": {"country": metadata_attribute},
+        }
+    )
+    with pytest.raises(InvalidSourceException):
+        list(source.search(SeriesSearch("Test")))
 
 
 PLANT_PATH = "\\\\vm-ts-pi\\Timeseer\\TSAI Houston"

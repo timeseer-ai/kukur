@@ -19,7 +19,7 @@ attribute_category = "" # optional: return only attributes with this category
 allowed_data_references = ["PI Point"] # optional: include attributes other than PI Points
 attributes_as_fields = false # set to true to use the attribute name as the field.
 use_attribute_path = true # set to false to use the attribute name instead for the tag/field.
-metadata_attributes = {} # optional: metadata field name to element attribute name
+metadata_attributes = {} # optional: metadata field name to attribute name of the element or an ancestor
 element_paths = [] # optional: return only attributes of the elements at these paths
 web_id_type = "Full" # one of Full, IDOnly, PathOnly
 max_returned_items_per_call = 150000
@@ -103,6 +103,45 @@ and the `active` metadata field to the value of the `Active` child attribute of 
 location = "Location"
 active = "Status|Active"
 ```
+
+Instead of an attribute path, a value can be a table that reads the attribute of an ancestor of the element:
+
+- `attribute`: the attribute path relative to the ancestor.
+- `template_name`: the nearest ancestor of the element with this element template.
+- `level`: the element at this position in the path of the element.
+Positive values count from the start of the path: `1` is the server, `2` the database and `3` the first element.
+Negative values count back from the element: `-1` is the element itself, `-2` the element that contains it.
+
+For example,
+this sets the `country` metadata field to the value of the `Country` attribute of the `Plant` of the element
+and the `line` metadata field to the value of the `Name` attribute of the element that contains it:
+
+```toml
+[source.<name>.metadata_attributes]
+country = { attribute = "Country", template_name = "Plant" }
+line = { attribute = "Name", level = -2 }
+```
+
+When an element has no matching ancestor, the metadata field is left empty.
+
+A value can also be a list of attribute paths and tables.
+The first attribute in the list that exists sets the metadata field.
+For example,
+this sets the `area` metadata field to the `Area` attribute of the element,
+or to the `Area` attribute of the nearest `Line` or `Plant` when the element does not have one:
+
+```toml
+[source.<name>.metadata_attributes]
+area = [
+    "Area",
+    { attribute = "Area", template_name = "Line" },
+    { attribute = "Area", template_name = "Plant" },
+]
+```
+
+When the first attribute that exists has a value that is not good,
+the metadata field is left empty: the next attributes in the list are not used.
+When an attribute cannot be read, the next attributes in the list are not used either.
 
 The values are requested in a separate batch request after the elements have been found,
 which uses `metadata_request_timeout_seconds`.
