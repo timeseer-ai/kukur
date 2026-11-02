@@ -3,13 +3,23 @@
 # SPDX-FileCopyrightText: 2021 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
+import copy
+import pickle
+
+import pytest
+
 from kukur import (
     DataType,
     Dictionary,
     InterpolationType,
     SeriesSelector,
 )
-from kukur.metadata import Metadata, MetadataField, fields
+from kukur.metadata import (
+    DuplicateMetadataFieldException,
+    Metadata,
+    MetadataField,
+    fields,
+)
 
 SERIES = SeriesSelector("test", "test-tag-1")
 
@@ -52,6 +62,39 @@ def test_typed_field() -> None:
     metadata = Metadata(SERIES)
     metadata.set_field(custom_field, "test")
     assert list(metadata.iter_names())[1] == ("custom", "test")
+
+
+def test_field_equality() -> None:
+    assert copy.deepcopy(fields.Unit) == fields.Unit
+    assert hash(copy.deepcopy(fields.Unit)) == hash(fields.Unit)
+    assert fields.Unit != fields.Description
+    assert fields.Unit != "unit"
+
+
+def test_copied_field() -> None:
+    unit = pickle.loads(pickle.dumps(fields.Unit))
+    metadata = Metadata(SERIES)
+    metadata.set_field(unit, "m")
+    assert metadata.get_field(fields.Unit) == "m"
+    assert metadata.get_field(unit) == "m"
+
+
+def test_register_same_field() -> None:
+    field_count = len(Metadata._fields)
+    Metadata.register_field(fields.Unit)
+    assert len(Metadata._fields) == field_count
+
+
+def test_register_duplicate_field_name() -> None:
+    unit = MetadataField[str]("unit", default="", serialized_name="customUnit")
+    with pytest.raises(DuplicateMetadataFieldException):
+        Metadata.register_field(unit)
+
+
+def test_register_duplicate_field_serialized_name() -> None:
+    unit = MetadataField[str]("custom unit", default="", serialized_name="unit")
+    with pytest.raises(DuplicateMetadataFieldException):
+        Metadata.register_field(unit)
 
 
 def test_description() -> None:

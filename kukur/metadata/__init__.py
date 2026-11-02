@@ -11,10 +11,20 @@ from collections.abc import Generator
 from typing import Any, TypeVar
 
 from kukur.base import SeriesSelector
+from kukur.exceptions import KukurException
 
 from .fields import MetadataField, register_default_fields
 
 T = TypeVar("T")
+
+
+class DuplicateMetadataFieldException(KukurException):
+    """Raised when a different metadata field with the same name is registered."""
+
+    def __init__(self, field: MetadataField):
+        KukurException.__init__(
+            self, f'metadata field "{field.name()}" is already registered'
+        )
 
 
 class MetadataFields:
@@ -145,7 +155,16 @@ class Metadata(MetadataFields):
         """Register a new metadata field.
 
         Optionally insert it right after the given field in the field ordering.
+        Registering the same field again has no effect.
         """
+        for registered_field in cls._fields:
+            if registered_field is field:
+                return
+            if (
+                registered_field.name() == field.name()
+                or registered_field.serialized_name() == field.serialized_name()
+            ):
+                raise DuplicateMetadataFieldException(field)
         if after_field is not None:
             cls._fields.insert(cls._fields.index(after_field) + 1, field)
         else:
