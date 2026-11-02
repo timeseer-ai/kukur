@@ -7,6 +7,7 @@ from datetime import datetime
 
 from kukur.api_key import ApiKey
 from kukur.repository.base import BaseRepository, Migration
+from kukur.timestamp import parse_timestamp
 
 
 class ApiKeyMigration(Migration):
@@ -49,7 +50,7 @@ class ApiKeyRepository(BaseRepository):
                 insert into ApiKey (name, api_key, salt, creation_date)
                 values (?, ?, ?, ?)
             """,
-                [name, api_key, salt, creation_date],
+                [name, api_key, salt, creation_date.isoformat(" ")],
             )
             db.commit()
 
@@ -64,7 +65,10 @@ class ApiKeyRepository(BaseRepository):
             """
             )
             results = cursor.fetchall()
-            return [ApiKey(name, creation_date) for name, creation_date in results]
+            return [
+                ApiKey(name, parse_timestamp(creation_date))
+                for name, creation_date in results
+            ]
 
     def get(self, name) -> tuple[bytes | None, bytes | None]:
         """Get an api key by name."""

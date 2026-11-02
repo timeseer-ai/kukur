@@ -5,14 +5,12 @@
 
 import re
 import sqlite3
+from datetime import datetime
 
 from kukur.exceptions import InvalidSourceException
 from kukur.quality import QualityMapper
 from kukur.source.metadata import MetadataValueMapper
 from kukur.source.sql import BaseSQLSource, SQLConfig
-from kukur.timestamp import convert_sqlite_timestamp
-
-sqlite3.register_converter("datetime", convert_sqlite_timestamp)
 
 
 def _match(pattern, value):
@@ -40,19 +38,20 @@ class SQLiteSource(BaseSQLSource):
         ):
             connection = sqlite3.connect(
                 self._config.connection_string,
-                detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES,
                 uri=uri,
             )
         else:
             connection = sqlite3.connect(
                 self._config.connection_string,
                 timeout=self._config.query_timeout_seconds,
-                detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES,
                 uri=uri,
             )
 
         connection.create_function("match", 2, _match)
         return connection
+
+    def _adapt_date(self, date: datetime) -> str:
+        return date.isoformat(" ")
 
 
 def from_config(

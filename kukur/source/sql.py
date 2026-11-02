@@ -395,6 +395,10 @@ class BaseSQLSource(ABC):
             )
         if self._config.data_query_datetime_format is not None:
             return date.strftime(self._config.data_query_datetime_format)
+        return self._adapt_date(date)
+
+    def _adapt_date(self, date: datetime):
+        """Adapt a date query parameter for the database driver."""
         return date
 
     @abstractmethod

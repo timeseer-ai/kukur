@@ -14,8 +14,3 @@ def parse_timestamp(value: str) -> datetime:
         return datetime.fromisoformat(value)
     except ValueError:
         return dateutil.parser.parse(value)
-
-
-def convert_sqlite_timestamp(value: bytes) -> datetime:
-    """Convert a SQLite datetime column value to a datetime."""
-    return parse_timestamp(value.decode())
