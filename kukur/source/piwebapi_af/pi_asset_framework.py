@@ -12,7 +12,7 @@ from collections.abc import Callable, Generator
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import PurePosixPath
-from typing import Any, TypeVar
+from typing import Any
 
 import pyarrow as pa
 
@@ -47,8 +47,6 @@ HTTP_NOT_FOUND = 404
 HTTP_TOO_MANY_REQUESTS = 429
 HTTP_SERVICE_UNAVAILABLE = 503
 TRANSIENT_STATUS_CODES = (HTTP_TOO_MANY_REQUESTS, HTTP_SERVICE_UNAVAILABLE)
-
-T = TypeVar("T")
 
 # The components of an element path start with the server and the database.
 FIRST_ELEMENT_INDEX = 2
@@ -1125,7 +1123,9 @@ def _is_transient(err: Exception) -> bool:
     )
 
 
-def _retry_transient(request_properties: RequestProperties, fn: Callable[[], T]) -> T:
+def _retry_transient[T](
+    request_properties: RequestProperties, fn: Callable[[], T]
+) -> T:
     """Call fn, retrying when PI Web API is rate limited, unavailable or times out.
 
     Search results are generated while paging through PI Web API,

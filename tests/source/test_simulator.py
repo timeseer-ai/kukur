@@ -3,7 +3,7 @@
 # SPDX-FileCopyrightText: 2023 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pyarrow as pa
 from dateutil.parser import parse as parse_date
@@ -780,7 +780,7 @@ def drop_data_after_and_before(
 
 
 def test_sine_zero() -> None:
-    t1 = datetime.fromtimestamp(0, tz=timezone.utc)
+    t1 = datetime.fromtimestamp(0, tz=UTC)
 
     v0 = calculate_sine(t1, period_seconds=3600)
     v1 = calculate_sine(t1 + timedelta(minutes=15), period_seconds=3600)
@@ -796,7 +796,7 @@ def test_sine_zero() -> None:
 
 
 def test_sine_phase() -> None:
-    t1 = datetime.fromtimestamp(0, tz=timezone.utc)
+    t1 = datetime.fromtimestamp(0, tz=UTC)
 
     v0 = calculate_sine(t1, period_seconds=3600, phase_seconds=900)
     v1 = calculate_sine(
@@ -820,7 +820,7 @@ def test_sine_phase() -> None:
 
 
 def test_sine_phase_half() -> None:
-    t1 = datetime.fromtimestamp(0, tz=timezone.utc)
+    t1 = datetime.fromtimestamp(0, tz=UTC)
 
     v0 = calculate_sine(
         t1 + timedelta(seconds=7 * 60 + 30), period_seconds=3600, phase_seconds=450
@@ -846,7 +846,7 @@ def test_sine_phase_half() -> None:
 
 
 def test_sine_shift() -> None:
-    t1 = datetime.fromtimestamp(0, tz=timezone.utc)
+    t1 = datetime.fromtimestamp(0, tz=UTC)
 
     v0 = calculate_sine(t1, period_seconds=3600, shift=1)
     v1 = calculate_sine(t1 + timedelta(minutes=15), period_seconds=3600, shift=1)
@@ -862,7 +862,7 @@ def test_sine_shift() -> None:
 
 
 def test_sine_amplitude() -> None:
-    t1 = datetime.fromtimestamp(0, tz=timezone.utc)
+    t1 = datetime.fromtimestamp(0, tz=UTC)
 
     v0 = calculate_sine(t1, period_seconds=3600, amplitude=2)
     v1 = calculate_sine(t1 + timedelta(minutes=15), period_seconds=3600, amplitude=2)

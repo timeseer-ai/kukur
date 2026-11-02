@@ -4,16 +4,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from collections.abc import Callable
-from typing import Any, Generic, TypeVar
+from typing import Any
 
 from kukur.base import DataType as KukurDataType
 from kukur.base import Dictionary as KukurDictionary
 from kukur.base import InterpolationType as KukurInterpolationType
 
-T = TypeVar("T")
 
-
-class MetadataField(Generic[T]):
+class MetadataField[T]:
     """A typed metadata field.
 
     This class is generic over the actual type of the field value.

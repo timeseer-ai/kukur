@@ -5,12 +5,7 @@
 
 import glob
 import logging
-import sys
-
-if sys.version_info >= (3, 11):
-    import tomllib as toml
-else:
-    import toml
+import tomllib
 
 from kukur.exceptions import KukurException
 
@@ -63,11 +58,8 @@ def _update_dict(existing: dict, new: dict):
 
 def _read_toml(path):
     try:
-        if sys.version_info >= (3, 11):
-            with open(path, "rb") as config_file:
-                return toml.load(config_file)
-        else:
-            return toml.load(path)
+        with open(path, "rb") as config_file:
+            return tomllib.load(config_file)
     except Exception as err:
         logger.error("error in %s", path)
         raise err

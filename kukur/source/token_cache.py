@@ -13,7 +13,7 @@ Other implementations can store tokens on-disk or in shared memory.
 import threading
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Protocol
 
 
@@ -27,7 +27,7 @@ class Token:
 
     def is_expired(self) -> bool:
         """Return True when the token is (about to be) expired."""
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         if self.expires is None:
             return True
         return self.expires < now + timedelta(seconds=30)

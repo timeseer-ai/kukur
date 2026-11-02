@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import os
 import secrets
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from hashlib import scrypt
 
 from kukur.api_key import ApiKey
@@ -23,7 +23,7 @@ class ApiKeys:
     def create(self, name: str) -> str:
         """Create an api key."""
         api_key = _create_random_api_key()
-        creation_date = datetime.now(tz=timezone.utc)
+        creation_date = datetime.now(tz=UTC)
         salt = os.urandom(16)
         self.__repository.api_key().store(
             name, _hash_api_key(api_key, salt), salt, creation_date

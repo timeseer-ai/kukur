@@ -3,7 +3,7 @@
 # SPDX-FileCopyrightText: 2026 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import numpy as np
@@ -19,7 +19,7 @@ from kukur.source.series_set_simulator.series_set_simulator import (
     SeriesSetSimulatorSource,
 )
 
-START_DATE = datetime(2026, 9, 1, tzinfo=timezone.utc)
+START_DATE = datetime(2026, 9, 1, tzinfo=UTC)
 END_DATE = START_DATE + timedelta(days=30)
 
 

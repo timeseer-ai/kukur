@@ -14,7 +14,7 @@ import base64
 import math
 from collections.abc import Generator
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from hashlib import sha256, shake_256
 from pathlib import Path
 from typing import Any
@@ -43,7 +43,7 @@ SOURCE_TYPE = "series-set-simulator"
 
 DAY_SECONDS = 86400
 DAY_MICROSECONDS = DAY_SECONDS * 1_000_000
-EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 MICROSECOND = timedelta(microseconds=1)
 
 ACTIVE_LOW = 0.0
@@ -374,7 +374,7 @@ def _numbered(prefix: str, index: int, count: int) -> str:
 
 def _to_epoch_microseconds(ts: datetime) -> int:
     if ts.tzinfo is None:
-        ts = ts.replace(tzinfo=timezone.utc)
+        ts = ts.replace(tzinfo=UTC)
     return (ts - EPOCH) // MICROSECOND
 
 

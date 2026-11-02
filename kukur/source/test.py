@@ -8,7 +8,7 @@ This takes care to not persistently store metadata.
 
 import logging
 from collections.abc import Generator
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from dateutil.tz import tzlocal
@@ -116,7 +116,7 @@ def _get_metadata(result: Metadata) -> list[Any]:
 
 def _make_aware(timestamp: datetime) -> datetime:
     if timestamp.tzinfo is None:
-        return timestamp.replace(tzinfo=tzlocal()).astimezone(timezone.utc)
+        return timestamp.replace(tzinfo=tzlocal()).astimezone(UTC)
     return timestamp
 
 
