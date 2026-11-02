@@ -12,11 +12,10 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
 ]
 authors = [{ name = "Timeseer.AI", email = "pypi@timeseer.ai" }]
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
     "pyarrow>=16.0.0",
     "python-dateutil>=2.8.1",
-    "toml>=0.10.2; python_version < '3.11'",
 ]
 
 [project.license]
@@ -55,7 +54,6 @@ dev = [
     "types-python-dateutil",
     "types-PyYAML",
     "types-requests",
-    "types-toml; python_version < '3.11'",
 ]
 
 [project.scripts]
@@ -69,7 +67,7 @@ build-backend = "hatchling.build"
 packages = ["kukur"]
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py312"
 line-length = 88
 extend-exclude = ["stubs"]
 
@@ -146,8 +144,3 @@ all_users = true
 [tool.cxfreeze.bdist_msi.summary_data]
 author = "Timeseer.AI"
 comments = "Kukur"
-
-[tool.uv]
-# Temporary: take certifi 2026.10.19 before the one-week cooldown ends.
-# Remove after 2026-10-27.
-exclude-newer-package = { certifi = "2026-10-21T00:00:00Z" }

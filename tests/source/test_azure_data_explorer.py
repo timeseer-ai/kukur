@@ -3,7 +3,7 @@
 
 import re
 from collections import Counter
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from random import random
 from typing import Any
 from unittest.mock import patch
@@ -94,43 +94,43 @@ def get_data_response(_database, query, _params):
     offset = _get_offset_from_query(query)
     response_data = [
         {
-            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=10),
+            "ts": datetime.now(tz=UTC) - timedelta(minutes=10),
             "pressure": random() * 100,
         },
         {
-            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=9),
+            "ts": datetime.now(tz=UTC) - timedelta(minutes=9),
             "pressure": random() * 100,
         },
         {
-            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=8),
+            "ts": datetime.now(tz=UTC) - timedelta(minutes=8),
             "pressure": random() * 100,
         },
         {
-            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=7),
+            "ts": datetime.now(tz=UTC) - timedelta(minutes=7),
             "pressure": random() * 100,
         },
         {
-            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=6),
+            "ts": datetime.now(tz=UTC) - timedelta(minutes=6),
             "pressure": random() * 100,
         },
         {
-            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=5),
+            "ts": datetime.now(tz=UTC) - timedelta(minutes=5),
             "pressure": random() * 100,
         },
         {
-            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=4),
+            "ts": datetime.now(tz=UTC) - timedelta(minutes=4),
             "pressure": random() * 100,
         },
         {
-            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=3),
+            "ts": datetime.now(tz=UTC) - timedelta(minutes=3),
             "pressure": random() * 100,
         },
         {
-            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=2),
+            "ts": datetime.now(tz=UTC) - timedelta(minutes=2),
             "pressure": random() * 100,
         },
         {
-            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=1),
+            "ts": datetime.now(tz=UTC) - timedelta(minutes=1),
             "pressure": random() * 100,
         },
     ]
@@ -150,43 +150,43 @@ def get_data_response_custom_query(_database, query, props):
     offset = _get_offset_from_query(query)
     response_data = [
         {
-            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=10),
+            "ts": datetime.now(tz=UTC) - timedelta(minutes=10),
             "pressure": random() * 100,
         },
         {
-            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=9),
+            "ts": datetime.now(tz=UTC) - timedelta(minutes=9),
             "pressure": random() * 100,
         },
         {
-            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=8),
+            "ts": datetime.now(tz=UTC) - timedelta(minutes=8),
             "pressure": random() * 100,
         },
         {
-            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=7),
+            "ts": datetime.now(tz=UTC) - timedelta(minutes=7),
             "pressure": random() * 100,
         },
         {
-            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=6),
+            "ts": datetime.now(tz=UTC) - timedelta(minutes=6),
             "pressure": random() * 100,
         },
         {
-            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=5),
+            "ts": datetime.now(tz=UTC) - timedelta(minutes=5),
             "pressure": random() * 100,
         },
         {
-            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=4),
+            "ts": datetime.now(tz=UTC) - timedelta(minutes=4),
             "pressure": random() * 100,
         },
         {
-            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=3),
+            "ts": datetime.now(tz=UTC) - timedelta(minutes=3),
             "pressure": random() * 100,
         },
         {
-            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=2),
+            "ts": datetime.now(tz=UTC) - timedelta(minutes=2),
             "pressure": random() * 100,
         },
         {
-            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=1),
+            "ts": datetime.now(tz=UTC) - timedelta(minutes=1),
             "pressure": random() * 100,
         },
     ]
@@ -220,43 +220,43 @@ def result_set_too_large_response(_database, query, _params):
 
     response_data = [
         {
-            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=10),
+            "ts": datetime.now(tz=UTC) - timedelta(minutes=10),
             "pressure": random() * 100,
         },
         {
-            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=9),
+            "ts": datetime.now(tz=UTC) - timedelta(minutes=9),
             "pressure": random() * 100,
         },
         {
-            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=8),
+            "ts": datetime.now(tz=UTC) - timedelta(minutes=8),
             "pressure": random() * 100,
         },
         {
-            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=7),
+            "ts": datetime.now(tz=UTC) - timedelta(minutes=7),
             "pressure": random() * 100,
         },
         {
-            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=6),
+            "ts": datetime.now(tz=UTC) - timedelta(minutes=6),
             "pressure": random() * 100,
         },
         {
-            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=5),
+            "ts": datetime.now(tz=UTC) - timedelta(minutes=5),
             "pressure": random() * 100,
         },
         {
-            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=4),
+            "ts": datetime.now(tz=UTC) - timedelta(minutes=4),
             "pressure": random() * 100,
         },
         {
-            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=3),
+            "ts": datetime.now(tz=UTC) - timedelta(minutes=3),
             "pressure": random() * 100,
         },
         {
-            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=2),
+            "ts": datetime.now(tz=UTC) - timedelta(minutes=2),
             "pressure": random() * 100,
         },
         {
-            "ts": datetime.now(tz=timezone.utc) - timedelta(minutes=1),
+            "ts": datetime.now(tz=UTC) - timedelta(minutes=1),
             "pressure": random() * 100,
         },
     ]
@@ -316,8 +316,8 @@ def test_get_data(kusto_client) -> None:
     selector = SeriesSelector(
         "my_source", {"location": "Curitiba", "plant": "Plant02"}, "pressure"
     )
-    initial_date = datetime.now(tz=timezone.utc) - timedelta(minutes=20)
-    final_date = datetime.now(tz=timezone.utc)
+    initial_date = datetime.now(tz=UTC) - timedelta(minutes=20)
+    final_date = datetime.now(tz=UTC)
     data = source.get_data(selector, initial_date, final_date)
     args = kusto_client.call_args.args
     assert args[0] == "telemetry"
@@ -349,8 +349,8 @@ def test_get_data_multiple_calls(kusto_client) -> None:
     selector = SeriesSelector(
         "my_source", {"location": "Curitiba", "plant": "Plant02"}, "pressure"
     )
-    initial_date = datetime.now(tz=timezone.utc) - timedelta(minutes=20)
-    final_date = datetime.now(tz=timezone.utc)
+    initial_date = datetime.now(tz=UTC) - timedelta(minutes=20)
+    final_date = datetime.now(tz=UTC)
     data = source.get_data(selector, initial_date, final_date)
     args = kusto_client.call_args.args
     assert args[0] == "telemetry"
@@ -383,8 +383,8 @@ def test_result_set_too_large(kusto_client) -> None:
     selector = SeriesSelector(
         "my_source", {"location": "Curitiba", "plant": "Plant02"}, "pressure"
     )
-    initial_date = datetime.now(tz=timezone.utc) - timedelta(minutes=20)
-    final_date = datetime.now(tz=timezone.utc)
+    initial_date = datetime.now(tz=UTC) - timedelta(minutes=20)
+    final_date = datetime.now(tz=UTC)
     data = source.get_data(selector, initial_date, final_date)
     assert kusto_client.call_count == 5
     assert len(data) == 10
@@ -483,8 +483,8 @@ def test_get_data_custom_query(kusto_client) -> None:
     selector = SeriesSelector(
         "my_source", {"location": "Antwerp", "plant": "Plant02"}, "pressure"
     )
-    initial_date = datetime.now(tz=timezone.utc) - timedelta(minutes=20)
-    final_date = datetime.now(tz=timezone.utc)
+    initial_date = datetime.now(tz=UTC) - timedelta(minutes=20)
+    final_date = datetime.now(tz=UTC)
     data = source.get_data(selector, initial_date, final_date)
     assert len(data) == 10
 
@@ -518,8 +518,8 @@ def test_get_data_throttle(kusto_client) -> None:
     selector = SeriesSelector(
         "my_source", {"location": "Antwerp", "plant": "Plant02"}, "pressure"
     )
-    initial_date = datetime.now(tz=timezone.utc) - timedelta(minutes=20)
-    final_date = datetime.now(tz=timezone.utc)
+    initial_date = datetime.now(tz=UTC) - timedelta(minutes=20)
+    final_date = datetime.now(tz=UTC)
 
     with pytest.raises(KustoThrottlingError):
         source.get_data(selector, initial_date, final_date)
@@ -549,8 +549,8 @@ def test_get_data_throttle_resolved(kusto_client) -> None:
     selector = SeriesSelector(
         "my_source", {"location": "Antwerp", "plant": "Plant02"}, "pressure"
     )
-    initial_date = datetime.now(tz=timezone.utc) - timedelta(minutes=20)
-    final_date = datetime.now(tz=timezone.utc)
+    initial_date = datetime.now(tz=UTC) - timedelta(minutes=20)
+    final_date = datetime.now(tz=UTC)
 
     data = source.get_data(selector, initial_date, final_date)
     assert len(data) == 10

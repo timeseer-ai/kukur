@@ -7,8 +7,6 @@ import abc
 import contextlib
 import sqlite3
 
-from kukur.timestamp import convert_sqlite_timestamp
-
 
 class BaseRepository:  # pylint: disable=too-few-public-methods
     """Base repository to open a fully-featured connection to sqlite."""
@@ -61,12 +59,10 @@ class MigrationRunner:
 
 
 def _open_db(connection_string: str):
-    sqlite3.register_converter("datetime", convert_sqlite_timestamp)
     connection = sqlite3.connect(
         connection_string,
         uri=True,
         timeout=60.0,
-        detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES,
     )
     connection.execute("pragma foreign_keys = ON")
     return contextlib.closing(connection)

@@ -8,7 +8,7 @@ import os
 import ssl
 from collections.abc import Generator
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import pyarrow as pa
@@ -228,7 +228,7 @@ def _apply_default_range(
     start_date: datetime | None, end_date: datetime | None
 ) -> tuple[datetime, datetime]:
     if start_date is None or end_date is None:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         if start_date is None:
             start_date = now.replace(year=now.year - 1)
         if end_date is None:

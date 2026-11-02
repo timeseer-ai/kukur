@@ -9,7 +9,7 @@ import sys
 from collections import defaultdict
 from collections.abc import Generator
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from hashlib import sha1
 from pathlib import Path
@@ -379,9 +379,7 @@ def _get_step_configuration(selector: SeriesSelector) -> StepSignalConfig:
 
 def _get_start_of_day(ts: datetime) -> datetime:
     current_day = ts.date()
-    return datetime(
-        current_day.year, current_day.month, current_day.day, tzinfo=timezone.utc
-    )
+    return datetime(current_day.year, current_day.month, current_day.day, tzinfo=UTC)
 
 
 class WhiteNoiseSignalGenerator:

@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Generator
 from dataclasses import dataclass, field
-from datetime import date, datetime, timezone, tzinfo
+from datetime import UTC, date, datetime, tzinfo
 from decimal import Decimal
 
 import dateutil.tz
@@ -211,14 +211,12 @@ class BaseSQLSource(ABC):
             if isinstance(row[0], datetime):
                 ts = row[0]
             elif isinstance(row[0], date):
-                ts = datetime(
-                    row[0].year, row[0].month, row[0].day, tzinfo=timezone.utc
-                )
+                ts = datetime(row[0].year, row[0].month, row[0].day, tzinfo=UTC)
             else:
                 ts = parse_timestamp(row[0])
             if self._config.data_timezone:
                 ts = ts.replace(tzinfo=self._config.data_timezone)
-            ts = ts.astimezone(timezone.utc)
+            ts = ts.astimezone(UTC)
             value = row[1]
             if isinstance(value, str):
                 type_count["str"] += 1
@@ -397,6 +395,10 @@ class BaseSQLSource(ABC):
             )
         if self._config.data_query_datetime_format is not None:
             return date.strftime(self._config.data_query_datetime_format)
+        return self._adapt_date(date)
+
+    def _adapt_date(self, date: datetime):
+        """Adapt a date query parameter for the database driver."""
         return date
 
     @abstractmethod

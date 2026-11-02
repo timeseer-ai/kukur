@@ -27,14 +27,13 @@ class DummySQLSource(BaseSQLSource):
         quality_mapper: QualityMapper,
     ):
         super().__init__(config, mapper, quality_mapper)
-        sqlite3.register_converter("datetime", parse_date)
-        self.db = sqlite3.connect(
-            config.connection_string,
-            detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES,
-        )
+        self.db = sqlite3.connect(config.connection_string)
 
     def connect(self):
         return self.db
+
+    def _adapt_date(self, date: datetime) -> str:
+        return date.isoformat(" ")
 
 
 class MockSQLIterator:
@@ -366,7 +365,7 @@ def test_blob_values() -> None:
     source.db.execute(
         "insert into Data (ts, series_name, value) values (?, ?, ?)",
         [
-            datetime.fromisoformat("2021-01-02T00:00:00+00:00"),
+            "2021-01-02T00:00:00+00:00",
             "blob-series",
             b"hello",
         ],
@@ -374,7 +373,7 @@ def test_blob_values() -> None:
     source.db.execute(
         "insert into Data (ts, series_name, value) values (?, ?, ?)",
         [
-            datetime.fromisoformat("2021-01-02T00:00:00+00:00"),
+            "2021-01-02T00:00:00+00:00",
             "blob-series",
             None,
         ],
@@ -397,6 +396,8 @@ def test_datetime_values() -> None:
         tag_columns=["series name"],
     )
     source = DummySQLSource(config, MetadataValueMapper(), QualityMapper())
+    # Return datetimes like ODBC drivers do.
+    source.db.row_factory = lambda _, row: tuple(parse_date(column) for column in row)
     source.db.execute(
         """
         create table Data (
@@ -409,9 +410,9 @@ def test_datetime_values() -> None:
     source.db.execute(
         "insert into Data (ts, series_name, value) values (?, ?, ?)",
         [
-            datetime.fromisoformat("2021-01-02T00:00:00+00:00"),
+            "2021-01-02T00:00:00+00:00",
             "datetime-series",
-            datetime.fromisoformat("2021-01-02T12:34:56+00:00"),
+            "2021-01-02T12:34:56+00:00",
         ],
     )
 
@@ -499,7 +500,7 @@ def test_quality_flag():
     source.db.execute(
         "insert into Data (ts, series_name, value, quality) values (?, ?, ?, ?)",
         [
-            datetime.fromisoformat("2021-01-02T00:00:00+00:00"),
+            "2021-01-02T00:00:00+00:00",
             "quality-series",
             "good-quality",
             192,
@@ -508,7 +509,7 @@ def test_quality_flag():
     source.db.execute(
         "insert into Data (ts, series_name, value, quality) values (?, ?, ?, ?)",
         [
-            datetime.fromisoformat("2021-01-02T00:00:00+00:00"),
+            "2021-01-02T00:00:00+00:00",
             "quality-series",
             "bad-quality",
             1,
@@ -549,7 +550,7 @@ def test_null_values_on_string_column() -> None:
     source.db.execute(
         "insert into Data (ts, series_name, value) values (?, ?, ?)",
         [
-            datetime.fromisoformat("2021-01-02T00:00:00+00:00"),
+            "2021-01-02T00:00:00+00:00",
             "quality-series",
             "first-value",
         ],
@@ -557,7 +558,7 @@ def test_null_values_on_string_column() -> None:
     source.db.execute(
         "insert into Data (ts, series_name, value) values (?, ?, ?)",
         [
-            datetime.fromisoformat("2021-01-02T00:00:00+00:00"),
+            "2021-01-02T00:00:00+00:00",
             "quality-series",
             None,
         ],
@@ -565,7 +566,7 @@ def test_null_values_on_string_column() -> None:
     source.db.execute(
         "insert into Data (ts, series_name, value) values (?, ?, ?)",
         [
-            datetime.fromisoformat("2021-01-02T00:00:00+00:00"),
+            "2021-01-02T00:00:00+00:00",
             "quality-series",
             "second-value",
         ],
@@ -605,7 +606,7 @@ def test_null_values_on_string_column_with_quality() -> None:
     source.db.execute(
         "insert into Data (ts, series_name, value, quality) values (?, ?, ?, ?)",
         [
-            datetime.fromisoformat("2021-01-02T00:00:00+00:00"),
+            "2021-01-02T00:00:00+00:00",
             "quality-series",
             "good-quality",
             192,
@@ -614,7 +615,7 @@ def test_null_values_on_string_column_with_quality() -> None:
     source.db.execute(
         "insert into Data (ts, series_name, value, quality) values (?, ?, ?, ?)",
         [
-            datetime.fromisoformat("2021-01-02T00:00:00+00:00"),
+            "2021-01-02T00:00:00+00:00",
             "quality-series",
             None,
             10,
@@ -623,7 +624,7 @@ def test_null_values_on_string_column_with_quality() -> None:
     source.db.execute(
         "insert into Data (ts, series_name, value, quality) values (?, ?, ?, ?)",
         [
-            datetime.fromisoformat("2021-01-02T00:00:00+00:00"),
+            "2021-01-02T00:00:00+00:00",
             "quality-series",
             "bad-quality",
             1,
@@ -669,8 +670,10 @@ def test_single_string_in_nulls_column_inside_type_checking_range() -> None:
         source.db.execute(
             "insert into Data (ts, series_name, value, quality) values (?, ?, ?, ?)",
             [
-                datetime.fromisoformat("2021-01-01T00:00:00+00:00")
-                + timedelta(minutes=i),
+                (
+                    datetime.fromisoformat("2021-01-01T00:00:00+00:00")
+                    + timedelta(minutes=i)
+                ).isoformat(),
                 "quality-series",
                 None,
                 10,
@@ -679,7 +682,7 @@ def test_single_string_in_nulls_column_inside_type_checking_range() -> None:
     source.db.execute(
         "insert into Data (ts, series_name, value, quality) values (?, ?, ?, ?)",
         [
-            datetime.fromisoformat("2021-01-01T00:05:00+00:00"),
+            "2021-01-01T00:05:00+00:00",
             "quality-series",
             "string-value",
             192,
@@ -689,8 +692,10 @@ def test_single_string_in_nulls_column_inside_type_checking_range() -> None:
         source.db.execute(
             "insert into Data (ts, series_name, value, quality) values (?, ?, ?, ?)",
             [
-                datetime.fromisoformat("2021-01-01T00:06:00+00:00")
-                + timedelta(minutes=i),
+                (
+                    datetime.fromisoformat("2021-01-01T00:06:00+00:00")
+                    + timedelta(minutes=i)
+                ).isoformat(),
                 "quality-series",
                 None,
                 10,
@@ -733,8 +738,10 @@ def test_numbers_inside_string_column() -> None:
         source.db.execute(
             "insert into Data (ts, series_name, value, quality) values (?, ?, ?, ?)",
             [
-                datetime.fromisoformat("2021-01-01T00:00:00+00:00")
-                + timedelta(minutes=i),
+                (
+                    datetime.fromisoformat("2021-01-01T00:00:00+00:00")
+                    + timedelta(minutes=i)
+                ).isoformat(),
                 "quality-series",
                 "string-value",
                 10,
@@ -743,7 +750,7 @@ def test_numbers_inside_string_column() -> None:
     source.db.execute(
         "insert into Data (ts, series_name, value, quality) values (?, ?, ?, ?)",
         [
-            datetime.fromisoformat("2021-01-01T00:05:00+00:00"),
+            "2021-01-01T00:05:00+00:00",
             "quality-series",
             42,
             192,
@@ -753,8 +760,10 @@ def test_numbers_inside_string_column() -> None:
         source.db.execute(
             "insert into Data (ts, series_name, value, quality) values (?, ?, ?, ?)",
             [
-                datetime.fromisoformat("2021-01-01T00:06:00+00:00")
-                + timedelta(minutes=i),
+                (
+                    datetime.fromisoformat("2021-01-01T00:06:00+00:00")
+                    + timedelta(minutes=i)
+                ).isoformat(),
                 "quality-series",
                 "string-value",
                 10,
@@ -793,8 +802,10 @@ def test_integer_data() -> None:
         source.db.execute(
             "insert into Data (ts, series_name, value) values (?, ?, ?)",
             [
-                datetime.fromisoformat("2021-01-01T00:00:00+00:00")
-                + timedelta(minutes=i),
+                (
+                    datetime.fromisoformat("2021-01-01T00:00:00+00:00")
+                    + timedelta(minutes=i)
+                ).isoformat(),
                 "series",
                 i,
             ],

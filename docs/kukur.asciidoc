@@ -37,7 +37,7 @@ This example shows how to:
 - expose a CSV file through it
 - and connect to it using the Kukur client.
 
-The only prerequisite is a working Python 3 installation.
+The only prerequisite is a working Python 3.12 (or newer) installation.
 Minor changes to the shell commands, but not the Kukur configuration, are required depending on your OS.
 
 === Installation

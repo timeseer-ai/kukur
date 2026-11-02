@@ -7,7 +7,7 @@ import logging
 import time
 from collections.abc import Generator
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import pyarrow as pa
@@ -359,9 +359,7 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
             token = azure_credential.get_token(
                 self.__config.connection_string + "//.default"
             )
-            return Token(
-                token.token, datetime.fromtimestamp(token.expires_on, tz=timezone.utc)
-            )
+            return Token(token.token, datetime.fromtimestamp(token.expires_on, tz=UTC))
 
         def _get_token():
             return self.__token_cache.get_token(_get_azure_token)
