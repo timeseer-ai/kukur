@@ -39,6 +39,11 @@ class MetadataField[T]:
     def __repr__(self) -> str:
         return f'MetadataField("{self.__name}")'
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, MetadataField):
+            return NotImplemented
+        return self.__name == other.__name
+
     def __hash__(self):
         return hash(self.__name)
 
