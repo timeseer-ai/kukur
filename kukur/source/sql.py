@@ -15,10 +15,10 @@ import dateutil.tz
 import pyarrow as pa
 
 from kukur import Dictionary, Metadata, SeriesSearch, SeriesSelector, quality
+from kukur.arrow import empty_table
 from kukur.exceptions import KukurException
 from kukur.metadata import fields
 from kukur.quality import QualityMapper
-from kukur.source.arrow import empty_table
 from kukur.source.metadata import MetadataValueMapper
 from kukur.timestamp import parse_timestamp
 

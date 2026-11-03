@@ -25,6 +25,7 @@ from typing import Any
 import pyarrow as pa
 from dateutil.relativedelta import relativedelta
 
+from kukur.arrow import conform_to_schema
 from kukur.base import SeriesSearch, SeriesSelector
 from kukur.exceptions import (
     InvalidSourceException,
@@ -34,7 +35,6 @@ from kukur.metadata import Metadata
 from kukur.quality import QualityMapper
 from kukur.source.arrow import (
     cast_ts_column,
-    conform_to_schema,
     filter_by_timerange,
     filter_pivot_data,
     map_pivot_columns,
