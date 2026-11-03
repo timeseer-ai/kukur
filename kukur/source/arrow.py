@@ -16,6 +16,7 @@ import pyarrow.compute
 import pyarrow.types
 
 from kukur import Metadata, SeriesSelector, quality
+from kukur.arrow import conform_to_schema, get_value_schema_type
 from kukur.base import SeriesSearch
 from kukur.exceptions import InvalidDataError, InvalidSourceException
 from kukur.loader import Loader
@@ -231,15 +232,6 @@ class BaseArrowSource(ABC):
         return data.cast(schema)
 
 
-def get_value_schema_type(data: pa.Table):
-    """Get the type of the value column."""
-    value_type = pa.float64()
-    if len(data) > 0:
-        if pa.types.is_string(data["value"][0].type):
-            value_type = pa.string()
-    return value_type
-
-
 def map_pivot_columns(column_mapping: dict[str, str], data: pa.Table) -> pa.Table:
     """Map pivot format columns according to the mapping definition."""
     ts_column_name = data.column_names[0]
@@ -311,41 +303,6 @@ def filter_row_data(
     if quality_mapper.is_present():
         filtered_data = filtered_data.set_column(2, "quality", all_data["quality"])
     return conform_to_schema(filtered_data)
-
-
-def conform_to_schema(table: pa.Table) -> pa.Table:
-    """Conform the table to the schema expected in Kukur.
-
-    A quality column is kept when the data contains one, whether or not a
-    quality mapping is configured for the source.
-    """
-    schema = pa.schema(
-        [
-            ("ts", pa.timestamp("us", "UTC")),
-            ("value", get_value_schema_type(table)),
-        ]
-    )
-    if "quality" in table.column_names:
-        quality_array = quality.normalize_array(table["quality"])
-        schema = schema.append(pa.field("quality", quality_array.type))
-        table = table.set_column(2, "quality", quality_array)
-
-    return table.cast(schema)
-
-
-def empty_table(
-    *, include_quality: bool, quality_type: pa.DataType | None = None
-) -> pa.Table:
-    """Create a new empty table, optionally including a quality column."""
-    data: dict = {"ts": [], "value": []}
-    fields = [
-        ("ts", pa.timestamp("us", "UTC")),
-        ("value", pa.float64()),
-    ]
-    if include_quality:
-        data["quality"] = []
-        fields.append(("quality", quality_type or pa.int16()))
-    return pa.Table.from_pydict(data, schema=pa.schema(fields))
 
 
 def map_row_columns(

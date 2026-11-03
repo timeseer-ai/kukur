@@ -17,6 +17,7 @@ import pyarrow as pa
 from pyarrow import ipc
 
 from kukur import Metadata, SeriesSearch, SeriesSelector, quality
+from kukur.arrow import empty_table
 from kukur.auth import IMDSTokenFetcher, OIDCConfig, get_oidc_auth
 from kukur.exceptions import (
     InvalidDataError,
@@ -25,7 +26,6 @@ from kukur.exceptions import (
     MissingModuleException,
 )
 from kukur.quality import QualityMapper
-from kukur.source.arrow import empty_table
 from kukur.source.metadata import MetadataValueMapper
 
 try:

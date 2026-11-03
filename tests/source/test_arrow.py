@@ -5,7 +5,7 @@
 
 import pyarrow as pa
 
-from kukur.source.arrow import conform_to_schema, empty_table
+from kukur.arrow import conform_to_schema, empty_table
 
 
 def _table(quality=None) -> pa.Table:

@@ -11,10 +11,10 @@ from datetime import datetime
 
 from pyarrow import Table, ipc
 
+from kukur.arrow import conform_to_schema
 from kukur.base import SeriesSearch, SeriesSelector
 from kukur.exceptions import InvalidSourceException, KukurException
 from kukur.metadata import Metadata
-from kukur.source.arrow import conform_to_schema
 
 logger = logging.getLogger(__name__)
 

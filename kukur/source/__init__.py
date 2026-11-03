@@ -11,16 +11,17 @@ from datetime import datetime, timedelta
 from typing import Any
 
 import pyarrow as pa
-import pyarrow.types
 
 from kukur import (
     Metadata,
     PlotSource,
     SeriesSearch,
     SeriesSelector,
+    SourceProvider,
     quality,
 )
 from kukur import Source as SourceProtocol
+from kukur.arrow import concat_tables, empty_table
 from kukur.exceptions import InvalidSourceException
 from kukur.quality import QualityMapper
 from kukur.source import (
@@ -48,10 +49,10 @@ from kukur.source import (
     simulator,
     sqlite,
     tdengine,
+    time_shift,
 )
 from kukur.source import json as json_source
 from kukur.source import kukur as kukur_source
-from kukur.source.arrow import empty_table
 from kukur.source.token_cache import (
     InMemoryTokenCacheFactory,
     TokenCache,
@@ -92,6 +93,7 @@ _FACTORY: dict[str, Callable[..., SourceProtocol]] = {
     "simulator": simulator.from_config,
     "sqlite": sqlite.from_config,
     "tdengine": tdengine.from_config,
+    "time-shift": time_shift.from_config,
 }
 
 
@@ -365,6 +367,7 @@ class SourceFactory:
 
     __config: dict[str, Any]
     __factory: dict[str, Callable]
+    __pending_sources: set[str]
 
     def __init__(self, config: dict, token_cache: TokenCacheFactory | None = None):
         self.__config = config
@@ -373,6 +376,7 @@ class SourceFactory:
             token_cache = InMemoryTokenCacheFactory()
         self._token_cache = token_cache
         self.__factory = _FACTORY.copy()
+        self.__pending_sources = set()
 
     def register_source(
         self, source_type_name: str, source_factory: Callable[..., SourceProtocol]
@@ -398,10 +402,16 @@ class SourceFactory:
                     raise InvalidSourceException(
                         f'Source "{name}" has unknown type "{source_type}"'
                     )
-                data_source = self._make_source(
-                    f"data-{source_name}", source_type, options
-                )
-                return self.make_wrapper(data_source, name, options)
+                if source_name in self.__pending_sources:
+                    raise InvalidSourceException(f'Source "{name}" refers to itself')
+                self.__pending_sources.add(source_name)
+                try:
+                    data_source = self._make_source(
+                        f"data-{source_name}", source_type, options
+                    )
+                    return self.make_wrapper(data_source, name, options)
+                finally:
+                    self.__pending_sources.discard(source_name)
         return None
 
     def make_wrapper(
@@ -480,6 +490,8 @@ class SourceFactory:
                 arguments.append(quality_mapper)
             elif parameter.annotation == TokenCache:
                 arguments.append(self._token_cache.get_cache(source_id))
+            elif parameter.annotation == SourceProvider:
+                arguments.append(self)
             else:
                 arguments.append(source_config)
 
@@ -504,105 +516,6 @@ class SourceFactory:
             return QualityMapper()
 
         return QualityMapper.from_config(self.__config["quality_mapping"][name])
-
-
-def concat_tables(tables: list[pa.Table]) -> pa.Table:
-    """Safely concatenate multiple pyarrow.Table's.
-
-    If any of the given tables contains strings, the result will contain a
-    string value. If any of the given tables contains a floating point number,
-    the value will be a double.
-    """
-    tables = [table for table in tables if len(table) > 0]
-    if len(tables) == 0:
-        return empty_table(include_quality=True)
-
-    schema = pa.schema(
-        [
-            ("ts", pa.timestamp("us", "UTC")),
-            ("value", pa.float64()),
-        ]
-    )
-
-    if _has_any_string(tables):
-        schema = pa.schema(
-            [
-                ("ts", pa.timestamp("us", "UTC")),
-                ("value", pa.string()),
-            ]
-        )
-
-    if _is_all_integer(tables):
-        schema = pa.schema(
-            [
-                ("ts", pa.timestamp("us", "UTC")),
-                ("value", pa.int64()),
-            ]
-        )
-
-    if _has_quality_data_flag(tables):
-        schema = schema.append(pa.field("quality", _get_quality_type(tables)))
-
-    schema = schema.with_metadata(_get_metadata(tables))
-
-    return pa.concat_tables([table.cast(schema) for table in tables])
-
-
-def _has_any_string(tables: list[pa.Table]) -> bool:
-    string_tables = [
-        table
-        for table in tables
-        if pyarrow.types.is_string(table.schema.field("value").type)
-    ]
-    return len(string_tables) > 0
-
-
-def _is_all_integer(tables: list[pa.Table]) -> bool:
-    integer_tables = [
-        table
-        for table in tables
-        if pyarrow.types.is_integer(table.schema.field("value").type)
-    ]
-    return len(integer_tables) == len(tables)
-
-
-def _has_quality_data_flag(tables: list[pa.Table]) -> bool:
-    quality_table = [table for table in tables if "quality" in table.column_names]
-    return len(quality_table) > 0
-
-
-def _get_metadata(tables: list[pa.Table]) -> dict[bytes, bytes]:
-    """Return the schema metadata of the concatenated tables.
-
-    Casting a table to a schema replaces its metadata by the metadata of that
-    schema. The chunks of one query all describe the same data, so the metadata
-    of the first chunk that has any describes all of them.
-    """
-    for table in tables:
-        if table.schema.metadata:
-            return quality.encode_metadata(table)
-    return {}
-
-
-def _get_quality_type(tables: list[pa.Table]) -> pa.DataType:
-    """Return the type of the quality column.
-
-    Quality values of a source are either strings or numerical status codes.
-    Sources that provide quality flags instead of status codes return them
-    simplified, which keeps them narrower.
-    """
-    quality_types = [
-        table.schema.field("quality").type
-        for table in tables
-        if "quality" in table.column_names
-    ]
-    if any(pyarrow.types.is_string(quality_type) for quality_type in quality_types):
-        return pa.string()
-    if quality_types and all(
-        quality_type == pa.int8() for quality_type in quality_types
-    ):
-        return pa.int8()
-    return pa.int16()
 
 
 def _add_query_statistics(table: pa.Table, retry_count: int) -> pa.Table:
