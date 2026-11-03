@@ -1,0 +1,51 @@
+// SPDX-FileCopyrightText: 2026 Timeseer.AI
+// SPDX-License-Identifier: Apache-2.0
+
+== Time Shift
+
+Sources with `type = "time-shift"` turn another source that covers a fixed time range in history into a source that returns live data.
+
+```toml
+[source.<name>]
+type = "time-shift"
+source = "<the name of the other source>"
+time_shift_seconds = 0 # <number of seconds>
+source_start = "<start of the period to repeat>"
+source_end = "<end of the period to repeat>"
+data_start = "<the time when the repetition starts (optional)>"
+```
+
+`source` is required.
+It is the name of another source in the Kukur configuration.
+Search and metadata requests are passed to this source unchanged.
+
+Configure either `time_shift_seconds` or `source_start` and `source_end`.
+
+`time_shift_seconds` shifts all timestamps by the given number of seconds.
+Requests are shifted back in time before they reach the other source.
+The timestamps in the response are shifted forward by the same amount.
+A negative value moves data back in time.
+
+`source_start` and `source_end` repeat the data between `source_start` and `source_end`.
+It repeats after each period of `source_end - source_start`.
+The data at `source_start` is included and the data at `source_end` is not.
+
+Without `data_start`, the period repeats forever, both before and after `source_start`.
+
+With `data_start`, the repetition starts at `data_start`.
+The data at `source_start` appears at `data_start`.
+There is no data before `data_start`.
+
+These are timestamps in ISO 8601 format or TOML datetimes.
+Timestamps without a timezone are in UTC.
+
+This example repeats the data of January 2020 in the `history` source every 31 days, starting from November 1, 2026:
+
+```toml
+[source.live]
+type = "time-shift"
+source = "history"
+source_start = 2020-01-01T00:00:00Z
+source_end = 2020-02-01T00:00:00Z
+data_start = 2026-11-01T00:00:00Z
+```

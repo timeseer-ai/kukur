@@ -60,6 +60,17 @@ class PlotSource(Source, Protocol):
         ...
 
 
+class SourceProvider(Protocol):
+    """SourceProvider provides the other sources in the Kukur configuration.
+
+    Sources that need other sources request it in their factory function.
+    """
+
+    def get_source(self, source_name: str) -> PlotSource | None:
+        """Return the source with the given name."""
+        ...
+
+
 @typing.runtime_checkable
 class SignalGenerator(Protocol):
     """Protocol for generating signals."""

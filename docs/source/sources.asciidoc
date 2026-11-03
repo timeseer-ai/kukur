@@ -45,6 +45,7 @@ ifdef::sources[]
 endif::sources[]
 - `sqlite`
 - `tdengine`
+- `time-shift`
 
 `type` is required.
 
@@ -245,6 +246,7 @@ ifndef::sources[]
 - link:postgresql.asciidoc[PostgreSQL] databases
 - link:sqlite.asciidoc[SQLite] databases
 - link:tdengine.asciidoc[TDengine] time series databases
+- link:time-shift.asciidoc[Time shifted] other sources
 
 Source-specific parameters are documented in the linked documents.
 endif::sources[]

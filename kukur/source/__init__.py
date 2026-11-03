@@ -17,6 +17,7 @@ from kukur import (
     PlotSource,
     SeriesSearch,
     SeriesSelector,
+    SourceProvider,
     quality,
 )
 from kukur import Source as SourceProtocol
@@ -48,6 +49,7 @@ from kukur.source import (
     simulator,
     sqlite,
     tdengine,
+    time_shift,
 )
 from kukur.source import json as json_source
 from kukur.source import kukur as kukur_source
@@ -91,6 +93,7 @@ _FACTORY: dict[str, Callable[..., SourceProtocol]] = {
     "simulator": simulator.from_config,
     "sqlite": sqlite.from_config,
     "tdengine": tdengine.from_config,
+    "time-shift": time_shift.from_config,
 }
 
 
@@ -364,6 +367,7 @@ class SourceFactory:
 
     __config: dict[str, Any]
     __factory: dict[str, Callable]
+    __pending_sources: set[str]
 
     def __init__(self, config: dict, token_cache: TokenCacheFactory | None = None):
         self.__config = config
@@ -372,6 +376,7 @@ class SourceFactory:
             token_cache = InMemoryTokenCacheFactory()
         self._token_cache = token_cache
         self.__factory = _FACTORY.copy()
+        self.__pending_sources = set()
 
     def register_source(
         self, source_type_name: str, source_factory: Callable[..., SourceProtocol]
@@ -397,10 +402,16 @@ class SourceFactory:
                     raise InvalidSourceException(
                         f'Source "{name}" has unknown type "{source_type}"'
                     )
-                data_source = self._make_source(
-                    f"data-{source_name}", source_type, options
-                )
-                return self.make_wrapper(data_source, name, options)
+                if source_name in self.__pending_sources:
+                    raise InvalidSourceException(f'Source "{name}" refers to itself')
+                self.__pending_sources.add(source_name)
+                try:
+                    data_source = self._make_source(
+                        f"data-{source_name}", source_type, options
+                    )
+                    return self.make_wrapper(data_source, name, options)
+                finally:
+                    self.__pending_sources.discard(source_name)
         return None
 
     def make_wrapper(
@@ -479,6 +490,8 @@ class SourceFactory:
                 arguments.append(quality_mapper)
             elif parameter.annotation == TokenCache:
                 arguments.append(self._token_cache.get_cache(source_id))
+            elif parameter.annotation == SourceProvider:
+                arguments.append(self)
             else:
                 arguments.append(source_config)
 
