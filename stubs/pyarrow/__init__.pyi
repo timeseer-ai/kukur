@@ -77,6 +77,14 @@ def array(obj: typing.Iterable, type: DataType | None = None) -> Array:
     ...
 
 
+def nulls(size: int, type: DataType | None = None) -> Array:
+    ...
+
+
+def repeat(value, size: int) -> Array:
+    ...
+
+
 def table(data: dict | list[Array], names: list[str] | None = None) -> Table:
     ...
 

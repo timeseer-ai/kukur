@@ -45,6 +45,7 @@ class Array(typing.Sequence):
 
     type: DataType
     chunks: list[Array]
+    null_count: int
 
     def __getitem__(self, index: int | slice):
         ...

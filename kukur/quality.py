@@ -292,6 +292,8 @@ def _display_value(quality_value: str | int, display_lookup: dict[str, str]) -> 
 
 
 def _describe_array(array: pa.Array, display_lookup: dict[str, str]) -> pa.Array:
+    if array.null_count == len(array):
+        return pa.nulls(len(array), pa.string())
     # pylint: disable=no-member
     raw = pc.cast(array, pa.string())
     if len(display_lookup) == 0:
@@ -305,6 +307,8 @@ def _describe_array(array: pa.Array, display_lookup: dict[str, str]) -> pa.Array
 def _simplify_array(array: pa.Array, mapper: QualityMapper) -> pa.Array:
     good = pa.scalar(Quality.GOOD.value, pa.int8())
     bad = pa.scalar(Quality.BAD.value, pa.int8())
+    if array.null_count == len(array):
+        return pa.repeat(bad, len(array))
     value_set = _to_value_set(mapper.good_values(), array.type)
     # pylint: disable=no-member
     return pc.if_else(pc.is_in(array, value_set), good, bad)
