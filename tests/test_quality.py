@@ -234,6 +234,14 @@ def test_simplify_empty_table_with_mismatched_mapping() -> None:
     assert simplified.schema.field("quality").type == pa.int8()
 
 
+def test_simplify_all_nulls_with_mismatched_mapping() -> None:
+    """A quality column without values is numerical, whatever the mapping of the source."""
+    table = _table(pa.array([None, None], pa.int16()), {"GOOD": ["Good NonSpecific"]})
+    simplified = quality.simplify(table)
+    assert simplified.schema.field("quality").type == pa.int8()
+    assert simplified["quality"].to_pylist() == [1, 1]
+
+
 def test_simplify_keeps_column_order() -> None:
     table = pa.table(
         {
@@ -354,3 +362,14 @@ def test_describe_empty_table_with_mismatched_mapping() -> None:
     described = quality.describe(table)
     assert len(described) == 0
     assert described.schema.field("quality").type == pa.string()
+
+
+def test_describe_all_nulls_with_mismatched_mapping() -> None:
+    """A quality column without values is numerical, whatever the mapping of the source."""
+    table = _table(
+        pa.array([None, None], pa.int16()),
+        {"GOOD": ["Good NonSpecific"], "display": {"good": ["Good NonSpecific"]}},
+    )
+    described = quality.describe(table)
+    assert described.schema.field("quality").type == pa.string()
+    assert described["quality"].to_pylist() == [None, None]
