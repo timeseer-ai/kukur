@@ -226,6 +226,14 @@ def test_simplify_empty_table() -> None:
     assert simplified.schema.field("quality").type == pa.int8()
 
 
+def test_simplify_empty_table_with_mismatched_mapping() -> None:
+    """A source without data returns a numerical quality column, whatever its mapping."""
+    table = _table(pa.array([], pa.int16()), {"GOOD": ["Good NonSpecific"]})
+    simplified = quality.simplify(table)
+    assert len(simplified) == 0
+    assert simplified.schema.field("quality").type == pa.int8()
+
+
 def test_simplify_keeps_column_order() -> None:
     table = pa.table(
         {
@@ -331,6 +339,17 @@ def test_describe_without_quality_column() -> None:
 def test_describe_empty_table() -> None:
     table = _table(
         pa.array([], pa.int16()), {"GOOD": [192], "display": {"good": [192]}}
+    )
+    described = quality.describe(table)
+    assert len(described) == 0
+    assert described.schema.field("quality").type == pa.string()
+
+
+def test_describe_empty_table_with_mismatched_mapping() -> None:
+    """A source without data returns a numerical quality column, whatever its mapping."""
+    table = _table(
+        pa.array([], pa.int16()),
+        {"GOOD": ["Good NonSpecific"], "display": {"good": ["Good NonSpecific"]}},
     )
     described = quality.describe(table)
     assert len(described) == 0
