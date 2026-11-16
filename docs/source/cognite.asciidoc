@@ -1,0 +1,86 @@
+// SPDX-FileCopyrightText: 2026 Timeseer.AI
+// SPDX-License-Identifier: Apache-2.0
+
+== Cognite Data Fusion
+
+Sources with `type = "cognite"` read the time series of a https://docs.cognite.com/[Cognite Data Fusion] (CDF) project.
+
+```toml
+[source.<name>]
+type = "cognite"
+base_url = "https://<cluster>.cognitedata.com"
+project = "<project>"
+oidc_token_url = "https://login.microsoftonline.com/<tenant id>/oauth2/v2.0/token"
+client_id = "<client id>"
+client_secret = "<client secret>"
+scope = "" # optional: defaults to "<base_url>/.default"
+spaces = [] # optional: only read the time series in these spaces
+timeout_seconds = 60 # optional: the maximum time to wait for a response
+verify_ssl = true # optional: verify the TLS certificate of the server
+proxy = "" # optional: connect using a proxy server
+throttle_backoff_count = 5 # optional: the number of times to retry a throttled request
+```
+
+`base_url`, `project`, `oidc_token_url`, `client_id` and `client_secret` are required.
+
+`base_url` is the URL of the CDF cluster of the project, for example `https://api.cognitedata.com` or `https://westeurope-1.cognitedata.com`.
+
+Use `query_retry_count` and `query_retry_delay` to work around flaky connections.
+
+The source uses the data modeling API of CDF.
+Every node with data in the `CogniteTimeSeries` view of the Cognite core data model is a time series.
+This includes the nodes of views that extend `CogniteTimeSeries`.
+
+Time series that only exist in the asset-centric API of CDF, without an instance id, are not available.
+
+A time series is identified by its space and its external id.
+The external id is the `series name`.
+When `spaces` contains exactly one space, the series name identifies the time series.
+Otherwise, a `space` tag contains the space of the time series, for example `pump_1_flow,space=plant`.
+
+When `spaces` is set, time series in other spaces are not found, even with a `space` tag.
+
+State time series are not supported.
+They are not returned when searching, and requesting their metadata or data fails.
+
+=== Metadata
+
+- `description` is the `description` of the time series.
+- `unit` is the symbol of the `unit` of the time series.
+When the time series has no `unit`, or when the units cannot be read, it is the `sourceUnit`.
+- `data type` is `FLOAT64` for `numeric` time series and `STRING` for `string` time series.
+- `interpolation type` is `STEPPED` when `isStep` is `true` and `LINEAR` otherwise.
+
+=== Quality
+
+Data points with an uncertain or bad https://docs.cognite.com/dev/concepts/reference/status_codes[status code] are included.
+The status code of a data point is returned in the `quality` column as `0` (good) or `1` (bad).
+`Good` status codes are good, including sub-statuses such as `GoodClamped`.
+`Uncertain` and `Bad` status codes are bad.
+
+=== Authentication
+
+The source uses the OAuth 2.0 client credentials flow, for example with an app registration in Microsoft Entra ID.
+`scope` defaults to `<base_url>/.default`, which is the scope CDF expects for Microsoft Entra ID.
+
+The client needs these capabilities in the CDF project:
+
+- `dataModelsAcl:READ` for the `cdf_cdm` space
+- `dataModelInstancesAcl:READ` for the spaces that contain time series
+- `dataModelInstancesAcl:READ` for the `cdf_cdm_units` space, to read the symbols of units
+- `timeSeriesAcl:READ`, since CDF can refuse to return data points without it
+
+=== Example
+
+This defines a `cognite` source for the time series in the `sp_timeseries` space of the `my-project` project:
+
+```toml
+[source.cognite]
+type = "cognite"
+base_url = "https://api.cognitedata.com"
+project = "my-project"
+oidc_token_url = "https://login.microsoftonline.com/00000000-0000-0000-0000-000000000000/oauth2/v2.0/token"
+client_id = "00000000-0000-0000-0000-000000000000"
+client_secret = "<client secret>"
+spaces = ["sp_timeseries"]
+```

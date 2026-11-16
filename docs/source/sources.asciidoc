@@ -25,6 +25,7 @@ Valid values are:
 - `adodb`
 - `arrows`
 - `azure-data-explorer`
+- `cognite`
 - `cratedb`
 - `csv`
 - `databricks-sql`
@@ -54,6 +55,7 @@ endif::sources[]
 Valid values are:
 
 - `adodb`
+- `cognite`
 - `cratedb`
 - `csv`
 - `databricks-sql`
