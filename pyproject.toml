@@ -29,6 +29,7 @@ Issues = "https://github.com/timeseer-ai/kukur/issues"
 
 [project.optional-dependencies]
 adodb = ["pywin32; sys_platform == 'win32'"]
+cognite = ["requests"]
 cratedb = ["crate"]
 datafusion = ["datafusion"]
 delta = ["deltalake"]
