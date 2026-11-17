@@ -1,0 +1,6 @@
+# Exported by historian
+# Site: Antwerp
+name,ts,value
+test-tag-1,2020-01-01T00:00:00Z,1
+test-tag-1,2020-02-01T00:00:00Z,2
+test-tag-1,2020-03-01T00:00:00Z,2

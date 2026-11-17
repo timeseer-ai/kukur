@@ -133,6 +133,24 @@ def test_read_filesystem_csv_no_header_row() -> None:
     assert results[0].num_rows == 5
 
 
+def test_read_filesystem_csv_skip_rows() -> None:
+    path = Path("tests/test_data/csv/row-preamble.csv")
+    results = list(read_filesystem(path, DataOptions(csv_skip_rows=2)))
+    assert len(results) == 1
+    assert results[0].schema.names == ["name", "ts", "value"]
+    assert results[0].num_rows == 3
+
+
+def test_read_filesystem_csv_skip_rows_no_header_row() -> None:
+    path = Path("tests/test_data/csv/row-preamble.csv")
+    results = list(
+        read_filesystem(path, DataOptions(csv_header_row=False, csv_skip_rows=3))
+    )
+    assert len(results) == 1
+    assert results[0].num_columns == 3
+    assert results[0].num_rows == 3
+
+
 def test_read_filesystem_parquet() -> None:
     path = Path("tests/test_data/parquet/row.parquet")
     batches = list(read_filesystem(path))
