@@ -116,15 +116,9 @@ def get_data_set(
         ResourceType.NDJSON,
         ResourceType.ORC,
     ]:
-        format = resource_type.value
         if resource_type == ResourceType.CSV and options is not None:
-            format = CsvFileFormat(
-                read_options=csv.ReadOptions(
-                    autogenerate_column_names=not options.csv_header_row
-                ),
-                parse_options=csv.ParseOptions(delimiter=options.csv_delimiter),
-            )
-        return dataset(str(path), format=format, filesystem=filesystem)
+            return _get_csv_data_set(filesystem, path, options)
+        return dataset(str(path), format=resource_type.value, filesystem=filesystem)
     if resource_type == ResourceType.GPX:
         return dataset(parse_gpx(filesystem.open_input_file(str(path))))
     if resource_type in [ResourceType.EXCEL_WORKBOOK, ResourceType.EXCEL_WORKSHEET]:
@@ -133,6 +127,30 @@ def get_data_set(
             parse_excel(filesystem.open_input_file(file_path), sheet_name, options)
         )
     return None
+
+
+def _get_csv_data_set(
+    filesystem: fs.FileSystem, path: PurePath, options: DataOptions
+) -> Dataset:
+    read_options = csv.ReadOptions(
+        skip_rows=options.csv_skip_rows,
+        autogenerate_column_names=not options.csv_header_row,
+    )
+    parse_options = csv.ParseOptions(delimiter=options.csv_delimiter)
+    if options.csv_skip_rows > 0:
+        # PyArrow datasets fail when skipped rows have fewer columns than the data.
+        return dataset(
+            csv.open_csv(
+                filesystem.open_input_file(str(path)),
+                read_options=read_options,
+                parse_options=parse_options,
+            )
+        )
+    return dataset(
+        str(path),
+        format=CsvFileFormat(read_options=read_options, parse_options=parse_options),
+        filesystem=filesystem,
+    )
 
 
 def _get_resource_type(

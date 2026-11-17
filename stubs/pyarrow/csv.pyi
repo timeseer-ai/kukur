@@ -1,7 +1,7 @@
 import collections.abc
 import typing
 
-from .lib import DataType, Schema, Table
+from .lib import DataType, RecordBatch, Schema, Table
 
 
 class ReadOptions:
@@ -66,4 +66,24 @@ def read_csv(
     convert_options: ConvertOptions | None = None,
     memory_pool=None,
 ) -> Table:
+    ...
+
+
+class CSVStreamingReader(collections.abc.Iterator[RecordBatch]):
+    schema: Schema
+
+    def __next__(self) -> RecordBatch:
+        ...
+
+    def read_all(self) -> Table:
+        ...
+
+
+def open_csv(
+    input_file,
+    read_options: ReadOptions | None = None,
+    parse_options: ParseOptions | None = None,
+    convert_options: ConvertOptions | None = None,
+    memory_pool=None,
+) -> CSVStreamingReader:
     ...

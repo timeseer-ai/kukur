@@ -64,6 +64,7 @@ class DataOptions:
 
     `column_names` restricts preview and data fetching operations to the specified columns only.
     `csv_delimiter` defines the delimiter used to separate columns in CSV files.
+    `csv_skip_rows` is the number of rows to skip at the start of a CSV file, before the header row.
     `csv_header_row` indicates that the first row of a CSV file is a header row.
     `default_resource_type` assumes files without extension are of this type.
     """
@@ -76,6 +77,7 @@ class DataOptions:
     excel_header_row: bool = True
     default_resource_type: ResourceType | None = None
     retry_count: int = DEFAULT_RETRY_COUNT
+    csv_skip_rows: int = 0
 
 
 @dataclass
