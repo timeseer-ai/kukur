@@ -30,6 +30,9 @@ def parse_excel(readable, sheet_name: str, options: DataOptions | None) -> pa.Ta
     data = list(worksheet.values)
     workbook.close()
 
+    if options is not None:
+        data = data[options.excel_skip_rows :]
+
     if len(data) == 0:
         return _to_pyarrow([], [])
     if options is not None and options.excel_header_row:

@@ -25,3 +25,19 @@ def test_excel_without_header_row() -> None:
     assert "0" in table.column_names
     assert "1" in table.column_names
     assert "2" in table.column_names
+
+
+def test_excel_skip_rows() -> None:
+    path = Path("tests/test_data/excel/row-preamble.xlsx").resolve()
+    table = parse_excel(path, "data", DataOptions(excel_skip_rows=2))
+    assert table.column_names == ["name", "ts", "value"]
+    assert len(table) == 3
+
+
+def test_excel_skip_rows_without_header_row() -> None:
+    path = Path("tests/test_data/excel/row-preamble.xlsx").resolve()
+    table = parse_excel(
+        path, "data", DataOptions(excel_header_row=False, excel_skip_rows=3)
+    )
+    assert table.column_names == ["0", "1", "2"]
+    assert len(table) == 3
