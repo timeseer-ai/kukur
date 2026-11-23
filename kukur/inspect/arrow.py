@@ -133,11 +133,11 @@ def _get_csv_data_set(
     filesystem: fs.FileSystem, path: PurePath, options: DataOptions
 ) -> Dataset:
     read_options = csv.ReadOptions(
-        skip_rows=options.csv_skip_rows,
+        skip_rows=options.skip_rows,
         autogenerate_column_names=not options.csv_header_row,
     )
     parse_options = csv.ParseOptions(delimiter=options.csv_delimiter)
-    if options.csv_skip_rows > 0:
+    if options.skip_rows > 0:
         # PyArrow datasets fail when skipped rows have fewer columns than the data.
         return dataset(
             csv.open_csv(

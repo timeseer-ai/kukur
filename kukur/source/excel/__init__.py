@@ -31,7 +31,7 @@ def parse_excel(readable, sheet_name: str, options: DataOptions | None) -> pa.Ta
     workbook.close()
 
     if options is not None:
-        data = data[options.excel_skip_rows :]
+        data = data[options.skip_rows :]
 
     if len(data) == 0:
         return _to_pyarrow([], [])
