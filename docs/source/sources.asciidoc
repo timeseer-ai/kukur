@@ -28,6 +28,7 @@ Valid values are:
 - `cratedb`
 - `csv`
 - `databricks-sql`
+- `datafusion`
 - `delta`
 - `elasticsearch`
 - `feather`
@@ -234,6 +235,7 @@ ifndef::sources[]
 - Binary link:plugin.asciidoc[Plugins]
 - link:csv.asciidoc[CSV] files
 - link:databricks-sql-warehouse.asciidoc[Databricks SQL Warehouse] connections
+- link:datafusion.asciidoc[DataFusion] SQL queries over CSV, JSON and Parquet files and Delta Lake tables
 - link:delta.asciidoc[Delta Lake] tables
 - link:elasticsearch.asciidoc[Elasticsearch] data sources
 - link:influxdb.asciidoc[InfluxDB] data sources
@@ -261,6 +263,7 @@ ifdef::sources[]
 - <<CrateDB>> databases
 - <<CSV>> files
 - <<Databricks SQL Warehouse>> connections
+- <<DataFusion>> SQL queries over CSV, JSON and Parquet files and Delta Lake tables
 - <<Delta Lake>> tables
 - <<Elasticsearch>> databases
 - <<InfluxDB>> databases
