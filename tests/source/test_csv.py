@@ -501,3 +501,25 @@ def test_dir_semicolon_separator_data() -> None:
     data = get_source(selector.source).get_data(selector, START_DATE, END_DATE)
     assert len(data) == 5
     assert data["value"][1].as_py() == approx(2)
+
+
+def test_row_datetime_values() -> None:
+    table = get_source("row_datetime_values").get_data(
+        make_series("row_datetime_values"), START_DATE, END_DATE
+    )
+    assert table["value"].type == pa.timestamp("us", "UTC")
+    assert table["value"].to_pylist() == [
+        parse_date("2019-06-01T08:30:00Z"),
+        parse_date("2019-12-01T08:30:00Z"),
+    ]
+
+
+def test_pivot_datetime_values_in_data_timezone() -> None:
+    table = get_source("pivot_datetime_values_naive").get_data(
+        make_series("pivot_datetime_values_naive"), START_DATE, END_DATE
+    )
+    assert table["value"].type == pa.timestamp("us", "UTC")
+    assert table["value"].to_pylist() == [
+        parse_date("2019-06-01T08:30:00Z"),
+        parse_date("2019-12-01T08:30:00Z"),
+    ]

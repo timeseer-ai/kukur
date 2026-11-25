@@ -552,6 +552,8 @@ enum DataType {
     FLOAT64
     STRING
     DICTIONARY
+    CATEGORICAL
+    DATETIME
 }
 
 class Dictionary {
@@ -575,6 +577,10 @@ For example: the state of a pump could be `ON` or `OFF`.
 
 These dictionaries that map numerical values to string labels are often named as well,
 hence the `dictionary name` field.
+
+Time series of type `DATETIME` store points in time, such as the date of the last calibration of an instrument.
+Their values are timestamps in UTC, of the same type as the timestamps of the data points.
+Data that combines timestamps with numerical or string values contains strings, with the timestamps formatted as ISO 8601.
 
 ==== Source
 

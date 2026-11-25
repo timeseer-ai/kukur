@@ -373,3 +373,14 @@ def test_row_tags_second_field():
     assert table["value"][0].as_py() == "A"
     assert table["value"][1].as_py() == "A"
     assert table["value"][2].as_py() == "B"
+
+
+def test_row_datetime_values_in_data_timezone() -> None:
+    table = get_source("row-parquet-datetime-values-naive").get_data(
+        make_series("row-parquet-datetime-values-naive"), START_DATE, END_DATE
+    )
+    assert table["value"].type == pa.timestamp("us", "UTC")
+    assert table["value"].to_pylist() == [
+        parse_date("2019-06-01T08:30:00Z"),
+        parse_date("2019-12-01T08:30:00Z"),
+    ]

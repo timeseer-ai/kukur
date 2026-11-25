@@ -17,6 +17,7 @@ from typing import Any
 import pyarrow as pa
 
 from kukur import Metadata, SeriesSearch, SeriesSelector, quality
+from kukur.arrow import DATETIME_VALUE_TYPE
 from kukur.auth import AuthenticationProperties
 from kukur.base import DataType, Dictionary, InterpolationType
 from kukur.exceptions import (
@@ -763,15 +764,8 @@ class PIAssetFramework:
     ) -> pa.Table:
         """Return data for the given time series in the given time period."""
         data_url = self._get_data_url(selector)
-        return _read_data(
-            self._session,
-            self._request_properties,
-            DataRequest(
-                data_url,
-                start_date,
-                end_date,
-                None,
-            ),
+        return self._read_attribute_data(
+            selector, DataRequest(data_url, start_date, end_date, None)
         )
 
     def get_plot_data(
@@ -783,15 +777,8 @@ class PIAssetFramework:
     ):
         """Return plot data for the given time series in the given time period."""
         plot_url = self._get_plot_url(selector)
-        return _read_data(
-            self._session,
-            self._request_properties,
-            DataRequest(
-                plot_url,
-                start_date,
-                end_date,
-                interval_count,
-            ),
+        return self._read_attribute_data(
+            selector, DataRequest(plot_url, start_date, end_date, interval_count)
         )
 
     def list_elements(self, element_id: str | None) -> list[Element]:
@@ -969,11 +956,14 @@ class PIAssetFramework:
     def _get_batch_url(self) -> str:
         return self._url.root("batch")
 
-    def _send_batch(self, batch_query: dict) -> dict:
+    def _send_batch(self, batch_query: dict, timeout: float | None = None) -> dict:
+        if timeout is None:
+            timeout = self._request_properties.metadata_request_timeout_seconds
+
         def send() -> dict:
             response = self._session.post(
                 self._get_batch_url(),
-                timeout=self._request_properties.metadata_request_timeout_seconds,
+                timeout=timeout,
                 json=batch_query,
             )
             response.raise_for_status()
@@ -1017,6 +1007,47 @@ class PIAssetFramework:
         if self._config.attribute_category is not None:
             attribute_params["categoryName"] = self._config.attribute_category
         return attribute_params
+
+    def _read_attribute_data(
+        self, selector: SeriesSelector, data_request: DataRequest
+    ) -> pa.Table:
+        """Read data together with the type of its attribute, in one batch request."""
+        result = self._send_batch(
+            {
+                "Type": {
+                    "Method": "GET",
+                    "Resource": add_query_params(
+                        self._url.root(["attributes", selector.tags["__id__"]]),
+                        {"selectedFields": "Type"},
+                    ),
+                },
+                "Data": {
+                    "Method": "GET",
+                    "Resource": add_query_params(
+                        data_request.url,
+                        _data_params(
+                            self._request_properties,
+                            data_request,
+                            data_request.start_date,
+                        ),
+                    ),
+                },
+            },
+            timeout=self._request_properties.timeout_seconds,
+        )
+        if any(response["Status"] == HTTP_NOT_FOUND for response in result.values()):
+            raise DataNotFoundException(f"Data not found for {data_request.url}")
+        validate_batch_response(result)
+
+        data = _read_data(
+            self._session,
+            self._request_properties,
+            data_request,
+            first_page=result["Data"]["Content"]["Items"],
+        )
+        if result["Type"]["Content"]["Type"] == "DateTime":
+            return _parse_datetime_values(data)
+        return data
 
     def _get_data_url(self, selector: SeriesSelector) -> str:
         return self._url.root(["streams", selector.tags["__id__"], "recorded"])
@@ -1175,6 +1206,7 @@ def _get_metadata(
         "Int64": DataType.FLOAT64,
         "String": DataType.STRING,
         "EnumerationValue": DataType.DICTIONARY,
+        "DateTime": DataType.DATETIME,
     }
     if attribute_type not in attribute_types:
         return None
@@ -1519,11 +1551,14 @@ def _set_metadata_attribute_values(
 
 
 def _read_data(
-    session, request_properties: RequestProperties, data_request: DataRequest
+    session,
+    request_properties: RequestProperties,
+    data_request: DataRequest,
+    first_page: list[dict] | None = None,
 ):
     """Read AF data.
 
-    This handles pagination.
+    This handles pagination. The first page is requested unless it is given.
     """
     timestamps = []
     values: list[float | int | str | None] = []
@@ -1532,26 +1567,21 @@ def _read_data(
     start_date = data_request.start_date
 
     while True:
-        params: dict[str, str | int] = {
-            "maxCount": str(request_properties.max_returned_items_per_call),
-            "startTime": start_date.isoformat(),
-            "endTime": data_request.end_date.isoformat(),
-            "selectedFields": "Items.Value;Items.Timestamp;Items.Good",
-        }
-        if data_request.interval_count is not None:
-            params.update({"intervals": data_request.interval_count})
-        response = session.get(
-            data_request.url,
-            verify=request_properties.verify_ssl,
-            timeout=request_properties.timeout_seconds,
-            params=params,
-        )
-        if response.status_code == HTTP_NOT_FOUND:
-            raise DataNotFoundException(f"Data not found for {data_request.url}")
+        if first_page is not None:
+            data_points, first_page = first_page, None
+        else:
+            response = session.get(
+                data_request.url,
+                verify=request_properties.verify_ssl,
+                timeout=request_properties.timeout_seconds,
+                params=_data_params(request_properties, data_request, start_date),
+            )
+            if response.status_code == HTTP_NOT_FOUND:
+                raise DataNotFoundException(f"Data not found for {data_request.url}")
 
-        response.raise_for_status()
+            response.raise_for_status()
 
-        data_points = response.json()["Items"]
+            data_points = response.json()["Items"]
 
         last_timestamp: datetime | None = None
         for data_point in data_points:
@@ -1593,6 +1623,34 @@ def _read_data(
         }
     )
     return quality.set_mapping(table, quality.DEFAULT_MAPPING)
+
+
+def _data_params(
+    request_properties: RequestProperties,
+    data_request: DataRequest,
+    start_date: datetime,
+) -> dict[str, str | int]:
+    params: dict[str, str | int] = {
+        "maxCount": str(request_properties.max_returned_items_per_call),
+        "startTime": start_date.isoformat(),
+        "endTime": data_request.end_date.isoformat(),
+        "selectedFields": "Items.Value;Items.Timestamp;Items.Good",
+    }
+    if data_request.interval_count is not None:
+        params["intervals"] = data_request.interval_count
+    return params
+
+
+def _parse_datetime_values(data: pa.Table) -> pa.Table:
+    values = [
+        None if value is None else parse_timestamp(value)
+        for value in data["value"].to_pylist()
+    ]
+    return data.set_column(
+        data.schema.get_field_index("value"),
+        "value",
+        pa.array(values, DATETIME_VALUE_TYPE),
+    )
 
 
 def add_query_params(url: str, params: dict) -> str:

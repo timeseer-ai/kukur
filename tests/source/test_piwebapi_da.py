@@ -7,8 +7,9 @@ from unittest.mock import patch
 import pyarrow as pa
 from dateutil.parser import parse as parse_date
 
-from kukur import Quality, SeriesSelector, quality
+from kukur import DataType, Quality, SeriesSelector, quality
 from kukur.base import SeriesSearch
+from kukur.metadata import fields
 from kukur.source.piwebapi_da import from_config
 
 SAMPLE_POINTS = [
@@ -385,3 +386,95 @@ def test_get_plot_data_without_limits(_) -> None:
         SeriesSelector("Test", "CDT158"), start_date, end_date, interval_count=200
     )
     assert len(data) == 9
+
+
+TIMESTAMP_POINT = {
+    **SAMPLE_POINTS[0],
+    "WebId": "3",
+    "Name": "CDT160",
+    "PointType": "Timestamp",
+    "Links": {
+        "RecordedData": "https://test_pi.net/streams/3/recorded",
+        "PlotData": "https://test_pi.net/streams/3/plot",
+    },
+}
+TIMESTAMP_DATA_POINTS = [
+    {
+        "Timestamp": "2020-01-01T00:00:00Z",
+        "Value": "2019-06-01T08:30:00Z",
+        "Good": True,
+    },
+    {
+        "Timestamp": "2020-01-02T00:00:00Z",
+        "Value": {"Name": "Shutdown", "Value": 254, "IsSystem": True},
+        "Good": False,
+    },
+]
+
+
+def mocked_requests_get_timestamp_point(*args, **kwargs):
+    class MockResponse:
+        def __init__(self, json_data):
+            self.json_data = json_data
+            self.status_code = 200
+
+        def raise_for_status(self):
+            return
+
+        def json(self):
+            return self.json_data
+
+    if args[0] == "https://test_pi.net":
+        return MockResponse({"Links": {"Points": "https://test_pi.net/points"}})
+
+    if args[0] == "https://test_pi.net/points":
+        start_index = int(kwargs.get("params", {}).get("startIndex", 0))
+        return MockResponse({"Items": [] if start_index > 0 else [TIMESTAMP_POINT]})
+
+    if args[0] in [
+        "https://test_pi.net/streams/3/recorded",
+        "https://test_pi.net/streams/3/plot",
+    ]:
+        return MockResponse({"Items": TIMESTAMP_DATA_POINTS})
+
+    raise Exception(args[0])
+
+
+def _timestamp_point_source():
+    return from_config(
+        {
+            "data_archive_uri": "https://test_pi.net",
+            "username": "test",
+            "password": "test",
+            "verify_ssl": "false",
+        }
+    )
+
+
+@patch("requests.Session.get", side_effect=mocked_requests_get_timestamp_point)
+def test_search_timestamp_point(_) -> None:
+    series = list(_timestamp_point_source().search(SeriesSearch("Test")))
+    assert len(series) == 1
+    assert series[0].get_field(fields.DataType) == DataType.DATETIME
+
+
+@patch("requests.Session.get", side_effect=mocked_requests_get_timestamp_point)
+def test_get_data_timestamp_point(_) -> None:
+    data = _timestamp_point_source().get_data(
+        SeriesSelector("Test", "CDT160"),
+        parse_date("2020-01-01T00:00:00Z"),
+        parse_date("2020-01-03T00:00:00Z"),
+    )
+    assert data["value"].type == pa.timestamp("us", "UTC")
+    assert data["value"].to_pylist() == [parse_date("2019-06-01T08:30:00Z"), None]
+
+
+@patch("requests.Session.get", side_effect=mocked_requests_get_timestamp_point)
+def test_get_plot_data_timestamp_point(_) -> None:
+    data = _timestamp_point_source().get_plot_data(
+        SeriesSelector("Test", "CDT160"),
+        parse_date("2020-01-01T00:00:00Z"),
+        parse_date("2020-01-03T00:00:00Z"),
+        interval_count=200,
+    )
+    assert data["value"].to_pylist() == [parse_date("2019-06-01T08:30:00Z"), None]

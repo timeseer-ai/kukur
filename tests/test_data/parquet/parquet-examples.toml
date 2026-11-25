@@ -122,3 +122,8 @@ field_columns = ["value", "product"]
 "ts" = "date"
 "plant" = "Plant"
 "value" = "Value"
+
+[source.row-parquet-datetime-values-naive]
+type = "parquet"
+path = "tests/test_data/parquet/row-datetime-values-naive.parquet"
+data_timezone = "America/Sao_Paulo"

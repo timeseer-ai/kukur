@@ -194,7 +194,7 @@ class BaseSQLSource(ABC):
         cursor.execute(query, params)
 
         timestamps = []
-        values: list[float | str] = []
+        values: list[float | str | datetime | None] = []
         qualities = []
         type_count: dict[str, int] = defaultdict(int)
         detected_type = None
@@ -208,40 +208,29 @@ class BaseSQLSource(ABC):
                     row[1],
                     type(row[1]),
                 )
-            if isinstance(row[0], datetime):
-                ts = row[0]
-            elif isinstance(row[0], date):
-                ts = datetime(row[0].year, row[0].month, row[0].day, tzinfo=UTC)
+            if isinstance(row[0], date):
+                ts = self._to_utc(row[0])
             else:
-                ts = parse_timestamp(row[0])
-            if self._config.data_timezone:
-                ts = ts.replace(tzinfo=self._config.data_timezone)
-            ts = ts.astimezone(UTC)
+                ts = self._to_utc(parse_timestamp(row[0]))
             value = row[1]
+            if isinstance(value, bytes):
+                continue
             if isinstance(value, str):
                 type_count["str"] += 1
             if type(value) in [int, float, Decimal]:
                 type_count["number"] += 1
-            if isinstance(value, datetime):
+            if isinstance(value, date):
                 type_count["datetime"] += 1
+                value = self._to_utc(value)
+            elif isinstance(value, Decimal):
+                value = float(value)
 
             if len(values) == self._config.type_checking_row_limit:
                 detected_type = _get_main_type(type_count)
                 _coerce_types(values, detected_type)
 
-            if detected_type == "number":
-                if value is None or type(value) not in [int, float, Decimal]:
-                    value = float("nan")
-            if detected_type == "str":
-                if value is not None and type(value) in [int, float, Decimal]:
-                    value = str(value)
-
-            if isinstance(value, bytes):
-                continue
-            if isinstance(value, datetime | date):
-                value = value.isoformat()
-            elif isinstance(value, Decimal):
-                value = float(value)
+            if detected_type is not None:
+                value = _coerce_value(value, detected_type)
             if self._quality_mapper.is_present():
                 qualities.append(row[2])
             timestamps.append(ts)
@@ -259,6 +248,13 @@ class BaseSQLSource(ABC):
                 2, "quality", quality.normalize_array(table["quality"])
             )
         return pa.Table.from_pydict({"ts": timestamps, "value": values})
+
+    def _to_utc(self, value: date) -> datetime:
+        if not isinstance(value, datetime):
+            value = datetime(value.year, value.month, value.day, tzinfo=UTC)
+        if self._config.data_timezone:
+            value = value.replace(tzinfo=self._config.data_timezone)
+        return value.astimezone(UTC)
 
     def __prepare_data_query(
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
@@ -416,11 +412,23 @@ def _get_main_type(type_count: dict[str, int]) -> str:
     return "number"
 
 
-def _coerce_types(values: list[float | str], detected_type: str):
+def _coerce_types(values: list[float | str | datetime | None], detected_type: str):
     for i, value in enumerate(values):
-        if detected_type == "str":
-            if value is not None and type(value) in [str, Decimal, float]:
-                values[i] = str(value)
-        elif detected_type == "number":
-            if value is None or type(value) not in [Decimal, float, int]:
-                values[i] = float("nan")
+        values[i] = _coerce_value(value, detected_type)
+
+
+def _coerce_value(
+    value: float | str | datetime | None, detected_type: str
+) -> float | str | datetime | None:
+    if detected_type == "str":
+        if isinstance(value, datetime):
+            return value.isoformat()
+        if value is not None and type(value) in [int, float]:
+            return str(value)
+    elif detected_type == "number":
+        if value is None or type(value) not in [float, int]:
+            return float("nan")
+    elif detected_type == "datetime":
+        if not isinstance(value, datetime):
+            return None
+    return value
