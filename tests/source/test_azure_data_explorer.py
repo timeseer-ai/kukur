@@ -9,11 +9,16 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
+from azure.kusto.data import ClientRequestProperties
 from azure.kusto.data.exceptions import KustoMultiApiError, KustoThrottlingError
 
 from kukur import DataType, SeriesSearch, SeriesSelector
 from kukur.metadata import Metadata, fields
-from kukur.source.azure_data_explorer import from_config
+from kukur.source.azure_data_explorer import (
+    DataExplorerConnection,
+    DataExplorerConnectionConfiguration,
+    from_config,
+)
 from kukur.source.azure_data_explorer.azure_data_explorer import _Sleeper
 from kukur.source.metadata import MetadataMapper, MetadataValueMapper
 from kukur.source.token_cache import NullTokenCache
@@ -26,7 +31,7 @@ class MockKustoResponse:
         self.primary_results = [results_list]
 
 
-def search_queries(_, query) -> MockKustoResponse:
+def search_queries(_, query, _props=None) -> MockKustoResponse:
     if query == "['telemetry-data'] | distinct deviceId, plant, location":
         return MockKustoResponse(
             [
@@ -555,3 +560,40 @@ def test_get_data_throttle_resolved(kusto_client) -> None:
     data = source.get_data(selector, initial_date, final_date)
     assert len(data) == 10
     assert source._sleeper.count == 3
+
+
+def _connection(throttle_backoff_count: int = 8) -> DataExplorerConnection:
+    return DataExplorerConnection(
+        DataExplorerConnectionConfiguration.from_config(
+            {
+                "connection_string": "https://test_cluster.net",
+                "database": "telemetry",
+                "throttle_backoff_count": throttle_backoff_count,
+            }
+        ),
+        NullTokenCache(),
+        _TestSleeper().sleep,
+    )
+
+
+@patch("azure.kusto.data.KustoClient.execute_streaming_query")
+def test_connection_execute_streaming(kusto_client) -> None:
+    props = ClientRequestProperties()
+    with _connection() as connection:
+        response = connection.execute_streaming("['telemetry-data']", props)
+
+    assert response is kusto_client.return_value
+    assert kusto_client.call_args.args == ("telemetry", "['telemetry-data']")
+    assert kusto_client.call_args.kwargs["properties"] is props
+
+
+@patch(
+    "azure.kusto.data.KustoClient.execute_streaming_query",
+    side_effect=KustoThrottlingError(),
+)
+def test_connection_execute_streaming_throttle(kusto_client) -> None:
+    with _connection(throttle_backoff_count=2) as connection:
+        with pytest.raises(KustoThrottlingError):
+            connection.execute_streaming("['telemetry-data']")
+
+    assert kusto_client.call_count == 2

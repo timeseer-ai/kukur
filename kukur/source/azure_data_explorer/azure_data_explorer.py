@@ -7,42 +7,31 @@ import logging
 import time
 from collections.abc import Generator
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 
 import pyarrow as pa
 
-from kukur.source.token_cache import Token, TokenCache
+from kukur.source.azure_data_explorer.connection import (
+    HAS_AZURE_IDENTITY,
+    HAS_KUSTO,
+    DataExplorerConnection,
+    DataExplorerConnectionConfiguration,
+)
+from kukur.source.token_cache import TokenCache
 
 try:
-    from azure.identity import ClientSecretCredential, DefaultAzureCredential
-
-    HAS_AZURE_IDENTITY = True
+    from azure.kusto.data import ClientRequestProperties
+    from azure.kusto.data.exceptions import KustoMultiApiError
 except ImportError:
-    HAS_AZURE_IDENTITY = False
-
-try:
-    from azure.kusto.data import (
-        ClientRequestProperties,
-        KustoClient,
-        KustoConnectionStringBuilder,
-    )
-    from azure.kusto.data.exceptions import KustoMultiApiError, KustoThrottlingError
-
-    HAS_KUSTO = True
-except ImportError:
-    HAS_KUSTO = False
+    pass
 
 
 from kukur import Metadata, SeriesSearch, SeriesSelector
-from kukur.exceptions import (
-    KukurException,
-    MissingModuleException,
-)
+from kukur.exceptions import KukurException, MissingModuleException
 from kukur.source.metadata import MetadataMapper, MetadataValueMapper
 
 MAX_ITEMS_PER_CALL = 500_000
-MAX_THROTTLE_COUNT = 8  # 4.5 minutes
 
 logger = logging.getLogger(__name__)
 
@@ -58,11 +47,7 @@ class InvalidClientConnection(KukurException):
 class DataExplorerConfiguration:
     """Data Explorer source configuration."""
 
-    connection_string: str
-    client_id: str | None
-    client_secret: str | None
-    tenant_id: str | None
-    database: str
+    connection: DataExplorerConnectionConfiguration
     table: str | None
     timestamp_column: str
     tag_columns: list[str]
@@ -73,7 +58,6 @@ class DataExplorerConfiguration:
     list_columns: list[str] | None
     data_query: str | None
     data_query_named_parameters: dict[str, str] | None
-    throttle_backoff_count: int
 
 
 def from_config(
@@ -83,8 +67,6 @@ def from_config(
     token_cache: TokenCache,
 ):
     """Create a new Azure Data Explorer data source."""
-    connection_string = config["connection_string"]
-    database = config["database"]
     table = config.get("table")
     timestamp_column = config.get("timestamp_column", "ts")
     tag_columns = config.get("tag_columns", [])
@@ -92,11 +74,7 @@ def from_config(
     metadata_columns = config.get("metadata_columns", [])
     return DataExplorerSource(
         DataExplorerConfiguration(
-            connection_string,
-            config.get("client_id"),
-            config.get("client_secret"),
-            config.get("tenant_id"),
-            database,
+            DataExplorerConnectionConfiguration.from_config(config),
             table,
             timestamp_column,
             tag_columns,
@@ -107,7 +85,6 @@ def from_config(
             config.get("list_columns"),
             config.get("data_query"),
             config.get("data_query_named_parameters"),
-            config.get("throttle_backoff_count", MAX_THROTTLE_COUNT),
         ),
         metadata_mapper,
         metadata_value_mapper,
@@ -148,15 +125,17 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
             raise KukurException("Define tags to support listing time series")
 
         if self.__config.list_query is not None:
-            yield from self._search_query(selector)
+            yield from self._search_query(selector, self.__config.list_query)
         elif len(self.__config.metadata_columns) == 0:
             yield from self._search_distinct(selector)
         else:
             yield from self._search_metadata(selector)
 
-    def _search_query(self, selector: SeriesSearch) -> Generator[Metadata, None, None]:
-        with self._get_client() as client:
-            result = client.execute(self.__config.database, self.__config.list_query)
+    def _search_query(
+        self, selector: SeriesSearch, list_query: str
+    ) -> Generator[Metadata, None, None]:
+        with self._connect() as connection:
+            result = connection.execute(list_query)
         if result is None or len(result.primary_results) == 0:
             return
 
@@ -181,8 +160,8 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
         self, selector: SeriesSearch
     ) -> Generator[Metadata, None, None]:
         query = f"['{self.__config.table}'] | distinct {', '.join(self.__config.tag_columns)}"
-        with self._get_client() as client:
-            result = client.execute(self.__config.database, query)
+        with self._connect() as connection:
+            result = connection.execute(query)
         if result is None or len(result.primary_results) == 0:
             return
 
@@ -206,8 +185,8 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
             | project-away {", ".join(_add_square_brackets(self.__config.metadata_columns))}
             | project-rename {", ".join(renames)}
         """
-        with self._get_client() as client:
-            result = client.execute(self.__config.database, query)
+        with self._connect() as connection:
+            result = connection.execute(query)
         if result is None or len(result.primary_results) == 0:
             return
 
@@ -244,21 +223,18 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
 
         ts = self.__config.timestamp_column
         max_items_per_call = self.__config.max_items_per_call
-        throttle_count = 1
 
         timestamps = []
         values = []
         offset = 0
-        with self._get_client() as client:
+        with self._connect() as connection:
             while True:
                 try:
                     paginated_query = f"""{query}
                     | serialize
                     | where row_number() > {offset}
                     | take {max_items_per_call}"""
-                    result = client.execute(
-                        self.__config.database, paginated_query, props
-                    )
+                    result = connection.execute(paginated_query, props)
                     if result is None or len(result.primary_results) == 0:
                         break
 
@@ -268,7 +244,6 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
                     if len(result.primary_results[0]) < max_items_per_call:
                         break
                     offset += max_items_per_call
-                    throttle_count = 1
                 except KustoMultiApiError as e:
                     if _is_result_set_too_large(e):
                         max_items_per_call = max_items_per_call // 2
@@ -276,14 +251,6 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
                             raise e
                     else:
                         raise e
-                except KustoThrottlingError as err:
-                    logger.info(
-                        "request throttled, sleeping for %s seconds", 2**throttle_count
-                    )
-                    self._sleeper.sleep(2**throttle_count)
-                    throttle_count = throttle_count + 1
-                    if throttle_count > self.__config.throttle_backoff_count:
-                        raise err
 
         return pa.Table.from_pydict({"ts": timestamps, "value": values})
 
@@ -337,38 +304,10 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
 
         return self.__config.data_query, props
 
-    def _get_client(self):
-        """Return a Kusto client.
-
-        The client should be closed after use.
-        """
-        if (
-            self.__config.client_id is not None
-            and self.__config.client_secret is not None
-            and self.__config.tenant_id is not None
-        ):
-            azure_credential = ClientSecretCredential(
-                client_id=self.__config.client_id,
-                client_secret=self.__config.client_secret,
-                tenant_id=self.__config.tenant_id,
-            )
-        else:
-            azure_credential = DefaultAzureCredential()
-
-        def _get_azure_token(_refresh_token):
-            token = azure_credential.get_token(
-                self.__config.connection_string + "//.default"
-            )
-            return Token(token.token, datetime.fromtimestamp(token.expires_on, tz=UTC))
-
-        def _get_token():
-            return self.__token_cache.get_token(_get_azure_token)
-
-        kcsb = KustoConnectionStringBuilder.with_token_provider(
-            self.__config.connection_string, _get_token
+    def _connect(self) -> DataExplorerConnection:
+        return DataExplorerConnection(
+            self.__config.connection, self.__token_cache, self._sleeper.sleep
         )
-
-        return KustoClient(kcsb)
 
 
 def _is_result_set_too_large(err) -> bool:
