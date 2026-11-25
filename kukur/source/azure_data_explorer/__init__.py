@@ -4,5 +4,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from .azure_data_explorer import from_config
+from .connection import DataExplorerConnection, DataExplorerConnectionConfiguration
 
-__all__ = ["from_config"]
+__all__ = [
+    "DataExplorerConnection",
+    "DataExplorerConnectionConfiguration",
+    "from_config",
+]
