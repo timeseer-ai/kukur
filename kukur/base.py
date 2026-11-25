@@ -157,6 +157,7 @@ class DataType(Enum):
     STRING is a variable length utf-8 character array
     DICTIONARY is an enumeration of ordered discrete values with a corresponding mapping
     CATEGORICAL is an enumeration of ordered discrete values
+    DATETIME is a point in time
     """
 
     FLOAT32 = "FLOAT32"
@@ -164,3 +165,4 @@ class DataType(Enum):
     STRING = "STRING"
     DICTIONARY = "DICTIONARY"
     CATEGORICAL = "CATEGORICAL"
+    DATETIME = "DATETIME"

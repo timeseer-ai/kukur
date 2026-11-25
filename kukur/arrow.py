@@ -4,9 +4,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import pyarrow as pa
+import pyarrow.compute as pc
 import pyarrow.types
 
 from kukur import quality
+
+DATETIME_VALUE_TYPE = pa.timestamp("us", "UTC")
 
 
 def get_value_schema_type(data: pa.Table):
@@ -15,7 +18,26 @@ def get_value_schema_type(data: pa.Table):
     if len(data) > 0:
         if pa.types.is_string(data["value"][0].type):
             value_type = pa.string()
+        elif pa.types.is_timestamp(data["value"][0].type):
+            value_type = DATETIME_VALUE_TYPE
     return value_type
+
+
+def assume_value_timezone(table: pa.Table, data_timezone: str | None) -> pa.Table:
+    """Interpret naive timestamps outside of the ts column in the given timezone."""
+    if data_timezone is None:
+        return table
+    for index, name in enumerate(table.schema.names):
+        field_type = table.schema.field(name).type
+        if (
+            name != "ts"
+            and pyarrow.types.is_timestamp(field_type)
+            and field_type.tz is None
+        ):
+            table = table.set_column(
+                index, name, pc.assume_timezone(table[index], data_timezone)
+            )
+    return table
 
 
 def conform_to_schema(table: pa.Table) -> pa.Table:
@@ -57,8 +79,9 @@ def concat_tables(tables: list[pa.Table]) -> pa.Table:
     """Safely concatenate multiple pyarrow.Table's.
 
     If any of the given tables contains strings, the result will contain a
-    string value. If any of the given tables contains a floating point number,
-    the value will be a double.
+    string value. Timestamps remain timestamps unless they are combined with
+    numbers, in which case the result contains strings as well. If any of the
+    given tables contains a floating point number, the value will be a double.
     """
     tables = [table for table in tables if len(table) > 0]
     if len(tables) == 0:
@@ -67,50 +90,44 @@ def concat_tables(tables: list[pa.Table]) -> pa.Table:
     schema = pa.schema(
         [
             ("ts", pa.timestamp("us", "UTC")),
-            ("value", pa.float64()),
+            ("value", _get_value_type(tables)),
         ]
     )
-
-    if _has_any_string(tables):
-        schema = pa.schema(
-            [
-                ("ts", pa.timestamp("us", "UTC")),
-                ("value", pa.string()),
-            ]
-        )
-
-    if _is_all_integer(tables):
-        schema = pa.schema(
-            [
-                ("ts", pa.timestamp("us", "UTC")),
-                ("value", pa.int64()),
-            ]
-        )
 
     if _has_quality_data_flag(tables):
         schema = schema.append(pa.field("quality", _get_quality_type(tables)))
 
     schema = schema.with_metadata(_get_metadata(tables))
 
-    return pa.concat_tables([table.cast(schema) for table in tables])
+    return pa.concat_tables([_cast(table, schema) for table in tables])
 
 
-def _has_any_string(tables: list[pa.Table]) -> bool:
-    string_tables = [
-        table
-        for table in tables
-        if pyarrow.types.is_string(table.schema.field("value").type)
-    ]
-    return len(string_tables) > 0
+def _get_value_type(tables: list[pa.Table]) -> pa.DataType:
+    value_types = [table.schema.field("value").type for table in tables]
+    if any(pyarrow.types.is_string(value_type) for value_type in value_types):
+        return pa.string()
+    if any(pyarrow.types.is_timestamp(value_type) for value_type in value_types):
+        if all(pyarrow.types.is_timestamp(value_type) for value_type in value_types):
+            return DATETIME_VALUE_TYPE
+        return pa.string()
+    if all(pyarrow.types.is_integer(value_type) for value_type in value_types):
+        return pa.int64()
+    return pa.float64()
 
 
-def _is_all_integer(tables: list[pa.Table]) -> bool:
-    integer_tables = [
-        table
-        for table in tables
-        if pyarrow.types.is_integer(table.schema.field("value").type)
-    ]
-    return len(integer_tables) == len(tables)
+def _cast(table: pa.Table, schema: pa.Schema) -> pa.Table:
+    value_index = table.schema.get_field_index("value")
+    if pyarrow.types.is_string(
+        schema.field("value").type
+    ) and pyarrow.types.is_timestamp(table.schema.field(value_index).type):
+        table = table.set_column(
+            value_index, "value", _format_timestamps(table["value"])
+        )
+    return table.cast(schema)
+
+
+def _format_timestamps(values: pa.Array) -> pa.Array:
+    return pc.strftime(values.cast(DATETIME_VALUE_TYPE), "%Y-%m-%dT%H:%M:%S+00:00")
 
 
 def _has_quality_data_flag(tables: list[pa.Table]) -> bool:

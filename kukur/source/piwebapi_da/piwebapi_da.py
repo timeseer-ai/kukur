@@ -227,8 +227,13 @@ class PIDataArchive:
         self, selector: SeriesSelector, start_date: datetime, end_date: datetime
     ) -> pa.Table:
         """Return data for the given time series in the given time period."""
-        data_url = self._get_data_url(selector)
-        return self._get_data(data_url, start_date, end_date)
+        point = self._get_point(selector, "RecordedData")
+        return self._get_data(
+            point["Links"]["RecordedData"],
+            point.get("PointType"),
+            start_date,
+            end_date,
+        )
 
     def get_plot_data(
         self,
@@ -238,18 +243,25 @@ class PIDataArchive:
         interval_count: int,
     ) -> pa.Table:
         """Return data for the given time series in the given time period."""
-        data_url = self._get_plot_data_url(selector)
-        return self._get_data(data_url, start_date, end_date, interval_count)
+        point = self._get_point(selector, "PlotData")
+        return self._get_data(
+            point["Links"]["PlotData"],
+            point.get("PointType"),
+            start_date,
+            end_date,
+            interval_count,
+        )
 
     def _get_data(
         self,
         data_url: str,
+        point_type: str | None,
         start_date: datetime,
         end_date: datetime,
         interval_count: int | None = None,
     ) -> pa.Table:
         timestamps = []
-        values: list[float | int | str | None] = []
+        values: list[float | int | str | datetime | None] = []
         quality_flags = []
 
         while True:
@@ -287,6 +299,8 @@ class PIDataArchive:
                         quality_flags.append(value["Value"])
                         continue
                     values.append(value["Value"])
+                elif point_type == "Timestamp" and value is not None:
+                    values.append(parse_timestamp(value))
                 else:
                     values.append(value)
 
@@ -317,6 +331,9 @@ class PIDataArchive:
         return quality.set_mapping(table, quality.DEFAULT_MAPPING)
 
     def _get_data_url(self, selector: SeriesSelector) -> str:
+        return self._get_point(selector, "RecordedData")["Links"]["RecordedData"]
+
+    def _get_point(self, selector: SeriesSelector, link: str) -> dict:
         response = self._session.get(
             self.__data_archive_uri,
             timeout=self._request_properties.timeout_seconds,
@@ -331,46 +348,16 @@ class PIDataArchive:
             params=dict(
                 maxCount=str(self._request_properties.max_returned_items_per_call),
                 nameFilter=selector.name,
-                selectedFields="Items.Links.RecordedData",
+                selectedFields=f"Items.PointType;Items.Links.{link}",
             ),
         )
         response.raise_for_status()
 
         data_points = response.json()["Items"]
         if len(data_points) == 0:
-            raise DataNotFoundException(
-                f"no RecordedData link for series '{selector.name}'"
-            )
+            raise DataNotFoundException(f"no {link} link for series '{selector.name}'")
 
-        return response.json()["Items"][0]["Links"]["RecordedData"]
-
-    def _get_plot_data_url(self, selector: SeriesSelector) -> str:
-        response = self._session.get(
-            self.__data_archive_uri,
-            timeout=self._request_properties.timeout_seconds,
-            params=dict(selectedFields="Links.Points"),
-        )
-        response.raise_for_status()
-
-        data_archive = response.json()
-        response = self._session.get(
-            data_archive["Links"]["Points"],
-            timeout=self._request_properties.timeout_seconds,
-            params=dict(
-                maxCount=str(self._request_properties.max_returned_items_per_call),
-                nameFilter=selector.name,
-                selectedFields="Items.Links.PlotData",
-            ),
-        )
-        response.raise_for_status()
-
-        data_points = response.json()["Items"]
-        if len(data_points) == 0:
-            raise DataNotFoundException(
-                f"no PlotData link for series '{selector.name}'"
-            )
-
-        return response.json()["Items"][0]["Links"]["PlotData"]
+        return data_points[0]
 
 
 def _get_metadata(
@@ -402,6 +389,7 @@ def _get_metadata(
         "Int16": DataType.FLOAT32,
         "Int32": DataType.FLOAT64,
         "String": DataType.STRING,
+        "Timestamp": DataType.DATETIME,
     }
     if point_type not in point_types:
         return None

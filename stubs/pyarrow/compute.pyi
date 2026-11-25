@@ -101,6 +101,9 @@ def year(array: Array) -> Array:
 def strptime(strings: Array, format: str, unit: str) -> Array:
     ...
 
+def strftime(timestamps: Array, format: str) -> Array:
+    ...
+
 def assume_timezone(timestamps: Array, timezone: str) -> Array:
     ...
 

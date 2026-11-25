@@ -7,5 +7,5 @@
 - `accuracy`
 - `accuracy percentage`
 - `interpolation type` (`LINEAR`, `STEPPED`)
-- `data type` (`FLOAT32`, `FLOAT64`, `STRING`, `DICTIONARY`, `CATEGORICAL`)
+- `data type` (`FLOAT32`, `FLOAT64`, `STRING`, `DICTIONARY`, `CATEGORICAL`, `DATETIME`)
 - `dictionary name`

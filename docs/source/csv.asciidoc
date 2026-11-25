@@ -111,9 +111,10 @@ test-tag-2,2020-01-01T00:00:00Z,Product A
 test-tag-2,2020-02-01T00:00:00Z,Product B
 ```
 
-Alternatively, the third column can contain string values.
+Alternatively, the third column can contain string values or ISO 8601 timestamps.
 It is not possible to mix numerical and string values in one column.
 This will cause all numerical values to be interpreted as strings.
+Naive timestamps in the third column are interpreted in the `data_timezone`, as are the timestamps of the data points.
 
 Dictionary data is integer numerical data.
 Labels are only for presenting to users.

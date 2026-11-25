@@ -16,7 +16,11 @@ import pyarrow.compute
 import pyarrow.types
 
 from kukur import Metadata, SeriesSelector, quality
-from kukur.arrow import conform_to_schema, get_value_schema_type
+from kukur.arrow import (
+    assume_value_timezone,
+    conform_to_schema,
+    get_value_schema_type,
+)
 from kukur.base import SeriesSearch
 from kukur.exceptions import InvalidDataError, InvalidSourceException
 from kukur.loader import Loader
@@ -246,11 +250,12 @@ def cast_ts_column(
     data: pa.Table, data_datetime_format: str | None, data_timezone: str | None
 ) -> pa.Table:
     """Cast the timestamp column considering format and timezone."""
-    return data.set_column(
+    data = data.set_column(
         data.column_names.index("ts"),
         "ts",
         cast_timestamp(data["ts"], data_datetime_format, data_timezone),
     )
+    return assume_value_timezone(data, data_timezone)
 
 
 def cast_timestamp(

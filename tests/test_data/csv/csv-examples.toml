@@ -305,3 +305,13 @@ format = "dir"
 path = "tests/test_data/csv/dir_semicolon/"
 data_column_separator = ";"
 metadata = "tests/test_data/csv/dir-semicolon-metadata.csv"
+
+[source.row_datetime_values]
+type = "csv"
+path = "tests/test_data/csv/row-datetime-values.csv"
+
+[source.pivot_datetime_values_naive]
+type = "csv"
+path = "tests/test_data/csv/pivot-datetime-values-naive.csv"
+format = "pivot"
+data_timezone = "America/Sao_Paulo"

@@ -20,6 +20,7 @@ import pyarrow.compute
 import pyarrow.csv
 
 from kukur import Dictionary, Metadata, SeriesSearch, SeriesSelector, quality
+from kukur.arrow import assume_value_timezone
 from kukur.exceptions import InvalidDataError, InvalidSourceException, KukurException
 from kukur.loader import Loader
 from kukur.loader import from_config as loader_from_config
@@ -507,11 +508,12 @@ def _cast_ts_column(data: pa.Table, data_timezone: str | None) -> pa.Table:
         return data
 
     # pylint: disable=no-member
-    return data.set_column(
+    data = data.set_column(
         data.column_names.index("ts"),
         "ts",
         pyarrow.compute.assume_timezone(data["ts"], data_timezone),
     )
+    return assume_value_timezone(data, data_timezone)
 
 
 def _convert_timestamp(
@@ -542,11 +544,12 @@ def _convert_timestamp(
         return data
 
     # pylint: disable=no-member
-    return data.set_column(
+    data = data.set_column(
         data.column_names.index("ts"),
         "ts",
         pyarrow.compute.assume_timezone(data["ts"], data_timezone),
     )
+    return assume_value_timezone(data, data_timezone)
 
 
 def _map_columns(column_mapping: dict[str, str], data: pa.Table) -> pa.Table:

@@ -423,10 +423,67 @@ def test_datetime_values() -> None:
     )
 
     assert len(data) == 1
-    assert (
-        data["value"][0].as_py()
-        == datetime.fromisoformat("2021-01-02T12:34:56+00:00").isoformat()
+    assert data["value"].type == pa.timestamp("us", "UTC")
+    assert data["value"][0].as_py() == datetime.fromisoformat(
+        "2021-01-02T12:34:56+00:00"
     )
+
+
+def test_naive_datetime_values_in_data_timezone() -> None:
+    config = SQLConfig.from_dict(
+        dict(
+            connection_string=":memory:",
+            data_query="select ts, value from Data where series_name = ? and ts between ? and ?",
+            data_timezone="Europe/Brussels",
+        )
+    )
+    source = DummySQLSource(config, MetadataValueMapper(), QualityMapper())
+    source.db.row_factory = lambda _, row: (
+        parse_date(row[0]),
+        datetime.fromisoformat(row[1]),
+    )
+    source.db.execute("create table Data (ts datetime, series_name text, value text)")
+    source.db.execute(
+        "insert into Data (ts, series_name, value) values (?, ?, ?)",
+        ["2021-01-02T00:00:00", "datetime-series", "2021-01-02T12:34:56"],
+    )
+
+    data = source.get_data(
+        SeriesSelector.from_tags("dummy", {"series name": "datetime-series"}),
+        datetime.fromisoformat("2021-01-01T00:00:00+00:00"),
+        datetime.fromisoformat("2021-02-01T00:00:00+00:00"),
+    )
+
+    assert data["value"][0].as_py() == datetime.fromisoformat(
+        "2021-01-02T11:34:56+00:00"
+    )
+
+
+def test_datetime_values_mixed_with_numbers_become_strings() -> None:
+    config = SQLConfig(
+        ":memory:",
+        data_query="select ts, value from Data where series_name = ? and ts between ? and ?",
+        tag_columns=["series name"],
+    )
+    source = DummySQLSource(config, MetadataValueMapper(), QualityMapper())
+    source.db.row_factory = lambda _, row: (
+        parse_date(row[0]),
+        datetime.fromisoformat(row[1]) if "T" in row[1] else float(row[1]),
+    )
+    source.db.execute("create table Data (ts datetime, series_name text, value text)")
+    for day, value in [(2, "2021-01-02T12:34:56+00:00"), (3, "42.5")]:
+        source.db.execute(
+            "insert into Data (ts, series_name, value) values (?, ?, ?)",
+            [f"2021-01-0{day}T00:00:00+00:00", "mixed-series", value],
+        )
+
+    data = source.get_data(
+        SeriesSelector.from_tags("dummy", {"series name": "mixed-series"}),
+        datetime.fromisoformat("2021-01-01T00:00:00+00:00"),
+        datetime.fromisoformat("2021-02-01T00:00:00+00:00"),
+    )
+
+    assert data["value"].to_pylist() == ["2021-01-02T12:34:56+00:00", "42.5"]
 
 
 def test_timezone_on_queries() -> None:
