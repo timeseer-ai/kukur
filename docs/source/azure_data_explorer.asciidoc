@@ -25,7 +25,7 @@ metadata_value_mapping = ""
 list_query = "" # optional when `table` is defined
 data_query = "" # optional when `table` is defined
 data_query_named_parameters = {}
-max_items_per_call = 500000
+query_timeout_seconds = 270 # optional: The time a query may take, in seconds
 throttle_backoff_count = 8 # The number of times to retry requests using exponential backoff when throttled
 ```
 
@@ -39,8 +39,10 @@ from the https://pypi.org/project/azure-identity/[azure-identity] package is use
 
 To use a Service Principal, configure all three of `client_id`, `client_secret` and `tenant_id`.
 
-`max_items_per_call` configures the maximum number of rows to return in one response.
-This can be adapted to conform to the https://learn.microsoft.com/en-us/kusto/concepts/query-limits[Kusto Query Limits].
+Each listing and each data request is a single query whose result is streamed,
+without the result set truncation of the https://learn.microsoft.com/en-us/kusto/concepts/query-limits[Kusto Query Limits].
+`query_timeout_seconds` sets the time such a query may take.
+It defaults to the timeout of the Azure Data Explorer client (4.5 minutes) and can be raised to at most one hour.
 
 When all data in a table needs to be queried,
 define `table`.

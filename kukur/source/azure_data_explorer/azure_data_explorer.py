@@ -7,7 +7,7 @@ import logging
 import time
 from collections.abc import Generator
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 import pyarrow as pa
@@ -22,7 +22,7 @@ from kukur.source.token_cache import TokenCache
 
 try:
     from azure.kusto.data import ClientRequestProperties
-    from azure.kusto.data.exceptions import KustoMultiApiError
+    from azure.kusto.data._models import KustoResultRow
 except ImportError:
     pass
 
@@ -30,8 +30,6 @@ except ImportError:
 from kukur import Metadata, SeriesSearch, SeriesSelector
 from kukur.exceptions import KukurException, MissingModuleException
 from kukur.source.metadata import MetadataMapper, MetadataValueMapper
-
-MAX_ITEMS_PER_CALL = 500_000
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +51,7 @@ class DataExplorerConfiguration:
     tag_columns: list[str]
     field_columns: list[str]
     metadata_columns: list[str]
-    max_items_per_call: int
+    query_timeout_seconds: int | None
     list_query: str | None
     list_columns: list[str] | None
     data_query: str | None
@@ -80,7 +78,7 @@ def from_config(
             tag_columns,
             field_columns,
             metadata_columns,
-            config.get("max_items_per_call", MAX_ITEMS_PER_CALL),
+            config.get("query_timeout_seconds"),
             config.get("list_query"),
             config.get("list_columns"),
             config.get("data_query"),
@@ -134,12 +132,7 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
     def _search_query(
         self, selector: SeriesSearch, list_query: str
     ) -> Generator[Metadata, None, None]:
-        with self._connect() as connection:
-            result = connection.execute(list_query)
-        if result is None or len(result.primary_results) == 0:
-            return
-
-        for row in result.primary_results[0]:
+        for row in self._query(list_query):
             tags = {}
             for tag in self.__config.tag_columns:
                 tags[tag] = row[tag]
@@ -160,12 +153,7 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
         self, selector: SeriesSearch
     ) -> Generator[Metadata, None, None]:
         query = f"['{self.__config.table}'] | distinct {', '.join(self.__config.tag_columns)}"
-        with self._connect() as connection:
-            result = connection.execute(query)
-        if result is None or len(result.primary_results) == 0:
-            return
-
-        for row in result.primary_results[0]:
+        for row in self._query(query):
             tags = {}
             for tag in self.__config.tag_columns:
                 tags[tag] = row[tag]
@@ -185,12 +173,7 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
             | project-away {", ".join(_add_square_brackets(self.__config.metadata_columns))}
             | project-rename {", ".join(renames)}
         """
-        with self._connect() as connection:
-            result = connection.execute(query)
-        if result is None or len(result.primary_results) == 0:
-            return
-
-        for row in result.primary_results[0]:
+        for row in self._query(query):
             tags = {}
             for tag in self.__config.tag_columns:
                 tags[tag] = row[tag]
@@ -222,35 +205,11 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
         query, props = self._prepare_data_query(selector, start_date, end_date)
 
         ts = self.__config.timestamp_column
-        max_items_per_call = self.__config.max_items_per_call
-
         timestamps = []
         values = []
-        offset = 0
-        with self._connect() as connection:
-            while True:
-                try:
-                    paginated_query = f"""{query}
-                    | serialize
-                    | where row_number() > {offset}
-                    | take {max_items_per_call}"""
-                    result = connection.execute(paginated_query, props)
-                    if result is None or len(result.primary_results) == 0:
-                        break
-
-                    for row in result.primary_results[0]:
-                        timestamps.append(row[ts])
-                        values.append(row[selector.field])
-                    if len(result.primary_results[0]) < max_items_per_call:
-                        break
-                    offset += max_items_per_call
-                except KustoMultiApiError as e:
-                    if _is_result_set_too_large(e):
-                        max_items_per_call = max_items_per_call // 2
-                        if max_items_per_call == 0:
-                            raise e
-                    else:
-                        raise e
+        for row in self._query(query, props):
+            timestamps.append(row[ts])
+            values.append(row[selector.field])
 
         return pa.Table.from_pydict({"ts": timestamps, "value": values})
 
@@ -304,20 +263,27 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
 
         return self.__config.data_query, props
 
+    def _query(
+        self, query: str, props: "ClientRequestProperties | None" = None
+    ) -> Generator["KustoResultRow", None, None]:
+        if props is None:
+            props = ClientRequestProperties()
+        props.set_option("notruncation", True)
+        if self.__config.query_timeout_seconds is not None:
+            props.set_option(
+                ClientRequestProperties.request_timeout_option_name,
+                timedelta(seconds=self.__config.query_timeout_seconds),
+            )
+        with self._connect() as connection:
+            response = connection.execute_streaming(query, props)
+            result = next(response.iter_primary_results(), None)
+            if result is not None:
+                yield from result
+
     def _connect(self) -> DataExplorerConnection:
         return DataExplorerConnection(
             self.__config.connection, self.__token_cache, self._sleeper.sleep
         )
-
-
-def _is_result_set_too_large(err) -> bool:
-    for api_error in err.get_api_errors():
-        if (
-            api_error.description is not None
-            and "E_QUERY_RESULT_SET_TOO_LARGE" in api_error.description
-        ):
-            return True
-    return False
 
 
 def _add_square_brackets(columns: list[str]) -> list[str]:
