@@ -276,9 +276,7 @@ class DataExplorerSource:  # pylint: disable=too-many-instance-attributes
             )
         with self._connect() as connection:
             response = connection.execute_streaming(query, props)
-            result = next(response.iter_primary_results(), None)
-            if result is not None:
-                yield from result
+            yield from next(response.iter_primary_results())
 
     def _connect(self) -> DataExplorerConnection:
         return DataExplorerConnection(

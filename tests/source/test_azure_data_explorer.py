@@ -29,12 +29,10 @@ from kukur.source.token_cache import NullTokenCache
 
 
 class MockStreamingResponse:
-    def __init__(self, rows: Iterable[dict[str, Any] | list[str]] | None):
+    def __init__(self, rows: Iterable[dict[str, Any]]):
         self.__rows = rows
 
-    def iter_primary_results(self) -> Iterator[Iterable[dict[str, Any] | list[str]]]:
-        if self.__rows is None:
-            return iter([])
+    def iter_primary_results(self) -> Iterator[Iterable[dict[str, Any]]]:
         return iter([self.__rows])
 
 
@@ -90,14 +88,6 @@ def search_queries(_database, query, properties=None) -> MockStreamingResponse:
                 },
             ]
         )
-    if "deviceId" in query and "distinct" in query:
-        return MockStreamingResponse([["sim000001"], ["sim000002"], ["sim000003"]])
-    if "plant" in query and "distinct" in query:
-        return MockStreamingResponse([["Plant01"], ["Plant02"], ["Plant03"]])
-    if "location" in query and "distinct" in query:
-        return MockStreamingResponse([["Antwerp"], ["Curitiba"]])
-    if "sensorModel" in query and "distinct" in query:
-        return MockStreamingResponse([["AST20PT"]])
     return MockStreamingResponse([])
 
 
@@ -198,7 +188,7 @@ def test_get_data_runs_one_untruncated_query(kusto_client) -> None:
 
 @patch(
     "azure.kusto.data.KustoClient.execute_streaming_query",
-    return_value=MockStreamingResponse(None),
+    return_value=MockStreamingResponse([]),
 )
 def test_get_data_without_result(_kusto_client) -> None:
     data = _get_data(_source())
@@ -287,7 +277,7 @@ def test_search_keeps_connection_open_while_streaming(_kusto_client, close) -> N
 
 @patch(
     "azure.kusto.data.KustoClient.execute_streaming_query",
-    return_value=MockStreamingResponse(None),
+    return_value=MockStreamingResponse([]),
 )
 def test_search_without_result(_kusto_client) -> None:
     source = _source(tag_columns=["deviceId", "plant", "location"])
