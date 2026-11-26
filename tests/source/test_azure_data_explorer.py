@@ -1,13 +1,14 @@
 # SPDX-FileCopyrightText: 2022 Timeseer.AI
 # SPDX-License-Identifier: Apache-2.0
 
-import re
 from collections import Counter
+from collections.abc import Iterable, Iterator
 from datetime import UTC, datetime, timedelta
 from random import random
 from typing import Any
 from unittest.mock import patch
 
+import pyarrow as pa
 import pytest
 from azure.kusto.data import ClientRequestProperties
 from azure.kusto.data.exceptions import KustoMultiApiError, KustoThrottlingError
@@ -19,21 +20,25 @@ from kukur.source.azure_data_explorer import (
     DataExplorerConnectionConfiguration,
     from_config,
 )
-from kukur.source.azure_data_explorer.azure_data_explorer import _Sleeper
+from kukur.source.azure_data_explorer.azure_data_explorer import (
+    DataExplorerSource,
+    _Sleeper,
+)
 from kukur.source.metadata import MetadataMapper, MetadataValueMapper
 from kukur.source.token_cache import NullTokenCache
 
 
-class MockKustoResponse:
-    primary_results: list[list[dict[str, Any] | list[str]]]
+class MockStreamingResponse:
+    def __init__(self, rows: Iterable[dict[str, Any]]):
+        self.__rows = rows
 
-    def __init__(self, results_list: list[dict[str, Any] | list[str]]):
-        self.primary_results = [results_list]
+    def iter_primary_results(self) -> Iterator[Iterable[dict[str, Any]]]:
+        return iter([self.__rows])
 
 
-def search_queries(_, query, _props=None) -> MockKustoResponse:
+def search_queries(_database, query, properties=None) -> MockStreamingResponse:
     if query == "['telemetry-data'] | distinct deviceId, plant, location":
-        return MockKustoResponse(
+        return MockStreamingResponse(
             [
                 {"deviceId": "sim000001", "plant": "Plant01", "location": "Antwerp"},
                 {"deviceId": "sim000002", "plant": "Plant02", "location": "Antwerp"},
@@ -44,7 +49,7 @@ def search_queries(_, query, _props=None) -> MockKustoResponse:
         query
         == "['telemetry-metadata'] | distinct deviceId, plant, location, ['data type']"
     ):
-        return MockKustoResponse(
+        return MockStreamingResponse(
             [
                 {
                     "deviceId": "sim000001",
@@ -61,7 +66,7 @@ def search_queries(_, query, _props=None) -> MockKustoResponse:
             ]
         )
     if "summarize" in query:
-        return MockKustoResponse(
+        return MockStreamingResponse(
             [
                 {
                     "deviceId": "sim000001",
@@ -83,213 +88,31 @@ def search_queries(_, query, _props=None) -> MockKustoResponse:
                 },
             ]
         )
-    if "deviceId" in query and "distinct" in query:
-        return MockKustoResponse([["sim000001"], ["sim000002"], ["sim000003"]])
-    if "plant" in query and "distinct" in query:
-        return MockKustoResponse([["Plant01"], ["Plant02"], ["Plant03"]])
-    if "location" in query and "distinct" in query:
-        return MockKustoResponse([["Antwerp"], ["Curitiba"]])
-    if "sensorModel" in query and "distinct" in query:
-        return MockKustoResponse([["AST20PT"]])
-    return MockKustoResponse([])
+    return MockStreamingResponse([])
 
 
-def get_data_response(_database, query, _params):
-    limit = _get_limit_from_query(query)
-    offset = _get_offset_from_query(query)
-    response_data = [
-        {
-            "ts": datetime.now(tz=UTC) - timedelta(minutes=10),
-            "pressure": random() * 100,
-        },
-        {
-            "ts": datetime.now(tz=UTC) - timedelta(minutes=9),
-            "pressure": random() * 100,
-        },
-        {
-            "ts": datetime.now(tz=UTC) - timedelta(minutes=8),
-            "pressure": random() * 100,
-        },
-        {
-            "ts": datetime.now(tz=UTC) - timedelta(minutes=7),
-            "pressure": random() * 100,
-        },
-        {
-            "ts": datetime.now(tz=UTC) - timedelta(minutes=6),
-            "pressure": random() * 100,
-        },
-        {
-            "ts": datetime.now(tz=UTC) - timedelta(minutes=5),
-            "pressure": random() * 100,
-        },
-        {
-            "ts": datetime.now(tz=UTC) - timedelta(minutes=4),
-            "pressure": random() * 100,
-        },
-        {
-            "ts": datetime.now(tz=UTC) - timedelta(minutes=3),
-            "pressure": random() * 100,
-        },
-        {
-            "ts": datetime.now(tz=UTC) - timedelta(minutes=2),
-            "pressure": random() * 100,
-        },
-        {
-            "ts": datetime.now(tz=UTC) - timedelta(minutes=1),
-            "pressure": random() * 100,
-        },
+def _data_rows() -> list[dict[str, Any]]:
+    now = datetime.now(tz=UTC)
+    return [
+        {"ts": now - timedelta(minutes=minutes), "pressure": random() * 100}
+        for minutes in range(10, 0, -1)
     ]
-    if offset is not None:
-        response_data = response_data[offset:]
-    if limit is not None:
-        response_data = response_data[:limit]
-
-    return MockKustoResponse(response_data)
 
 
-def get_data_response_custom_query(_database, query, props):
+def get_data_response(_database, query, properties) -> MockStreamingResponse:
+    return MockStreamingResponse(_data_rows())
+
+
+def get_data_response_custom_query(
+    _database, query, properties
+) -> MockStreamingResponse:
     assert "telemetry-custom-data" in query
     assert "loc" in query
-    assert props.get_parameter("loc", "") == "Antwerp"
-    limit = _get_limit_from_query(query)
-    offset = _get_offset_from_query(query)
-    response_data = [
-        {
-            "ts": datetime.now(tz=UTC) - timedelta(minutes=10),
-            "pressure": random() * 100,
-        },
-        {
-            "ts": datetime.now(tz=UTC) - timedelta(minutes=9),
-            "pressure": random() * 100,
-        },
-        {
-            "ts": datetime.now(tz=UTC) - timedelta(minutes=8),
-            "pressure": random() * 100,
-        },
-        {
-            "ts": datetime.now(tz=UTC) - timedelta(minutes=7),
-            "pressure": random() * 100,
-        },
-        {
-            "ts": datetime.now(tz=UTC) - timedelta(minutes=6),
-            "pressure": random() * 100,
-        },
-        {
-            "ts": datetime.now(tz=UTC) - timedelta(minutes=5),
-            "pressure": random() * 100,
-        },
-        {
-            "ts": datetime.now(tz=UTC) - timedelta(minutes=4),
-            "pressure": random() * 100,
-        },
-        {
-            "ts": datetime.now(tz=UTC) - timedelta(minutes=3),
-            "pressure": random() * 100,
-        },
-        {
-            "ts": datetime.now(tz=UTC) - timedelta(minutes=2),
-            "pressure": random() * 100,
-        },
-        {
-            "ts": datetime.now(tz=UTC) - timedelta(minutes=1),
-            "pressure": random() * 100,
-        },
-    ]
-    response_data = response_data[offset:]
-    response_data = response_data[:limit]
-
-    return MockKustoResponse(response_data)
+    assert properties.get_parameter("loc", "") == "Antwerp"
+    return MockStreamingResponse(_data_rows())
 
 
-def result_set_too_large_response(_database, query, _params):
-    limit = _get_limit_from_query(query)
-    offset = _get_offset_from_query(query)
-
-    if limit == 6:
-        raise KustoMultiApiError(
-            [
-                {
-                    "OneApiErrors": [
-                        {
-                            "error": {
-                                "code": "",
-                                "message": "",
-                                "@message": "E_QUERY_RESULT_SET_TOO_LARGE",
-                            }
-                        }
-                    ]
-                }
-            ]
-        )
-    assert limit == 3
-
-    response_data = [
-        {
-            "ts": datetime.now(tz=UTC) - timedelta(minutes=10),
-            "pressure": random() * 100,
-        },
-        {
-            "ts": datetime.now(tz=UTC) - timedelta(minutes=9),
-            "pressure": random() * 100,
-        },
-        {
-            "ts": datetime.now(tz=UTC) - timedelta(minutes=8),
-            "pressure": random() * 100,
-        },
-        {
-            "ts": datetime.now(tz=UTC) - timedelta(minutes=7),
-            "pressure": random() * 100,
-        },
-        {
-            "ts": datetime.now(tz=UTC) - timedelta(minutes=6),
-            "pressure": random() * 100,
-        },
-        {
-            "ts": datetime.now(tz=UTC) - timedelta(minutes=5),
-            "pressure": random() * 100,
-        },
-        {
-            "ts": datetime.now(tz=UTC) - timedelta(minutes=4),
-            "pressure": random() * 100,
-        },
-        {
-            "ts": datetime.now(tz=UTC) - timedelta(minutes=3),
-            "pressure": random() * 100,
-        },
-        {
-            "ts": datetime.now(tz=UTC) - timedelta(minutes=2),
-            "pressure": random() * 100,
-        },
-        {
-            "ts": datetime.now(tz=UTC) - timedelta(minutes=1),
-            "pressure": random() * 100,
-        },
-    ]
-    if offset is not None:
-        response_data = response_data[offset:]
-    if limit is not None:
-        response_data = response_data[:limit]
-
-    return MockKustoResponse(response_data)
-
-
-def _get_limit_from_query(query) -> int | None:
-    limit = None
-    match = re.search(r"\btake (\d+)", query)
-    if match is not None:
-        limit = int(match.group(1))
-    return limit
-
-
-def _get_offset_from_query(query) -> int | None:
-    offset = None
-    match = re.search(r"\brow_number\(\) > (\d+)", query)
-    if match is not None:
-        offset = int(match.group(1))
-    return offset
-
-
-def get_throttle_all(_database, query, props):
+def get_throttle_all(_database, query, properties):
     raise KustoThrottlingError()
 
 
@@ -297,105 +120,173 @@ class _ThrottleMock:
     def __init__(self):
         self.count = 0
 
-    def get_throttle_3_times(self, _database, query, props):
+    def get_throttle_3_times(self, _database, query, properties):
         if self.count < 3:
             self.count = self.count + 1
             raise KustoThrottlingError()
-        return get_data_response_custom_query(_database, query, props)
+        return get_data_response_custom_query(_database, query, properties)
 
 
-@patch("azure.kusto.data.KustoClient.execute", side_effect=get_data_response)
-def test_get_data(kusto_client) -> None:
-    source = from_config(
+def _source(**config: Any) -> DataExplorerSource:
+    return from_config(
         {
             "connection_string": "https://test_cluster.net",
             "database": "telemetry",
             "table": "telemetry-data",
             "tag_columns": ["plant", "location"],
-            "field_columns": ["pressure"],
+            "field_columns": ["pressure", "temperature"],
+            **config,
         },
         MetadataMapper(),
         MetadataValueMapper(),
         NullTokenCache(),
     )
+
+
+def _get_data(source: DataExplorerSource) -> pa.Table:
     selector = SeriesSelector(
         "my_source", {"location": "Curitiba", "plant": "Plant02"}, "pressure"
     )
-    initial_date = datetime.now(tz=UTC) - timedelta(minutes=20)
-    final_date = datetime.now(tz=UTC)
-    data = source.get_data(selector, initial_date, final_date)
+    return source.get_data(
+        selector, datetime.now(tz=UTC) - timedelta(minutes=20), datetime.now(tz=UTC)
+    )
+
+
+@patch(
+    "azure.kusto.data.KustoClient.execute_streaming_query",
+    side_effect=get_data_response,
+)
+def test_get_data(kusto_client) -> None:
+    data = _get_data(_source(field_columns=["pressure"]))
     args = kusto_client.call_args.args
     assert args[0] == "telemetry"
     assert "['location']==tag_1" in args[1]
     assert "['plant']==tag_0" in args[1]
     assert "['ts'] >= todatetime(startDate)" in args[1]
     assert "['ts'] <= todatetime(endDate)" in args[1]
-    assert "Curitiba" in args[2].get_parameter("tag_1", None)
-    assert "Plant02" in args[2].get_parameter("tag_0", None)
+    properties = kusto_client.call_args.kwargs["properties"]
+    assert "Curitiba" in properties.get_parameter("tag_1", None)
+    assert "Plant02" in properties.get_parameter("tag_0", None)
     assert "project ['ts'], ['pressure']" in args[1]
     assert len(data) == 10
 
 
-@patch("azure.kusto.data.KustoClient.execute", side_effect=get_data_response)
-def test_get_data_multiple_calls(kusto_client) -> None:
-    source = from_config(
-        {
-            "connection_string": "https://test_cluster.net",
-            "database": "telemetry",
-            "table": "telemetry-data",
-            "tag_columns": ["plant", "location"],
-            "field_columns": ["pressure", "temperature"],
-            "max_items_per_call": 3,
-        },
-        MetadataMapper(),
-        MetadataValueMapper(),
-        NullTokenCache(),
-    )
-    selector = SeriesSelector(
-        "my_source", {"location": "Curitiba", "plant": "Plant02"}, "pressure"
-    )
-    initial_date = datetime.now(tz=UTC) - timedelta(minutes=20)
-    final_date = datetime.now(tz=UTC)
-    data = source.get_data(selector, initial_date, final_date)
-    args = kusto_client.call_args.args
-    assert args[0] == "telemetry"
-    assert "['location']==tag_1" in args[1]
-    assert "['plant']==tag_0" in args[1]
-    assert "['ts'] >= todatetime(startDate)" in args[1]
-    assert "['ts'] <= todatetime(endDate)" in args[1]
-    assert "Curitiba" in args[2].get_parameter("tag_1", None)
-    assert "Plant02" in args[2].get_parameter("tag_0", None)
+@patch(
+    "azure.kusto.data.KustoClient.execute_streaming_query",
+    side_effect=get_data_response,
+)
+def test_get_data_runs_one_untruncated_query(kusto_client) -> None:
+    data = _get_data(_source(max_items_per_call=3))
+    assert kusto_client.call_count == 1
+    query = kusto_client.call_args.args[1]
+    assert "row_number()" not in query
+    assert "take" not in query
+    properties = kusto_client.call_args.kwargs["properties"]
+    assert properties.get_option("notruncation", False) is True
     assert len(data) == 10
 
 
 @patch(
-    "azure.kusto.data.KustoClient.execute", side_effect=result_set_too_large_response
+    "azure.kusto.data.KustoClient.execute_streaming_query",
+    return_value=MockStreamingResponse([]),
 )
-def test_result_set_too_large(kusto_client) -> None:
-    source = from_config(
-        {
-            "connection_string": "https://test_cluster.net",
-            "database": "telemetry",
-            "table": "telemetry-data",
-            "tag_columns": ["plant", "location"],
-            "field_columns": ["pressure", "temperature"],
-            "max_items_per_call": 6,
-        },
-        MetadataMapper(),
-        MetadataValueMapper(),
-        NullTokenCache(),
-    )
-    selector = SeriesSelector(
-        "my_source", {"location": "Curitiba", "plant": "Plant02"}, "pressure"
-    )
-    initial_date = datetime.now(tz=UTC) - timedelta(minutes=20)
-    final_date = datetime.now(tz=UTC)
-    data = source.get_data(selector, initial_date, final_date)
-    assert kusto_client.call_count == 5
-    assert len(data) == 10
+def test_get_data_without_result(_kusto_client) -> None:
+    data = _get_data(_source())
+    assert len(data) == 0
+    assert data.column_names == ["ts", "value"]
 
 
-@patch("azure.kusto.data.KustoClient.execute", side_effect=search_queries)
+def _rows_failing_after_first() -> Iterator[dict[str, Any]]:
+    yield _data_rows()[0]
+    raise KustoMultiApiError(
+        [
+            {
+                "OneApiErrors": [
+                    {
+                        "error": {
+                            "code": "",
+                            "message": "",
+                            "@message": "E_RUNAWAY_QUERY",
+                        }
+                    }
+                ]
+            }
+        ]
+    )
+
+
+@patch("azure.kusto.data.KustoClient.execute_streaming_query")
+def test_get_data_error_in_stream(kusto_client) -> None:
+    kusto_client.return_value = MockStreamingResponse(_rows_failing_after_first())
+    with pytest.raises(KustoMultiApiError):
+        _get_data(_source())
+
+
+@patch(
+    "azure.kusto.data.KustoClient.execute_streaming_query",
+    side_effect=get_data_response,
+)
+def test_get_data_default_query_timeout(kusto_client) -> None:
+    _get_data(_source())
+    properties = kusto_client.call_args.kwargs["properties"]
+    assert (
+        properties.get_option(ClientRequestProperties.request_timeout_option_name, None)
+        is None
+    )
+
+
+@patch(
+    "azure.kusto.data.KustoClient.execute_streaming_query",
+    side_effect=get_data_response,
+)
+def test_get_data_query_timeout(kusto_client) -> None:
+    _get_data(_source(query_timeout_seconds=900))
+    properties = kusto_client.call_args.kwargs["properties"]
+    assert properties.get_option(
+        ClientRequestProperties.request_timeout_option_name, None
+    ) == timedelta(seconds=900)
+
+
+@patch(
+    "azure.kusto.data.KustoClient.execute_streaming_query", side_effect=search_queries
+)
+def test_search_runs_untruncated_query_with_timeout(kusto_client) -> None:
+    source = _source(
+        tag_columns=["deviceId", "plant", "location"], query_timeout_seconds=900
+    )
+    list(source.search(SeriesSearch("my_source")))
+    properties = kusto_client.call_args.kwargs["properties"]
+    assert properties.get_option("notruncation", False) is True
+    assert properties.get_option(
+        ClientRequestProperties.request_timeout_option_name, None
+    ) == timedelta(seconds=900)
+
+
+@patch("azure.kusto.data.KustoClient.close")
+@patch(
+    "azure.kusto.data.KustoClient.execute_streaming_query", side_effect=search_queries
+)
+def test_search_keeps_connection_open_while_streaming(_kusto_client, close) -> None:
+    source = _source(tag_columns=["deviceId", "plant", "location"])
+    search = source.search(SeriesSearch("my_source"))
+    next(search)
+    assert close.call_count == 0
+    list(search)
+    assert close.call_count == 1
+
+
+@patch(
+    "azure.kusto.data.KustoClient.execute_streaming_query",
+    return_value=MockStreamingResponse([]),
+)
+def test_search_without_result(_kusto_client) -> None:
+    source = _source(tag_columns=["deviceId", "plant", "location"])
+    assert list(source.search(SeriesSearch("my_source"))) == []
+
+
+@patch(
+    "azure.kusto.data.KustoClient.execute_streaming_query", side_effect=search_queries
+)
 def test_search_with_metadata(_kusto_client) -> None:
     source = from_config(
         {
@@ -417,7 +308,9 @@ def test_search_with_metadata(_kusto_client) -> None:
         assert metadata.get_field_by_name("sensorModel") == "AST20PT"
 
 
-@patch("azure.kusto.data.KustoClient.execute", side_effect=search_queries)
+@patch(
+    "azure.kusto.data.KustoClient.execute_streaming_query", side_effect=search_queries
+)
 def test_search_without_metadata(_kusto_client) -> None:
     source = from_config(
         {
@@ -439,7 +332,9 @@ def test_search_without_metadata(_kusto_client) -> None:
         assert "location" in metadata.series.tags
 
 
-@patch("azure.kusto.data.KustoClient.execute", side_effect=search_queries)
+@patch(
+    "azure.kusto.data.KustoClient.execute_streaming_query", side_effect=search_queries
+)
 def test_search_with_custom_query(_kusto_client) -> None:
     source = from_config(
         {
@@ -468,7 +363,8 @@ def test_search_with_custom_query(_kusto_client) -> None:
 
 
 @patch(
-    "azure.kusto.data.KustoClient.execute", side_effect=get_data_response_custom_query
+    "azure.kusto.data.KustoClient.execute_streaming_query",
+    side_effect=get_data_response_custom_query,
 )
 def test_get_data_custom_query(kusto_client) -> None:
     source = from_config(
@@ -479,7 +375,6 @@ def test_get_data_custom_query(kusto_client) -> None:
             "field_columns": ["pressure", "temperature"],
             "data_query": "['telemetry-custom-data'] | where ['location'] == loc",
             "data_query_named_parameters": {"loc": "location"},
-            "max_items_per_call": 3,
         },
         MetadataMapper(),
         MetadataValueMapper(),
@@ -502,7 +397,9 @@ class _TestSleeper(_Sleeper):
         self.count = self.count + 1
 
 
-@patch("azure.kusto.data.KustoClient.execute", side_effect=get_throttle_all)
+@patch(
+    "azure.kusto.data.KustoClient.execute_streaming_query", side_effect=get_throttle_all
+)
 def test_get_data_throttle(kusto_client) -> None:
     source = from_config(
         {
@@ -512,7 +409,6 @@ def test_get_data_throttle(kusto_client) -> None:
             "field_columns": ["pressure", "temperature"],
             "data_query": "['telemetry-custom-data'] | where ['location'] == loc",
             "data_query_named_parameters": {"loc": "location"},
-            "max_items_per_call": 3,
             "throttle_backoff_count": 7,
         },
         MetadataMapper(),
@@ -532,7 +428,7 @@ def test_get_data_throttle(kusto_client) -> None:
 
 
 @patch(
-    "azure.kusto.data.KustoClient.execute",
+    "azure.kusto.data.KustoClient.execute_streaming_query",
     side_effect=_ThrottleMock().get_throttle_3_times,
 )
 def test_get_data_throttle_resolved(kusto_client) -> None:
@@ -544,7 +440,6 @@ def test_get_data_throttle_resolved(kusto_client) -> None:
             "field_columns": ["pressure", "temperature"],
             "data_query": "['telemetry-custom-data'] | where ['location'] == loc",
             "data_query_named_parameters": {"loc": "location"},
-            "max_items_per_call": 3,
         },
         MetadataMapper(),
         MetadataValueMapper(),
