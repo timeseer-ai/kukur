@@ -855,6 +855,9 @@ dependencies = [
 adodb = [
     { name = "pywin32", marker = "sys_platform == 'win32'" },
 ]
+cognite = [
+    { name = "requests" },
+]
 cratedb = [
     { name = "crate" },
 ]
@@ -931,12 +934,13 @@ requires-dist = [
     { name = "pywin32", marker = "sys_platform == 'win32' and extra == 'adodb'" },
     { name = "pyyaml", marker = "extra == 'simulator'" },
     { name = "redshift-connector", marker = "extra == 'redshift'" },
+    { name = "requests", marker = "extra == 'cognite'" },
     { name = "requests", marker = "extra == 'influxdb'" },
     { name = "requests", marker = "extra == 'piwebapi'" },
     { name = "requests-kerberos", marker = "extra == 'piwebapi'" },
     { name = "taos-ws-py", marker = "extra == 'tdengine'" },
 ]
-provides-extras = ["adodb", "cratedb", "datafusion", "delta", "excel", "gpx", "influxdb", "kusto", "odbc", "numpy", "piwebapi", "postgresql", "redshift", "simulator", "tdengine"]
+provides-extras = ["adodb", "cognite", "cratedb", "datafusion", "delta", "excel", "gpx", "influxdb", "kusto", "odbc", "numpy", "piwebapi", "postgresql", "redshift", "simulator", "tdengine"]
 
 [package.metadata.requires-dev]
 dev = [

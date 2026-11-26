@@ -28,6 +28,7 @@ from kukur.source import (
     adodb,
     arrows,
     azure_data_explorer,
+    cognite,
     cratedb,
     csv,
     databricks_sql,
@@ -69,6 +70,7 @@ logger = logging.getLogger(__name__)
 _FACTORY: dict[str, Callable[..., SourceProtocol]] = {
     "adodb": adodb.from_config,
     "arrows": arrows.from_config,
+    "cognite": cognite.from_config,
     "cratedb": cratedb.from_config,
     "csv": csv.from_config,
     "azure-data-explorer": azure_data_explorer.from_config,
